@@ -5,4 +5,4 @@ Reelix's Recon - A small program for network recon. This program is still in ear
 
 Demo
 ----
-<img src = "https://i.imgur.com/sgQwgYR.png" width="934" height="518" />
+<img src = "https://i.imgur.com/02IKYRq.png" width="763" height="536" />
