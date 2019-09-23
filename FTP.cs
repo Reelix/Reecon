@@ -78,7 +78,9 @@ namespace ReeRecon
                 {
                     ftpSocket.Close();
                 }
-                throw new Exception("Couldn't connect to remote server", ex);
+                ftpLoginResult += Environment.NewLine + "- Unable to connect: " + ex.Message;
+                return ftpLoginResult;
+                // throw new Exception("Couldn't connect to remote server", ex);
             }
             //read the host response
             readResponse();
@@ -93,10 +95,11 @@ namespace ReeRecon
             //execute the USER ftp command (sends the username)
             Execute("USER " + _ftpUsername);
             //check the returned status code
-            if (_statusCode == 500 || _statusCode == 501)
+            if (_statusCode == 500 || _statusCode == 501 || _statusCode == 421)
             {
                 // 500 USER: command requires a parameter
                 // 501 'USER': Invalid number of parameters.
+                // 421 Can't change directory to /var/ftp/ [/]
                 LogOut();
                 ftpLoginResult += Environment.NewLine + "- Unable to login: " + result.Substring(4);
                 return ftpLoginResult;
@@ -122,8 +125,9 @@ namespace ReeRecon
                 //execute the PASS ftp command (sends the password)
                 Execute("PASS " + _ftpPassword);
                 //check the returned status code
-                if (_statusCode == 530)
+                if (_statusCode == 530 || _statusCode == 331 || _statusCode == 503)
                 {
+                    // 503 Login with USER first.
                     LogOut();
                     ftpLoginResult += Environment.NewLine + "- Unable to login: " + result.Substring(4);
                     return ftpLoginResult;

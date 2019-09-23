@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading;
 
 namespace ReeRecon
@@ -14,17 +15,9 @@ namespace ReeRecon
         static List<Thread> threadList = new List<Thread>();
         static void Main(string[] args)
         {
-            /*
-            For Debugging
-            
-            ip = "github.com";
-            UsePort(443);
-            Console.WriteLine("done!");
-            Console.ReadLine();
-            */
-
+            DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("ReeRecon - Version 0.01b ( https://github.com/reelix/reerecon )");
+            Console.WriteLine("ReeRecon - Version 0.01c ( https://github.com/reelix/reerecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0 && ip == "")
             {
@@ -45,10 +38,19 @@ namespace ReeRecon
                 {
                     portList.AddRange(args[1].Split(',').ToList().Select(x => int.Parse(x)));
                 }
-                Console.WriteLine("Scanning: " + ip);
+                Console.Write("Scanning: " + ip);
                 if (portList.Count != 0)
                 {
-                    Console.WriteLine("Ports: " + string.Join(",", portList));
+                    Console.Write(" (Port");
+                    if (portList.Count > 1)
+                    {
+                        Console.Write("s");
+                    }
+                    Console.WriteLine(": " + string.Join(",", portList) + ")");
+                }
+                else
+                {
+                    Console.WriteLine();
                 }
             }
             else
@@ -56,6 +58,15 @@ namespace ReeRecon
                 Console.WriteLine("Hard Coded IP - Dev Mode!");
                 Console.WriteLine("Scanning: " + ip);
             }
+            Console.WriteLine("Checking if host is online...");
+            bool isHostOnline = General.IsUp(ip);
+            General.ClearPreviousConsoleLine();
+            if (!isHostOnline)
+            {
+                Console.WriteLine("Host is not responding to pings :(");
+                return;
+            }
+            
             if (portList.Count != 0)
             {
                 ParsePorts("portlist");
@@ -86,7 +97,8 @@ namespace ReeRecon
             {
                 Console.WriteLine("- gobuster -u https://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-https.txt");
             }
-            Console.WriteLine("Done - Have fun :)");
+            DateTime endDate = DateTime.Now;
+            Console.WriteLine("Done in " + string.Format("{0:0}ms", (endDate - startDate).TotalMilliseconds) + " - Have fun :)");
         }
 
         static void RunNMap(int level)
@@ -166,17 +178,12 @@ namespace ReeRecon
             {
                 FTP myFTP = new FTP();
                 string ftpLoginInfo = myFTP.FtpLogin(ip);
-                if (ftpLoginInfo.Contains("Unable to login: This FTP server is anonymous only."))
+                if (ftpLoginInfo.Contains("Unable to login: This FTP server is anonymous only.") || ftpLoginInfo.Contains("Unable to login: USER: command requires a parameter") || ftpLoginInfo.Contains("Unable to login: Login with USER first."))
                 {
                     myFTP = new FTP();
                     ftpLoginInfo = myFTP.FtpLogin(ip, "anonymous", "");
                 }
-                else if (ftpLoginInfo.Contains("Unable to login: USER: command requires a parameter"))
-                {
-                    myFTP = new FTP();
-                    ftpLoginInfo = myFTP.FtpLogin(ip, "test", "test");
-                }
-                Console.WriteLine("Port 21" + Environment.NewLine + ftpLoginInfo);
+                Console.WriteLine("Port 21" + ftpLoginInfo);
             }
             else if (port == 22)
             {
@@ -191,44 +198,35 @@ namespace ReeRecon
                 string port80result = "Port 80";
                 // RunGoBuster()
                 HTTP myHTTP = new HTTP();
-                string header = myHTTP.GetHeader(ip).Get("Server");
-                if (header != null)
+                var httpInfo = myHTTP.GetHTTPInfo(ip, 80, false);
+                string portData = myHTTP.FormatResponse(httpInfo.StatusCode, httpInfo.Title, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
+                if (portData != null)
                 {
-                    port80result += Environment.NewLine + "- Server: " + header;
+                    Console.WriteLine(port80result + portData);
                 }
-                string pageTitle = myHTTP.GetTitle(ip, port, false);
-                if (pageTitle != "")
+                else
                 {
-                    port80result += Environment.NewLine + "- Page Title: " + pageTitle;
+                    Console.WriteLine(port + " -- Woof!");
                 }
-                Console.WriteLine(port80result);
             }
             else if (port == 443)
             {
                 string port443Result = "Port 443";
                 // Get SSL Detauls
                 HTTP myHTTP = new HTTP();
-                var result = myHTTP.GetSSLCertAndHeaders(ip);
-                if (result.cert != null)
-                {
-                    string certIssuer = result.cert.Issuer;
-                    port443Result += Environment.NewLine + "- SSL Cert Issuer: " + certIssuer;
-                }
-                string serverHeader = result.headers.Get("Server");
-                if (serverHeader != null)
-                {
-                    port443Result += Environment.NewLine + "- Server: " + serverHeader;
-                }
-                string pageTitle = myHTTP.GetTitle(ip, port, true);
-                if (pageTitle != "")
-                {
-                    port443Result += Environment.NewLine + "- Page Title: " + pageTitle;
-                }
-                Console.WriteLine(port443Result);
+                var httpsInfo = myHTTP.GetHTTPInfo(ip, 443, true);
+                string portData = myHTTP.FormatResponse(httpsInfo.StatusCode, httpsInfo.Title, httpsInfo.DNS, httpsInfo.Headers, httpsInfo.SSLCert);
+                Console.WriteLine(port443Result + portData);
             }
             else if (port == 445)
             {
-                Console.WriteLine("Port 445" + Environment.NewLine + "- Microsoft SMB - Nothing Yet");
+                Console.WriteLine("Port 445" + Environment.NewLine + "- Most likely Microsoft SMB - Nothing Yet");
+            }
+            else if (port == 3306)
+            {
+                //MySql 
+                Console.WriteLine("Port 3306" + Environment.NewLine + "- Most likely MySQL - Nothing Yet" + Environment.NewLine + "- Banner: " + theBanner);
+                // https://svn.nmap.org/nmap/scripts/mysql-info.nse
             }
             else
             {
@@ -241,47 +239,24 @@ namespace ReeRecon
                     unknownPortResult += Environment.NewLine + "- Auth Methods: " + authMethods;
                     Console.WriteLine(unknownPortResult);
                 }
-                else if (theBanner.Contains("Server: Apache")) // Probably HTTP or HTTPS
+                else if (theBanner.Contains("Server: Apache") || theBanner.Contains("Server: cloudflare")) // Probably HTTP or HTTPS
                 {
+                    string portData = "";
                     // Try HTTP
                     HTTP myHTTP = new HTTP();
-                    var httpResult = myHTTP.GetHeader(ip, port);
-                    string pageTitle = "";
-                    if (httpResult != null)
+                    var httpInfo = myHTTP.GetHTTPInfo(ip, port, false);
+                    if (httpInfo != (new HttpStatusCode(), null, null, null, null))
                     {
-                        if (httpResult.Get("Server") != null)
-                        {
-                            unknownPortResult += Environment.NewLine + "- Server: " + httpResult.Get("Server");
-                        }
-                        if (httpResult.Get("WWW-Authenticate") != null)
-                        {
-                            unknownPortResult += Environment.NewLine + "- WWW-Authenticate: " + httpResult.Get("WWW-Authenticate");
-                        }
-                        pageTitle = myHTTP.GetTitle(ip, port, false);
-                        if (pageTitle != "")
-                        {
-                            unknownPortResult += Environment.NewLine + "- Page Title: " + pageTitle;
-                        }
-                        Console.WriteLine(unknownPortResult);
+                        unknownPortResult += Environment.NewLine + " - Probably https";
+                        portData = myHTTP.FormatResponse(httpInfo.StatusCode, httpInfo.Title, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
+                        Console.WriteLine(unknownPortResult += portData);
                         return;
                     }
                     // Try HTTPS
-                    var httpsResult = myHTTP.GetSSLCertAndHeaders(ip, port);
+                    var httpsInfo = myHTTP.GetHTTPInfo(ip, port, true);
                     unknownPortResult += Environment.NewLine + "- Probably https";
-                    if (httpsResult.headers != null && httpsResult.headers.Get("Server") != null)
-                    {
-                        unknownPortResult += Environment.NewLine + "- Server: " + httpsResult.headers.Get("Server");
-                    }
-                    if (httpsResult.cert != null)
-                    {
-                        unknownPortResult += Environment.NewLine + "- SSL Cert Issuer: " + httpsResult.cert.Issuer;
-                    }
-                    pageTitle = myHTTP.GetTitle(ip, port, true);
-                    if (pageTitle != "")
-                    {
-                        unknownPortResult += Environment.NewLine + "- Page Title: " + pageTitle;
-                    }
-                    Console.WriteLine(unknownPortResult);
+                    portData = myHTTP.FormatResponse(httpsInfo.StatusCode, httpsInfo.Title, httpsInfo.DNS, httpsInfo.Headers, httpsInfo.SSLCert);
+                    Console.WriteLine(unknownPortResult += portData);
                 }
                 else if (theBanner == "")
                 {
