@@ -24,7 +24,7 @@ namespace ReeRecon
             */
 
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("ReeRecon - Version 0.01a");
+            Console.WriteLine("ReeRecon - Version 0.01b ( https://github.com/reelix/reerecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0 && ip == "")
             {
@@ -283,9 +283,13 @@ namespace ReeRecon
                     }
                     Console.WriteLine(unknownPortResult);
                 }
+                else if (theBanner == "")
+                {
+                    Console.WriteLine(unknownPortResult + Environment.NewLine + "- No Banner Response");
+                }
                 else
                 {
-                    Console.WriteLine(Environment.NewLine + "- Unknown Banner Response: " + theBanner);
+                    Console.WriteLine(unknownPortResult + Environment.NewLine + "- Unknown Banner Response: " + theBanner);
                 }
             }
         }
