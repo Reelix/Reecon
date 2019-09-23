@@ -5,4 +5,4 @@ A small program for network recon. This program is still in early stages of deve
 
 Demo
 ----
-![Demo](https://i.imgur.com/1CzDkva.png)
+<img src = "https://i.imgur.com/1CzDkva.png" width="888" height="456" />
