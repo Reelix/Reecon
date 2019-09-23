@@ -93,7 +93,11 @@ namespace ReeRecon
                 return (null, null);
             }
             theResponse.Close();
-            X509Certificate2 theCert = new X509Certificate2(request.ServicePoint.Certificate);
+            X509Certificate2 theCert = null;
+            if (request.ServicePoint.Certificate != null)
+            {
+                theCert = new X509Certificate2(request.ServicePoint.Certificate);
+            }
             return (theCert, headers);
         }
     }

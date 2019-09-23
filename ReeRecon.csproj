@@ -6,8 +6,8 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{B21517AB-9864-4A09-9942-D8DE432BD637}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>ReeHack</RootNamespace>
-    <AssemblyName>ReeHack</AssemblyName>
+    <RootNamespace>ReeRecon</RootNamespace>
+    <AssemblyName>ReeRecon</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -18,7 +18,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\..\..\..\..\inetpub\wwwroot\Reelix\ReeHack\</OutputPath>
+    <OutputPath>..\..\..\..\inetpub\wwwroot\Reelix\ReeRecon\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>

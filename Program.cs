@@ -14,6 +14,15 @@ namespace ReeRecon
         static List<Thread> threadList = new List<Thread>();
         static void Main(string[] args)
         {
+            /*
+            For Debugging
+            
+            ip = "github.com";
+            UsePort(443);
+            Console.WriteLine("done!");
+            Console.ReadLine();
+            */
+
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine("ReeRecon - Version 0.01a");
             Console.ForegroundColor = ConsoleColor.White;
@@ -36,7 +45,7 @@ namespace ReeRecon
                 {
                     portList.AddRange(args[1].Split(',').ToList().Select(x => int.Parse(x)));
                 }
-                Console.WriteLine("Hacking: " + ip);
+                Console.WriteLine("Scanning: " + ip);
                 if (portList.Count != 0)
                 {
                     Console.WriteLine("Ports: " + string.Join(",", portList));
@@ -45,7 +54,7 @@ namespace ReeRecon
             else
             {
                 Console.WriteLine("Hard Coded IP - Dev Mode!");
-                Console.WriteLine("Hacking: " + ip);
+                Console.WriteLine("Scanning: " + ip);
             }
             if (portList.Count != 0)
             {
@@ -200,8 +209,11 @@ namespace ReeRecon
                 // Get SSL Detauls
                 HTTP myHTTP = new HTTP();
                 var result = myHTTP.GetSSLCertAndHeaders(ip);
-                string certIssuer = result.cert.Issuer;
-                port443Result += Environment.NewLine + "- SSL Cert Issuer: " + certIssuer;
+                if (result.cert != null)
+                {
+                    string certIssuer = result.cert.Issuer;
+                    port443Result += Environment.NewLine + "- SSL Cert Issuer: " + certIssuer;
+                }
                 string serverHeader = result.headers.Get("Server");
                 if (serverHeader != null)
                 {
