@@ -84,6 +84,13 @@ namespace ReeRecon
             if (StatusCode != HttpStatusCode.OK)
             {
                 responseText += Environment.NewLine + "- Non-OK Status Code: " + StatusCode.ToString();
+                if (StatusCode != HttpStatusCode.OK)
+                {
+                    if (Headers != null && Headers.Get("Location") != null)
+                    {
+                        responseText += Environment.NewLine + "- Location: " + Headers.Get("Location");
+                    }
+                }
             }
             if (!string.IsNullOrEmpty(Title))
             {

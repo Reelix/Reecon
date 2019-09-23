@@ -18,18 +18,16 @@ namespace ReeRecon
         private string _ftpPassword = string.Empty;
         private int _ftpPort = 21;
         private bool _isLoggedIn = false;
-        private bool _isBinary = false;
-        private int _timeOut = 10;
+        // private bool _isBinary = false;
+        // private int _timeOut = 10;
         //Static variables
-        private static int BUFFER_SIZE = 512;
-        private static Encoding ASCII = Encoding.ASCII;
         //Misc Global variables
         private bool _doVerbose = true;
         private string statusMessage = string.Empty;
         private string result = string.Empty;
         private int bytes = 0;
         private int _statusCode = 0;
-        private Byte[] buffer = new Byte[BUFFER_SIZE];
+        private Byte[] buffer = new Byte[512];
         private Socket ftpSocket = null;
         #endregion
 
@@ -55,18 +53,15 @@ namespace ReeRecon
             {
                 Console.WriteLine("Opening connection to " + _ftpServer, "FtpClient");
             }
-            //create our ip address object
-            IPAddress remoteAddress = null;
             //create our end point object
-            IPEndPoint addrEndPoint = null;
             try
             {
                 //create our ftp socket
                 ftpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                 //retrieve the server ip
-                remoteAddress = Dns.GetHostEntry(_ftpServer).AddressList[0];
+                IPAddress remoteAddress = Dns.GetHostEntry(_ftpServer).AddressList[0];
                 //set the endpoint value
-                addrEndPoint = new IPEndPoint(remoteAddress, _ftpPort);
+                IPEndPoint addrEndPoint = new IPEndPoint(remoteAddress, _ftpPort);
                 //connect to the ftp server
                 ftpSocket.Connect(addrEndPoint);
             }
@@ -193,7 +188,7 @@ namespace ReeRecon
                 bytes = ftpSocket.Receive(buffer, buffer.Length, 0);
                 //decode the byte array and set the
                 //statusMessage to its value
-                statusMessage += ASCII.GetString(buffer, 0, bytes);
+                statusMessage += Encoding.ASCII.GetString(buffer, 0, bytes);
                 //check the size of the byte array
                 if (bytes < buffer.Length)
                 {

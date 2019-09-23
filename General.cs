@@ -10,22 +10,24 @@ namespace ReeRecon
         public static string BannerGrab(string ip, int port)
         {
             Byte[] buffer = new Byte[512];
-            Socket sshSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            try
+            using (Socket sshSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
-                sshSocket.Connect(ip, port); // Error if an invalid IP
-                Byte[] cmdBytes = Encoding.ASCII.GetBytes(("HELLO\r\n").ToCharArray());
-                sshSocket.Send(cmdBytes, cmdBytes.Length, 0);
+                try
+                {
+                    sshSocket.Connect(ip, port); // Error if an invalid IP
+                    Byte[] cmdBytes = Encoding.ASCII.GetBytes(("HELLO\r\n").ToCharArray());
+                    sshSocket.Send(cmdBytes, cmdBytes.Length, 0);
 
-                // Port 445 - System.Net.Sockets.SocketException (0x80004005): Connection reset by peer
-                int bytes = sshSocket.Receive(buffer, buffer.Length, 0);
-                string bannerText = Encoding.ASCII.GetString(buffer, 0, bytes);
-                bannerText = bannerText.Trim();
-                return bannerText;
-            }
-            catch
-            {
-                return "";
+                    // Port 445 - System.Net.Sockets.SocketException (0x80004005): Connection reset by peer
+                    int bytes = sshSocket.Receive(buffer, buffer.Length, 0);
+                    string bannerText = Encoding.ASCII.GetString(buffer, 0, bytes);
+                    bannerText = bannerText.Trim();
+                    return bannerText;
+                }
+                catch
+                {
+                    return "";
+                }
             }
         }
 
