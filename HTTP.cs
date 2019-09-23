@@ -3,11 +3,10 @@ using System.IO;
 using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using System.Linq;
 using System.Collections.Generic;
 
-namespace ReeRecon
+namespace Reecon
 {
     class HTTP
     {

@@ -3,7 +3,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
-namespace ReeRecon
+namespace Reecon
 {
     // Mostly yoinked from https://www.dreamincode.net/forums/topic/35902-create-an-ftp-class-library-in-c%23/
     class FTP

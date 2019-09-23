@@ -6,7 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 
-namespace ReeRecon
+namespace Reecon
 {
     class Program
     {
@@ -17,7 +17,7 @@ namespace ReeRecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("ReeRecon - Version 0.01c ( https://github.com/reelix/reerecon )");
+            Console.WriteLine("Reecon - Version 0.01d ( https://github.com/reelix/reerecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0 && ip == "")
             {
@@ -96,6 +96,10 @@ namespace ReeRecon
             if (portList.Contains(443))
             {
                 Console.WriteLine("- gobuster -u https://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-https.txt");
+            }
+            if (portList.Contains(445))
+            {
+                Console.WriteLine("- nmap --script smb-enum-shares.nse -p445 " + ip);
             }
             DateTime endDate = DateTime.Now;
             Console.WriteLine("Done in " + string.Format("{0:0}ms", (endDate - startDate).TotalMilliseconds) + " - Have fun :)");
