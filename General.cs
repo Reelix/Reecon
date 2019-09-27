@@ -10,7 +10,7 @@ namespace Reecon
         public static string BannerGrab(string ip, int port)
         {
             Byte[] buffer = new Byte[512];
-            using (Socket sshSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+            using (Socket sshSocket = new Socket(SocketType.Stream, ProtocolType.Tcp))
             {
                 // Can't have timeouts - Sometimes you get (10.10.10.145:6686)
                 // Error in General.BannerGrab - Operation on non-blocking socket would block

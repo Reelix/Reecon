@@ -238,6 +238,11 @@ namespace Reecon
                 string unknownPortResult = "Port " + port;
                 if (theBanner.Contains("SSH-2.0-OpenSSH")) // Probably SSH
                 {
+                    if (theBanner.Contains("\r\nProtocol mismatch."))
+                    {
+                        theBanner = theBanner.Replace("\r\nProtocol mismatch.", "");
+                        unknownPortResult += Environment.NewLine + "- TCP Protocol Mismatch"; 
+                    }
                     unknownPortResult += Environment.NewLine + "- SSH Version: " + theBanner;
                     string authMethods = SSH.GetAuthMethods(ip);
                     unknownPortResult += Environment.NewLine + "- Auth Methods: " + authMethods;
