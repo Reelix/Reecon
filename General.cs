@@ -12,23 +12,24 @@ namespace Reecon
             Byte[] buffer = new Byte[512];
             using (Socket sshSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
-                sshSocket.ReceiveTimeout = 5;
-                sshSocket.SendTimeout = 5;
+                // Can't have timeouts - Sometimes you get (10.10.10.145:6686)
+                // Error in General.BannerGrab - Operation on non-blocking socket would block
+                // Need to figure out why...
+                // sshSocket.ReceiveTimeout = 5;
+                // sshSocket.SendTimeout = 5;
                 try
                 {
                     sshSocket.Connect(ip, port); // Error if an invalid IP
                     Byte[] cmdBytes = Encoding.ASCII.GetBytes(("HELLO\r\n").ToCharArray());
                     sshSocket.Send(cmdBytes, cmdBytes.Length, 0);
-
-                    // Port 445 - System.Net.Sockets.SocketException (0x80004005): Connection reset by peer
-                    sshSocket.ReceiveTimeout = 5;
                     int bytes = sshSocket.Receive(buffer, buffer.Length, 0);
                     string bannerText = Encoding.ASCII.GetString(buffer, 0, bytes);
                     bannerText = bannerText.Trim();
                     return bannerText;
                 }
-                catch
+                catch (Exception ex)
                 {
+                    Console.WriteLine("Error in General.BannerGrab - " + ex.Message);
                     return "";
                 }
             }

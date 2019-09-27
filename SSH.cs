@@ -13,11 +13,13 @@ namespace Reecon
         public static string GetVersion(string ip)
         {
             Byte[] buffer = new Byte[512];
-            Socket sshSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            sshSocket.Connect(ip, 22);
-            int bytes = sshSocket.Receive(buffer, buffer.Length, 0);
-            string versionMessage = Encoding.ASCII.GetString(buffer, 0, bytes);
-            return versionMessage.Trim().Replace(Environment.NewLine, "");
+            using (Socket sshSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+            {
+                sshSocket.Connect(ip, 22);
+                int bytes = sshSocket.Receive(buffer, buffer.Length, 0);
+                string versionMessage = Encoding.ASCII.GetString(buffer, 0, bytes);
+                return versionMessage.Trim().Replace(Environment.NewLine, "");
+            }
         }
 
         // Get Auth Methods
