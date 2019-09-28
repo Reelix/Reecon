@@ -36,8 +36,10 @@ namespace Reecon
                     statusCode = response.StatusCode;
                     dns = response.ResponseUri.DnsSafeHost;
                     headers = response.Headers;
-                    StreamReader readStream = new StreamReader(response.GetResponseStream());
-                    pageData = readStream.ReadToEnd(); // For Title
+                    using (StreamReader readStream = new StreamReader(response.GetResponseStream()))
+                    {
+                        pageData = readStream.ReadToEnd();
+                    }
                     response.Close();
                 }
             }
@@ -53,14 +55,16 @@ namespace Reecon
                 statusCode = response.StatusCode;
                 dns = response.ResponseUri.DnsSafeHost;
                 headers = response.Headers;
-                StreamReader readStream = new StreamReader(response.GetResponseStream());
-                pageData = readStream.ReadToEnd();
+                using (StreamReader readStream = new StreamReader(response.GetResponseStream()))
+                {
+                    pageData = readStream.ReadToEnd();
+                }
                 response.Close();
             }
             catch (Exception ex)
             {
                 // Something went really wrong...
-                Console.WriteLine("GetHTTPInfo - Fatal Woof :(");
+                Console.WriteLine("GetHTTPInfo - Fatal Woof :(: " + ex.Message);
                 return (statusCode, null, null, null, null);
             }
 
@@ -102,9 +106,14 @@ namespace Reecon
             }
             if (Headers != null)
             {
+                responseText += Environment.NewLine + "- Headers: " + string.Join(",", Headers.AllKeys);
                 if (Headers.Get("Server") != null)
                 {
                     responseText += Environment.NewLine + "- Server: " + Headers.Get("Server");
+                }
+                if (Headers.Get("X-Powered-By") != null)
+                {
+                    responseText += Environment.NewLine + "- X-Powered-By: " + Headers.Get("X-Powered-By");
                 }
                 if (Headers.Get("WWW-Authenticate") != null)
                 {
@@ -115,14 +124,13 @@ namespace Reecon
             {
                 string certIssuer = SSLCert.Issuer;
                 string certSubject = SSLCert.Subject;
-                string certAltName = SSLCert.SubjectName.Name;
-                X509Certificate myCert = new X509Certificate();
+                // string certAltName = SSLCert.SubjectName.Name;
                 responseText += Environment.NewLine + "- SSL Cert Issuer: " + certIssuer;
                 responseText += Environment.NewLine + "- SSL Cert Subject: " + certSubject;
                 if (SSLCert.Extensions != null)
                 {
-                    var extensionCollection = SSLCert.Extensions;
-                    foreach (X509Extension extension in SSLCert.Extensions)
+                    X509ExtensionCollection extensionCollection = SSLCert.Extensions;
+                    foreach (X509Extension extension in extensionCollection)
                     {
                         string extensionType = extension.Oid.FriendlyName;
                         if (extensionType == "Subject Alternative Name")

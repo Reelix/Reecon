@@ -1,7 +1,7 @@
 ﻿using System;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
-using System.Net.NetworkInformation;
 
 namespace Reecon
 {
@@ -35,6 +35,11 @@ namespace Reecon
                     else if (ex.Message == "A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond")
                     {
                         return "";
+                    }
+                    // Someone doesn't want us here
+                    else if (ex.Message == "Connection reset by peer")
+                    {
+                        return "Connection reset by peer";
                     }
                     else
                     {

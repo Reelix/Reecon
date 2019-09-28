@@ -17,7 +17,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.01e ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.02 ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0 && ip == "")
             {
@@ -66,7 +66,7 @@ namespace Reecon
                 Console.WriteLine("Host is not responding to pings :(");
                 return;
             }
-            
+
             if (portList.Count != 0)
             {
                 ParsePorts("portlist");
@@ -111,26 +111,29 @@ namespace Reecon
                 Console.WriteLine("- nmap --script smb-enum-shares.nse -p445 " + ip);
             }
             DateTime endDate = DateTime.Now;
-            Console.WriteLine("Done in " + string.Format("{0:0}ms", (endDate - startDate).TotalMilliseconds) + " - Have fun :)");
+            TimeSpan t = endDate - startDate;
+            Console.WriteLine("Done in " + string.Format("{0:0.00}s", t.TotalSeconds) + " - Have fun :)");
         }
 
         static void RunNMap(int level)
         {
-            Console.WriteLine($"Starting a Level {level} Nmap on IP " + ip);
-            Process p = new Process();
-            p.StartInfo.UseShellExecute = false;
-            p.StartInfo.RedirectStandardOutput = true;
-            p.StartInfo.FileName = "nmap";
-            if (level == 1)
+            Console.WriteLine($"Starting a Level {level} Nmap on IP {ip}");
+            using (Process p = new Process())
             {
-                p.StartInfo.Arguments = $"{ip} -F -oG nmap-fast.txt";
+                p.StartInfo.UseShellExecute = false;
+                p.StartInfo.RedirectStandardOutput = true;
+                p.StartInfo.FileName = "nmap";
+                if (level == 1)
+                {
+                    p.StartInfo.Arguments = $"{ip} -F -oG nmap-fast.txt";
+                }
+                else if (level == 2)
+                {
+                    p.StartInfo.Arguments = $"{ip} -oG nmap-normal.txt";
+                }
+                p.Start();
+                p.WaitForExit();
             }
-            else if (level == 2)
-            {
-                p.StartInfo.Arguments = $"{ip} -oG nmap-normal.txt";
-            }
-            p.Start();
-            p.WaitForExit();
         }
 
         static void ParsePorts(string fileName)
@@ -189,12 +192,10 @@ namespace Reecon
 
             if (port == 21)
             {
-                FTP myFTP = new FTP();
-                string ftpLoginInfo = myFTP.FtpLogin(ip);
-                if (ftpLoginInfo.Contains("Unable to login: This FTP server is anonymous only.") || ftpLoginInfo.Contains("Unable to login: USER: command requires a parameter") || ftpLoginInfo.Contains("Unable to login: Login with USER first."))
+                string ftpLoginInfo = FTP.FtpLogin2(ip);
+                if (ftpLoginInfo.Contains("Unable to login: This FTP server is anonymous only.") || ftpLoginInfo.Contains("Unable to login: USER: command requires a parameter") || ftpLoginInfo.Contains("Unable to login: Login with USER first.") || ftpLoginInfo.Contains("530 This FTP server is anonymous only."))
                 {
-                    myFTP = new FTP();
-                    ftpLoginInfo = myFTP.FtpLogin(ip, "anonymous", "");
+                    ftpLoginInfo = FTP.FtpLogin2(ip, "anonymous", "");
                 }
                 Console.WriteLine("Port 21" + ftpLoginInfo);
             }
@@ -203,7 +204,7 @@ namespace Reecon
                 string port22Result = "Port 22";
                 string sshVersion = SSH.GetVersion(ip);
                 string authMethods = SSH.GetAuthMethods(ip);
-                Console.WriteLine(port22Result + Environment.NewLine + "- SSH Version: " + (sshVersion == null ? "Unknown" : sshVersion) + Environment.NewLine + "- Authentication Methods: " + (authMethods == null ? "Unknown" : authMethods));
+                Console.WriteLine(port22Result + Environment.NewLine + "- SSH Version: " + (sshVersion ?? "Unknown") + Environment.NewLine + "- Authentication Methods: " + (authMethods ?? "Unknown"));
 
             }
             else if (port == 80)
@@ -216,6 +217,7 @@ namespace Reecon
                 if (portData != null)
                 {
                     Console.WriteLine(port80result + portData);
+                    // Console.WriteLine(port80result + portData);
                 }
                 else
                 {
@@ -250,22 +252,22 @@ namespace Reecon
                     if (theBanner.Contains("\r\nProtocol mismatch."))
                     {
                         theBanner = theBanner.Replace("\r\nProtocol mismatch.", "");
-                        unknownPortResult += Environment.NewLine + "- TCP Protocol Mismatch"; 
+                        unknownPortResult += Environment.NewLine + "- TCP Protocol Mismatch";
                     }
                     unknownPortResult += Environment.NewLine + "- SSH Version: " + theBanner;
                     string authMethods = SSH.GetAuthMethods(ip);
                     unknownPortResult += Environment.NewLine + "- Auth Methods: " + authMethods;
                     Console.WriteLine(unknownPortResult);
                 }
-                else if (theBanner.Contains("Server: Apache") || theBanner.Contains("Server: cloudflare")) // Probably HTTP or HTTPS
+                else if (theBanner.Contains("Server: Apache") || theBanner.Contains("Server: cloudflare") || theBanner.StartsWith("HTTP/1.1 400 Bad Request")) // Probably HTTP or HTTPS
                 {
-                    string portData = "";
+                    string portData;
                     // Try HTTP
                     HTTP myHTTP = new HTTP();
                     var httpInfo = myHTTP.GetHTTPInfo(ip, port, false);
                     if (httpInfo != (new HttpStatusCode(), null, null, null, null))
                     {
-                        unknownPortResult += Environment.NewLine + " - Probably http";
+                        unknownPortResult += Environment.NewLine + "- Probably http";
                         portData = myHTTP.FormatResponse(httpInfo.StatusCode, httpInfo.Title, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
                         Console.WriteLine(unknownPortResult += portData);
                         return;
@@ -282,19 +284,9 @@ namespace Reecon
                 }
                 else
                 {
-                    Console.WriteLine(unknownPortResult + Environment.NewLine + "- Unknown Banner Response: " + theBanner);
+                    Console.WriteLine(unknownPortResult + Environment.NewLine + "- Unknown Banner Response: -->" + theBanner + "<--");
                 }
             }
-        }
-
-        static void RunGoBuster()
-        {
-            /*
-            Process p = new Process();
-            p.StartInfo.UseShellExecute = false;
-            p.StartInfo.RedirectStandardOutput = true;
-            gobuster - u https://superuser.com/ -w ~/wordlists/directory-list-2.3-medium.txt
-            */
         }
     }
 }
