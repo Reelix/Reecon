@@ -10,41 +10,70 @@ namespace Reecon
         public static string BannerGrab(string ip, int port)
         {
             Byte[] buffer = new Byte[512];
-            using (Socket sshSocket = new Socket(SocketType.Stream, ProtocolType.Tcp))
+            using (Socket bannerGrabSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
-                // Can't have timeouts - Sometimes you get (10.10.10.145:6686)
-                // Error in General.BannerGrab - Operation on non-blocking socket would block
-                // Need to figure out why...
-                // sshSocket.ReceiveTimeout = 5;
-                // sshSocket.SendTimeout = 5;
+                bannerGrabSocket.ReceiveTimeout = 2500;
+                bannerGrabSocket.SendTimeout = 2500;
                 try
                 {
-                    sshSocket.Connect(ip, port); // Error if an invalid IP
+                    bannerGrabSocket.Connect(ip, port); // Error if an invalid IP
                     Byte[] cmdBytes = Encoding.ASCII.GetBytes(("HELLO\r\n").ToCharArray());
-                    sshSocket.Send(cmdBytes, cmdBytes.Length, 0);
-                    int bytes = sshSocket.Receive(buffer, buffer.Length, 0);
+                    bannerGrabSocket.Send(cmdBytes, cmdBytes.Length, 0);
+                    int bytes = bannerGrabSocket.Receive(buffer, buffer.Length, 0);
                     string bannerText = Encoding.ASCII.GetString(buffer, 0, bytes);
                     bannerText = bannerText.Trim();
                     return bannerText;
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("Error in General.BannerGrab - " + ex.Message);
-                    return "";
+                    // Mono Timeout Message
+                    if (ex.Message == "Operation on non-blocking socket would block")
+                    {
+                        return "";
+                    }
+                    // .NET Framework Timeout Message
+                    else if (ex.Message == "A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond")
+                    {
+                        return "";
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Error in General.BannerGrab ({ip}:{port} - {ex.Message})");
+                        return "";
+                    }
                 }
             }
         }
 
         public static bool IsUp(string ip)
         {
-            Ping myPing = new Ping();
-            PingReply reply = myPing.Send(ip, 1000);
-            myPing.Dispose();
-            if (reply.Status == IPStatus.Success)
+            using (Ping myPing = new Ping())
             {
-                return true;
+                try
+                {
+                    PingOptions myOptions = new PingOptions();
+                    PingReply reply = myPing.Send(ip, 1000);
+                    if (reply.Status == IPStatus.Success)
+                    {
+                        return true;
+                    }
+                    return false;
+                }
+                catch (SocketException ex)
+                {
+                    if (ex.Message.StartsWith("Could not resolve host"))
+                    {
+                        // Invalid hostname - Cannot resolve
+                        return false;
+                    }
+                    else
+                    {
+                        Console.WriteLine(ex.Message);
+                        System.Threading.Thread.Sleep(2500);
+                        return false;
+                    }
+                }
             }
-            return false;
         }
 
         public static void ClearPreviousConsoleLine()

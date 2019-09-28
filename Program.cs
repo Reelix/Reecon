@@ -10,14 +10,14 @@ namespace Reecon
 {
     class Program
     {
-        static List<int> portList = new List<int>();
+        static readonly List<int> portList = new List<int>();
         static string ip = "";
-        static List<Thread> threadList = new List<Thread>();
+        static readonly List<Thread> threadList = new List<Thread>();
         static void Main(string[] args)
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.01d ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.01e ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0 && ip == "")
             {
@@ -73,6 +73,15 @@ namespace Reecon
             }
             else
             {
+                // Cleanup
+                if (File.Exists("nmap-fast.txt"))
+                {
+                    File.Delete("nmap-fast.txt");
+                }
+                if (File.Exists("nmap-normal.txt"))
+                {
+                    File.Delete("nmap-normal.txt");
+                }
                 RunNMap(1);
                 ParsePorts("nmap-fast.txt");
                 RunNMap(2);
@@ -130,7 +139,7 @@ namespace Reecon
             {
                 foreach (int port in portList)
                 {
-                    Thread myThread = new Thread(() => UsePort(port));
+                    Thread myThread = new Thread(() => ScanPort(port));
                     threadList.Add(myThread);
                     myThread.Start();
                 }
@@ -157,7 +166,7 @@ namespace Reecon
                     if (!portList.Contains(port))
                     {
                         portList.Add(port);
-                        Thread myThread = new Thread(() => UsePort(port));
+                        Thread myThread = new Thread(() => ScanPort(port));
                         threadList.Add(myThread);
                         myThread.Start();
                     }
@@ -173,7 +182,7 @@ namespace Reecon
             }
         }
 
-        static void UsePort(int port)
+        static void ScanPort(int port)
         {
             Console.WriteLine("Found Port: " + port);
             string theBanner = General.BannerGrab(ip, port);
@@ -256,7 +265,7 @@ namespace Reecon
                     var httpInfo = myHTTP.GetHTTPInfo(ip, port, false);
                     if (httpInfo != (new HttpStatusCode(), null, null, null, null))
                     {
-                        unknownPortResult += Environment.NewLine + " - Probably https";
+                        unknownPortResult += Environment.NewLine + " - Probably http";
                         portData = myHTTP.FormatResponse(httpInfo.StatusCode, httpInfo.Title, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
                         Console.WriteLine(unknownPortResult += portData);
                         return;

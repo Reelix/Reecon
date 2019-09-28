@@ -52,6 +52,7 @@ namespace Reecon
                 HttpWebResponse response = (HttpWebResponse)ex.Response;
                 statusCode = response.StatusCode;
                 dns = response.ResponseUri.DnsSafeHost;
+                headers = response.Headers;
                 StreamReader readStream = new StreamReader(response.GetResponseStream());
                 pageData = readStream.ReadToEnd();
                 response.Close();
