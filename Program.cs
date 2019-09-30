@@ -100,11 +100,11 @@ namespace Reecon
             }
             if (portList.Contains(80))
             {
-                Console.WriteLine("- gobuster -u http://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http.txt");
+                Console.WriteLine("- gobuster dir -u=http://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http.txt");
             }
             if (portList.Contains(443))
             {
-                Console.WriteLine("- gobuster -u https://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-https.txt");
+                Console.WriteLine("- gobuster dir -u=https://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-https.txt");
             }
             if (portList.Contains(445))
             {
@@ -188,8 +188,6 @@ namespace Reecon
         static void ScanPort(int port)
         {
             Console.WriteLine("Found Port: " + port);
-            string theBanner = General.BannerGrab(ip, port);
-
             if (port == 21)
             {
                 string ftpLoginInfo = FTP.FtpLogin2(ip);
@@ -197,11 +195,11 @@ namespace Reecon
                 {
                     ftpLoginInfo = FTP.FtpLogin2(ip, "anonymous", "");
                 }
-                Console.WriteLine("Port 21" + ftpLoginInfo);
+                Console.WriteLine("Port 21 - FTP" + ftpLoginInfo);
             }
             else if (port == 22)
             {
-                string port22Result = "Port 22";
+                string port22Result = "Port 22 - SSH";
                 string sshVersion = SSH.GetVersion(ip);
                 string authMethods = SSH.GetAuthMethods(ip);
                 Console.WriteLine(port22Result + Environment.NewLine + "- SSH Version: " + (sshVersion ?? "Unknown") + Environment.NewLine + "- Authentication Methods: " + (authMethods ?? "Unknown"));
@@ -209,7 +207,7 @@ namespace Reecon
             }
             else if (port == 80)
             {
-                string port80result = "Port 80";
+                string port80result = "Port 80 - HTTP";
                 // RunGoBuster()
                 HTTP myHTTP = new HTTP();
                 var httpInfo = myHTTP.GetHTTPInfo(ip, 80, false);
@@ -226,7 +224,7 @@ namespace Reecon
             }
             else if (port == 443)
             {
-                string port443Result = "Port 443";
+                string port443Result = "Port 443 - HTTPS";
                 // Get SSL Detauls
                 HTTP myHTTP = new HTTP();
                 var httpsInfo = myHTTP.GetHTTPInfo(ip, 443, true);
@@ -235,20 +233,24 @@ namespace Reecon
             }
             else if (port == 445)
             {
-                Console.WriteLine("Port 445" + Environment.NewLine + "- Most likely Microsoft SMB - Nothing Yet");
+                Console.WriteLine("Port 445 - Microsoft SMB" + Environment.NewLine + "- Reecon currently lacks SMB support");
             }
             else if (port == 3306)
             {
                 //MySql 
-                Console.WriteLine("Port 3306" + Environment.NewLine + "- Most likely MySQL - Nothing Yet" + Environment.NewLine + "- Banner: " + theBanner);
+                string theBanner = General.BannerGrab(ip, port);
+                Console.WriteLine("Port 3306 - MySQL    " + Environment.NewLine + "- Reecon currently lacks MySQL support" + Environment.NewLine + "- Banner: " + theBanner);
                 // https://svn.nmap.org/nmap/scripts/mysql-info.nse
             }
             else
             {
                 // Try parse the banner
+                string theBanner = General.BannerGrab(ip, port);
+
                 string unknownPortResult = "Port " + port;
                 if (theBanner.Contains("SSH-2.0-OpenSSH")) // Probably SSH
                 {
+                    unknownPortResult += " - ssh";
                     if (theBanner.Contains("\r\nProtocol mismatch."))
                     {
                         theBanner = theBanner.Replace("\r\nProtocol mismatch.", "");
@@ -267,14 +269,14 @@ namespace Reecon
                     var httpInfo = myHTTP.GetHTTPInfo(ip, port, false);
                     if (httpInfo != (new HttpStatusCode(), null, null, null, null))
                     {
-                        unknownPortResult += Environment.NewLine + "- Probably http";
+                        unknownPortResult += " - http";
                         portData = myHTTP.FormatResponse(httpInfo.StatusCode, httpInfo.Title, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
                         Console.WriteLine(unknownPortResult += portData);
                         return;
                     }
                     // Try HTTPS
                     var httpsInfo = myHTTP.GetHTTPInfo(ip, port, true);
-                    unknownPortResult += Environment.NewLine + "- Probably https";
+                    unknownPortResult += " - https";
                     portData = myHTTP.FormatResponse(httpsInfo.StatusCode, httpsInfo.Title, httpsInfo.DNS, httpsInfo.Headers, httpsInfo.SSLCert);
                     Console.WriteLine(unknownPortResult += portData);
                 }

@@ -70,7 +70,10 @@ namespace Reecon
             }
             catch (WebException ex)
             {
-                return ("Error - " + ex.Message);
+                FtpWebResponse response = (FtpWebResponse)ex.Response;
+                ftpLoginResult += Environment.NewLine + "- Banner: " + response.BannerMessage.Trim();
+                ftpLoginResult += Environment.NewLine + "- Status: " + response.StatusDescription.Trim();
+                return ftpLoginResult;
             }
         }
     }
