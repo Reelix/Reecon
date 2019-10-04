@@ -87,7 +87,16 @@ namespace Reecon
 
             if (StatusCode != HttpStatusCode.OK)
             {
-                responseText += Environment.NewLine + "- Non-OK Status Code: " + StatusCode.ToString();
+                // There's a low chance that it will return a StatusCode that is not in the HttpStatusCode list in which case (int)StatusCode will crash
+                try
+                {
+                    responseText += Environment.NewLine + "- Non-OK Status Code: " + (int)StatusCode + " " + StatusCode;
+                }
+                catch
+                {
+                    responseText += Environment.NewLine + "- Unknown Status Code: " + " " + StatusCode;
+                }
+
                 if (StatusCode != HttpStatusCode.OK)
                 {
                     if (Headers != null && Headers.Get("Location") != null)
