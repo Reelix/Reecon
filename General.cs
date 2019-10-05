@@ -32,7 +32,8 @@ namespace Reecon
                     // Mono Timeout Message
                     if (ex.Message == "Operation on non-blocking socket would block")
                     {
-                        return "";
+                        // Going to see if we can get a non-timeout response with a header
+                        bannerText = "";
                     }
                     // .NET Framework Timeout Message
                     else if (ex.Message == "A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond")
@@ -57,54 +58,6 @@ namespace Reecon
                 bannerText = BannerGrab(ip, port, "Woof" + Environment.NewLine + Environment.NewLine);
             }
             return bannerText;
-        }
-
-        public static string BannerGrab2(string ip, int port)
-        {
-            Byte[] buffer = new Byte[512];
-            using (Socket bannerGrabSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
-            {
-                bannerGrabSocket.ReceiveTimeout = 30000;
-                bannerGrabSocket.SendTimeout = 30000;
-                try
-                {
-                    bannerGrabSocket.Connect(ip, port); // Error if an invalid IP
-                    Byte[] cmdBytes = Encoding.ASCII.GetBytes(("HEAD / HTTP/1.1" + Environment.NewLine + Environment.NewLine).ToCharArray());
-                    int bytes = bannerGrabSocket.Receive(buffer, buffer.Length, 0);
-                    string bannerText = "";
-                    if (bytes != 0)
-                    {
-                        // Received something from the get go!
-                        Console.WriteLine("Received Bytes: " + bytes);
-                        bannerText = Encoding.ASCII.GetString(buffer, 0, bytes);
-                        return bannerText.Trim();
-                    }
-                    return bannerText;
-                }
-                catch (Exception ex)
-                {
-                    // Mono Timeout Message
-                    if (ex.Message == "Operation on non-blocking socket would block")
-                    {
-                        return "";
-                    }
-                    // .NET Framework Timeout Message
-                    else if (ex.Message == "A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond")
-                    {
-                        return "";
-                    }
-                    // Someone doesn't want us here
-                    else if (ex.Message == "Connection reset by peer")
-                    {
-                        return "Connection reset by peer";
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Error in General.BannerGrab ({ip}:{port} - {ex.Message})");
-                        return "";
-                    }
-                }
-            }
         }
 
         public static bool IsUp(string ip)

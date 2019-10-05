@@ -17,7 +17,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.03 ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.03b ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0 && ip == "")
             {
@@ -94,6 +94,7 @@ namespace Reecon
 
             Console.WriteLine(Environment.NewLine + "Finished - Some things you probably want to do: ");
             Console.WriteLine("- nmap -sC -sV -p" + string.Join(",", portList) + " " + ip + " -oN nmap.txt");
+            Console.WriteLine("- nmap -p- " + ip + " -oN nmap-all.txt (Note: This is slow)");
             if (portList.Contains(21))
             {
                 Console.WriteLine("- Check out Port 21 for things I missed");
