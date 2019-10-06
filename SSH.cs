@@ -23,7 +23,7 @@ namespace Reecon
         }
 
         // Get Auth Methods
-        public static string GetAuthMethods(string ip)
+        public static string GetAuthMethods(string ip, int port)
         {
             if (string.IsNullOrEmpty(ip))
             {
@@ -36,7 +36,7 @@ namespace Reecon
             p.StartInfo.RedirectStandardOutput = true;
             p.StartInfo.RedirectStandardError = true;
             p.StartInfo.FileName = "ssh";
-            p.StartInfo.Arguments = "-oPreferredAuthentications=none -oStrictHostKeyChecking=no " + ip;
+            p.StartInfo.Arguments = "-oPreferredAuthentications=none -oStrictHostKeyChecking=no " + ip + " -p " + port;
             p.OutputDataReceived += (sender, e) => outputLines.Add(e.Data);
             p.ErrorDataReceived += (sender, e) => outputLines.Add(e.Data);
             p.Start();

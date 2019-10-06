@@ -17,7 +17,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.03b ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.04 ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0 && ip == "")
             {
@@ -202,7 +202,7 @@ namespace Reecon
             {
                 string port22Result = "Port 22 - SSH";
                 string sshVersion = SSH.GetVersion(ip);
-                string authMethods = SSH.GetAuthMethods(ip);
+                string authMethods = SSH.GetAuthMethods(ip, port);
                 Console.WriteLine(port22Result + Environment.NewLine + "- SSH Version: " + (sshVersion ?? "Unknown") + Environment.NewLine + "- Authentication Methods: " + (authMethods ?? "Unknown"));
 
             }
@@ -258,7 +258,7 @@ namespace Reecon
                         unknownPortResult += Environment.NewLine + "- TCP Protocol Mismatch";
                     }
                     unknownPortResult += Environment.NewLine + "- SSH Version: " + theBanner;
-                    string authMethods = SSH.GetAuthMethods(ip);
+                    string authMethods = SSH.GetAuthMethods(ip, port);
                     unknownPortResult += Environment.NewLine + "- Auth Methods: " + authMethods;
                     Console.WriteLine(unknownPortResult);
                 }
