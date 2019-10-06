@@ -1,2 +1,3 @@
+os: windows
 language: csharp
 solution: Reecon.sln

@@ -49,7 +49,7 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>REM Some Line Here
-ECHO Something Here</PostBuildEvent>
+    <PostBuildEvent>REM Copies file over to a IIS folder - You probably don't want this
+REM xcopy /Y "$(TargetPath)" "C:\inetpub\wwwroot\Reelix\Reecon"</PostBuildEvent>
   </PropertyGroup>
 </Project>
