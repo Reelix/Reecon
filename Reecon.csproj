@@ -24,7 +24,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>x64</PlatformTarget>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
@@ -49,7 +49,7 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>REM Copies file over to a IIS folder - You probably don't want this
-REM xcopy /Y "$(TargetPath)" "C:\inetpub\wwwroot\Reelix\Reecon"</PostBuildEvent>
+    <PostBuildEvent>echo Copies file over to a IIS folder - You probably don't want this
+echo xcopy /Y "$(TargetPath)" "C:\inetpub\wwwroot\Reelix\Reecon"</PostBuildEvent>
   </PropertyGroup>
 </Project>

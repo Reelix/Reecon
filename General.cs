@@ -38,7 +38,7 @@ namespace Reecon
                     // .NET Framework Timeout Message
                     else if (ex.Message == "A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond")
                     {
-                        bannerText = BannerGrab(ip, port, "Woof" + Environment.NewLine + Environment.NewLine);
+                        bannerText = "";
                     }
                     // Someone doesn't want us here
                     else if (ex.Message == "Connection reset by peer")
