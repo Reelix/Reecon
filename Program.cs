@@ -15,19 +15,24 @@ namespace Reecon
         static readonly List<Thread> threadList = new List<Thread>();
         static void Main(string[] args)
         {
+            // For Testing
+            // ip = "10.13.37.10";
+            // ScanPort(80);
+            // Console.WriteLine("Done!");
+            // Console.ReadLine();
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine("Reecon - Version 0.04a ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
-            if (args.Length == 0 && ip == "")
+            if (args.Length == 0 && ip.Length == 0)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("Needs an IP!");
                 return;
             }
-            else if (ip == "" && args.Length > 0)
+            else if (ip.Length == 0 && args.Length > 0)
             {
-                if (args[0].Trim() == "")
+                if (args[0].Trim().Length == 0)
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine("Needs an IP!");
@@ -186,6 +191,7 @@ namespace Reecon
             }
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0042:Deconstruct variable declaration")]
         static void ScanPort(int port)
         {
             Console.WriteLine("Found Port: " + port);
@@ -262,7 +268,12 @@ namespace Reecon
                     unknownPortResult += Environment.NewLine + "- Auth Methods: " + authMethods;
                     Console.WriteLine(unknownPortResult);
                 }
-                else if (theBanner.Contains("Server: Apache") || theBanner.Contains("Server: cloudflare") || theBanner.StartsWith("HTTP/1.1 400 Bad Request")) // Probably HTTP or HTTPS
+                else if (
+                    theBanner.Contains("Server: Apache") // Apache Web Server
+                    || theBanner.Contains("Server: cloudflare") // Cloudflare Server
+                    || theBanner.StartsWith("HTTP/1.1 400 Bad Request") // Unknown but valid request
+                    || theBanner.Contains("Error code explanation: 400 = Bad request syntax or unsupported method.") // BaseHTTP/0.3 Python/2.7.12
+                    ) // Probably HTTP or HTTPS
                 {
                     string portData;
                     // Try HTTP
@@ -281,7 +292,7 @@ namespace Reecon
                     portData = myHTTP.FormatResponse(httpsInfo.StatusCode, httpsInfo.Title, httpsInfo.DNS, httpsInfo.Headers, httpsInfo.SSLCert);
                     Console.WriteLine(unknownPortResult += portData);
                 }
-                else if (theBanner == "")
+                else if (theBanner.Length == 0)
                 {
                     Console.WriteLine(unknownPortResult + Environment.NewLine + "- No Banner Response");
                 }
@@ -291,5 +302,7 @@ namespace Reecon
                 }
             }
         }
+
+
     }
 }

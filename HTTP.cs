@@ -115,19 +115,32 @@ namespace Reecon
             }
             if (Headers != null)
             {
-                responseText += Environment.NewLine + "- Headers: " + string.Join(",", Headers.AllKeys);
-                if (Headers.Get("Server") != null)
+                List<string> headerList = Headers.AllKeys.ToList();
+                if (headerList.Contains("Server"))
                 {
+                    headerList.Remove("Server");
                     responseText += Environment.NewLine + "- Server: " + Headers.Get("Server");
                 }
-                if (Headers.Get("X-Powered-By") != null)
+                if (headerList.Contains("X-Powered-By"))
                 {
+                    headerList.Remove("X-Powered-By");
                     responseText += Environment.NewLine + "- X-Powered-By: " + Headers.Get("X-Powered-By");
                 }
-                if (Headers.Get("WWW-Authenticate") != null)
+                if (headerList.Contains("WWW-Authenticate"))
                 {
+                    headerList.Remove("WWW-Authenticate");
                     responseText += Environment.NewLine + "- WWW-Authenticate: " + Headers.Get("WWW-Authenticate");
                 }
+                if (headerList.Contains("Content-Type"))
+                {
+                    string contentType = Headers.Get("Content-Type");
+                    if (contentType != "text/html")
+                    {
+                        // A unique content type - Might be interesting
+                        responseText += Environment.NewLine + "- Content-Type: " + Headers.Get("Content-Type");
+                    }
+                }
+                responseText += Environment.NewLine + "- Other Headers: " + string.Join(",", headerList);
             }
             if (SSLCert != null)
             {
