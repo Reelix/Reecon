@@ -29,13 +29,15 @@ namespace Reecon
                 }
                 catch (Exception ex)
                 {
-                    // Mono Timeout Message
+                    // Mono on Linux and Mono on Windows has different errors
+                    // https://github.com/mono/mono/blob/master/mcs/class/System/Test/System.Net.Sockets/NetworkStreamTest.cs#L71-L72
+
+                    // Mono - Linux Message
                     if (ex.Message == "Operation on non-blocking socket would block")
                     {
-                        // Going to see if we can get a non-timeout response with a header
                         bannerText = "";
                     }
-                    // .NET Framework Timeout Message
+                    // Mono - Windows Message / .NET Framework Message
                     else if (ex.Message == "A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond")
                     {
                         bannerText = "";
