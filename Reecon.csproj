@@ -34,14 +34,17 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.Web.Extensions" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="FTP.cs" />
     <Compile Include="General.cs" />
     <Compile Include="HTTP.cs" />
+    <Compile Include="LFI.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SSH.cs" />
+    <Compile Include="WebClientExtensions.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

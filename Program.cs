@@ -15,15 +15,31 @@ namespace Reecon
         static readonly List<Thread> threadList = new List<Thread>();
         static void Main(string[] args)
         {
-            // For Testing
-            // ip = "10.13.37.10";
-            // ScanPort(80);
-            // Console.WriteLine("Done!");
-            // Console.ReadLine();
+            /*
+            LFI.Scan("http://10.10.10.151/blog/?lang=blog-en.php");
+            Console.WriteLine("Done");
+            Console.ReadLine();
+            */
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.04a ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.04b ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
+            if (args.Length == 0)
+            {
+                Console.WriteLine("Usage: reecon IP");
+                return;
+            }
+            if (args.Contains("-lfi"))
+            {
+                if (args.Length != 2)
+                {
+                    Console.WriteLine("LFI Usage: reecon -lfi PossibleLFIPath");
+                }
+                Console.WriteLine("Starting LFI Scan - This feature is still in Alpha");
+                LFI.Scan(args[1]);
+
+                return;
+            }
             if (args.Length == 0 && ip.Length == 0)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -114,6 +130,7 @@ namespace Reecon
             }
             if (portList.Contains(445))
             {
+                Console.WriteLine("- smbclient -L " + ip);
                 Console.WriteLine("- nmap --script smb-enum-shares.nse -p445 " + ip);
             }
             DateTime endDate = DateTime.Now;
@@ -194,7 +211,7 @@ namespace Reecon
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0042:Deconstruct variable declaration")]
         static void ScanPort(int port)
         {
-            Console.WriteLine("Found Port: " + port);
+            // Console.WriteLine("Found Port: " + port);
             if (port == 21)
             {
                 string ftpLoginInfo = FTP.FtpLogin2(ip);
@@ -221,13 +238,21 @@ namespace Reecon
                 string portData = myHTTP.FormatResponse(httpInfo.StatusCode, httpInfo.Title, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
                 if (portData != null)
                 {
-                    Console.WriteLine(port80result + portData);
+                    Console.WriteLine(port80result + portData + Environment.NewLine);
                     // Console.WriteLine(port80result + portData);
                 }
                 else
                 {
                     Console.WriteLine(port + " -- Woof!");
                 }
+            }
+            else if (port == 135)
+            {
+                Console.WriteLine("Port 135 - Microsoft Windows RPC" + Environment.NewLine + "- Reecon currently lacks Microsoft Windows RPC support" + Environment.NewLine);
+            }
+            else if (port == 139)
+            {
+                Console.WriteLine("Port 139 - Microsoft Windows netbios-ssn" + Environment.NewLine + "- Reecon currently lacks Microsoft Windows netbios-ssn support" + Environment.NewLine);
             }
             else if (port == 443)
             {
@@ -236,17 +261,17 @@ namespace Reecon
                 HTTP myHTTP = new HTTP();
                 var httpsInfo = myHTTP.GetHTTPInfo(ip, 443, true);
                 string portData = myHTTP.FormatResponse(httpsInfo.StatusCode, httpsInfo.Title, httpsInfo.DNS, httpsInfo.Headers, httpsInfo.SSLCert);
-                Console.WriteLine(port443Result + portData);
+                Console.WriteLine(port443Result + portData + Environment.NewLine);
             }
             else if (port == 445)
             {
-                Console.WriteLine("Port 445 - Microsoft SMB" + Environment.NewLine + "- Reecon currently lacks SMB support");
+                Console.WriteLine("Port 445 - Microsoft SMB" + Environment.NewLine + "- Reecon currently lacks Microsoft SMB support" + Environment.NewLine);
             }
             else if (port == 3306)
             {
                 //MySql 
                 string theBanner = General.BannerGrab(ip, port);
-                Console.WriteLine("Port 3306 - MySQL    " + Environment.NewLine + "- Reecon currently lacks MySQL support" + Environment.NewLine + "- Banner: " + theBanner);
+                Console.WriteLine("Port 3306 - MySQL    " + Environment.NewLine + "- Reecon currently lacks MySQL support" + Environment.NewLine + "- Banner: " + theBanner + Environment.NewLine);
                 // https://svn.nmap.org/nmap/scripts/mysql-info.nse
             }
             else
@@ -255,7 +280,7 @@ namespace Reecon
                 string theBanner = General.BannerGrab(ip, port);
 
                 string unknownPortResult = "Port " + port;
-                if (theBanner.Contains("SSH-2.0-OpenSSH")) // Probably SSH
+                if (theBanner.Contains("SSH-2.0-OpenSSH") || theBanner == "SSH-2.0-Go") // Probably SSH
                 {
                     unknownPortResult += " - ssh";
                     if (theBanner.Contains("\r\nProtocol mismatch."))
@@ -291,6 +316,10 @@ namespace Reecon
                     unknownPortResult += " - https";
                     portData = myHTTP.FormatResponse(httpsInfo.StatusCode, httpsInfo.Title, httpsInfo.DNS, httpsInfo.Headers, httpsInfo.SSLCert);
                     Console.WriteLine(unknownPortResult += portData);
+                }
+                else if (theBanner == "Reecon - Closed")
+                {
+                    Console.WriteLine(unknownPortResult + Environment.NewLine + "- Port is closed");
                 }
                 else if (theBanner.Length == 0)
                 {
