@@ -18,7 +18,7 @@ namespace Reecon
                 try
                 {
                     bannerGrabSocket.Connect(ip, port); // Error if an invalid IP
-                    if (initialText != "")
+                    if (initialText.Length != 0)
                     {
                         Byte[] cmdBytes = Encoding.ASCII.GetBytes(initialText.ToCharArray());
                         bannerGrabSocket.Send(cmdBytes, cmdBytes.Length, 0);
@@ -27,11 +27,30 @@ namespace Reecon
                     bannerText = Encoding.ASCII.GetString(buffer, 0, bytes);
                     bannerText = bannerText.Trim();
                 }
-                catch (Exception ex)
+                catch (SocketException ex)
                 {
+                    // 10060 - Timeout (WSAETIMEDOUT)
+                    // 10035 - Blocking (WSAEWOULDBLOCK)
                     // Mono on Linux and Mono on Windows has different errors
                     // https://github.com/mono/mono/blob/master/mcs/class/System/Test/System.Net.Sockets/NetworkStreamTest.cs#L71-L72
-
+                    if (ex.ErrorCode == 10060 || ex.ErrorCode == 10035)
+                    {
+                        bannerText = "";
+                    }
+                    // No connection could be made because the target machine actively refused it
+                    else if (ex.ErrorCode == 10061)
+                    {
+                        return "Reecon - Closed";
+                    }
+                    else
+                    {
+                        Console.WriteLine("Error in BannerGrab with error code: " + ex.ErrorCode);
+                        throw ex;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    /*
                     // Mono - Linux Message
                     if (ex.Message == "Operation on non-blocking socket would block")
                     {
@@ -42,8 +61,9 @@ namespace Reecon
                     {
                         bannerText = "";
                     }
-                    // Someone doesn't want us here
-                    else if (ex.Message == "Connection reset by peer")
+                    */
+                    // Someone doesn't want us here - Need to find the specific ErrorCode to stick it above
+                    if (ex.Message == "Connection reset by peer")
                     {
                         bannerText = "Connection reset by peer";
                     }
@@ -54,7 +74,7 @@ namespace Reecon
                     }
                 }
             }
-            if (bannerText == "" && initialText == "")
+            if (bannerText.Length == 0 && initialText.Length == 0)
             {
                 Console.WriteLine("Port " + port + " - No initial response - Trying more");
                 bannerText = BannerGrab(ip, port, "Woof" + Environment.NewLine + Environment.NewLine);
