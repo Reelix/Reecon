@@ -40,9 +40,14 @@ namespace Reecon
                     // No connection could be made because the target machine actively refused it
                     else if (ex.ErrorCode == 10061)
                     {
-                        return "Reecon - Closed";
+                        bannerText = "Reecon - Closed";
                     }
-                    else
+                    // Connection reset by peer
+                    else if (ex.ErrorCode == 10054)
+                    {
+                        bannerText = "Reecon - Connection reset by peer";
+                    }
+                    else 
                     {
                         Console.WriteLine("Error in BannerGrab with error code: " + ex.ErrorCode);
                         throw ex;
@@ -65,6 +70,7 @@ namespace Reecon
                     // Someone doesn't want us here - Need to find the specific ErrorCode to stick it above
                     if (ex.Message == "Connection reset by peer")
                     {
+                        Console.WriteLine("In Exception with connection reset by peer");
                         bannerText = "Connection reset by peer";
                     }
                     else

@@ -22,7 +22,7 @@ namespace Reecon
             */
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.04b ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.05 ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
@@ -122,11 +122,17 @@ namespace Reecon
             }
             if (portList.Contains(80))
             {
-                Console.WriteLine("- gobuster dir -u=http://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http.txt");
+                Console.WriteLine("- gobuster dir -u=http://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http.txt -x.php,.txt");
+            }
+            if (portList.Contains(139))
+            {
+                // https://pen-testing.sans.org/blog/2013/07/24/plundering-windows-account-info-via-authenticated-smb-sessions
+                Console.WriteLine("- rpcclient -U \"\" " + ip);
+                Console.WriteLine("-> enumdomusers");
             }
             if (portList.Contains(443))
             {
-                Console.WriteLine("- gobuster dir -u=https://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-https.txt");
+                Console.WriteLine("- gobuster dir -u=https://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-https.txt -x.php,.txt");
             }
             if (portList.Contains(445))
             {
@@ -136,6 +142,7 @@ namespace Reecon
             DateTime endDate = DateTime.Now;
             TimeSpan t = endDate - startDate;
             Console.WriteLine("Done in " + string.Format("{0:0.00}s", t.TotalSeconds) + " - Have fun :)");
+            Console.ResetColor();
         }
 
         static void RunNMap(int level)
@@ -246,6 +253,10 @@ namespace Reecon
                     Console.WriteLine(port + " -- Woof!");
                 }
             }
+            else if (port == 88)
+            {
+                Console.WriteLine("Port 88 - Microsoft Windows Kerberos" + Environment.NewLine + "- Reecon currently lacks Microsoft Windows Kerberos support" + Environment.NewLine);
+            }
             else if (port == 135)
             {
                 Console.WriteLine("Port 135 - Microsoft Windows RPC" + Environment.NewLine + "- Reecon currently lacks Microsoft Windows RPC support" + Environment.NewLine);
@@ -253,6 +264,10 @@ namespace Reecon
             else if (port == 139)
             {
                 Console.WriteLine("Port 139 - Microsoft Windows netbios-ssn" + Environment.NewLine + "- Reecon currently lacks Microsoft Windows netbios-ssn support" + Environment.NewLine);
+            }
+            else if (port == 389)
+            {
+                Console.WriteLine("Port 389 - ldap" + Environment.NewLine + "- Reecon currently lacks ldap support" + Environment.NewLine);
             }
             else if (port == 443)
             {
@@ -265,14 +280,28 @@ namespace Reecon
             }
             else if (port == 445)
             {
-                Console.WriteLine("Port 445 - Microsoft SMB" + Environment.NewLine + "- Reecon currently lacks Microsoft SMB support" + Environment.NewLine);
+                string port445Result = "Port 445 - Microsoft SMB";
+                string portData = SMB.TestAnonymousAccess(ip);
+                Console.WriteLine(port445Result + portData + Environment.NewLine);
+            }
+            else if (port == 3268)
+            {
+                Console.WriteLine("Port 3268 - Global Catalog" + Environment.NewLine + "- Reecon currently lacks Global Catalog (LDAP) support" + Environment.NewLine);
             }
             else if (port == 3306)
             {
                 //MySql 
                 string theBanner = General.BannerGrab(ip, port);
-                Console.WriteLine("Port 3306 - MySQL    " + Environment.NewLine + "- Reecon currently lacks MySQL support" + Environment.NewLine + "- Banner: " + theBanner + Environment.NewLine);
+                Console.WriteLine("Port 3306 - MySQL" + Environment.NewLine + "- Reecon currently lacks MySQL support" + Environment.NewLine + "- Banner: " + theBanner + Environment.NewLine);
                 // https://svn.nmap.org/nmap/scripts/mysql-info.nse
+            }
+            else if (port == 3389)
+            {
+                Console.WriteLine("Port 3389 - Windows Remote Desktop" + Environment.NewLine + "- Reecon currently lacks Windows Remote Desktop support" + Environment.NewLine);
+            }
+            else if (port == 5985)
+            {
+                Console.WriteLine("Port 5985 - WinRM" + Environment.NewLine + "- Reecon currently lacks WinRM support" + Environment.NewLine);
             }
             else
             {
@@ -316,6 +345,14 @@ namespace Reecon
                     unknownPortResult += " - https";
                     portData = myHTTP.FormatResponse(httpsInfo.StatusCode, httpsInfo.Title, httpsInfo.DNS, httpsInfo.Headers, httpsInfo.SSLCert);
                     Console.WriteLine(unknownPortResult += portData);
+                }
+                else if (theBanner == "Reecon - Connection reset by peer")
+                {
+                    if (port == 636)
+                    {
+
+                    }
+                    Console.WriteLine(unknownPortResult + Environment.NewLine + "- Connection reset by peer (No Useful response)");
                 }
                 else if (theBanner == "Reecon - Closed")
                 {
