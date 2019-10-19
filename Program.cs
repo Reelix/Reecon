@@ -286,6 +286,7 @@ namespace Reecon
             }
             else if (port == 389)
             {
+                // TODO: Figure out how to implement a basic LDAP Connection / User Enumeration (C=User I think?)
                 Console.WriteLine("Port 389 - ldap" + Environment.NewLine + "- Reecon currently lacks ldap support" + Environment.NewLine);
             }
             else if (port == 443)
@@ -320,6 +321,8 @@ namespace Reecon
             }
             else if (port == 5985)
             {
+                // TODO: Figure out how to do basic evil-winrm.rb connections
+                // evil-winrm.rb -i 10.10.10.161
                 Console.WriteLine("Port 5985 - WinRM" + Environment.NewLine + "- Reecon currently lacks WinRM support" + Environment.NewLine);
             }
             else
