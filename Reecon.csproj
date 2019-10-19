@@ -56,6 +56,9 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>echo Copies file over to a IIS folder - You probably dont want this
-echo xcopy /Y "$(TargetPath)" "C:\inetpub\wwwroot\Reelix\Reecon"</PostBuildEvent>
+echo xcopy /Y "$(TargetPath)" "C:\inetpub\wwwroot\Reelix\Reecon"
+whoami
+uname -a
+ls -la /</PostBuildEvent>
   </PropertyGroup>
 </Project>

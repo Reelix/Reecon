@@ -22,7 +22,7 @@ namespace Reecon
             */
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.05 ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.05a ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
@@ -236,6 +236,25 @@ namespace Reecon
                 Console.WriteLine(port22Result + Environment.NewLine + "- SSH Version: " + (sshVersion ?? "Unknown") + Environment.NewLine + "- Authentication Methods: " + (authMethods ?? "Unknown"));
 
             }
+            else if (port == 25)
+            {
+                string port22Result = "Port 25 - SMTP";
+
+                string theBanner = General.BannerGrab(ip, port);
+                // 220 ib01.supersechosting.htb ESMTP Exim 4.89 Sat, 19 Oct 2019 16:02:49 +0200
+                if (theBanner.StartsWith("220") && theBanner.Contains("ESMTP"))
+                {
+                    theBanner = theBanner.Remove(0, 4);
+                    string serverName = theBanner.Substring(0, theBanner.IndexOf(" ESMTP"));
+                    string nameAndDate = theBanner.Remove(0, theBanner.IndexOf(" ESMTP") + 7); // Remove the space afterwards
+                    Console.WriteLine(port22Result + Environment.NewLine + "- Server: " + serverName + Environment.NewLine + "- Name And Date: " + nameAndDate);
+                }
+                else
+                {
+                    Console.WriteLine("- Unknown Banner: " + theBanner);
+                }
+
+            }
             else if (port == 80)
             {
                 string port80result = "Port 80 - HTTP";
@@ -245,7 +264,7 @@ namespace Reecon
                 string portData = myHTTP.FormatResponse(httpInfo.StatusCode, httpInfo.Title, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
                 if (portData != null)
                 {
-                    Console.WriteLine(port80result + portData + Environment.NewLine);
+                    Console.WriteLine(port80result + portData);
                     // Console.WriteLine(port80result + portData);
                 }
                 else
@@ -309,9 +328,19 @@ namespace Reecon
                 string theBanner = General.BannerGrab(ip, port);
 
                 string unknownPortResult = "Port " + port;
+
+                // 220 ib01.supersechosting.htb ESMTP Exim 4.89 Sat, 19 Oct 2019 16:02:49 +0200
+                if (theBanner.StartsWith("220") && theBanner.Contains("ESMTP"))
+                {
+                    unknownPortResult += " - SMTP";
+                    string  smtpHost = theBanner.Remove(0, 4); // Split host and version name - How with the date though?
+                    unknownPortResult += Environment.NewLine + smtpHost;
+                    Console.WriteLine(unknownPortResult);
+
+                }
                 if (theBanner.Contains("SSH-2.0-OpenSSH") || theBanner == "SSH-2.0-Go") // Probably SSH
                 {
-                    unknownPortResult += " - ssh";
+                    unknownPortResult += " - SSH";
                     if (theBanner.Contains("\r\nProtocol mismatch."))
                     {
                         theBanner = theBanner.Replace("\r\nProtocol mismatch.", "");
@@ -335,23 +364,19 @@ namespace Reecon
                     var httpInfo = myHTTP.GetHTTPInfo(ip, port, false);
                     if (httpInfo != (new HttpStatusCode(), null, null, null, null))
                     {
-                        unknownPortResult += " - http";
+                        unknownPortResult += " - HTTP";
                         portData = myHTTP.FormatResponse(httpInfo.StatusCode, httpInfo.Title, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
                         Console.WriteLine(unknownPortResult += portData);
                         return;
                     }
                     // Try HTTPS
                     var httpsInfo = myHTTP.GetHTTPInfo(ip, port, true);
-                    unknownPortResult += " - https";
+                    unknownPortResult += " - HTTPS";
                     portData = myHTTP.FormatResponse(httpsInfo.StatusCode, httpsInfo.Title, httpsInfo.DNS, httpsInfo.Headers, httpsInfo.SSLCert);
                     Console.WriteLine(unknownPortResult += portData);
                 }
                 else if (theBanner == "Reecon - Connection reset by peer")
                 {
-                    if (port == 636)
-                    {
-
-                    }
                     Console.WriteLine(unknownPortResult + Environment.NewLine + "- Connection reset by peer (No Useful response)");
                 }
                 else if (theBanner == "Reecon - Closed")
