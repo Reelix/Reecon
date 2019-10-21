@@ -31,7 +31,20 @@ namespace Reecon
             {
                 FtpWebResponse response = (FtpWebResponse)request.GetResponse();
                 // If it gets here - It's connected!
-                ftpLoginResult += Environment.NewLine + "- Version: " + response.BannerMessage.Trim();
+                string bannerMessage = response.BannerMessage.Trim();
+                if (bannerMessage.StartsWith("220 "))
+                {
+                    bannerMessage = bannerMessage.Remove(0, 4);
+                    if (bannerMessage.StartsWith("(") && bannerMessage.EndsWith(")"))
+                    {
+                        bannerMessage = bannerMessage.Remove(0, 1);
+                        bannerMessage = bannerMessage.Remove(bannerMessage.Length - 1, 1);
+                    }
+                }
+                if (!string.IsNullOrEmpty(bannerMessage))
+                {
+                    ftpLoginResult += Environment.NewLine + "- Version: " + bannerMessage;
+                }
                 if (response.WelcomeMessage.Trim() != "230 Login successful.")
                 {
                     ftpLoginResult += Environment.NewLine + "- Welcome Message: " + response.WelcomeMessage;
@@ -51,18 +64,25 @@ namespace Reecon
                 using (StreamReader myStreamReader = new StreamReader(response.GetResponseStream()))
                 {
                     // TODO: Find a multi-file / directory FTP Server to format this better...
-                    List<string> responseLines = myStreamReader.ReadToEnd().Trim().Split(new[] { Environment.NewLine }, StringSplitOptions.None).ToList();
-                    ftpLoginResult += Environment.NewLine + "- File Listing: ";
-                    foreach (var file in responseLines)
+                    List<string> responseLines = myStreamReader.ReadToEnd().Trim().Split(new[] { Environment.NewLine }, StringSplitOptions.None).ToList().Where(x => !string.IsNullOrEmpty(x)).ToList();
+                    if (responseLines.Count == 0)
                     {
-                        ftpLoginResult += Environment.NewLine + "-- ";
-                        if (file[0] == 'd')
+                        ftpLoginResult += Environment.NewLine + "- No Files Or Folders Found";
+                    }
+                    else
+                    {
+                        ftpLoginResult += Environment.NewLine + "- File Listing: ";
+                        foreach (var file in responseLines)
                         {
-                            ftpLoginResult += "(Directory) " + file;
-                        }
-                        else
-                        {
-                            ftpLoginResult += file;
+                            ftpLoginResult += Environment.NewLine + "-- ";
+                            if (!string.IsNullOrEmpty(file) && file[0] == 'd')
+                            {
+                                ftpLoginResult += "(Directory) " + file;
+                            }
+                            else
+                            {
+                                ftpLoginResult += file;
+                            }
                         }
                     }
                 }

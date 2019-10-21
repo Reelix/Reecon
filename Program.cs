@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace Reecon
@@ -22,7 +23,7 @@ namespace Reecon
             */
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.05a ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.05b ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
@@ -94,7 +95,7 @@ namespace Reecon
             }
             else
             {
-                // Cleanup
+                // Cleanup from any previous runs
                 if (File.Exists("nmap-fast.txt"))
                 {
                     File.Delete("nmap-fast.txt");
@@ -103,10 +104,25 @@ namespace Reecon
                 {
                     File.Delete("nmap-normal.txt");
                 }
+                if (File.Exists("nmap-slow.txt"))
+                {
+                    File.Delete("nmap-slow.txt");
+                }
+                if (File.Exists("nmap-all.txt"))
+                {
+                    File.Delete("nmap-all.txt");
+                }
+
+                // After each list is parsed, the file gets deleted.
                 RunNMap(1);
                 ParsePorts("nmap-fast.txt");
                 RunNMap(2);
                 ParsePorts("nmap-normal.txt");
+                Console.WriteLine("Running a Level 3 NMap - This could take awhile");
+                RunNMap(3);
+
+                // This generates 2 files 
+                ParsePorts("nmap-slow.txt");
             }
             foreach (Thread theThread in threadList)
             {
@@ -115,7 +131,6 @@ namespace Reecon
 
             Console.WriteLine(Environment.NewLine + "Finished - Some things you probably want to do: ");
             Console.WriteLine("- nmap -sC -sV -p" + string.Join(",", portList) + " " + ip + " -oN nmap.txt");
-            Console.WriteLine("- nmap -p- " + ip + " -oN nmap-all.txt (Note: This is slow)");
             if (portList.Contains(21))
             {
                 Console.WriteLine("- Check out Port 21 for things I missed");
@@ -161,6 +176,10 @@ namespace Reecon
                 {
                     p.StartInfo.Arguments = $"{ip} -oG nmap-normal.txt";
                 }
+                else if (level == 3)
+                {
+                    p.StartInfo.Arguments = $"{ip} -p- -oG nmap-slow.txt -oN nmap-all.txt";
+                }
                 p.Start();
                 p.WaitForExit();
             }
@@ -182,6 +201,7 @@ namespace Reecon
             StreamReader sr1 = new StreamReader(fileName);
             string[] fileLines = sr1.ReadToEnd().Split(new[] { Environment.NewLine }, StringSplitOptions.None);
             sr1.Close();
+            File.Delete(fileName);
             if (fileLines[1].Contains("0 hosts up"))
             {
                 Console.WriteLine("Error - Host is down :(");
@@ -300,9 +320,17 @@ namespace Reecon
             }
             else if (port == 445)
             {
-                string port445Result = "Port 445 - Microsoft SMB";
-                string portData = SMB.TestAnonymousAccess(ip);
-                Console.WriteLine(port445Result + portData + Environment.NewLine);
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    string port445Result = "Port 445 - Microsoft SMB";
+                    string portData = SMB.TestAnonymousAccess(ip);
+                    Console.WriteLine(port445Result + portData + Environment.NewLine);
+                }
+                else
+                {
+                    // TODO: See if I can run smbclient -L \\ip and get the output ?
+                    Console.WriteLine("Port 445 - Microsoft SMB " + Environment.NewLine + "- Reecon currently lacks Microsoft SMB support outside Windows" + Environment.NewLine);
+                }
             }
             else if (port == 3268)
             {
