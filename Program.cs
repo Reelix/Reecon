@@ -23,7 +23,7 @@ namespace Reecon
             */
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.05b ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.06 ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
@@ -129,7 +129,7 @@ namespace Reecon
                 theThread.Join();
             }
 
-            Console.WriteLine(Environment.NewLine + "Finished - Some things you probably want to do: ");
+            Console.WriteLine("Finished - Some things you probably want to do: ");
             Console.WriteLine("- nmap -sC -sV -p" + string.Join(",", portList) + " " + ip + " -oN nmap.txt");
             if (portList.Contains(21))
             {
@@ -153,6 +153,11 @@ namespace Reecon
             {
                 Console.WriteLine("- smbclient -L " + ip);
                 Console.WriteLine("- nmap --script smb-enum-shares.nse -p445 " + ip);
+            }
+            if (portList.Contains(2049))
+            {
+                Console.WriteLine("- rpcinfo -p " + ip);
+                Console.WriteLine("- showmount -e " + ip);
             }
             DateTime endDate = DateTime.Now;
             TimeSpan t = endDate - startDate;
@@ -306,8 +311,26 @@ namespace Reecon
             }
             else if (port == 389)
             {
-                // TODO: Figure out how to implement a basic LDAP Connection / User Enumeration (C=User I think?)
-                Console.WriteLine("Port 389 - ldap" + Environment.NewLine + "- Reecon currently lacks ldap support" + Environment.NewLine);
+                // https://github.com/mono/mono/blob/master/mcs/class/System.DirectoryServices.Protocols/System.DirectoryServices.Protocols/SearchRequest.cs
+                // Wow Mono - Just Wow...
+                string port389Result = "Port 389 - LDAP";
+                try
+                {
+                    port389Result += LDAP.GetDefaultNamingContext(ip);
+                }
+                catch (NotImplementedException)
+                {
+                    port389Result += Environment.NewLine + " - Reecon can get the DefaultNamingContext, but Mono doesn't support it - Try run it on Windows";
+                }
+                try
+                {
+                    port389Result += LDAP.GetAccountInfo(ip);
+                }
+                catch
+                {
+                    port389Result += Environment.NewLine + " - Reecon can get some account information, but Mono doesn't support it - Try run it on Windows";
+                }
+                Console.WriteLine(port389Result);
             }
             else if (port == 443)
             {
@@ -324,13 +347,19 @@ namespace Reecon
                 {
                     string port445Result = "Port 445 - Microsoft SMB";
                     string portData = SMB.TestAnonymousAccess(ip);
-                    Console.WriteLine(port445Result + portData + Environment.NewLine);
+                    string morePortData = SMB.TestAnonymousAccess(ip, "anonymous");
+                    string evenMorePortData = SMB.TestAnonymousAccess(ip, "anonymous", "anonymous");
+                    Console.WriteLine(port445Result + portData + morePortData + ",,, " + evenMorePortData);
                 }
                 else
                 {
                     // TODO: See if I can run smbclient -L \\ip and get the output ?
                     Console.WriteLine("Port 445 - Microsoft SMB " + Environment.NewLine + "- Reecon currently lacks Microsoft SMB support outside Windows" + Environment.NewLine);
                 }
+            }
+            else if (port == 2049)
+            {
+                Console.WriteLine("Port 2049 - nfs" + Environment.NewLine + "- Reecon currently lacks nfs (Network File System) support - Check the output at the bottom" + Environment.NewLine);
             }
             else if (port == 3268)
             {

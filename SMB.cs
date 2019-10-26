@@ -8,13 +8,11 @@ namespace Reecon
 {
     class SMB
     {
-        public static string TestAnonymousAccess(string IP)
+        public static string TestAnonymousAccess(string IP, string username = "", string password = "")
         {
             string toReturn = "";
             try
             {
-                string username = "";
-                string password = "";
                 using (SMB_NetworkShareAccesser.Access(IP, username, password))
                 {
                     SMB_GetNetShares getNetShares = new SMB_GetNetShares();

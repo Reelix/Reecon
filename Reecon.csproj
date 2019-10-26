@@ -34,12 +34,15 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.DirectoryServices" />
+    <Reference Include="System.DirectoryServices.Protocols" />
     <Reference Include="System.Web.Extensions" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="FTP.cs" />
     <Compile Include="General.cs" />
     <Compile Include="HTTP.cs" />
+    <Compile Include="LDAP.cs" />
     <Compile Include="LFI.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
