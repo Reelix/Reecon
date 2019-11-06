@@ -16,14 +16,9 @@ namespace Reecon
         static readonly List<Thread> threadList = new List<Thread>();
         static void Main(string[] args)
         {
-            /*
-            LFI.Scan("http://10.10.10.151/blog/?lang=blog-en.php");
-            Console.WriteLine("Done");
-            Console.ReadLine();
-            */
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.06 ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.07 ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
@@ -104,6 +99,7 @@ namespace Reecon
                 {
                     File.Delete("nmap-normal.txt");
                 }
+                /*
                 if (File.Exists("nmap-slow.txt"))
                 {
                     File.Delete("nmap-slow.txt");
@@ -111,24 +107,24 @@ namespace Reecon
                 if (File.Exists("nmap-all.txt"))
                 {
                     File.Delete("nmap-all.txt");
-                }
+                }*/
 
                 // After each list is parsed, the file gets deleted.
                 RunNMap(1);
                 ParsePorts("nmap-fast.txt");
                 RunNMap(2);
                 ParsePorts("nmap-normal.txt");
+                /*
                 Console.WriteLine("Running a Level 3 NMap - This could take awhile");
                 RunNMap(3);
-
                 // This generates 2 files 
                 ParsePorts("nmap-slow.txt");
+                */
             }
             foreach (Thread theThread in threadList)
             {
                 theThread.Join();
             }
-
             Console.WriteLine("Finished - Some things you probably want to do: ");
             Console.WriteLine("- nmap -sC -sV -p" + string.Join(",", portList) + " " + ip + " -oN nmap.txt");
             if (portList.Contains(21))
@@ -289,12 +285,12 @@ namespace Reecon
                 string portData = myHTTP.FormatResponse(httpInfo.StatusCode, httpInfo.Title, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
                 if (portData != null)
                 {
-                    Console.WriteLine(port80result + portData);
+                    Console.WriteLine(port80result + portData + Environment.NewLine);
                     // Console.WriteLine(port80result + portData);
                 }
                 else
                 {
-                    Console.WriteLine(port + " -- Woof!");
+                    Console.WriteLine(port + " -- Woof!" + Environment.NewLine);
                 }
             }
             else if (port == 88)
@@ -330,7 +326,7 @@ namespace Reecon
                 {
                     port389Result += Environment.NewLine + " - Reecon can get some account information, but Mono doesn't support it - Try run it on Windows";
                 }
-                Console.WriteLine(port389Result);
+                Console.WriteLine(port389Result + Environment.NewLine);
             }
             else if (port == 443)
             {
@@ -349,7 +345,7 @@ namespace Reecon
                     string portData = SMB.TestAnonymousAccess(ip);
                     string morePortData = SMB.TestAnonymousAccess(ip, "anonymous");
                     string evenMorePortData = SMB.TestAnonymousAccess(ip, "anonymous", "anonymous");
-                    Console.WriteLine(port445Result + portData + morePortData + ",,, " + evenMorePortData);
+                    Console.WriteLine(port445Result + portData + morePortData + ",,, " + evenMorePortData + Environment.NewLine);
                 }
                 else
                 {
@@ -382,6 +378,12 @@ namespace Reecon
                 // evil-winrm.rb -i 10.10.10.161
                 Console.WriteLine("Port 5985 - WinRM" + Environment.NewLine + "- Reecon currently lacks WinRM support" + Environment.NewLine);
             }
+            else if (port == 6379)
+            {
+                string port6379Result = "Port 6379 - Redis";
+                port6379Result += Redis.GetInfo("10.10.10.160");
+                Console.WriteLine(port6379Result);
+            }
             else
             {
                 // Try parse the banner
@@ -398,7 +400,7 @@ namespace Reecon
                     Console.WriteLine(unknownPortResult);
 
                 }
-                if (theBanner.Contains("SSH-2.0-OpenSSH") || theBanner == "SSH-2.0-Go") // Probably SSH
+                else if (theBanner.Contains("SSH-2.0-OpenSSH") || theBanner == "SSH-2.0-Go") // Probably SSH
                 {
                     unknownPortResult += " - SSH";
                     if (theBanner.Contains("\r\nProtocol mismatch."))
@@ -415,25 +417,32 @@ namespace Reecon
                     theBanner.Contains("Server: Apache") // Apache Web Server
                     || theBanner.Contains("Server: cloudflare") // Cloudflare Server
                     || theBanner.StartsWith("HTTP/1.1 400 Bad Request") // Unknown but valid request
+                    || theBanner.StartsWith("HTTP/1.0 200 Document follows") // Silly HTTP/1.0
                     || theBanner.Contains("Error code explanation: 400 = Bad request syntax or unsupported method.") // BaseHTTP/0.3 Python/2.7.12
                     ) // Probably HTTP or HTTPS
                 {
-                    string portData;
+                    string portData = "";
                     // Try HTTP
+                    string httpData = "";
+                    string httpsData = "";
                     HTTP myHTTP = new HTTP();
                     var httpInfo = myHTTP.GetHTTPInfo(ip, port, false);
                     if (httpInfo != (new HttpStatusCode(), null, null, null, null))
                     {
-                        unknownPortResult += " - HTTP";
-                        portData = myHTTP.FormatResponse(httpInfo.StatusCode, httpInfo.Title, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
-                        Console.WriteLine(unknownPortResult += portData);
-                        return;
+                        httpData = unknownPortResult + " - HTTP" + myHTTP.FormatResponse(httpInfo.StatusCode, httpInfo.Title, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
                     }
                     // Try HTTPS
                     var httpsInfo = myHTTP.GetHTTPInfo(ip, port, true);
-                    unknownPortResult += " - HTTPS";
-                    portData = myHTTP.FormatResponse(httpsInfo.StatusCode, httpsInfo.Title, httpsInfo.DNS, httpsInfo.Headers, httpsInfo.SSLCert);
-                    Console.WriteLine(unknownPortResult += portData);
+                    httpsData = unknownPortResult + " - HTTPS" + myHTTP.FormatResponse(httpsInfo.StatusCode, httpsInfo.Title, httpsInfo.DNS, httpsInfo.Headers, httpsInfo.SSLCert);
+
+                    portData = (string.IsNullOrEmpty(httpData) ? "" : httpData + Environment.NewLine + Environment.NewLine) + httpsData + Environment.NewLine;
+                    Console.WriteLine(portData); // Newlines and title are already included 
+                }
+                else if (theBanner == "-ERR unknown command 'Woof'") // Probably Redis
+                {
+                    unknownPortResult += " - Redis";
+                    string portData = Redis.GetInfo(ip);
+                    Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
                 }
                 else if (theBanner == "Reecon - Connection reset by peer")
                 {

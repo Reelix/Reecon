@@ -57,7 +57,7 @@ namespace Reecon
                         ftpLoginResult += Environment.NewLine + "- Headers (Contact Reelix): " + string.Join(",", headers.AllKeys);
                     }
                 }
-                if (username == "" || username == "anonymous")
+                if (string.IsNullOrEmpty(username) || username == "anonymous")
                 {
                     ftpLoginResult += Environment.NewLine + "- Anonymous login allowed";
                 }

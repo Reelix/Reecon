@@ -47,6 +47,7 @@
     <Compile Include="LFI.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Redis.cs" />
     <Compile Include="SMB.cs" />
     <Compile Include="SMB_GetNetShares.cs" />
     <Compile Include="SMB_NetworkShareAccesser.cs" />

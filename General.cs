@@ -82,7 +82,7 @@ namespace Reecon
             }
             if (bannerText.Length == 0 && initialText.Length == 0)
             {
-                Console.WriteLine("Port " + port + " - No initial response - Trying more");
+                // Console.WriteLine("Port " + port + " - No initial response - Trying more"); // Verbosity?
                 bannerText = BannerGrab(ip, port, "Woof" + Environment.NewLine + Environment.NewLine);
             }
             return bannerText;

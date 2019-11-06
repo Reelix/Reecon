@@ -34,8 +34,10 @@ namespace Reecon
             // TODO: Various ../../../etc/passwd variations
             // Windows
             lfiChecks.Add("/boot.ini");
-            lfiChecks.Add("/inetpub/wwwroot/index.php");
-            lfiChecks.Add("/Windows/debug/NetSetup.log");
+            lfiChecks.Add("/inetpub/wwwroot/index.php"); // 
+            lfiChecks.Add("/Windows/debug/NetSetup.log"); // Some basic Windows info
+            lfiChecks.Add("/Windows/SoftwareDistribution/ReportingEvents.log"); // Windows Patches
+            lfiChecks.Add("/Windows/System32/cmd.exe"); // What Windows box doesn't have cmd?
 
             // TODO: Null Byte each
             // TODO: Base64 Encode Each --> bla=php://filter/convert.base64-encode/resource=locationHere
