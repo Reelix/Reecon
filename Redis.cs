@@ -22,7 +22,7 @@ namespace Reecon
                 try
                 {
                     redisSocket.Connect(ip, 6379); // Error if an invalid IP
-                    Byte[] cmdBytes = Encoding.ASCII.GetBytes(("INFO" + Environment.NewLine).ToCharArray());
+                    byte[] cmdBytes = Encoding.ASCII.GetBytes(("INFO" + Environment.NewLine).ToCharArray());
                     redisSocket.Send(cmdBytes, cmdBytes.Length, 0);
                     // Get basic info
                     int bytes = redisSocket.Receive(buffer, buffer.Length, 0);

@@ -18,7 +18,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.07 ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.07a ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
@@ -138,6 +138,7 @@ namespace Reecon
             if (portList.Contains(139))
             {
                 // https://pen-testing.sans.org/blog/2013/07/24/plundering-windows-account-info-via-authenticated-smb-sessions
+                
                 Console.WriteLine("- rpcclient -U \"\" " + ip);
                 Console.WriteLine("-> enumdomusers");
             }
@@ -276,6 +277,11 @@ namespace Reecon
                 }
 
             }
+            else if (port == 53)
+            {
+                string port53result = "Port 53 - DNS" + Environment.NewLine + " - Reecon currently lacks DNS Support :(" + Environment.NewLine;
+                Console.WriteLine(port53result);
+            }
             else if (port == 80)
             {
                 string port80result = "Port 80 - HTTP";
@@ -297,13 +303,37 @@ namespace Reecon
             {
                 Console.WriteLine("Port 88 - Microsoft Windows Kerberos" + Environment.NewLine + "- Reecon currently lacks Microsoft Windows Kerberos support" + Environment.NewLine);
             }
+            else if (port == 110)
+            {
+                string port110result = "Port 110 - pop3" + Environment.NewLine;
+                port110result += POP3.GetInfo(ip);
+                Console.WriteLine(port110result + Environment.NewLine);
+
+            }
             else if (port == 135)
             {
                 Console.WriteLine("Port 135 - Microsoft Windows RPC" + Environment.NewLine + "- Reecon currently lacks Microsoft Windows RPC support" + Environment.NewLine);
             }
             else if (port == 139)
             {
-                Console.WriteLine("Port 139 - Microsoft Windows netbios-ssn" + Environment.NewLine + "- Reecon currently lacks Microsoft Windows netbios-ssn support" + Environment.NewLine);
+                string port139result = "Port 139 - Microsoft Windows netbios-ssn" + Environment.NewLine;
+                // TODO: https://dzone.com/articles/practical-fun-with-netbios-name-service-and-comput
+                IPHostEntry entry = Dns.GetHostEntry(ip);
+                if (entry != null)
+                {
+                    if (!string.IsNullOrEmpty(entry.HostName))
+                    {
+                        port139result += "- HostName: " + entry.HostName + Environment.NewLine;
+                    }
+                }
+                port139result += "- nmap -sC -sV has far more info for this port" + Environment.NewLine;
+                Console.WriteLine(port139result);
+            }
+            else if (port == 143)
+            {
+                string port143result = "Port 143 - imap (Internet Message Access Protocol)" + Environment.NewLine;
+                string banner = General.BannerGrab(ip, 143);
+                Console.WriteLine(port143result + "- " + banner + Environment.NewLine);
             }
             else if (port == 389)
             {
@@ -443,6 +473,12 @@ namespace Reecon
                     unknownPortResult += " - Redis";
                     string portData = Redis.GetInfo(ip);
                     Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
+                }
+                else if (theBanner == "+OK Dovecot ready.")
+                {
+                    unknownPortResult += " - pop3 (Dovecot)" + Environment.NewLine;
+                    unknownPortResult += POP3.GetInfo(ip);
+                    Console.WriteLine(unknownPortResult);
                 }
                 else if (theBanner == "Reecon - Connection reset by peer")
                 {
