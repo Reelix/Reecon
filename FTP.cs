@@ -59,7 +59,7 @@ namespace Reecon
                 }
                 if (string.IsNullOrEmpty(username) || username == "anonymous")
                 {
-                    ftpLoginResult += Environment.NewLine + "- Anonymous login allowed";
+                    ftpLoginResult += Environment.NewLine + "- Anonymous login allowed (Username: anonymous Password: *Leave Blank*)";
                 }
                 using (StreamReader myStreamReader = new StreamReader(response.GetResponseStream()))
                 {

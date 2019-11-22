@@ -25,6 +25,7 @@ namespace Reecon
         // Get Auth Methods
         public static string GetAuthMethods(string ip, int port)
         {
+            string returnString = "";
             if (string.IsNullOrEmpty(ip))
             {
                 Console.WriteLine("Error in ssh.GetAuthMethods - Missing IP");
@@ -45,20 +46,25 @@ namespace Reecon
             p.WaitForExit();
             p.Close();
             outputLines.RemoveAll(string.IsNullOrEmpty);
-            int hasDeniedLine = outputLines.Count(x => x.Contains("Permission denied"));
-            if (hasDeniedLine == 0)
+            // kex_exchange_identification: read: Connection reset by peer
+            if (outputLines.Contains("kex_exchange_identification: read: Connection reset by peer"))
+            {
+                returnString = "- SSH Exists, but connection reset - Doesn't like you :(";
+                return returnString;
+            }
+            if (!outputLines.Contains("Permission denied"))
             {
                 Console.WriteLine("Error in ssh.GetAuthMethods - No Permission denied found");
                 return "";
             }
-            string authMethods = outputLines.First(x => x.Contains("Permission denied"));
-            authMethods = authMethods.Remove(0, authMethods.IndexOf("("));
-            authMethods = authMethods.Replace("(", "").Replace(")", "");
+            returnString = outputLines.First(x => x.Contains("Permission denied"));
+            returnString = returnString.Remove(0, returnString.IndexOf("("));
+            returnString = returnString.Replace("(", "").Replace(")", "");
             // ssh - oPreferredAuthentications = none - oStrictHostKeyChecking = no 10.10.10.147
 
             // reelix@10.10.10.147: Permission denied(publickey, password).
             // reelix@10.10.10.110: Permission denied (publickey,keyboard-interactive).
-            return authMethods;
+            return returnString;
 
         }
     }

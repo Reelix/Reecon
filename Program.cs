@@ -18,7 +18,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.07a ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.07b ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
@@ -35,6 +35,11 @@ namespace Reecon
                 LFI.Scan(args[1]);
 
                 return;
+            }
+            bool mustPing = true;
+            if (args.Contains("-noping"))
+            {
+                mustPing = false;
             }
             if (args.Length == 0 && ip.Length == 0)
             {
@@ -75,13 +80,18 @@ namespace Reecon
                 Console.WriteLine("Hard Coded IP - Dev Mode!");
                 Console.WriteLine("Scanning: " + ip);
             }
-            Console.WriteLine("Checking if host is online...");
-            bool isHostOnline = General.IsUp(ip);
-            General.ClearPreviousConsoleLine();
-            if (!isHostOnline)
+            if (mustPing)
             {
-                Console.WriteLine("Host is not responding to pings :(");
-                return;
+                Console.WriteLine("Checking if host is online...");
+                bool isHostOnline = General.IsUp(ip);
+                General.ClearPreviousConsoleLine();
+
+                if (!isHostOnline)
+                {
+                    Console.WriteLine("Host is not responding to pings :(");
+                    Console.WriteLine("If you are sure it's up and are specifying ports, you can use -noping");
+                    return;
+                }
             }
 
             if (portList.Count != 0)
@@ -138,7 +148,7 @@ namespace Reecon
             if (portList.Contains(139))
             {
                 // https://pen-testing.sans.org/blog/2013/07/24/plundering-windows-account-info-via-authenticated-smb-sessions
-                
+
                 Console.WriteLine("- rpcclient -U \"\" " + ip);
                 Console.WriteLine("-> enumdomusers");
             }
@@ -248,7 +258,7 @@ namespace Reecon
                 {
                     ftpLoginInfo = FTP.FtpLogin2(ip, "anonymous", "");
                 }
-                Console.WriteLine("Port 21 - FTP" + ftpLoginInfo);
+                Console.WriteLine("Port 21 - FTP" + ftpLoginInfo + Environment.NewLine);
             }
             else if (port == 22)
             {
@@ -286,13 +296,13 @@ namespace Reecon
             {
                 string port80result = "Port 80 - HTTP";
                 // RunGoBuster()
-                HTTP myHTTP = new HTTP();
-                var httpInfo = myHTTP.GetHTTPInfo(ip, 80, false);
-                string portData = myHTTP.FormatResponse(httpInfo.StatusCode, httpInfo.Title, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
+                var httpInfo = HTTP.GetHTTPInfo(ip, 80, false);
+                string portData = HTTP.FormatResponse(httpInfo.StatusCode, httpInfo.Title, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
                 if (portData != null)
                 {
-                    Console.WriteLine(port80result + portData + Environment.NewLine);
-                    // Console.WriteLine(port80result + portData);
+                    string robotsFile = HTTP.CheckRobots(ip, 80, false);
+                    portData = robotsFile + portData;
+                    Console.WriteLine(port80result + Environment.NewLine + portData + Environment.NewLine);
                 }
                 else
                 {
@@ -362,10 +372,11 @@ namespace Reecon
             {
                 string port443Result = "Port 443 - HTTPS";
                 // Get SSL Detauls
-                HTTP myHTTP = new HTTP();
-                var httpsInfo = myHTTP.GetHTTPInfo(ip, 443, true);
-                string portData = myHTTP.FormatResponse(httpsInfo.StatusCode, httpsInfo.Title, httpsInfo.DNS, httpsInfo.Headers, httpsInfo.SSLCert);
-                Console.WriteLine(port443Result + portData + Environment.NewLine);
+                var httpsInfo = HTTP.GetHTTPInfo(ip, 443, true);
+                string portData = HTTP.FormatResponse(httpsInfo.StatusCode, httpsInfo.Title, httpsInfo.DNS, httpsInfo.Headers, httpsInfo.SSLCert);
+                string robotsFile = HTTP.CheckRobots(ip, 443, true);
+                portData = robotsFile + portData;
+                Console.WriteLine(port443Result + Environment.NewLine + portData + Environment.NewLine);
             }
             else if (port == 445)
             {
@@ -425,7 +436,7 @@ namespace Reecon
                 if (theBanner.StartsWith("220") && theBanner.Contains("ESMTP"))
                 {
                     unknownPortResult += " - SMTP";
-                    string  smtpHost = theBanner.Remove(0, 4); // Split host and version name - How with the date though?
+                    string smtpHost = theBanner.Remove(0, 4); // Split host and version name - How with the date though?
                     unknownPortResult += Environment.NewLine + smtpHost;
                     Console.WriteLine(unknownPortResult);
 
@@ -455,17 +466,39 @@ namespace Reecon
                     // Try HTTP
                     string httpData = "";
                     string httpsData = "";
-                    HTTP myHTTP = new HTTP();
-                    var httpInfo = myHTTP.GetHTTPInfo(ip, port, false);
+                    string robotsFile = "";
+                    var httpInfo = HTTP.GetHTTPInfo(ip, port, false);
                     if (httpInfo != (new HttpStatusCode(), null, null, null, null))
                     {
-                        httpData = unknownPortResult + " - HTTP" + myHTTP.FormatResponse(httpInfo.StatusCode, httpInfo.Title, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
+                        robotsFile = HTTP.CheckRobots(ip, port, false);
+                        httpData = unknownPortResult + " - HTTP" + Environment.NewLine;
+                        if (robotsFile != "")
+                        {
+                            httpData += robotsFile + Environment.NewLine;
+                        }
+                        httpData += HTTP.FormatResponse(httpInfo.StatusCode, httpInfo.Title, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
                     }
                     // Try HTTPS
-                    var httpsInfo = myHTTP.GetHTTPInfo(ip, port, true);
-                    httpsData = unknownPortResult + " - HTTPS" + myHTTP.FormatResponse(httpsInfo.StatusCode, httpsInfo.Title, httpsInfo.DNS, httpsInfo.Headers, httpsInfo.SSLCert);
+                    var httpsInfo = HTTP.GetHTTPInfo(ip, port, true);
+                    if (httpsInfo != (new HttpStatusCode(), null, null, null, null))
+                    {
+                        robotsFile = HTTP.CheckRobots(ip, port, true);
+                        httpsData = unknownPortResult + " - HTTPS" + Environment.NewLine;
+                        if (robotsFile != "")
+                        {
+                            httpsData += robotsFile + Environment.NewLine;
+                        }
+                        httpsData += HTTP.FormatResponse(httpsInfo.StatusCode, httpsInfo.Title, httpsInfo.DNS, httpsInfo.Headers, httpsInfo.SSLCert);
+                    }
 
-                    portData = (string.IsNullOrEmpty(httpData) ? "" : httpData + Environment.NewLine + Environment.NewLine) + httpsData + Environment.NewLine;
+                    if (!string.IsNullOrEmpty(httpData))
+                    {
+                        portData += portData + httpData + Environment.NewLine;
+                    }
+                    if (!string.IsNullOrEmpty(httpsData))
+                    {
+                        portData += httpsData + httpsData + Environment.NewLine;
+                    }
                     Console.WriteLine(portData); // Newlines and title are already included 
                 }
                 else if (theBanner == "-ERR unknown command 'Woof'") // Probably Redis

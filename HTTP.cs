@@ -11,7 +11,7 @@ namespace Reecon
     class HTTP
     {
         // Split to 4 in threads?
-        public (HttpStatusCode StatusCode, string Title, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert) GetHTTPInfo(string ip, int port, bool isHTTPS)
+        public static (HttpStatusCode StatusCode, string Title, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert) GetHTTPInfo(string ip, int port, bool isHTTPS)
         {
             string pageTitle = "";
             string pageData = "";
@@ -64,7 +64,7 @@ namespace Reecon
             catch (Exception ex)
             {
                 // Something went really wrong...
-                Console.WriteLine("GetHTTPInfo - Fatal Woof :(: " + ex.Message);
+                Console.WriteLine("GetHTTPInfo - Fatal Woof :( - " + ex.Message);
                 return (statusCode, null, null, null, null);
             }
 
@@ -81,7 +81,52 @@ namespace Reecon
             return (statusCode, pageTitle, dns, headers, cert);
         }
 
-        public string FormatResponse(HttpStatusCode StatusCode, string Title, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert)
+        public static string CheckRobots(string ip, int port, bool isHTTPS)
+        {
+            string returnText = "";
+            string urlPrefix = "http";
+            if (isHTTPS)
+            {
+                urlPrefix += "s";
+            }
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(urlPrefix + "://" + ip + ":" + port + "/robots.txt");
+            // Ignore invalid SSL Cert
+            request.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
+
+            try
+            {
+                using (var response = request.GetResponse() as HttpWebResponse)
+                {
+                    if (response.StatusCode == HttpStatusCode.OK)
+                    {
+                        returnText += "- Robots File exists: " + urlPrefix + "://" + ip + ":" + port + "/robots.txt";
+                    }
+                }
+            }
+            catch (WebException ex)
+            {
+                if (ex.Response != null)
+                {
+                    HttpWebResponse response = (HttpWebResponse)ex.Response;
+                    if (response.StatusCode == HttpStatusCode.OK)
+                    {
+                        returnText += "- Robots File exists: " + urlPrefix + "://" + ip + ":" + port + "/robots.txt";
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("CheckRobots - Something weird happened: " + ex.Message);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("CheckRobots - Fatal Woof: " + ex.Message);
+            }
+
+            return returnText;
+        }
+
+        public static string FormatResponse(HttpStatusCode StatusCode, string Title, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert)
         {
             string responseText = "";
 
@@ -90,28 +135,28 @@ namespace Reecon
                 // There's a low chance that it will return a StatusCode that is not in the HttpStatusCode list in which case (int)StatusCode will crash
                 try
                 {
-                    responseText += Environment.NewLine + "- Non-OK Status Code: " + (int)StatusCode + " " + StatusCode;
+                    responseText += "- Non-OK Status Code: " + (int)StatusCode + " " + StatusCode + Environment.NewLine;
                 }
                 catch
                 {
-                    responseText += Environment.NewLine + "- Unknown Status Code: " + " " + StatusCode;
+                    responseText += "- Unknown Status Code: " + " " + StatusCode + Environment.NewLine;
                 }
 
                 if (StatusCode != HttpStatusCode.OK)
                 {
                     if (Headers != null && Headers.Get("Location") != null)
                     {
-                        responseText += Environment.NewLine + "- Location: " + Headers.Get("Location");
+                        responseText += "- Location: " + Headers.Get("Location") + Environment.NewLine;
                     }
                 }
             }
             if (!string.IsNullOrEmpty(Title))
             {
-                responseText += Environment.NewLine + "- Page Title: " + Title;
+                responseText += "- Page Title: " + Title + Environment.NewLine;
             }
             if (!string.IsNullOrEmpty(DNS))
             {
-                responseText += Environment.NewLine + "- DNS: " + DNS;
+                responseText += "- DNS: " + DNS + Environment.NewLine;
             }
             if (Headers != null)
             {
@@ -119,17 +164,17 @@ namespace Reecon
                 if (headerList.Contains("Server"))
                 {
                     headerList.Remove("Server");
-                    responseText += Environment.NewLine + "- Server: " + Headers.Get("Server");
+                    responseText += "- Server: " + Headers.Get("Server") + Environment.NewLine;
                 }
                 if (headerList.Contains("X-Powered-By"))
                 {
                     headerList.Remove("X-Powered-By");
-                    responseText += Environment.NewLine + "- X-Powered-By: " + Headers.Get("X-Powered-By");
+                    responseText += "- X-Powered-By: " + Headers.Get("X-Powered-By") + Environment.NewLine;
                 }
                 if (headerList.Contains("WWW-Authenticate"))
                 {
                     headerList.Remove("WWW-Authenticate");
-                    responseText += Environment.NewLine + "- WWW-Authenticate: " + Headers.Get("WWW-Authenticate");
+                    responseText += "- WWW-Authenticate: " + Headers.Get("WWW-Authenticate") + Environment.NewLine;
                 }
                 if (headerList.Contains("Content-Type"))
                 {
@@ -137,18 +182,18 @@ namespace Reecon
                     if (contentType != "text/html")
                     {
                         // A unique content type - Might be interesting
-                        responseText += Environment.NewLine + "- Content-Type: " + Headers.Get("Content-Type");
+                        responseText += "- Content-Type: " + Headers.Get("Content-Type") + Environment.NewLine;
                     }
                 }
-                responseText += Environment.NewLine + "- Other Headers: " + string.Join(",", headerList);
+                responseText += "- Other Headers: " + string.Join(",", headerList) + Environment.NewLine;
             }
             if (SSLCert != null)
             {
                 string certIssuer = SSLCert.Issuer;
                 string certSubject = SSLCert.Subject;
                 // string certAltName = SSLCert.SubjectName.Name;
-                responseText += Environment.NewLine + "- SSL Cert Issuer: " + certIssuer;
-                responseText += Environment.NewLine + "- SSL Cert Subject: " + certSubject;
+                responseText += "- SSL Cert Issuer: " + certIssuer + Environment.NewLine;
+                responseText += "- SSL Cert Subject: " + certSubject + Environment.NewLine;
                 if (SSLCert.Extensions != null)
                 {
                     X509ExtensionCollection extensionCollection = SSLCert.Extensions;
@@ -176,11 +221,12 @@ namespace Reecon
                                 }
                             }
                             itemList = itemList.Trim(',');
-                            responseText += Environment.NewLine + "- Subject Alternative Name: " + itemList;
+                            responseText += "- Subject Alternative Name: " + itemList + Environment.NewLine;
                         }
                     }
                 }
             }
+            responseText = responseText.TrimEnd(Environment.NewLine.ToCharArray()); // Clean off any redundant newlines
             return responseText;
         }
     }
