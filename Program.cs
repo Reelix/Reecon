@@ -18,7 +18,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.07b ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.07c ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
@@ -328,13 +328,20 @@ namespace Reecon
             {
                 string port139result = "Port 139 - Microsoft Windows netbios-ssn" + Environment.NewLine;
                 // TODO: https://dzone.com/articles/practical-fun-with-netbios-name-service-and-comput
-                IPHostEntry entry = Dns.GetHostEntry(ip);
-                if (entry != null)
+                try
                 {
-                    if (!string.IsNullOrEmpty(entry.HostName))
+                    IPHostEntry entry = Dns.GetHostEntry(ip);
+                    if (entry != null)
                     {
-                        port139result += "- HostName: " + entry.HostName + Environment.NewLine;
+                        if (!string.IsNullOrEmpty(entry.HostName))
+                        {
+                            port139result += "- HostName: " + entry.HostName + Environment.NewLine;
+                        }
                     }
+                }
+                catch (Exception ex)
+                {
+                    port139result += "- Unable to get GNSHostEntry: " + ex.Message + Environment.NewLine;
                 }
                 port139result += "- nmap -sC -sV has far more info for this port" + Environment.NewLine;
                 Console.WriteLine(port139result);
@@ -394,6 +401,10 @@ namespace Reecon
                     Console.WriteLine("Port 445 - Microsoft SMB " + Environment.NewLine + "- Reecon currently lacks Microsoft SMB support outside Windows" + Environment.NewLine);
                 }
             }
+            else if (port == 593)
+            {
+                Console.WriteLine("Port 539 - Microsoft Windows RPC over HTTP" + Environment.NewLine + "- Reecon currently lacks Microsoft Windows RPC over HTTP support" + Environment.NewLine);
+            }
             else if (port == 2049)
             {
                 Console.WriteLine("Port 2049 - nfs" + Environment.NewLine + "- Reecon currently lacks nfs (Network File System) support - Check the output at the bottom" + Environment.NewLine);
@@ -424,6 +435,10 @@ namespace Reecon
                 string port6379Result = "Port 6379 - Redis";
                 port6379Result += Redis.GetInfo("10.10.10.160");
                 Console.WriteLine(port6379Result);
+            }
+            else if (port == 9418)
+            {
+                Console.WriteLine("Port 9418 - Git" + Environment.NewLine + "- Reecon currently lacks Git support" + Environment.NewLine);
             }
             else
             {
@@ -511,6 +526,13 @@ namespace Reecon
                 {
                     unknownPortResult += " - pop3 (Dovecot)" + Environment.NewLine;
                     unknownPortResult += POP3.GetInfo(ip);
+                    Console.WriteLine(unknownPortResult);
+                }
+                else if (theBanner == "ncacn_http/1.0")
+                {
+                    // Woof
+                    unknownPortResult += " - Microsoft Windows RPC over HTTP" + Environment.NewLine;
+                    unknownPortResult += " - Reecon currently lacks Microsoft Windows RPC over HTTP support";
                     Console.WriteLine(unknownPortResult);
                 }
                 else if (theBanner == "Reecon - Connection reset by peer")

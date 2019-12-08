@@ -12,13 +12,24 @@ namespace Reecon
         // Get version
         public static string GetVersion(string ip)
         {
-            Byte[] buffer = new Byte[512];
-            using (Socket sshSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+            try
             {
-                sshSocket.Connect(ip, 22);
-                int bytes = sshSocket.Receive(buffer, buffer.Length, 0);
-                string versionMessage = Encoding.ASCII.GetString(buffer, 0, bytes);
-                return versionMessage.Trim().Replace(Environment.NewLine, "");
+                Byte[] buffer = new Byte[512];
+                using (Socket sshSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+                {
+                    sshSocket.Connect(ip, 22);
+                    int bytes = sshSocket.Receive(buffer, buffer.Length, 0);
+                    string versionMessage = Encoding.ASCII.GetString(buffer, 0, bytes);
+                    return versionMessage.Trim().Replace(Environment.NewLine, "");
+                }
+            }
+            catch (SocketException se)
+            {
+                if (se.Message.StartsWith("No connection could be made because the target machine actively refused it"))
+                {
+                    return "Port is closed";
+                }
+                return "SSG.GetVersion - Fatal Woof!";
             }
         }
 
@@ -47,6 +58,10 @@ namespace Reecon
             p.Close();
             outputLines.RemoveAll(string.IsNullOrEmpty);
             // kex_exchange_identification: read: Connection reset by peer
+            if (outputLines.Count == 1 && outputLines[0].EndsWith("Connection refused"))
+            {
+                return "Port is closed";
+            }
             if (outputLines.Contains("kex_exchange_identification: read: Connection reset by peer"))
             {
                 returnString = "- SSH Exists, but connection reset - Doesn't like you :(";
@@ -55,6 +70,10 @@ namespace Reecon
             if (!outputLines.Contains("Permission denied"))
             {
                 Console.WriteLine("Error in ssh.GetAuthMethods - No Permission denied found");
+                foreach (string line in outputLines)
+                {
+                    Console.WriteLine("Debug: --> " + line);
+                }
                 return "";
             }
             returnString = outputLines.First(x => x.Contains("Permission denied"));
@@ -64,6 +83,7 @@ namespace Reecon
 
             // reelix@10.10.10.147: Permission denied(publickey, password).
             // reelix@10.10.10.110: Permission denied (publickey,keyboard-interactive).
+            Console.WriteLine("Woof!");
             return returnString;
 
         }

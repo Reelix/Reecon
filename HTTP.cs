@@ -99,7 +99,7 @@ namespace Reecon
                 {
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
-                        returnText += "- Robots File exists: " + urlPrefix + "://" + ip + ":" + port + "/robots.txt";
+                        returnText += "- Robots File exists: " + urlPrefix + "://" + ip + ":" + port + "/robots.txt" + Environment.NewLine;
                     }
                 }
             }
@@ -110,7 +110,7 @@ namespace Reecon
                     HttpWebResponse response = (HttpWebResponse)ex.Response;
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
-                        returnText += "- Robots File exists: " + urlPrefix + "://" + ip + ":" + port + "/robots.txt";
+                        returnText += "- Robots File exists: " + urlPrefix + "://" + ip + ":" + port + "/robots.txt" + Environment.NewLine;
                     }
                 }
                 else
