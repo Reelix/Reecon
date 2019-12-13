@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
@@ -130,6 +132,26 @@ namespace Reecon
             Console.SetCursorPosition(0, Console.CursorTop);
             Console.Write(new string(' ', Console.WindowWidth));
             Console.SetCursorPosition(0, currentLineCursor);
+        }
+
+        public static List<string> GetProcessOutput(string processName, string arguments)
+        {
+            List<string> outputLines = new List<string>();
+            Process p = new Process();
+            p.StartInfo.UseShellExecute = false;
+            p.StartInfo.RedirectStandardOutput = true;
+            p.StartInfo.RedirectStandardError = true;
+            p.StartInfo.FileName = processName;
+            p.StartInfo.Arguments = arguments;
+            p.OutputDataReceived += (sender, e) => outputLines.Add(e.Data);
+            p.ErrorDataReceived += (sender, e) => outputLines.Add(e.Data);
+            p.Start();
+            p.BeginOutputReadLine();
+            p.BeginErrorReadLine();
+            p.WaitForExit();
+            p.Close();
+            outputLines.RemoveAll(string.IsNullOrEmpty); // Useful?
+            return outputLines;
         }
     }
 }

@@ -18,7 +18,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.08 ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.09 ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Contains("-lfi"))
             {
@@ -177,6 +177,7 @@ namespace Reecon
         static void RunNMap(int level)
         {
             Console.WriteLine($"Starting a Level {level} Nmap on IP {ip}");
+            // General.GetProcessOutput ?
             using (Process p = new Process())
             {
                 p.StartInfo.UseShellExecute = false;
@@ -298,27 +299,17 @@ namespace Reecon
             }
             else if (port == 25)
             {
-                string port22Result = "Port 25 - SMTP";
-
-                string theBanner = General.BannerGrab(ip, port);
-                // 220 ib01.supersechosting.htb ESMTP Exim 4.89 Sat, 19 Oct 2019 16:02:49 +0200
-                if (theBanner.StartsWith("220") && theBanner.Contains("ESMTP"))
-                {
-                    theBanner = theBanner.Remove(0, 4);
-                    string serverName = theBanner.Substring(0, theBanner.IndexOf(" ESMTP"));
-                    string nameAndDate = theBanner.Remove(0, theBanner.IndexOf(" ESMTP") + 7); // Remove the space afterwards
-                    Console.WriteLine(port22Result + Environment.NewLine + "- Server: " + serverName + Environment.NewLine + "- Name And Date: " + nameAndDate);
-                }
-                else
-                {
-                    Console.WriteLine("- Unknown Banner: " + theBanner);
-                }
+                string port25Result = "Port 25 - SMTP";
+                string smtpInfo = SMTP.GetInfo(ip, 25);
+                Console.WriteLine(port25Result + Environment.NewLine + smtpInfo + Environment.NewLine);
 
             }
             else if (port == 53)
             {
-                string port53result = "Port 53 - DNS" + Environment.NewLine + " - Reecon currently lacks DNS Support :(" + Environment.NewLine;
-                Console.WriteLine(port53result);
+                // TODO: https://svn.nmap.org/nmap/scripts/dns-nsid.nse
+                string port53result = "Port 53 - DNS";// + Environment.NewLine + " - Reecon currently lacks DNS Support :(" + Environment.NewLine;
+                string dnsInfo = DNS.GetInfo(ip);
+                Console.WriteLine(port53result + Environment.NewLine + dnsInfo + Environment.NewLine);
             }
             else if (port == 80)
             {
@@ -378,7 +369,7 @@ namespace Reecon
             {
                 string port143result = "Port 143 - imap (Internet Message Access Protocol)" + Environment.NewLine;
                 string banner = General.BannerGrab(ip, 143);
-                Console.WriteLine(port143result + "- " + banner + Environment.NewLine);
+                Console.WriteLine(port143result + "- Banner: " + banner + Environment.NewLine);
             }
             else if (port == 389)
             {
@@ -481,9 +472,8 @@ namespace Reecon
                 if (theBanner.StartsWith("220") && theBanner.Contains("ESMTP"))
                 {
                     unknownPortResult += " - SMTP";
-                    string smtpHost = theBanner.Remove(0, 4); // Split host and version name - How with the date though?
-                    unknownPortResult += Environment.NewLine + smtpHost;
-                    Console.WriteLine(unknownPortResult);
+                    string smtpInfo = SMTP.ParseBanner(theBanner);
+                    Console.WriteLine(unknownPortResult + Environment.NewLine + smtpInfo + Environment.NewLine);
 
                 }
                 else if (theBanner.Contains("SSH-2.0-OpenSSH") || theBanner == "SSH-2.0-Go") // Probably SSH
@@ -573,11 +563,11 @@ namespace Reecon
                 }
                 else if (theBanner == "Reecon - Closed")
                 {
-                    Console.WriteLine(unknownPortResult + Environment.NewLine + "- Port is closed");
+                    Console.WriteLine(unknownPortResult + Environment.NewLine + "- Port is closed" + Environment.NewLine);
                 }
                 else if (theBanner.Length == 0)
                 {
-                    Console.WriteLine(unknownPortResult + Environment.NewLine + "- No Banner Response");
+                    Console.WriteLine(unknownPortResult + Environment.NewLine + "- No Banner Response" + Environment.NewLine);
                 }
                 else
                 {

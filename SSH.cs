@@ -42,21 +42,7 @@ namespace Reecon
                 Console.WriteLine("Error in ssh.GetAuthMethods - Missing IP");
                 return "";
             }
-            List<string> outputLines = new List<string>();
-            Process p = new Process();
-            p.StartInfo.UseShellExecute = false;
-            p.StartInfo.RedirectStandardOutput = true;
-            p.StartInfo.RedirectStandardError = true;
-            p.StartInfo.FileName = "ssh";
-            p.StartInfo.Arguments = "-oPreferredAuthentications=none -oStrictHostKeyChecking=no " + ip + " -p " + port;
-            p.OutputDataReceived += (sender, e) => outputLines.Add(e.Data);
-            p.ErrorDataReceived += (sender, e) => outputLines.Add(e.Data);
-            p.Start();
-            p.BeginOutputReadLine();
-            p.BeginErrorReadLine();
-            p.WaitForExit();
-            p.Close();
-            outputLines.RemoveAll(string.IsNullOrEmpty);
+            List<string> outputLines = General.GetProcessOutput("ssh", "-oPreferredAuthentications=none -oStrictHostKeyChecking=no " + ip + " -p " + port);
             // kex_exchange_identification: read: Connection reset by peer
             if (outputLines.Count == 1 && outputLines[0].EndsWith("Connection refused"))
             {

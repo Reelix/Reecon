@@ -71,7 +71,7 @@ namespace Reecon
             }
             catch (WebException ex)
             {
-                Console.WriteLine("Some ex: " + ex.Message);
+                // Console.WriteLine("Some ex: " + ex.Message);
                 FtpWebResponse response = (FtpWebResponse)ex.Response;
                 ftpLoginResult += Environment.NewLine + "- Banner: " + response.BannerMessage.Trim();
                 ftpLoginResult += Environment.NewLine + "- Status: " + response.StatusDescription.Trim();

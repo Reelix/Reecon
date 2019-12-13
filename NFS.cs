@@ -18,21 +18,7 @@ namespace Reecon
             string fileList = "";
             if (File.Exists(@"C:\Windows\System32\showmount.exe"))
             {
-                List<string> outputLines = new List<string>();
-                Process p = new Process();
-                p.StartInfo.UseShellExecute = false;
-                p.StartInfo.RedirectStandardOutput = true;
-                p.StartInfo.RedirectStandardError = true;
-                p.StartInfo.FileName = @"C:\Windows\System32\showmount.exe";
-                p.StartInfo.Arguments = "-e " + ip;
-                p.OutputDataReceived += (sender, e) => outputLines.Add(e.Data);
-                p.ErrorDataReceived += (sender, e) => outputLines.Add(e.Data);
-                p.Start();
-                p.BeginOutputReadLine();
-                p.BeginErrorReadLine();
-                p.WaitForExit();
-                p.Close();
-                outputLines.RemoveAll(string.IsNullOrEmpty);
+                List<string> outputLines = General.GetProcessOutput(@"C:\Windows\System32\showmount.exe", "-e " + ip);
                 if (outputLines.Count > 1)
                 {
                     outputLines.RemoveAt(0);

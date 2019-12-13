@@ -59,6 +59,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DNS.cs" />
     <Compile Include="FTP.cs" />
     <Compile Include="General.cs" />
     <Compile Include="HTTP.cs" />
@@ -72,6 +73,7 @@
     <Compile Include="SMB.cs" />
     <Compile Include="SMB_GetNetShares.cs" />
     <Compile Include="SMB_NetworkShareAccesser.cs" />
+    <Compile Include="SMTP.cs" />
     <Compile Include="SSH.cs" />
     <Compile Include="WebClientExtensions.cs" />
   </ItemGroup>
