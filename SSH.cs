@@ -67,7 +67,7 @@ namespace Reecon
                 returnString = "- SSH Exists, but connection reset - Doesn't like you :(";
                 return returnString;
             }
-            if (!outputLines.Contains("Permission denied"))
+            if (!outputLines.Any(x => x.Contains("Permission denied")))
             {
                 Console.WriteLine("Error in ssh.GetAuthMethods - No Permission denied found");
                 foreach (string line in outputLines)
@@ -83,7 +83,6 @@ namespace Reecon
 
             // reelix@10.10.10.147: Permission denied(publickey, password).
             // reelix@10.10.10.110: Permission denied (publickey,keyboard-interactive).
-            Console.WriteLine("Woof!");
             return returnString;
 
         }

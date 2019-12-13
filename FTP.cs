@@ -11,7 +11,7 @@ namespace Reecon
 {
     class FTP
     {
-        public static string FtpLogin2(string ftpServer, string username = "", string password = "")
+        public static string FtpLogin(string ftpServer, string username = "", string password = "")
         {
             string ftpLoginResult = "";
             if (!ftpServer.StartsWith("ftp://"))
@@ -22,7 +22,7 @@ namespace Reecon
             request.UseBinary = true; // Better for downloading files if we ever need
             request.UsePassive = true; // A better way to receive file listing
             request.KeepAlive = false; // Closes FTP after we're done
-            request.Method = WebRequestMethods.Ftp.ListDirectoryDetails;
+            request.Method = WebRequestMethods.Ftp.PrintWorkingDirectory;
             request.Credentials = new NetworkCredential(username, password);
             // FtpState state = new FtpState();
             // state.Request = request;
@@ -41,12 +41,14 @@ namespace Reecon
                         bannerMessage = bannerMessage.Remove(bannerMessage.Length - 1, 1);
                     }
                 }
+
                 if (!string.IsNullOrEmpty(bannerMessage))
                 {
                     ftpLoginResult += Environment.NewLine + "- Version: " + bannerMessage;
                 }
                 if (response.WelcomeMessage.Trim() != "230 Login successful.")
                 {
+                    Console.WriteLine("Welcome Success?");
                     ftpLoginResult += Environment.NewLine + "- Welcome Message: " + response.WelcomeMessage;
                 }
                 if (response.SupportsHeaders)
@@ -61,42 +63,101 @@ namespace Reecon
                 {
                     ftpLoginResult += Environment.NewLine + "- Anonymous login allowed (Username: anonymous Password: *Leave Blank*)";
                 }
+                else
+                {
+                    Console.WriteLine("Woof!");
+                }
+                return ftpLoginResult;
+            }
+            catch (WebException ex)
+            {
+                Console.WriteLine("Some ex: " + ex.Message);
+                FtpWebResponse response = (FtpWebResponse)ex.Response;
+                ftpLoginResult += Environment.NewLine + "- Banner: " + response.BannerMessage.Trim();
+                ftpLoginResult += Environment.NewLine + "- Status: " + response.StatusDescription.Trim();
+                return ftpLoginResult;
+            }
+            finally
+            {
+                request = null;
+            }
+
+        }
+
+        public static string TryListFiles(string ftpServer, bool usePassive, string username = "", string password = "")
+        {
+            string fileListResult = "";
+            if (!ftpServer.StartsWith("ftp://"))
+            {
+                ftpServer = "ftp://" + ftpServer;
+            }
+            FtpWebRequest request = (FtpWebRequest)WebRequest.Create(ftpServer);
+            request.UseBinary = true; // Better for downloading files if we ever need
+            request.UsePassive = usePassive; // A better way to receive file listing
+            request.KeepAlive = false; // Closes FTP after we're done
+            request.Method = WebRequestMethods.Ftp.ListDirectoryDetails;
+            request.Credentials = new NetworkCredential(username, password);
+            try
+            {
+                FtpWebResponse response = (FtpWebResponse)request.GetResponse();
                 using (StreamReader myStreamReader = new StreamReader(response.GetResponseStream()))
                 {
                     // TODO: Find a multi-file / directory FTP Server to format this better...
                     List<string> responseLines = myStreamReader.ReadToEnd().Trim().Split(new[] { Environment.NewLine }, StringSplitOptions.None).ToList().Where(x => !string.IsNullOrEmpty(x)).ToList();
                     if (responseLines.Count == 0)
                     {
-                        ftpLoginResult += Environment.NewLine + "- No Files Or Folders Found";
+                        fileListResult += Environment.NewLine + "- No Files Or Folders Found";
                     }
                     else
                     {
-                        ftpLoginResult += Environment.NewLine + "- File Listing: ";
+                        fileListResult += Environment.NewLine + "- File Listing: ";
                         foreach (var file in responseLines)
                         {
-                            ftpLoginResult += Environment.NewLine + "-- ";
+                            fileListResult += Environment.NewLine + "-- ";
                             if (!string.IsNullOrEmpty(file) && file[0] == 'd')
                             {
-                                ftpLoginResult += "(Directory) " + file;
+                                fileListResult += file + " (Directory) ";
                             }
                             else
                             {
-                                ftpLoginResult += file;
+                                fileListResult += file;
                             }
                         }
                     }
                 }
-                return ftpLoginResult;
+                return fileListResult;
             }
-            catch (WebException ex)
+            catch (WebException wex)
             {
-                FtpWebResponse response = (FtpWebResponse)ex.Response;
-                ftpLoginResult += Environment.NewLine + "- Banner: " + response.BannerMessage.Trim();
-                ftpLoginResult += Environment.NewLine + "- Status: " + response.StatusDescription.Trim();
-                return ftpLoginResult;
+                try
+                {
+                    FtpWebResponse response = (FtpWebResponse)wex.Response;
+                    if ((int)response.StatusCode == 500)
+                    {
+                        if (response.StatusDescription.Trim() == "500 OOPS: invalid pasv_address")
+                        {
+                            return "- Unable to list files: invalid pasv_address";
+                        }
+                        else
+                        {
+                            return "- Unable to list files for unknown reason: " + response.StatusDescription;
+                        }
+                    }
+                }
+                catch
+                {
+                    Console.WriteLine("TryListFiles wex parse error: " + wex.Message);
+                }
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Unknown TryListFiles Error: " + ex.Message);
+                return ":(";
+            }
+            return ":(";
         }
     }
+}
 
     /*
     // Mostly yoinked from https://www.dreamincode.net/forums/topic/35902-create-an-ftp-class-library-in-c%23/
@@ -439,4 +500,3 @@ public class FtpException : Exception
     }
 }
 */
-}

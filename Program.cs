@@ -12,19 +12,14 @@ namespace Reecon
     class Program
     {
         static readonly List<int> portList = new List<int>();
-        static string ip = "";
+        static string ip = ""; // For Dev
         static readonly List<Thread> threadList = new List<Thread>();
         static void Main(string[] args)
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.07c ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.08 ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
-            if (args.Length == 0)
-            {
-                Console.WriteLine("Usage: reecon IP");
-                return;
-            }
             if (args.Contains("-lfi"))
             {
                 if (args.Length != 2)
@@ -136,35 +131,42 @@ namespace Reecon
                 theThread.Join();
             }
             Console.WriteLine("Finished - Some things you probably want to do: ");
-            Console.WriteLine("- nmap -sC -sV -p" + string.Join(",", portList) + " " + ip + " -oN nmap.txt");
-            if (portList.Contains(21))
+            if (portList.Count == 0)
             {
-                Console.WriteLine("- Check out Port 21 for things I missed");
+                Console.WriteLine("- nmap -sC -sV -p- " + ip + " -oN nmap.txt");
             }
-            if (portList.Contains(80))
+            else
             {
-                Console.WriteLine("- gobuster dir -u=http://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http.txt -x.php,.txt");
-            }
-            if (portList.Contains(139))
-            {
-                // https://pen-testing.sans.org/blog/2013/07/24/plundering-windows-account-info-via-authenticated-smb-sessions
+                Console.WriteLine("- nmap -sC -sV -p" + string.Join(",", portList) + " " + ip + " -oN nmap.txt");
+                if (portList.Contains(21))
+                {
+                    Console.WriteLine("- Check out Port 21 for things I missed");
+                }
+                if (portList.Contains(80))
+                {
+                    Console.WriteLine("- gobuster dir -u=http://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http.txt -x.php,.txt");
+                }
+                if (portList.Contains(139))
+                {
+                    // https://pen-testing.sans.org/blog/2013/07/24/plundering-windows-account-info-via-authenticated-smb-sessions
 
-                Console.WriteLine("- rpcclient -U \"\" " + ip);
-                Console.WriteLine("-> enumdomusers");
-            }
-            if (portList.Contains(443))
-            {
-                Console.WriteLine("- gobuster dir -u=https://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-https.txt -x.php,.txt");
-            }
-            if (portList.Contains(445))
-            {
-                Console.WriteLine("- smbclient -L " + ip);
-                Console.WriteLine("- nmap --script smb-enum-shares.nse -p445 " + ip);
-            }
-            if (portList.Contains(2049))
-            {
-                Console.WriteLine("- rpcinfo -p " + ip);
-                Console.WriteLine("- showmount -e " + ip);
+                    Console.WriteLine("- rpcclient -U \"\" " + ip);
+                    Console.WriteLine("-> enumdomusers");
+                }
+                if (portList.Contains(443))
+                {
+                    Console.WriteLine("- gobuster dir -u=https://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-https.txt -x.php,.txt");
+                }
+                if (portList.Contains(445))
+                {
+                    Console.WriteLine("- smbclient -L " + ip);
+                    Console.WriteLine("- nmap --script smb-enum-shares.nse -p445 " + ip);
+                }
+                if (portList.Contains(2049))
+                {
+                    Console.WriteLine("- rpcinfo -p " + ip);
+                    Console.WriteLine("- showmount -e " + ip);
+                }
             }
             DateTime endDate = DateTime.Now;
             TimeSpan t = endDate - startDate;
@@ -180,17 +182,22 @@ namespace Reecon
                 p.StartInfo.UseShellExecute = false;
                 p.StartInfo.RedirectStandardOutput = true;
                 p.StartInfo.FileName = "nmap";
+                // -sS = Syn Scan (Faster)
+                // -oG = Greppable - Easier to parse
                 if (level == 1)
                 {
-                    p.StartInfo.Arguments = $"{ip} -F -oG nmap-fast.txt";
+                    // -F = Fast (100 Most Common Ports)
+                    p.StartInfo.Arguments = $"{ip} -sS -F -oG nmap-fast.txt";
                 }
                 else if (level == 2)
                 {
-                    p.StartInfo.Arguments = $"{ip} -oG nmap-normal.txt";
+                    // Top 1,000 Ports (Excl. Top 100?)
+                    p.StartInfo.Arguments = $"{ip} -sS -oG nmap-normal.txt";
                 }
                 else if (level == 3)
                 {
-                    p.StartInfo.Arguments = $"{ip} -p- -oG nmap-slow.txt -oN nmap-all.txt";
+                    // -p- = All Ports
+                    p.StartInfo.Arguments = $"{ip} -sS -p- -oG nmap-slow.txt -oN nmap-all.txt";
                 }
                 p.Start();
                 p.WaitForExit();
@@ -218,6 +225,11 @@ namespace Reecon
             {
                 Console.WriteLine("Error - Host is down :(");
                 Environment.Exit(0);
+            }
+            if (!fileLines.Contains("/open/"))
+            {
+                Console.WriteLine("No open ports found");
+                return;
             }
             string portLine = fileLines[2];
             string portSection = portLine.Split('\t')[1];
@@ -253,10 +265,26 @@ namespace Reecon
             // Console.WriteLine("Found Port: " + port);
             if (port == 21)
             {
-                string ftpLoginInfo = FTP.FtpLogin2(ip);
+                string ftpUsername = "";
+                string ftpLoginInfo = FTP.FtpLogin(ip, ftpUsername);
                 if (ftpLoginInfo.Contains("Unable to login: This FTP server is anonymous only.") || ftpLoginInfo.Contains("Unable to login: USER: command requires a parameter") || ftpLoginInfo.Contains("Unable to login: Login with USER first.") || ftpLoginInfo.Contains("530 This FTP server is anonymous only."))
                 {
-                    ftpLoginInfo = FTP.FtpLogin2(ip, "anonymous", "");
+                    ftpUsername = "anonymous";
+                    ftpLoginInfo = FTP.FtpLogin(ip, ftpUsername, "");
+                }
+                if (ftpLoginInfo.Contains("Anonymous login allowed"))
+                {
+                    string fileListInfo = FTP.TryListFiles(ip, true, ftpUsername, "");
+                    if (fileListInfo.Contains("invalid pasv_address"))
+                    {
+                        fileListInfo = FTP.TryListFiles(ip, false, ftpUsername, "");
+                        
+                    }
+                    if (!fileListInfo.StartsWith(Environment.NewLine))
+                    {
+                        fileListInfo = Environment.NewLine + fileListInfo;
+                    }
+                    ftpLoginInfo += fileListInfo;
                 }
                 Console.WriteLine("Port 21 - FTP" + ftpLoginInfo + Environment.NewLine);
             }
@@ -407,7 +435,8 @@ namespace Reecon
             }
             else if (port == 2049)
             {
-                Console.WriteLine("Port 2049 - nfs" + Environment.NewLine + "- Reecon currently lacks nfs (Network File System) support - Check the output at the bottom" + Environment.NewLine);
+                string fileList = NFS.GetFileList(ip);
+                Console.WriteLine("Port 2049 - NFS (Network File System)" + Environment.NewLine + fileList + Environment.NewLine);
             }
             else if (port == 3268)
             {
@@ -419,6 +448,7 @@ namespace Reecon
                 string theBanner = General.BannerGrab(ip, port);
                 Console.WriteLine("Port 3306 - MySQL" + Environment.NewLine + "- Reecon currently lacks MySQL support" + Environment.NewLine + "- Banner: " + theBanner + Environment.NewLine);
                 // https://svn.nmap.org/nmap/scripts/mysql-info.nse
+                // --> https://svn.nmap.org/nmap/nselib/mysql.lua -> receiveGreeting
             }
             else if (port == 3389)
             {
@@ -472,9 +502,11 @@ namespace Reecon
                 else if (
                     theBanner.Contains("Server: Apache") // Apache Web Server
                     || theBanner.Contains("Server: cloudflare") // Cloudflare Server
+                    || theBanner.StartsWith("HTTP/1.1 200 OK") // Regular OK Response
                     || theBanner.StartsWith("HTTP/1.1 400 Bad Request") // Unknown but valid request
                     || theBanner.StartsWith("HTTP/1.0 200 Document follows") // Silly HTTP/1.0
                     || theBanner.Contains("Error code explanation: 400 = Bad request syntax or unsupported method.") // BaseHTTP/0.3 Python/2.7.12
+                    || theBanner.Contains("<p>Error code: 400</p>") // TryHackMe - Task 12 Day 7
                     ) // Probably HTTP or HTTPS
                 {
                     string portData = "";
