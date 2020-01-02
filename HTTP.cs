@@ -176,6 +176,11 @@ namespace Reecon
                     headerList.Remove("WWW-Authenticate");
                     responseText += "- WWW-Authenticate: " + Headers.Get("WWW-Authenticate") + Environment.NewLine;
                 }
+                if (headerList.Contains("kbn-name"))
+                {
+                    headerList.Remove("kbn-name");
+                    responseText += "- kbn-name: " + Headers.Get("kbn-name") + Environment.NewLine;
+                }
                 if (headerList.Contains("Content-Type"))
                 {
                     string contentType = Headers.Get("Content-Type");

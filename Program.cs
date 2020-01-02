@@ -18,7 +18,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.09 ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.10 ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Contains("-lfi"))
             {
@@ -279,7 +279,7 @@ namespace Reecon
                     if (fileListInfo.Contains("invalid pasv_address"))
                     {
                         fileListInfo = FTP.TryListFiles(ip, false, ftpUsername, "");
-                        
+
                     }
                     if (!fileListInfo.StartsWith(Environment.NewLine))
                     {
@@ -294,7 +294,7 @@ namespace Reecon
                 string port22Result = "Port 22 - SSH";
                 string sshVersion = SSH.GetVersion(ip);
                 string authMethods = SSH.GetAuthMethods(ip, port);
-                Console.WriteLine(port22Result + Environment.NewLine + "- SSH Version: " + (sshVersion ?? "Unknown") + Environment.NewLine + "- Authentication Methods: " + (authMethods ?? "Unknown"));
+                Console.WriteLine(port22Result + Environment.NewLine + "- SSH Version: " + (sshVersion ?? "Unknown") + Environment.NewLine + "- Authentication Methods: " + (authMethods ?? "Unknown") + Environment.NewLine);
 
             }
             else if (port == 25)
@@ -429,6 +429,12 @@ namespace Reecon
                 string fileList = NFS.GetFileList(ip);
                 Console.WriteLine("Port 2049 - NFS (Network File System)" + Environment.NewLine + fileList + Environment.NewLine);
             }
+            else if (port == 27017)
+            {
+                // MonogoDB
+                Console.WriteLine("Port 27017 - MongoDB" + Environment.NewLine + "- Reecon currently lacks MongoDB support" + Environment.NewLine);
+                // Nmap can get the version - What else can we get?
+            }
             else if (port == 3268)
             {
                 Console.WriteLine("Port 3268 - Global Catalog" + Environment.NewLine + "- Reecon currently lacks Global Catalog (LDAP) support" + Environment.NewLine);
@@ -461,6 +467,17 @@ namespace Reecon
             {
                 Console.WriteLine("Port 9418 - Git" + Environment.NewLine + "- Reecon currently lacks Git support" + Environment.NewLine);
             }
+            else if (port == 9200)
+            {
+                string port9200Result = "Port 9200 - Elasticsearch HTTP Interface" + Environment.NewLine;
+                port9200Result += Elasticsearch.GetInfo(ip);
+                Console.WriteLine(port9200Result + Environment.NewLine);
+
+            }
+            else if (port == 9300)
+            {
+                Console.WriteLine("Port 9300 - Elasticsearch Communication Port" + Environment.NewLine + "- Check out Port 9200 (Elasticsearch HTTP Interface) - Reecon has info on that" + Environment.NewLine);
+            }
             else
             {
                 // Try parse the banner
@@ -492,9 +509,8 @@ namespace Reecon
                 else if (
                     theBanner.Contains("Server: Apache") // Apache Web Server
                     || theBanner.Contains("Server: cloudflare") // Cloudflare Server
-                    || theBanner.StartsWith("HTTP/1.1 200 OK") // Regular OK Response
-                    || theBanner.StartsWith("HTTP/1.1 400 Bad Request") // Unknown but valid request
-                    || theBanner.StartsWith("HTTP/1.0 200 Document follows") // Silly HTTP/1.0
+                    || theBanner.StartsWith("HTTP/1.1")
+                    || theBanner.StartsWith("HTTP/1.0")
                     || theBanner.Contains("Error code explanation: 400 = Bad request syntax or unsupported method.") // BaseHTTP/0.3 Python/2.7.12
                     || theBanner.Contains("<p>Error code: 400</p>") // TryHackMe - Task 12 Day 7
                     ) // Probably HTTP or HTTPS

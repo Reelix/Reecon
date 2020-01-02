@@ -51,7 +51,7 @@ namespace Reecon
                     }
                     else 
                     {
-                        Console.WriteLine("Error in BannerGrab with error code: " + ex.ErrorCode);
+                        Console.WriteLine($"Error in BannerGrab with error code: {ex.ErrorCode}");
                         throw ex;
                     }
                 }

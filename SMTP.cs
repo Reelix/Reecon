@@ -24,7 +24,7 @@ namespace Reecon
                 smtpBanner = smtpBanner.Remove(0, 4);
                 string serverName = smtpBanner.Substring(0, smtpBanner.IndexOf(" ESMTP"));
                 string nameAndDate = smtpBanner.Remove(0, smtpBanner.IndexOf(" ESMTP") + 7); // Remove the space afterwards
-                parsedData = "- Server: " + serverName + Environment.NewLine + "- Name And Date: " + nameAndDate;
+                parsedData = $"- Server: {serverName}" + Environment.NewLine + $"- Name And Date: {nameAndDate}";
                 return parsedData;
             }
             else

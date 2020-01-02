@@ -13,10 +13,10 @@ namespace Reecon
         {
             // https://raymii.org/s/tutorials/Get_DNS_server_version_and_hide_it_in_BIND.html
             string dnsInfo = "";
-            List<string> outputLines = General.GetProcessOutput("nslookup", "-type=txt -class=chaos version.bind " + ip);
+            List<string> outputLines = General.GetProcessOutput("nslookup", $"-type=txt -class=chaos version.bind {ip}");
             foreach (string line in outputLines)
             {
-                dnsInfo += "- " + line + Environment.NewLine;
+                dnsInfo += $"- {line}" + Environment.NewLine;
             }
             dnsInfo = dnsInfo.Trim(Environment.NewLine.ToCharArray());
             return dnsInfo;

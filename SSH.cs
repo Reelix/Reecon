@@ -42,7 +42,7 @@ namespace Reecon
                 Console.WriteLine("Error in ssh.GetAuthMethods - Missing IP");
                 return "";
             }
-            List<string> outputLines = General.GetProcessOutput("ssh", "-oPreferredAuthentications=none -oStrictHostKeyChecking=no " + ip + " -p " + port);
+            List<string> outputLines = General.GetProcessOutput("ssh", $"-oPreferredAuthentications=none -oStrictHostKeyChecking=no {ip} -p {port}");
             // kex_exchange_identification: read: Connection reset by peer
             if (outputLines.Count == 1 && outputLines[0].EndsWith("Connection refused"))
             {
@@ -58,7 +58,7 @@ namespace Reecon
                 Console.WriteLine("Error in ssh.GetAuthMethods - No Permission denied found");
                 foreach (string line in outputLines)
                 {
-                    Console.WriteLine("Debug: --> " + line);
+                    Console.WriteLine($"Debug: --> {line}");
                 }
                 return "";
             }

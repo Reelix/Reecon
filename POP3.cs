@@ -32,12 +32,12 @@ namespace Reecon
                     string userText = Encoding.ASCII.GetString(buffer, 0, bytes);
                     // Console.WriteLine(userText);
                     userText = userText.Trim();
-                    returnText += "- User Test: " + userText;
+                    returnText += $"- User Test: {userText}";
 
                 }
                 catch (Exception ex)
                 {
-                    returnText += "- Unknown Error: " + ex.Message;
+                    returnText += $"- Unknown Error: {ex.Message}";
                 }
             }
             return returnText;
