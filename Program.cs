@@ -18,8 +18,21 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.10 ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.11 ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
+            if (args.Length == 0 && ip.Length == 0)
+            {
+                Console.WriteLine("Usage");
+                Console.WriteLine("-----");
+                Console.WriteLine("Basic Scan:\tReecon IPHere (Optional: -noping to skip the ping - Not recommended!)");
+                Console.WriteLine("NMap:\t\tReecon -nmap IP FileName");
+                Console.WriteLine("NMap-Load Scan:\tReecon outfile.nmap (Requires a -nmap scan or -oG on regular nmap");
+                Console.WriteLine("SMB Brute:\tReecon -smb-brute (Linux Only)");
+                Console.WriteLine("WinRM Brute:\tReecon -winrm-brute (Windows Only - Requires an Administrative Console)");
+                Console.WriteLine("LFI Test:\tReecon -lfi (Does not work)");
+                Console.ResetColor();
+                return;
+            }
             if (args.Contains("-lfi"))
             {
                 if (args.Length != 2)
@@ -28,19 +41,27 @@ namespace Reecon
                 }
                 Console.WriteLine("Starting LFI Scan - This feature is still in Alpha");
                 LFI.Scan(args[1]);
-
+                Console.ResetColor();
+                return;
+            }
+            else if (args.Contains("-smb-brute"))
+            {
+                SMB.SMBBrute(args);
+                Console.ResetColor();
+                return;
+            }
+            else if (args.Contains("-winrm-brute"))
+            {
+                // TODO: gpedit.msc to add the host for winrm to allow Windows to scan
+                // Local Computer Policy -> Computer Configuration -> Administrative Templates -> Windows Components -> Windows Remote Management (WinRM) -> WinRM Client -> Trusted Hosts
+                WinRM.WinRMBrute(args);
+                Console.ResetColor();
                 return;
             }
             bool mustPing = true;
             if (args.Contains("-noping"))
             {
                 mustPing = false;
-            }
-            if (args.Length == 0 && ip.Length == 0)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Needs an IP!");
-                return;
             }
             else if (ip.Length == 0 && args.Length > 0)
             {
@@ -51,6 +72,10 @@ namespace Reecon
                     return;
                 }
                 ip = args[0];
+                if (ip.EndsWith(".nmap"))
+                {
+                    ParsePorts(ip, false);
+                }
                 if (args.Length > 1)
                 {
                     portList.AddRange(args[1].Split(',').ToList().Select(x => int.Parse(x)));
@@ -89,11 +114,7 @@ namespace Reecon
                 }
             }
 
-            if (portList.Count != 0)
-            {
-                ParsePorts("portlist");
-            }
-            else
+            if (portList.Count == 0)
             {
                 // Cleanup from any previous runs
                 if (File.Exists("nmap-fast.txt"))
@@ -126,10 +147,25 @@ namespace Reecon
                 ParsePorts("nmap-slow.txt");
                 */
             }
+
+            // All files and params parsed - Scanning time!
+            if (portList.Count == 0)
+            {
+                Console.WriteLine("No open ports found to scan :<");
+                return;
+            }
+            else
+            {
+                ScanPorts(portList);
+            }
+
+            // Wait for the ScanPorts thread list to finish
             foreach (Thread theThread in threadList)
             {
                 theThread.Join();
             }
+
+            // Everything done - Now for some helpful info!
             Console.WriteLine("Finished - Some things you probably want to do: ");
             if (portList.Count == 0)
             {
@@ -142,6 +178,10 @@ namespace Reecon
                 {
                     Console.WriteLine("- Check out Port 21 for things I missed");
                 }
+                if (portList.Contains(53))
+                {
+                    Console.WriteLine("- Try a zone transfer (Linux): dig axfr domain.com @" + ip);
+                }
                 if (portList.Contains(80))
                 {
                     Console.WriteLine("- gobuster dir -u=http://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http.txt -x.php,.txt");
@@ -152,6 +192,7 @@ namespace Reecon
 
                     Console.WriteLine("- rpcclient -U \"\" " + ip);
                     Console.WriteLine("-> enumdomusers");
+                    Console.WriteLine("--> queryuser usernameHere");
                 }
                 if (portList.Contains(443))
                 {
@@ -166,6 +207,7 @@ namespace Reecon
                 {
                     Console.WriteLine("- rpcinfo -p " + ip);
                     Console.WriteLine("- showmount -e " + ip);
+                    Console.WriteLine("-> mount -t nfs -o vers=2 " + ip + ":/mountNameHere /mnt");
                 }
             }
             DateTime endDate = DateTime.Now;
@@ -177,57 +219,42 @@ namespace Reecon
         static void RunNMap(int level)
         {
             Console.WriteLine($"Starting a Level {level} Nmap on IP {ip}");
-            // General.GetProcessOutput ?
-            using (Process p = new Process())
+            if (level == 1)
             {
-                p.StartInfo.UseShellExecute = false;
-                p.StartInfo.RedirectStandardOutput = true;
-                p.StartInfo.FileName = "nmap";
-                // -sS = Syn Scan (Faster)
-                // -oG = Greppable - Easier to parse
-                if (level == 1)
-                {
-                    // -F = Fast (100 Most Common Ports)
-                    p.StartInfo.Arguments = $"{ip} -sS -F -oG nmap-fast.txt";
-                }
-                else if (level == 2)
-                {
-                    // Top 1,000 Ports (Excl. Top 100?)
-                    p.StartInfo.Arguments = $"{ip} -sS -oG nmap-normal.txt";
-                }
-                else if (level == 3)
-                {
-                    // -p- = All Ports
-                    p.StartInfo.Arguments = $"{ip} -sS -p- -oG nmap-slow.txt -oN nmap-all.txt";
-                }
-                p.Start();
-                p.WaitForExit();
+                // -F = Fast (100 Most Common Ports)
+                General.RunProcess("nmap", $"{ip} -sS -F --min-rate=100 -oG nmap-fast.txt");
+            }
+            else if (level == 2)
+            {
+                // Top 1,000 Ports (Excl. Top 100?)
+                General.RunProcess("nmap", $"{ip} -sS --min-rate=500 -oG nmap-normal.txt");
+            }
+            else if (level == 3)
+            {
+                // -p- = All Ports
+                General.RunProcess("nmap", $"{ip} -sS -p- --min-rate=5000 -oG nmap-slow.txt");
             }
         }
 
-        static void ParsePorts(string fileName)
+        // Parses an -oG nmap file for ports
+        static void ParsePorts(string fileName, bool deleteFile = true)
         {
-            if (fileName == "portlist")
-            {
-                foreach (int port in portList)
-                {
-                    Thread myThread = new Thread(() => ScanPort(port));
-                    threadList.Add(myThread);
-                    myThread.Start();
-                }
-                return;
-            }
-
+            // Console.WriteLine("Parsing: " + fileName);
             StreamReader sr1 = new StreamReader(fileName);
             string[] fileLines = sr1.ReadToEnd().Split(new[] { Environment.NewLine }, StringSplitOptions.None);
             sr1.Close();
-            File.Delete(fileName);
+            if (deleteFile)
+            {
+                File.Delete(fileName);
+            }
+            // fileLines[1]: Host: 10.10.10.175 ()   Status: Up
+            ip = fileLines[1].Split(' ')[1];
             if (fileLines[1].Contains("0 hosts up"))
             {
                 Console.WriteLine("Error - Host is down :(");
                 Environment.Exit(0);
             }
-            if (!fileLines.Contains("/open/"))
+            if (!fileLines[2].Contains("/open/"))
             {
                 Console.WriteLine("No open ports found");
                 return;
@@ -244,9 +271,6 @@ namespace Reecon
                     if (!portList.Contains(port))
                     {
                         portList.Add(port);
-                        Thread myThread = new Thread(() => ScanPort(port));
-                        threadList.Add(myThread);
-                        myThread.Start();
                     }
                 }
                 else
@@ -257,6 +281,17 @@ namespace Reecon
                         Console.WriteLine("Unknown Status: " + port + " -> " + status);
                     }
                 }
+            }
+        }
+
+        // Multithreaded port scan
+        static void ScanPorts(List<int> portList)
+        {
+            foreach (int port in portList)
+            {
+                Thread myThread = new Thread(() => ScanPort(port));
+                threadList.Add(myThread);
+                myThread.Start();
             }
         }
 
@@ -570,12 +605,12 @@ namespace Reecon
                 {
                     // Woof
                     unknownPortResult += " - Microsoft Windows RPC over HTTP" + Environment.NewLine;
-                    unknownPortResult += " - Reecon currently lacks Microsoft Windows RPC over HTTP support";
+                    unknownPortResult += " - Reecon currently lacks Microsoft Windows RPC over HTTP support" + Environment.NewLine;
                     Console.WriteLine(unknownPortResult);
                 }
                 else if (theBanner == "Reecon - Connection reset by peer")
                 {
-                    Console.WriteLine(unknownPortResult + Environment.NewLine + "- Connection reset by peer (No Useful response)");
+                    Console.WriteLine(unknownPortResult + Environment.NewLine + "- Connection reset by peer (No Useful response)" + Environment.NewLine);
                 }
                 else if (theBanner == "Reecon - Closed")
                 {

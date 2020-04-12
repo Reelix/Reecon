@@ -134,8 +134,23 @@ namespace Reecon
             Console.SetCursorPosition(0, currentLineCursor);
         }
 
+        public static void RunProcess(string processName, string arguments)
+        {
+            // Console.WriteLine("Running 2 Process " + processName + " with args: " + arguments);
+            Process p = new Process();
+            p.StartInfo.UseShellExecute = false;
+            p.StartInfo.RedirectStandardOutput = true;
+            p.StartInfo.FileName = processName;
+            p.StartInfo.Arguments = arguments;
+            p.Start();
+            p.WaitForExit();
+            p.Close();
+            // Console.WriteLine("Process has run - Yay!");
+        }
+
         public static List<string> GetProcessOutput(string processName, string arguments)
         {
+            // Console.WriteLine("Running Process " + processName + " with args: " + arguments);
             List<string> outputLines = new List<string>();
             Process p = new Process();
             p.StartInfo.UseShellExecute = false;

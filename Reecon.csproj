@@ -80,6 +80,7 @@
     <Compile Include="SMTP.cs" />
     <Compile Include="SSH.cs" />
     <Compile Include="WebClientExtensions.cs" />
+    <Compile Include="WinRM.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
