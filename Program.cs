@@ -18,7 +18,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.11 ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.11a ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0 && ip.Length == 0)
             {
@@ -52,10 +52,17 @@ namespace Reecon
             }
             else if (args.Contains("-winrm-brute"))
             {
-                // TODO: gpedit.msc to add the host for winrm to allow Windows to scan
-                // Local Computer Policy -> Computer Configuration -> Administrative Templates -> Windows Components -> Windows Remote Management (WinRM) -> WinRM Client -> Trusted Hosts
                 WinRM.WinRMBrute(args);
                 Console.ResetColor();
+                return;
+            }
+            else if (args.Contains("-nmap"))
+            {
+                ip = args[1];
+                string fileName = args[2];
+                Console.WriteLine("Doing a full nmap scan on " + ip + " - This may take awhile...");
+                General.RunProcess("nmap", "-sS -p- --min-rate=5000 " + ip + " -oG " + fileName + ".nmap -oN " + fileName + ".txt");
+                Console.WriteLine("Run complete - " + fileName + ".nmap for reecon and " + fileName + ".txt for reading");
                 return;
             }
             bool mustPing = true;
@@ -140,12 +147,10 @@ namespace Reecon
                 ParsePorts("nmap-fast.txt");
                 RunNMap(2);
                 ParsePorts("nmap-normal.txt");
-                /*
                 Console.WriteLine("Running a Level 3 NMap - This could take awhile");
                 RunNMap(3);
                 // This generates 2 files 
                 ParsePorts("nmap-slow.txt");
-                */
             }
 
             // All files and params parsed - Scanning time!
@@ -232,7 +237,7 @@ namespace Reecon
             else if (level == 3)
             {
                 // -p- = All Ports
-                General.RunProcess("nmap", $"{ip} -sS -p- --min-rate=5000 -oG nmap-slow.txt");
+                General.RunProcess("nmap", $"{ip} -sS -p- --min-rate=5000 -oG nmap-slow.txt -oN nmap-all.txt");
             }
         }
 
