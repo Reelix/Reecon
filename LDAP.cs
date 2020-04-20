@@ -7,7 +7,7 @@ namespace Reecon
 {
     class LDAP
     {
-        public static string GetDefaultNamingContext(string ip)
+        public static string GetDefaultNamingContext(string ip, bool raw = false)
         {
             string ldapInfo = string.Empty;
             using (LdapConnection ldapConnection = new LdapConnection(ip))
@@ -22,7 +22,11 @@ namespace Reecon
                 if (result.Entries.Count == 1)
                 {
                     string defaultNamingContext = result.Entries[0].Attributes["defaultNamingContext"][0].ToString();
-                    ldapInfo = ldapInfo + Environment.NewLine + "- defaultNamingContext: " + defaultNamingContext;
+                    if (!raw)
+                    {
+                        ldapInfo = ldapInfo + Environment.NewLine + "- defaultNamingContext: ";
+                    }
+                    ldapInfo += defaultNamingContext;
                 }
             }
             return ldapInfo;

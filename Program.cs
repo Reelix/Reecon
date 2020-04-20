@@ -60,9 +60,12 @@ namespace Reecon
             {
                 ip = args[1];
                 string fileName = args[2];
-                Console.WriteLine("Doing a full nmap scan on " + ip + " - This may take awhile...");
+                DateTime beforeNmapDate = DateTime.Now;
+                Console.WriteLine("Doing an optimized Nmap scan on " + ip + " - This may take awhile...");
                 General.RunProcess("nmap", "-sS -p- --min-rate=5000 " + ip + " -oG " + fileName + ".nmap -oN " + fileName + ".txt");
-                Console.WriteLine("Run complete - " + fileName + ".nmap for reecon and " + fileName + ".txt for reading");
+                DateTime afterNmapDate = DateTime.Now;
+                TimeSpan nmapScanDuration = afterNmapDate - beforeNmapDate;
+                Console.WriteLine("Scan complete in " + string.Format("{0:0.00}s", nmapScanDuration.TotalSeconds) + " - " + fileName + ".nmap for reecon and " + fileName + ".txt for reading");
                 return;
             }
             bool mustPing = true;
@@ -198,6 +201,12 @@ namespace Reecon
                     Console.WriteLine("- rpcclient -U \"\" " + ip);
                     Console.WriteLine("-> enumdomusers");
                     Console.WriteLine("--> queryuser usernameHere");
+                }
+                if (portList.Contains(389))
+                {
+                    string defaultNamingContext = LDAP.GetDefaultNamingContext(ip, true);
+                    defaultNamingContext = defaultNamingContext.Replace("DC=", "").Replace(",", ".");
+                    Console.WriteLine("- GetNPUsers.py " + defaultNamingContext + "/ -usersfile sampleUsersHere.txt -dc-ip " + ip);
                 }
                 if (portList.Contains(443))
                 {
