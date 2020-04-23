@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Reecon
@@ -167,6 +168,43 @@ namespace Reecon
             p.Close();
             outputLines.RemoveAll(string.IsNullOrEmpty); // Useful?
             return outputLines;
+        }
+
+        public enum OS
+        {
+            Windows,
+            Linux,
+            Unknown
+        }
+
+        public static OS GetOS()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return OS.Windows;
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                return OS.Linux;
+            }
+            else
+            {
+                return OS.Unknown;
+            }
+        }
+
+        public static bool IsInstalledOnLinux(string app, string path)
+        {
+            List<string> processOutput = GetProcessOutput("which", app);
+            if (processOutput.Count == 0)
+            {
+                return false;
+            }
+            if (processOutput[0].Trim() == path)
+            {
+                return true;
+            }
+            return false;
         }
     }
 }

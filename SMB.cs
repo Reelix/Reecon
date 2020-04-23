@@ -34,6 +34,9 @@ namespace Reecon
 
         public static void SMBBrute(string[] args)
         {
+            // TODO: This still shows "Success" if:
+            // - The username doesn't exist
+            // - There is a space in the password
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 Console.WriteLine("SMB Brute only currently works in Linux - Heh :p");

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -18,7 +17,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.11a ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.12 ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0 && ip.Length == 0)
             {
@@ -425,22 +424,8 @@ namespace Reecon
                 // https://github.com/mono/mono/blob/master/mcs/class/System.DirectoryServices.Protocols/System.DirectoryServices.Protocols/SearchRequest.cs
                 // Wow Mono - Just Wow...
                 string port389Result = "Port 389 - LDAP";
-                try
-                {
-                    port389Result += LDAP.GetDefaultNamingContext(ip);
-                }
-                catch (NotImplementedException)
-                {
-                    port389Result += Environment.NewLine + " - Reecon can get the DefaultNamingContext, but Mono doesn't support it - Try run it on Windows";
-                }
-                try
-                {
-                    port389Result += LDAP.GetAccountInfo(ip);
-                }
-                catch
-                {
-                    port389Result += Environment.NewLine + " - Reecon can get some account information, but Mono doesn't support it - Try run it on Windows";
-                }
+                port389Result += LDAP.GetDefaultNamingContext(ip);
+                port389Result += LDAP.GetAccountInfo(ip);
                 Console.WriteLine(port389Result + Environment.NewLine);
             }
             else if (port == 443)
@@ -491,8 +476,19 @@ namespace Reecon
             else if (port == 3306)
             {
                 //MySql 
-                string theBanner = General.BannerGrab(ip, port);
-                Console.WriteLine("Port 3306 - MySQL" + Environment.NewLine + "- Reecon currently lacks MySQL support" + Environment.NewLine + "- Banner: " + theBanner + Environment.NewLine);
+                // Console.WriteLine("Port 3306 - MySQL" + Environment.NewLine + "- Reecon currently lacks MySQL support" + Environment.NewLine + "- Banner: " + theBanner + Environment.NewLine);
+                string port3306Result = "Port 3306 - MySQL" + Environment.NewLine;
+                string greeting = MySQL.ReceiveGreeting(ip);
+                port3306Result += greeting + Environment.NewLine;
+                port3306Result += "- Try: hydra -L users.txt -P passwords.txt " + ip + " mysql";
+                /*
+                if (!greeting.StartsWith("- Unauthorized") && !greeting.StartsWith("- Unable to connect: An existing connection was forcibly closed by the remote host"))
+                {
+                    port3306Result += MySQL.TestDefaults(ip); // Does not work - Do not re-enable
+                }*/
+                Console.WriteLine(port3306Result + Environment.NewLine);
+
+                // https://github.com/danielmiessler/SecLists/blob/master/Passwords/Default-Credentials/mysql-betterdefaultpasslist.txt
                 // https://svn.nmap.org/nmap/scripts/mysql-info.nse
                 // --> https://svn.nmap.org/nmap/nselib/mysql.lua -> receiveGreeting
             }
@@ -600,6 +596,7 @@ namespace Reecon
                     if (!string.IsNullOrEmpty(httpsData))
                     {
                         portData += httpsData + httpsData + Environment.NewLine;
+                        portData += "gobuster dir -u=https://" + ip + ":" + port + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25";
                     }
                     Console.WriteLine(portData); // Newlines and title are already included 
                 }
