@@ -52,6 +52,9 @@
     <WarningLevel>4</WarningLevel>
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject>Reecon.Program</StartupObject>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="LdapForNet, Version=2.3.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>packages\LdapForNet.2.3.0\lib\netstandard2.0\LdapForNet.dll</HintPath>
@@ -107,19 +110,11 @@
       <Install>false</Install>
     </BootstrapperPackage>
   </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="ILMerge" Version="3.0.29" />
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>..\..\packages\ILMerge.3.0.29\tools\net452\ILMerge.exe Reecon.exe /out:Reecon2.exe LdapForNet.dll
 del Reecon.exe
-move Reecon2.exe Reecon.exe</PostBuildEvent>
+move Reecon2.exe Reecon.exe
+del Reecon2.pdb</PostBuildEvent>
   </PropertyGroup>
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('packages\ILMerge.3.0.29\build\ILMerge.props')" Text="$([System.String]::Format('$(ErrorText)', 'packages\ILMerge.3.0.29\build\ILMerge.props'))" />
-  </Target>
 </Project>
