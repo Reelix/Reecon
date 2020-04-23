@@ -112,9 +112,11 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>..\..\packages\ILMerge.3.0.29\tools\net452\ILMerge.exe Reecon.exe /out:Reecon2.exe LdapForNet.dll
-del Reecon.exe
-move Reecon2.exe Reecon.exe
-del Reecon2.pdb</PostBuildEvent>
+    <PostBuildEvent Condition="'$(OS)' == 'Windows_NT' ">
+		..\..\packages\ILMerge.3.0.29\tools\net452\ILMerge.exe Reecon.exe /out:Reecon2.exe LdapForNet.dll
+		del Reecon.exe
+		move Reecon2.exe Reecon.exe
+		del Reecon2.pdb
+   </PostBuildEvent>
   </PropertyGroup>
 </Project>
