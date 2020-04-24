@@ -479,7 +479,7 @@ namespace Reecon
                 // Console.WriteLine("Port 3306 - MySQL" + Environment.NewLine + "- Reecon currently lacks MySQL support" + Environment.NewLine + "- Banner: " + theBanner + Environment.NewLine);
                 string port3306Result = "Port 3306 - MySQL" + Environment.NewLine;
                 string version = MySQL.GetVersion(ip);
-                port3306Result += version + Environment.NewLine;
+                port3306Result += version;
                 if (!version.Contains("Access Denied"))
                 {
                     port3306Result += "- Try: hydra -L users.txt -P passwords.txt " + ip + " mysql" + Environment.NewLine;
