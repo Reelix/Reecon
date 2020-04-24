@@ -59,6 +59,9 @@
     <Reference Include="LdapForNet, Version=2.3.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>packages\LdapForNet.2.3.0\lib\netstandard2.0\LdapForNet.dll</HintPath>
     </Reference>
+    <Reference Include="MyRawClient">
+      <HintPath>.\MyRawClient.dll</HintPath>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>packages\Newtonsoft.Json.12.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
@@ -118,5 +121,13 @@
 		move Reecon2.exe Reecon.exe
 		del Reecon2.pdb
    </PostBuildEvent>
+  </PropertyGroup>
+  <PropertyGroup>
+    <PostBuildEvent>
+		..\..\packages\ILMerge.3.0.29\tools\net452\ILMerge.exe Reecon.exe /out:Reecon2.exe LdapForNet.dll MyRawClient.dll
+		del Reecon.exe
+		move Reecon2.exe Reecon.exe
+		del Reecon2.pdb
+</PostBuildEvent>
   </PropertyGroup>
 </Project>
