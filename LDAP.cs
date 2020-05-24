@@ -1,25 +1,35 @@
 ﻿using LdapForNet;
 using LdapForNet.Native;
 using System;
-//using System.DirectoryServices;
-//using System.DirectoryServices.Protocols;
-using System.Text;
+using System.Collections.Generic;
+using static LdapForNet.Native.Native;
 
 namespace Reecon
 {
-    class LDAP
+    class LDAP // Port 389
     {
         public static string GetDefaultNamingContext(string ip, bool raw = false)
         {
             string ldapInfo = string.Empty;
             using (LdapConnection ldapConnection = new LdapConnection())
             {
-                ldapConnection.Connect(ip);
+                ldapConnection.Connect(ip, 389);
                 LdapCredential anonymousCredential = new LdapCredential();
-                ldapConnection.Bind(Native.LdapAuthType.Simple, anonymousCredential);
+                try
+                {
+                    ldapConnection.Bind(LdapAuthType.Simple, anonymousCredential);
+                }
+                catch (LdapException le)
+                {
+                    return Environment.NewLine + "- Connection Error: " + le.Message;
+                }
+                catch (Exception ex)
+                {
+                    return Environment.NewLine + "- Unknown Error: " + ex.Message;
+                }
                 // ldapConnection.AuthType = AuthType.Anonymous;
 
-                var searchEntries = ldapConnection.Search(null, "(objectclass=*)", LdapForNet.Native.Native.LdapSearchScope.LDAP_SCOPE_BASE);
+                var searchEntries = ldapConnection.Search(null, "(objectclass=*)", scope: LdapSearchScope.LDAP_SCOPE_BASE);
                 // SearchRequest request = new SearchRequest(null, "(objectclass=*)", System.DirectoryServices.Protocols.SearchScope.Base, "defaultNamingContext");
 
                 // SearchResponse result = (SearchResponse)ldapConnection.SendRequest(request);
@@ -48,7 +58,15 @@ namespace Reecon
                 LdapCredential anonymousCredential = new LdapCredential();
                 ldapConnection.Bind(Native.LdapAuthType.Simple, anonymousCredential);
                 var rootDse = ldapConnection.GetRootDse();
-                var searchEntries = ldapConnection.Search(rootDse.Attributes["defaultNamingContext"][0], "(objectclass=user)", LdapForNet.Native.Native.LdapSearchScope.LDAP_SCOPE_SUB);
+                IList<LdapEntry> searchEntries;
+                try
+                {
+                    searchEntries = ldapConnection.Search(rootDse.Attributes["defaultNamingContext"][0], "(objectclass=user)", scope: LdapSearchScope.LDAP_SCOPE_SUB);
+                }
+                catch (Exception ex)
+                {
+                    return Environment.NewLine + "- No Anonymous Access Allowed";
+                }
                 foreach (var result in searchEntries)
                 {
                     string accountName = result.Attributes["sAMAccountName"].Count > 0 ? result.Attributes["sAMAccountName"][0].ToString() : string.Empty;

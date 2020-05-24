@@ -1,11 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Management;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Reecon
 {
@@ -40,7 +35,7 @@ namespace Reecon
                     fileList = "- showmount does not exist - Bug Reelix to update this section for more compatibility";
                 }
             }
-            else
+            else if (General.GetOS() == General.OS.Linux)
             {
                 if (General.IsInstalledOnLinux("showmount", "/sbin/showmount") == true)
                 {
@@ -90,6 +85,10 @@ namespace Reecon
                     }
                     */
                 }
+            }
+            else
+            {
+                Console.WriteLine("Error - OS Not Supportd - Bug Reelix");
             }
             return "";
         }

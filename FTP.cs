@@ -3,9 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Sockets;
-using System.Text;
-using System.Threading;
 
 namespace Reecon
 {
@@ -48,7 +45,7 @@ namespace Reecon
                 }
                 if (response.WelcomeMessage.Trim() != "230 Login successful.")
                 {
-                    Console.WriteLine("Welcome Success?");
+                    // Console.WriteLine("Welcome Success?");
                     ftpLoginResult += Environment.NewLine + "- Welcome Message: " + response.WelcomeMessage;
                 }
                 if (response.SupportsHeaders)

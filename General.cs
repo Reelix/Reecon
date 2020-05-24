@@ -10,10 +10,11 @@ namespace Reecon
 {
     class General
     {
-        public static string BannerGrab(string ip, int port, string initialText = "")
+        // Multiple potentially slow requests - Threading?
+        public static string BannerGrab(string ip, int port, string initialText = "", int bufferSize = 512)
         {
             string bannerText = "";
-            Byte[] buffer = new Byte[512];
+            Byte[] buffer = new Byte[bufferSize];
             using (Socket bannerGrabSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
                 bannerGrabSocket.ReceiveTimeout = 5000;
@@ -174,6 +175,7 @@ namespace Reecon
         {
             Windows,
             Linux,
+            Mac,
             Unknown
         }
 
@@ -186,6 +188,10 @@ namespace Reecon
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 return OS.Linux;
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                return OS.Mac;
             }
             else
             {

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 
 namespace Reecon
@@ -13,11 +14,12 @@ namespace Reecon
         static readonly List<int> portList = new List<int>();
         static string ip = ""; // For Dev
         static readonly List<Thread> threadList = new List<Thread>();
+        public static string postScanActions = "";
         static void Main(string[] args)
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.12 ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.13 ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0 && ip.Length == 0)
             {
@@ -55,7 +57,7 @@ namespace Reecon
                 Console.ResetColor();
                 return;
             }
-            else if (args.Contains("-nmap"))
+            else if (args.Contains("-nmap") || args.Contains("--nmap"))
             {
                 ip = args[1];
                 string fileName = args[2];
@@ -68,11 +70,11 @@ namespace Reecon
                 return;
             }
             bool mustPing = true;
-            if (args.Contains("-noping"))
+            if (args.Contains("-noping") || args.Contains("--noping"))
             {
                 mustPing = false;
             }
-            else if (ip.Length == 0 && args.Length > 0)
+            if (ip.Length == 0 && args.Length > 0)
             {
                 if (args[0].Trim().Length == 0)
                 {
@@ -85,7 +87,7 @@ namespace Reecon
                 {
                     ParsePorts(ip, false);
                 }
-                if (args.Length > 1)
+                else if (args.Length > 1)
                 {
                     portList.AddRange(args[1].Split(',').ToList().Select(x => int.Parse(x)));
                 }
@@ -189,10 +191,6 @@ namespace Reecon
                 {
                     Console.WriteLine("- Try a zone transfer (Linux): dig axfr domain.com @" + ip);
                 }
-                if (portList.Contains(80))
-                {
-                    Console.WriteLine("- gobuster dir -u=http://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http.txt -x.php,.txt");
-                }
                 if (portList.Contains(139))
                 {
                     // https://pen-testing.sans.org/blog/2013/07/24/plundering-windows-account-info-via-authenticated-smb-sessions
@@ -207,10 +205,6 @@ namespace Reecon
                     defaultNamingContext = defaultNamingContext.Replace("DC=", "").Replace(",", ".");
                     Console.WriteLine("- GetNPUsers.py " + defaultNamingContext + "/ -usersfile sampleUsersHere.txt -dc-ip " + ip);
                 }
-                if (portList.Contains(443))
-                {
-                    Console.WriteLine("- gobuster dir -u=https://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-https.txt -x.php,.txt");
-                }
                 if (portList.Contains(445))
                 {
                     Console.WriteLine("- smbclient -L " + ip);
@@ -222,6 +216,7 @@ namespace Reecon
                     Console.WriteLine("- showmount -e " + ip);
                     Console.WriteLine("-> mount -t nfs -o vers=2 " + ip + ":/mountNameHere /mnt");
                 }
+                Console.WriteLine(postScanActions);
             }
             DateTime endDate = DateTime.Now;
             TimeSpan t = endDate - startDate;
@@ -273,7 +268,8 @@ namespace Reecon
                 return;
             }
             string portLine = fileLines[2];
-            string portSection = portLine.Split('\t')[1];
+            string[] portItems = portLine.Split('\t');
+            string portSection = portItems[1]; 
             portSection = portSection.Replace("Ports: ", "");
             foreach (var item in portSection.Split(new[] { ", " }, StringSplitOptions.None))
             {
@@ -362,19 +358,13 @@ namespace Reecon
             else if (port == 80)
             {
                 string port80result = "Port 80 - HTTP";
-                // RunGoBuster()
-                var httpInfo = HTTP.GetHTTPInfo(ip, 80, false);
-                string portData = HTTP.FormatResponse(httpInfo.StatusCode, httpInfo.Title, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
-                if (portData != null)
+                string portData = HTTP.GetInfo(ip, 80, false);
+                if (portData == "")
                 {
-                    string robotsFile = HTTP.CheckRobots(ip, 80, false);
-                    portData = robotsFile + portData;
-                    Console.WriteLine(port80result + Environment.NewLine + portData + Environment.NewLine);
+                    portData = "- No Info Found";
                 }
-                else
-                {
-                    Console.WriteLine(port + " -- Woof!" + Environment.NewLine);
-                }
+                Console.WriteLine(port80result + Environment.NewLine + portData + Environment.NewLine);
+                postScanActions += "- gobuster dir -u=http://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http.txt -x.php,.txt" + Environment.NewLine;
             }
             else if (port == 88)
             {
@@ -432,11 +422,17 @@ namespace Reecon
             {
                 string port443Result = "Port 443 - HTTPS";
                 // Get SSL Detauls
-                var httpsInfo = HTTP.GetHTTPInfo(ip, 443, true);
-                string portData = HTTP.FormatResponse(httpsInfo.StatusCode, httpsInfo.Title, httpsInfo.DNS, httpsInfo.Headers, httpsInfo.SSLCert);
-                string robotsFile = HTTP.CheckRobots(ip, 443, true);
-                portData = robotsFile + portData;
-                Console.WriteLine(port443Result + Environment.NewLine + portData + Environment.NewLine);
+                string portData = HTTP.GetInfo(ip, 443, true);
+                if (portData == "")
+                {
+                    portData = "- No Info Found";
+                    Console.WriteLine(port443Result + Environment.NewLine + portData + Environment.NewLine);
+                }
+                else
+                {
+                    Console.WriteLine(port443Result + Environment.NewLine + portData + Environment.NewLine);
+                    postScanActions += "- gobuster dir -u=https://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http.txt -x.php,.txt" + Environment.NewLine;
+                }
             }
             else if (port == 445)
             {
@@ -565,45 +561,18 @@ namespace Reecon
                     || theBanner.Contains("<p>Error code: 400</p>") // TryHackMe - Task 12 Day 7
                     ) // Probably HTTP or HTTPS
                 {
-                    string portData = "";
-                    // Try HTTP
-                    string httpData = "";
-                    string httpsData = "";
-                    string robotsFile = "";
-                    var httpInfo = HTTP.GetHTTPInfo(ip, port, false);
-                    if (httpInfo != (new HttpStatusCode(), null, null, null, null))
+                    string httpData = HTTP.GetInfo(ip, port, false);
+                    if (httpData != "")
                     {
-                        robotsFile = HTTP.CheckRobots(ip, port, false);
-                        httpData = unknownPortResult + " - HTTP" + Environment.NewLine;
-                        if (robotsFile != "")
-                        {
-                            httpData += robotsFile + Environment.NewLine;
-                        }
-                        httpData += HTTP.FormatResponse(httpInfo.StatusCode, httpInfo.Title, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
+                        Console.WriteLine(unknownPortResult + " - HTTP" + Environment.NewLine + httpData);
+                        postScanActions += "- gobuster dir -u=http://" + ip + ":" + port + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http.txt -x.php,.txt" + Environment.NewLine;
                     }
-                    // Try HTTPS
-                    var httpsInfo = HTTP.GetHTTPInfo(ip, port, true);
-                    if (httpsInfo != (new HttpStatusCode(), null, null, null, null))
+                    string httpsData = HTTP.GetInfo(ip, port, true);
+                    if (httpsData != "")
                     {
-                        robotsFile = HTTP.CheckRobots(ip, port, true);
-                        httpsData = unknownPortResult + " - HTTPS" + Environment.NewLine;
-                        if (robotsFile != "")
-                        {
-                            httpsData += robotsFile + Environment.NewLine;
-                        }
-                        httpsData += HTTP.FormatResponse(httpsInfo.StatusCode, httpsInfo.Title, httpsInfo.DNS, httpsInfo.Headers, httpsInfo.SSLCert);
+                        Console.WriteLine(unknownPortResult + " - HTTPS" + Environment.NewLine + httpsData);
+                        postScanActions += "- gobuster dir -u=https://" + ip + ":" + port + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http.txt -x.php,.txt" + Environment.NewLine;
                     }
-
-                    if (!string.IsNullOrEmpty(httpData))
-                    {
-                        portData += portData + httpData + Environment.NewLine;
-                    }
-                    if (!string.IsNullOrEmpty(httpsData))
-                    {
-                        portData += httpsData + httpsData + Environment.NewLine;
-                        portData += "gobuster dir -u=https://" + ip + ":" + port + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25";
-                    }
-                    Console.WriteLine(portData); // Newlines and title are already included 
                 }
                 else if (theBanner == "-ERR unknown command 'Woof'") // Probably Redis
                 {

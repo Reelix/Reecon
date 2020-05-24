@@ -10,8 +10,25 @@ namespace Reecon
 {
     class HTTP
     {
-        // Split to 4 in threads?
-        public static (HttpStatusCode StatusCode, string Title, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert) GetHTTPInfo(string ip, int port, bool isHTTPS)
+        public static string GetInfo(string ip, int port, bool isHTTPS)
+        {
+            var httpInfo = GetHTTPInfo(ip, port, isHTTPS);
+            if (httpInfo == (0, null, null, null, null))
+            {
+                return "";
+            }
+            string portData = FormatResponse(httpInfo.StatusCode, httpInfo.Title, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
+            string robotsFile = CheckRobots(ip, port, isHTTPS);
+            portData = robotsFile + portData;
+            string passwdFile = CheckPasswd(ip, port);
+            if (passwdFile != "")
+            {
+                portData += Environment.NewLine + passwdFile + Environment.NewLine;
+            }
+            return portData;
+        }
+
+        private static (HttpStatusCode StatusCode, string Title, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert) GetHTTPInfo(string ip, int port, bool isHTTPS)
         {
             string pageTitle = "";
             string pageData = "";
@@ -31,6 +48,7 @@ namespace Reecon
                 request.AllowAutoRedirect = false;
 
                 // Can crash here due to a WebException on 401 Unauthorized / 403 Forbidden errors, so have to do some things twice
+                request.Timeout = 5000;
                 using (var response = request.GetResponse() as HttpWebResponse)
                 {
                     statusCode = response.StatusCode;
@@ -81,7 +99,7 @@ namespace Reecon
             return (statusCode, pageTitle, dns, headers, cert);
         }
 
-        public static string CheckRobots(string ip, int port, bool isHTTPS)
+        private static string CheckRobots(string ip, int port, bool isHTTPS)
         {
             string returnText = "";
             string urlPrefix = "http";
@@ -126,7 +144,19 @@ namespace Reecon
             return returnText;
         }
 
-        public static string FormatResponse(HttpStatusCode StatusCode, string Title, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert)
+        private static string CheckPasswd(string ip, int port)
+        {
+            string result = General.BannerGrab(ip, port, "GET /../../../../../../etc/passwd" + Environment.NewLine + Environment.NewLine, 2500);
+            if (result.Contains("root"))
+            {
+                return "- Hidden Passwd File Found (GET /../../../../../../etc/passwd)!" + Environment.NewLine + result;
+                // Need to format this better...
+
+            }
+            return "";
+        }
+
+        private static string FormatResponse(HttpStatusCode StatusCode, string Title, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert)
         {
             string responseText = "";
 
