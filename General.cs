@@ -212,5 +212,10 @@ namespace Reecon
             }
             return false;
         }
+
+        public static byte[] GetBytes(string inputString)
+        {
+            return Encoding.ASCII.GetBytes(inputString);
+        }
     }
 }

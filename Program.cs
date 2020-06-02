@@ -2,9 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
-using System.Runtime.InteropServices;
-using System.Security.Cryptography.X509Certificates;
+using System.Net; // 1 entry - Refactor?
 using System.Threading;
 
 namespace Reecon
@@ -19,7 +17,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.13 ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.13a ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0 && ip.Length == 0)
             {
@@ -377,6 +375,17 @@ namespace Reecon
                 Console.WriteLine(port110result + Environment.NewLine);
 
             }
+            else if (port == 111)
+            {
+                string port111result = "Port 111 - rpcbind" + Environment.NewLine;
+                List<string> processOutput = General.GetProcessOutput("rpcinfo", "-p " + ip);
+                string rpcOutput = "";
+                foreach (string item in processOutput)
+                {
+                    rpcOutput += "- " + item + Environment.NewLine;
+                }
+                Console.WriteLine(port111result + rpcOutput);
+            }
             else if (port == 135)
             {
                 Console.WriteLine("Port 135 - Microsoft Windows RPC" + Environment.NewLine + "- Reecon currently lacks Microsoft Windows RPC support" + Environment.NewLine);
@@ -436,7 +445,7 @@ namespace Reecon
             }
             else if (port == 445)
             {
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                if (General.GetOS() == General.OS.Windows)
                 {
                     string port445Result = "Port 445 - Microsoft SMB";
                     string portData = SMB.TestAnonymousAccess(ip);
@@ -528,7 +537,7 @@ namespace Reecon
             {
                 // Try parse the banner
                 string theBanner = General.BannerGrab(ip, port);
-
+                byte[] theBannerBytes = General.GetBytes(theBanner);
                 string unknownPortResult = "Port " + port;
 
                 // 220 ib01.supersechosting.htb ESMTP Exim 4.89 Sat, 19 Oct 2019 16:02:49 +0200
@@ -592,6 +601,25 @@ namespace Reecon
                     unknownPortResult += " - Microsoft Windows RPC over HTTP" + Environment.NewLine;
                     unknownPortResult += " - Reecon currently lacks Microsoft Windows RPC over HTTP support" + Environment.NewLine;
                     Console.WriteLine(unknownPortResult);
+                }
+                else if (theBanner.StartsWith("AMQP") && theBannerBytes.Length == 8)
+                {
+                    // First 0-3: AMPQ
+                    // 4-7: Version
+                    if (theBannerBytes[4] == 0 && theBannerBytes[5] == 0 && theBannerBytes[6] == 9 && theBannerBytes[7] == 1)
+                    {
+                        Console.WriteLine("Port " + port + " - AMQP" + Environment.NewLine + "- Version 0-9-1" + Environment.NewLine + "- Bug Reelix to finish AMQP decoding..." + Environment.NewLine);
+                        // theBanner = General.BannerGrab(ip, port, theBanner); // Need to send the bytes of AMQP0091
+
+                        // Oh gawd....
+                        // \u0001\0\0\0\0\u0001?\0\n\0\n\0\t\0\0\u0001?\fcapabilitiesF\0\0\0?\u0012publisher_confirmst\u0001\u001aexchange_exchange_bindingst\u0001\nbasic.nackt\u0001\u0016consumer_cancel_notifyt\u0001\u0012connection.blockedt\u0001\u0013consumer_prioritiest\u0001\u001cauthentication_failure_closet\u0001\u0010per_consumer_qost\u0001\u000fdirect_reply_tot\u0001\fcluster_nameS\0\0\0\u0010rabbit@dyplesher\tcopyrightS\0\0\0.Copyright (C) 2007-2018 Pivotal Software, Inc.\vinformationS\0\0\05Licensed under the MPL.  See http://www.rabbitmq.com/\bplatformS\0\0\0\u0011Erlang/OTP 22.0.7\aproductS\0\0\0\bRabbitMQ\aversionS\0\0\0\u00053.7.8\0\0\0\u000ePLAIN AMQPLAIN\0\0\0\u0005en_US?
+                        // https://svn.nmap.org/nmap/nselib/amqp.lua
+                        postScanActions += "- AMQP is up and nmap knows more: nmap --script amqp-info -p" + port + " " + ip + Environment.NewLine;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Port " + port + "- AMQP" + Environment.NewLine + "- Unknown AMQP Version: " + (int)theBannerBytes[4] + (int)theBannerBytes[5] + (int)theBannerBytes[6] + (int)theBannerBytes[7] + Environment.NewLine);
+                    }
                 }
                 else if (theBanner == "Reecon - Connection reset by peer")
                 {

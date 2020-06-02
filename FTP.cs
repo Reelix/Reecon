@@ -68,6 +68,10 @@ namespace Reecon
             }
             catch (WebException ex)
             {
+                if (ex.Message == "Unable to connect to the remote server")
+                {
+                    return Environment.NewLine + "- Unable to connect :<";
+                }
                 // Console.WriteLine("Some ex: " + ex.Message);
                 FtpWebResponse response = (FtpWebResponse)ex.Response;
                 ftpLoginResult += Environment.NewLine + "- Banner: " + response.BannerMessage.Trim();
