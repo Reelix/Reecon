@@ -83,6 +83,7 @@
     <Compile Include="LDAP.cs" />
     <Compile Include="LFI.cs" />
     <Compile Include="MySQL.cs" />
+    <Compile Include="NETBIOS.cs" />
     <Compile Include="NFS.cs" />
     <Compile Include="POP3.cs" />
     <Compile Include="Program.cs" />

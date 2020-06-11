@@ -17,7 +17,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.13a ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.13b ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0 && ip.Length == 0)
             {
@@ -189,14 +189,6 @@ namespace Reecon
                 {
                     Console.WriteLine("- Try a zone transfer (Linux): dig axfr domain.com @" + ip);
                 }
-                if (portList.Contains(139))
-                {
-                    // https://pen-testing.sans.org/blog/2013/07/24/plundering-windows-account-info-via-authenticated-smb-sessions
-
-                    Console.WriteLine("- rpcclient -U \"\" " + ip);
-                    Console.WriteLine("-> enumdomusers");
-                    Console.WriteLine("--> queryuser usernameHere");
-                }
                 if (portList.Contains(389))
                 {
                     string defaultNamingContext = LDAP.GetDefaultNamingContext(ip, true);
@@ -205,7 +197,6 @@ namespace Reecon
                 }
                 if (portList.Contains(445))
                 {
-                    Console.WriteLine("- smbclient -L " + ip);
                     Console.WriteLine("- nmap --script smb-enum-shares.nse -p445 " + ip);
                 }
                 if (portList.Contains(2049))
@@ -392,24 +383,9 @@ namespace Reecon
             }
             else if (port == 139)
             {
-                string port139result = "Port 139 - Microsoft Windows netbios-ssn" + Environment.NewLine;
-                // TODO: https://dzone.com/articles/practical-fun-with-netbios-name-service-and-comput
-                try
-                {
-                    IPHostEntry entry = Dns.GetHostEntry(ip);
-                    if (entry != null)
-                    {
-                        if (!string.IsNullOrEmpty(entry.HostName))
-                        {
-                            port139result += "- HostName: " + entry.HostName + Environment.NewLine;
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    port139result += "- Unable to get GNSHostEntry: " + ex.Message + Environment.NewLine;
-                }
-                port139result += "- nmap -sC -sV has far more info for this port" + Environment.NewLine;
+                string port139result = "Port 139 - NETBIOS Session Service (netbios-ssn)" + Environment.NewLine;
+                port139result += NETBIOS.GetInfo(ip) + Environment.NewLine;
+                port139result += "- nmap -sC -sV may have some additional information for this port" + Environment.NewLine;
                 Console.WriteLine(port139result);
             }
             else if (port == 143)
@@ -455,8 +431,9 @@ namespace Reecon
                 }
                 else
                 {
-                    // TODO: See if I can run smbclient -L \\ip and get the output ?
-                    Console.WriteLine("Port 445 - Microsoft SMB " + Environment.NewLine + "- Reecon currently lacks Microsoft SMB support outside Windows" + Environment.NewLine);
+                    string port445Result = "Port 445 - Microsoft SMB";
+                    string portData = SMB.TestAnonymousAccess_Linux(ip);
+                    Console.WriteLine(port445Result + Environment.NewLine + portData + Environment.NewLine);
                 }
             }
             else if (port == 593)

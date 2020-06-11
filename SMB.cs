@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Reecon
 {
-    class SMB
+    class SMB //445
     {
         public static string TestAnonymousAccess(string IP, string username = "", string password = "")
         {
@@ -30,6 +30,24 @@ namespace Reecon
                 toReturn += Environment.NewLine + " - Unable to Anonymous connect: " + ex.Message;
             }
             return toReturn;
+        }
+
+        public static string TestAnonymousAccess_Linux(string ip)
+        {
+            if (General.IsInstalledOnLinux("smbclient", "/usr/bin/smbclient"))
+            {
+                string smbClientItems = "";
+                List<string> processResults = General.GetProcessOutput("smbclient", " -L 10.10.10.192 --no-pass");
+                foreach (string item in processResults)
+                {
+                    smbClientItems += item + Environment.NewLine;
+                }
+                return smbClientItems;
+            }
+            else
+            {
+                return "- Cannot find smbclient :<";
+            }
         }
 
         public static void SMBBrute(string[] args)

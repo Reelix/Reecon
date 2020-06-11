@@ -46,7 +46,7 @@ namespace Reecon
                 if (response.WelcomeMessage.Trim() != "230 Login successful.")
                 {
                     // Console.WriteLine("Welcome Success?");
-                    ftpLoginResult += Environment.NewLine + "- Welcome Message: " + response.WelcomeMessage;
+                    ftpLoginResult += Environment.NewLine + "- Welcome Message: " + response.WelcomeMessage.Trim();
                 }
                 if (response.SupportsHeaders)
                 {
