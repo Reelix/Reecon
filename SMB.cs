@@ -10,6 +10,22 @@ namespace Reecon
 {
     class SMB //445
     {
+        public static string GetInfo(string ip)
+        {
+            string returnInfo = "";
+            if (General.GetOS() == General.OS.Windows)
+            {
+                string portData = SMB.TestAnonymousAccess(ip);
+                string morePortData = SMB.TestAnonymousAccess(ip, "anonymous");
+                string evenMorePortData = SMB.TestAnonymousAccess(ip, "anonymous", "anonymous");
+                returnInfo = portData + morePortData + evenMorePortData;
+            }
+            else
+            {
+                returnInfo = SMB.TestAnonymousAccess_Linux(ip);
+            }
+            return returnInfo;
+        }
         public static string TestAnonymousAccess(string IP, string username = "", string password = "")
         {
             string toReturn = "";
@@ -21,28 +37,37 @@ namespace Reecon
                     List<SMB_GetNetShares.SHARE_INFO_1> shareInfoList = getNetShares.EnumNetShares(IP).ToList();
                     foreach (var shareInfo in shareInfoList)
                     {
-                        toReturn += Environment.NewLine + " - Anonymous Share: " + shareInfo.shi1_netname + " - " + shareInfo.shi1_type + " - " + shareInfo.shi1_remark;
+                        toReturn += " - Anonymous Share: " + shareInfo.shi1_netname + " - " + shareInfo.shi1_type + " - " + shareInfo.shi1_remark + Environment.NewLine;
                     }
+                    toReturn = toReturn.Trim(Environment.NewLine.ToCharArray());
                 }
             }
             catch (Exception ex)
             {
-                toReturn += Environment.NewLine + " - Unable to Anonymous connect: " + ex.Message;
+                if (ex.Message == "The user name or password is incorrect")
+                {
+                    toReturn = "";
+                }
+                else
+                {
+                    toReturn += " - Unable to connect: " + ex.Message;
+                }
             }
             return toReturn;
         }
 
-        public static string TestAnonymousAccess_Linux(string ip)
+        private static string TestAnonymousAccess_Linux(string ip)
         {
             if (General.IsInstalledOnLinux("smbclient", "/usr/bin/smbclient"))
             {
                 string smbClientItems = "";
-                List<string> processResults = General.GetProcessOutput("smbclient", " -L 10.10.10.192 --no-pass");
+                List<string> processResults = General.GetProcessOutput("smbclient", " -L " + ip + " --no-pass");
                 foreach (string item in processResults)
                 {
+                    // smbclient \\\\10.10.10.192\\forensic --no-pass -c "ls"
                     smbClientItems += item + Environment.NewLine;
                 }
-                return smbClientItems;
+                return smbClientItems.Trim(Environment.NewLine.ToCharArray());
             }
             else
             {

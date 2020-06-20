@@ -13,11 +13,11 @@ namespace Reecon
         public static string GetInfo(string ip, int port, bool isHTTPS)
         {
             var httpInfo = GetHTTPInfo(ip, port, isHTTPS);
-            if (httpInfo == (0, null, null, null, null))
+            if (httpInfo == (0, null, null, null, null, null))
             {
                 return "";
             }
-            string portData = FormatResponse(httpInfo.StatusCode, httpInfo.Title, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
+            string portData = FormatResponse(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
             string robotsFile = CheckRobots(ip, port, isHTTPS);
             portData = robotsFile + portData;
             string passwdFile = CheckPasswd(ip, port);
@@ -25,13 +25,17 @@ namespace Reecon
             {
                 portData += Environment.NewLine + passwdFile + Environment.NewLine;
             }
+            if (portData == "")
+            {
+                portData = "- No Info Found";
+            }
             return portData;
         }
 
-        private static (HttpStatusCode StatusCode, string Title, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert) GetHTTPInfo(string ip, int port, bool isHTTPS)
+        private static (HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert) GetHTTPInfo(string ip, int port, bool isHTTPS)
         {
             string pageTitle = "";
-            string pageData = "";
+            string pageText = "";
             string dns = "";
             string urlPrefix = "http";
             HttpStatusCode statusCode = new HttpStatusCode();
@@ -56,7 +60,7 @@ namespace Reecon
                     headers = response.Headers;
                     using (StreamReader readStream = new StreamReader(response.GetResponseStream()))
                     {
-                        pageData = readStream.ReadToEnd();
+                        pageText = readStream.ReadToEnd();
                     }
                     response.Close();
                 }
@@ -67,7 +71,7 @@ namespace Reecon
                 {
                     // WebClient wc = new WebClient();
                     // string someString = wc.DownloadString("https://" + ip + ":" + port);
-                    return (statusCode, null, null, null, null);
+                    return (statusCode, null, null, null, null, null);
                 }
                 HttpWebResponse response = (HttpWebResponse)ex.Response;
                 statusCode = response.StatusCode;
@@ -75,7 +79,7 @@ namespace Reecon
                 headers = response.Headers;
                 using (StreamReader readStream = new StreamReader(response.GetResponseStream()))
                 {
-                    pageData = readStream.ReadToEnd();
+                    pageText = readStream.ReadToEnd();
                 }
                 response.Close();
             }
@@ -83,12 +87,12 @@ namespace Reecon
             {
                 // Something went really wrong...
                 Console.WriteLine("GetHTTPInfo - Fatal Woof :( - " + ex.Message);
-                return (statusCode, null, null, null, null);
+                return (statusCode, null, null, null, null, null);
             }
 
-            if (pageData.Contains("<title>") && pageData.Contains("</title>"))
+            if (pageText.Contains("<title>") && pageText.Contains("</title>"))
             {
-                pageTitle = pageData.Remove(0, pageData.IndexOf("<title>") + "<title>".Length);
+                pageTitle = pageText.Remove(0, pageText.IndexOf("<title>") + "<title>".Length);
                 pageTitle = pageTitle.Substring(0, pageTitle.IndexOf("</title>"));
             }
             X509Certificate2 cert = null;
@@ -96,7 +100,7 @@ namespace Reecon
             {
                 cert = new X509Certificate2(request.ServicePoint.Certificate);
             }
-            return (statusCode, pageTitle, dns, headers, cert);
+            return (statusCode, pageTitle, pageText, dns, headers, cert);
         }
 
         private static string CheckRobots(string ip, int port, bool isHTTPS)
@@ -156,33 +160,36 @@ namespace Reecon
             return "";
         }
 
-        private static string FormatResponse(HttpStatusCode StatusCode, string Title, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert)
+        private static string FormatResponse(HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert)
         {
             string responseText = "";
 
             if (StatusCode != HttpStatusCode.OK)
             {
                 // There's a low chance that it will return a StatusCode that is not in the HttpStatusCode list in which case (int)StatusCode will crash
-                try
-                {
-                    responseText += "- Non-OK Status Code: " + (int)StatusCode + " " + StatusCode + Environment.NewLine;
-                }
-                catch
-                {
-                    responseText += "- Unknown Status Code: " + " " + StatusCode + Environment.NewLine;
-                }
-
                 if (StatusCode != HttpStatusCode.OK)
                 {
+                    try
+                    {
+                        responseText += "- Non-OK Status Code: " + (int)StatusCode + " " + StatusCode + Environment.NewLine;
+                    }
+                    catch
+                    {
+                        responseText += "- Unknown Status Code: " + " " + StatusCode + Environment.NewLine;
+                    }
                     if (Headers != null && Headers.Get("Location") != null)
                     {
-                        responseText += "- Location: " + Headers.Get("Location") + Environment.NewLine;
+                        responseText += "-> Location: " + Headers.Get("Location") + Environment.NewLine;
                     }
                 }
             }
-            if (!string.IsNullOrEmpty(Title))
+            if (!string.IsNullOrEmpty(PageTitle))
             {
-                responseText += "- Page Title: " + Title + Environment.NewLine;
+                responseText += "- Page Title: " + PageTitle + Environment.NewLine;
+            }
+            if (PageText.Length > 0 && PageText.Length < 250)
+            {
+                responseText += "- Page Text: " + PageText + Environment.NewLine;
             }
             if (!string.IsNullOrEmpty(DNS))
             {

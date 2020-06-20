@@ -9,6 +9,14 @@ namespace Reecon
 {
     class SSH
     {
+        public static string GetInfo(string ip, int port)
+        {
+            string returnInfo = "";
+            string sshVersion = "- SSH Version: " + SSH.GetVersion(ip);
+            string authMethods = "- Authentication Methods: " + SSH.GetAuthMethods(ip, port);
+            returnInfo = sshVersion + Environment.NewLine + authMethods;
+            return returnInfo;
+        }
         // Get version
         public static string GetVersion(string ip)
         {
@@ -20,7 +28,8 @@ namespace Reecon
                     sshSocket.Connect(ip, 22);
                     int bytes = sshSocket.Receive(buffer, buffer.Length, 0);
                     string versionMessage = Encoding.ASCII.GetString(buffer, 0, bytes);
-                    return versionMessage.Trim().Replace(Environment.NewLine, "");
+                    versionMessage = versionMessage.Trim().Replace(Environment.NewLine, "");
+                    return versionMessage;
                 }
             }
             catch (SocketException se)
@@ -46,7 +55,7 @@ namespace Reecon
             // kex_exchange_identification: read: Connection reset by peer
             if (outputLines.Count == 1 && outputLines[0].EndsWith("Connection refused"))
             {
-                return "Port is closed";
+                return "- Port is closed";
             }
             if (outputLines.Contains("kex_exchange_identification: read: Connection reset by peer"))
             {

@@ -10,7 +10,6 @@ namespace Reecon
 {
     class General
     {
-        // Multiple potentially slow requests - Threading?
         public static string BannerGrab(string ip, int port, string initialText = "", int bufferSize = 512)
         {
             string bannerText = "";
@@ -21,15 +20,23 @@ namespace Reecon
                 bannerGrabSocket.SendTimeout = 5000;
                 try
                 {
-                    bannerGrabSocket.Connect(ip, port); // Error if an invalid IP
-                    if (initialText.Length != 0)
+                    var result = bannerGrabSocket.BeginConnect(ip, port, null, null); // Error if an invalid IP
+                    bool success = result.AsyncWaitHandle.WaitOne(5000, true);
+                    if (success)
                     {
-                        Byte[] cmdBytes = Encoding.ASCII.GetBytes(initialText.ToCharArray());
-                        bannerGrabSocket.Send(cmdBytes, cmdBytes.Length, 0);
+                        if (initialText.Length != 0)
+                        {
+                            Byte[] cmdBytes = Encoding.ASCII.GetBytes(initialText.ToCharArray());
+                            bannerGrabSocket.Send(cmdBytes, cmdBytes.Length, 0);
+                        }
+                        int bytes = bannerGrabSocket.Receive(buffer, buffer.Length, 0);
+                        bannerText = Encoding.ASCII.GetString(buffer, 0, bytes);
+                        bannerText = bannerText.Trim();
                     }
-                    int bytes = bannerGrabSocket.Receive(buffer, buffer.Length, 0);
-                    bannerText = Encoding.ASCII.GetString(buffer, 0, bytes);
-                    bannerText = bannerText.Trim();
+                    else
+                    {
+                        return "Reecon - Closed";
+                    }
                 }
                 catch (SocketException ex)
                 {
@@ -136,6 +143,18 @@ namespace Reecon
             Console.SetCursorPosition(0, currentLineCursor);
         }
 
+        public static void RunProcessWithOutput(string processName, string arguments)
+        {
+            // Console.WriteLine("Running Process " + processName + " with args: " + arguments);
+            Process p = new Process();
+            p.StartInfo.UseShellExecute = true;
+            p.StartInfo.FileName = processName;
+            p.StartInfo.Arguments = arguments;
+            p.Start();
+            p.WaitForExit();
+            // Console.WriteLine("Process has run - Yay!");
+        }
+
         public static void RunProcess(string processName, string arguments)
         {
             // Console.WriteLine("Running 2 Process " + processName + " with args: " + arguments);
@@ -199,14 +218,14 @@ namespace Reecon
             }
         }
 
-        public static bool IsInstalledOnLinux(string app, string path)
+        public static bool IsInstalledOnLinux(string app, string path = "")
         {
             List<string> processOutput = GetProcessOutput("which", app);
             if (processOutput.Count == 0)
             {
                 return false;
             }
-            if (processOutput[0].Trim() == path)
+            if (path == "" || processOutput[0].Trim() == path)
             {
                 return true;
             }

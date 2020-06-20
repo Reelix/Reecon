@@ -8,6 +8,13 @@ namespace Reecon
 {
     class LDAP // Port 389
     {
+        public static string GetInfo(string ip)
+        {
+            string returnInfo = "";
+            returnInfo += LDAP.GetDefaultNamingContext(ip).Trim(Environment.NewLine.ToCharArray()) + Environment.NewLine;
+            returnInfo += LDAP.GetAccountInfo(ip);
+            return returnInfo;
+        }
         public static string GetDefaultNamingContext(string ip, bool raw = false)
         {
             string ldapInfo = string.Empty;
@@ -40,7 +47,7 @@ namespace Reecon
                     // ldapServiceName / dnsHostName
                     if (!raw)
                     {
-                        ldapInfo = ldapInfo + Environment.NewLine + "- defaultNamingContext: ";
+                        ldapInfo = "- defaultNamingContext: ";
                     }
                     ldapInfo += defaultNamingContext;
                 }
@@ -63,9 +70,13 @@ namespace Reecon
                 {
                     searchEntries = ldapConnection.Search(rootDse.Attributes["defaultNamingContext"][0], "(objectclass=user)", scope: LdapSearchScope.LDAP_SCOPE_SUB);
                 }
-                catch (Exception ex)
+                catch (LdapException)
                 {
-                    return Environment.NewLine + "- No Anonymous Access Allowed";
+                    return "- No Anonymous Access Allowed";
+                }
+                catch (Exception)
+                {
+                    return ":<";
                 }
                 foreach (var result in searchEntries)
                 {

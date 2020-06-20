@@ -13,7 +13,7 @@ namespace Reecon
         {
             string dnsInfo = GetDNSHostEntry(ip);
             string rpcInfo = GetRPCInfo(ip);
-            return dnsInfo + Environment.NewLine + rpcInfo;
+            return dnsInfo + Environment.NewLine + rpcInfo + Environment.NewLine + "- nmap -sC -sV may have some additional information for this port";
         }
 
         private static string GetDNSHostEntry(string ip)
@@ -57,7 +57,9 @@ namespace Reecon
                     List<string> enumdomusersList = General.GetProcessOutput("rpcclient", $"-U \"\"%\"\" {ip} -c \"enumdomusers\"");
                     if (enumdomusersList.Count == 1 && (enumdomusersList[0].Trim() == "result was NT_STATUS_ACCESS_DENIED" || enumdomusersList[0].Trim() == "Cannot connect to server.  Error was NT_STATUS_ACCESS_DENIED"))
                     {
-                        rpcInfo = "- No Anonamous RPC Access";
+                        rpcInfo = "- No Anonamous RPC Access" + Environment.NewLine;
+                        // 23 -> https://room362.com/post/2017/reset-ad-user-password-with-linux/
+                        rpcInfo += "-- If you get access -> enumdomusers / queryuser usernameHere / setuserinfo2 userNameHere 23 'newPasswordHere'";
                     }
                     else if (enumdomusersList.Count == 1 && enumdomusersList[0].Trim() == "Cannot connect to server.  Error was NT_STATUS_RESOURCE_NAME_NOT_FOUND")
                     {
@@ -99,7 +101,9 @@ namespace Reecon
                             }
 
                         }
-                        rpcInfo += "--> rpcclient -> queryuser usernameHere";
+                        rpcInfo += "--> rpcclient -> queryuser usernameHere" + Environment.NewLine;
+                        // 23 -> https://room362.com/post/2017/reset-ad-user-password-with-linux/
+                        rpcInfo += "--> rpcclient -> setuserinfo2 userNameHere 23 'newPasswordHere'";
                     }
                     else
                     {

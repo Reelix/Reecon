@@ -14,9 +14,16 @@ namespace Reecon
             // https://raymii.org/s/tutorials/Get_DNS_server_version_and_hide_it_in_BIND.html
             string dnsInfo = "";
             List<string> outputLines = General.GetProcessOutput("nslookup", $"-type=txt -class=chaos version.bind {ip}");
-            foreach (string line in outputLines)
+            if (outputLines.Count > 0 && outputLines[0].Trim() == "*** Request to UnKnown timed-out")
             {
-                dnsInfo += $"- {line}" + Environment.NewLine;
+                dnsInfo = "- No Info Available";
+            }
+            else
+            {
+                foreach (string line in outputLines)
+                {
+                    dnsInfo += $"- {line}" + Environment.NewLine;
+                }
             }
             dnsInfo = dnsInfo.Trim(Environment.NewLine.ToCharArray());
             return dnsInfo;
