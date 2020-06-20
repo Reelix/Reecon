@@ -17,7 +17,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.14 ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.14a ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0 && ip.Length == 0)
             {
@@ -197,7 +197,7 @@ namespace Reecon
             }
             else
             {
-                Console.WriteLine("- nmap -sC -sV -p" + string.Join(",", portList) + " " + ip + " -oN nmap.txt");
+                postScanActions += "- nmap -sC -sV -p" + string.Join(",", portList) + " " + ip + " -oN nmap.txt";
                 if (portList.Contains(21))
                 {
                     Console.WriteLine("- Check out Port 21 for things I missed");
@@ -265,7 +265,7 @@ namespace Reecon
             }
             string portLine = fileLines[2];
             string[] portItems = portLine.Split('\t');
-            string portSection = portItems[1]; 
+            string portSection = portItems[1];
             portSection = portSection.Replace("Ports: ", "");
             foreach (var item in portSection.Split(new[] { ", " }, StringSplitOptions.None))
             {
@@ -504,13 +504,15 @@ namespace Reecon
             }
             else if (port == 4369)
             {
+                // TODO: https://svn.nmap.org/nmap/scripts/epmd-info.nse
                 string portHeader = "Port 4369 - Erlang Port Mapper Daemon (EPMD)";
-                string portData = "- Reecon currently lacks EPMD support" + "- Check NMap";
+                string portData = "- Reecon currently lacks EPMD support" + Environment.NewLine + "- Check NMap";
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
+                postScanActions += "- EPMD: nmap " + ip + " -p4369 --script=epmd-info -sV" + Environment.NewLine;
             }
             else if (port == 5672)
             {
-                string portHeader = "Port 5985 - Advanced Message Queuing Protocol (AMQP)";
+                string portHeader = "Port 5672 - Advanced Message Queuing Protocol (AMQP)";
                 string portData = General.BannerGrab(ip, 5672, "Woof" + Environment.NewLine + Environment.NewLine);
                 if (portData.StartsWith("AMQP"))
                 {
@@ -546,7 +548,7 @@ namespace Reecon
             else if (port == 5986)
             {
                 string portHeader = "Port 5986 - Secure WinRM";
-                string portData = "- Reecon currently lacks Secure WinRM support";
+                string portData = WinRM.GetInfo(ip);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
             }
             else if (port == 6379)
@@ -647,13 +649,13 @@ namespace Reecon
                     string httpData = HTTP.GetInfo(ip, port, false);
                     if (httpData != "")
                     {
-                        Console.WriteLine(unknownPortResult + " - HTTP" + Environment.NewLine + httpData);
+                        Console.WriteLine(unknownPortResult + " - HTTP" + Environment.NewLine + httpData + Environment.NewLine);
                         postScanActions += "- gobuster dir -u=http://" + ip + ":" + port + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http.txt -x.php,.txt" + Environment.NewLine;
                     }
                     string httpsData = HTTP.GetInfo(ip, port, true);
                     if (httpsData != "")
                     {
-                        Console.WriteLine(unknownPortResult + " - HTTPS" + Environment.NewLine + httpsData);
+                        Console.WriteLine(unknownPortResult + " - HTTPS" + Environment.NewLine + httpsData + Environment.NewLine);
                         postScanActions += "- gobuster dir -u=https://" + ip + ":" + port + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http.txt -x.php,.txt" + Environment.NewLine;
                     }
                 }

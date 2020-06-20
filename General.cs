@@ -24,6 +24,11 @@ namespace Reecon
                     bool success = result.AsyncWaitHandle.WaitOne(5000, true);
                     if (success)
                     {
+                        if (!bannerGrabSocket.Connected)
+                        {
+                            bannerGrabSocket.Close();
+                            return "Reecon - Closed";
+                        }
                         if (initialText.Length != 0)
                         {
                             Byte[] cmdBytes = Encoding.ASCII.GetBytes(initialText.ToCharArray());
@@ -35,6 +40,7 @@ namespace Reecon
                     }
                     else
                     {
+                        bannerGrabSocket.Close();
                         return "Reecon - Closed";
                     }
                 }
