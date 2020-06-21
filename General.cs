@@ -104,7 +104,7 @@ namespace Reecon
             else if (bannerText.Length == 0 && initialText.StartsWith("Woof"))
             {
                 // Nothing on the default - Try some HTTP
-                bannerText = BannerGrab(ip, port, "HEAD /" + Environment.NewLine + Environment.NewLine);
+                bannerText = BannerGrab(ip, port, "HEAD / HTTP/1.1" + Environment.NewLine + "Host: " + ip + Environment.NewLine + Environment.NewLine);
             }
             return bannerText;
         }
