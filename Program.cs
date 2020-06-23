@@ -17,7 +17,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.14b ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.15 ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0 && ip.Length == 0)
             {
@@ -25,22 +25,25 @@ namespace Reecon
                 Console.WriteLine("-----");
                 Console.WriteLine("Basic Scan:\tReecon IPHere (Optional: -noping to skip the ping - Not recommended!)");
                 Console.WriteLine("NMap:\t\tReecon -nmap IP FileName");
-                Console.WriteLine("NMap-Load Scan:\tReecon outfile.nmap (Requires a -nmap scan or -oG on regular nmap");
+                Console.WriteLine("NMap-Load Scan:\tReecon outfile.nmap (Requires a -nmap scan or -oG on regular nmap)");
+                Console.WriteLine("Shell Gen:\tReecon -shell");
                 Console.WriteLine("SMB Brute:\tReecon -smb-brute (Linux Only)");
                 Console.WriteLine("SMB Auth Test:\tReecon -smb IP User Pass (Windows Only)");
                 Console.WriteLine("WinRM Brute:\tReecon -winrm-brute IP UserList PassList");
-                Console.WriteLine("LFI Test:\tReecon -lfi (Does not work)");
+                Console.WriteLine("LFI Test:\tReecon -lfi (Very buggy)");
+                Console.WriteLine("Web Spider:\tReecon -web url (Very buggy)");
                 Console.ResetColor();
                 return;
             }
-            if (args.Contains("-lfi"))
+            if (args.Contains("-lfi") || args.Contains("--lfi"))
             {
-                if (args.Length != 2)
-                {
-                    Console.WriteLine("LFI Usage: reecon -lfi PossibleLFIPath");
-                }
-                Console.WriteLine("Starting LFI Scan - This feature is still in Alpha");
-                LFI.Scan(args[1]);
+                LFI.Scan(args);
+                Console.ResetColor();
+                return;
+            }
+            else if (args.Contains("-shell") || args.Contains("--shell"))
+            {
+                Shell.GetInfo(args);
                 Console.ResetColor();
                 return;
             }
@@ -65,6 +68,12 @@ namespace Reecon
             else if (args.Contains("-winrm-brute"))
             {
                 WinRM.WinRMBrute(args);
+                Console.ResetColor();
+                return;
+            }
+            else if (args.Contains("-web") || args.Contains("--web"))
+            {
+                Web.GetInfo(args);
                 Console.ResetColor();
                 return;
             }

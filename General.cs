@@ -5,6 +5,7 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Reecon
 {
@@ -241,6 +242,19 @@ namespace Reecon
         public static byte[] GetBytes(string inputString)
         {
             return Encoding.ASCII.GetBytes(inputString);
+        }
+
+        public static List<string> MatchCollectionToList(MatchCollection matchCollection)
+        {
+            List<string> returnList = new List<string>();
+            foreach (Match item in matchCollection)
+            {
+                if (!returnList.Contains(item.Value))
+                {
+                    returnList.Add(item.Value);
+                }
+            }
+            return returnList;
         }
     }
 }

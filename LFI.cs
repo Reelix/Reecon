@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Text;
-using System.Threading.Tasks;
 using ReeCode;
 
 namespace Reecon
@@ -13,8 +10,18 @@ namespace Reecon
         private static WebClient wc = new WebClient();
         private static string initialPart = "";
         private static int notFoundLength = 0;
+        public static void Scan(string[] args)
+        {
+            if (args.Length != 2)
+            {
+                Console.WriteLine("LFI Usage: reecon -lfi http://www.site.com/bla.php?include=file");
+                return;
+            }
+            Scan(args[1]);
+        }
         public static void Scan(string path)
         {
+            Console.WriteLine("Starting LFI Scan - This feature is still in Alpha");
             // Init
             (initialPart, notFoundLength) = InitialChecks(path);
 
@@ -73,7 +80,7 @@ namespace Reecon
             HttpStatusCode statusCode = wc.GetResponseCode(path);
             if (statusCode != HttpStatusCode.OK)
             {
-                Console.WriteLine(path + " is a 404 page :(");
+                Console.WriteLine(path + " is not an OK page :(");
                 Environment.Exit(0);
             }
 

@@ -89,11 +89,13 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Redis.cs" />
+    <Compile Include="Shell.cs" />
     <Compile Include="SMB.cs" />
     <Compile Include="SMB_GetNetShares.cs" />
     <Compile Include="SMB_NetworkShareAccesser.cs" />
     <Compile Include="SMTP.cs" />
     <Compile Include="SSH.cs" />
+    <Compile Include="Web.cs" />
     <Compile Include="WebClientExtensions.cs" />
     <Compile Include="WinRM.cs" />
   </ItemGroup>
@@ -120,7 +122,6 @@
 		..\..\packages\ILMerge.3.0.29\tools\net452\ILMerge.exe Reecon.exe /out:Reecon2.exe LdapForNet.dll MyRawClient.dll
 		del Reecon.exe
 		move Reecon2.exe Reecon.exe
-		del Reecon2.pdb
    </PostBuildEvent>
   </PropertyGroup>
 </Project>
