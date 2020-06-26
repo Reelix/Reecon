@@ -55,7 +55,12 @@ namespace Reecon
                 {
                     // https://pen-testing.sans.org/blog/2013/07/24/plundering-windows-account-info-via-authenticated-smb-sessions
                     List<string> enumdomusersList = General.GetProcessOutput("rpcclient", $"-U \"\"%\"\" {ip} -c \"enumdomusers\"");
-                    if (enumdomusersList.Count == 1 && (enumdomusersList[0].Trim() == "result was NT_STATUS_ACCESS_DENIED" || enumdomusersList[0].Trim() == "Cannot connect to server.  Error was NT_STATUS_ACCESS_DENIED"))
+                    if (enumdomusersList.Count == 0)
+                    {
+                        rpcInfo = "- Possible anonymous access but no enumdomusers output" + Environment.NewLine;
+                        rpcInfo += $"-> rpcclient -U \"\"%\"\" {ip}";
+                    }
+                    else if (enumdomusersList.Count == 1 && (enumdomusersList[0].Trim() == "result was NT_STATUS_ACCESS_DENIED" || enumdomusersList[0].Trim() == "Cannot connect to server.  Error was NT_STATUS_ACCESS_DENIED"))
                     {
                         rpcInfo = "- No Anonamous RPC Access" + Environment.NewLine;
                         // 23 -> https://room362.com/post/2017/reset-ad-user-password-with-linux/

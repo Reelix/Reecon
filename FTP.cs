@@ -8,6 +8,30 @@ namespace Reecon
 {
     class FTP
     {
+        public static string GetInfo(string ip)
+        {
+            string ftpUsername = "";
+            string ftpLoginInfo = FTP.FtpLogin(ip, ftpUsername);
+            if (ftpLoginInfo.Contains("Unable to login: This FTP server is anonymous only.") || ftpLoginInfo.Contains("Unable to login: USER: command requires a parameter") || ftpLoginInfo.Contains("Unable to login: Login with USER first.") || ftpLoginInfo.Contains("530 This FTP server is anonymous only."))
+            {
+                ftpUsername = "anonymous";
+                ftpLoginInfo = FTP.FtpLogin(ip, ftpUsername, "");
+            }
+            if (ftpLoginInfo.Contains("Anonymous login allowed"))
+            {
+                string fileListInfo = FTP.TryListFiles(ip, true, ftpUsername, "");
+                if (fileListInfo.Contains("invalid pasv_address"))
+                {
+                    fileListInfo = FTP.TryListFiles(ip, false, ftpUsername, "");
+                }
+                if (!fileListInfo.StartsWith(Environment.NewLine))
+                {
+                    fileListInfo = Environment.NewLine + fileListInfo;
+                }
+                ftpLoginInfo += fileListInfo;
+            }
+            return ftpLoginInfo.Trim(Environment.NewLine.ToCharArray());
+        }
         public static string FtpLogin(string ftpServer, string username = "", string password = "")
         {
             string ftpLoginResult = "";

@@ -23,6 +23,7 @@ namespace Reecon
             else
             {
                 returnInfo = SMB.TestAnonymousAccess_Linux(ip);
+                return returnInfo;
             }
             return returnInfo;
         }
@@ -61,11 +62,22 @@ namespace Reecon
             if (General.IsInstalledOnLinux("smbclient", "/usr/bin/smbclient"))
             {
                 string smbClientItems = "";
-                List<string> processResults = General.GetProcessOutput("smbclient", " -L " + ip + " --no-pass");
+                List<string> processResults = General.GetProcessOutput("smbclient", " -L " + ip + " --no-pass -g");
                 foreach (string item in processResults)
                 {
-                    // smbclient \\\\10.10.10.192\\forensic --no-pass -c "ls"
-                    smbClientItems += item + Environment.NewLine;
+                    // type|name|comment
+                    if (!item.StartsWith("SMB1 disabled"))
+                    {
+                        string itemType = item.Split('|')[0];
+                        string itemName = item.Split('|')[1];
+                        string itemComment = item.Split('|')[2];
+                        smbClientItems += "> " + itemType + ": " + itemName + " " + (itemComment == "" ? "" : "(" + itemComment + ")") + Environment.NewLine;
+                        List<string> subProcessResults = General.GetProcessOutput("smbclient", "//" + ip + "/" + itemName + " --no-pass -c \"ls\"");
+                        if (subProcessResults.Count > 1)
+                        {
+                            smbClientItems += "-> " + itemName + " has ls perms!" + Environment.NewLine + "-> smbclient //" + ip + "/" + itemName + " --no-pass" + Environment.NewLine;
+                        }
+                    }
                 }
                 return smbClientItems.Trim(Environment.NewLine.ToCharArray());
             }

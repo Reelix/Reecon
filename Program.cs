@@ -17,7 +17,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.15 ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.15a ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0 && ip.Length == 0)
             {
@@ -211,10 +211,6 @@ namespace Reecon
                 {
                     Console.WriteLine("- Check out Port 21 for things I missed");
                 }
-                if (portList.Contains(445))
-                {
-                    Console.WriteLine("- nmap --script smb-enum-shares.nse -p445 " + ip);
-                }
                 if (portList.Contains(2049))
                 {
                     Console.WriteLine("- rpcinfo -p " + ip);
@@ -316,29 +312,8 @@ namespace Reecon
             if (port == 21)
             {
                 string portHeader = "Port 21 - FTP";
-                // TODO: Refactor
-                string ftpUsername = "";
-                string ftpLoginInfo = FTP.FtpLogin(ip, ftpUsername);
-                if (ftpLoginInfo.Contains("Unable to login: This FTP server is anonymous only.") || ftpLoginInfo.Contains("Unable to login: USER: command requires a parameter") || ftpLoginInfo.Contains("Unable to login: Login with USER first.") || ftpLoginInfo.Contains("530 This FTP server is anonymous only."))
-                {
-                    ftpUsername = "anonymous";
-                    ftpLoginInfo = FTP.FtpLogin(ip, ftpUsername, "");
-                }
-                if (ftpLoginInfo.Contains("Anonymous login allowed"))
-                {
-                    string fileListInfo = FTP.TryListFiles(ip, true, ftpUsername, "");
-                    if (fileListInfo.Contains("invalid pasv_address"))
-                    {
-                        fileListInfo = FTP.TryListFiles(ip, false, ftpUsername, "");
-
-                    }
-                    if (!fileListInfo.StartsWith(Environment.NewLine))
-                    {
-                        fileListInfo = Environment.NewLine + fileListInfo;
-                    }
-                    ftpLoginInfo += fileListInfo;
-                }
-                Console.WriteLine(portHeader + Environment.NewLine + ftpLoginInfo + Environment.NewLine);
+                string portData = FTP.GetInfo(ip);
+                Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
             }
             else if (port == 22)
             {
@@ -566,6 +541,12 @@ namespace Reecon
                 string portData = Redis.GetInfo("10.10.10.160");
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
             }
+            else if (port == 6881)
+            {
+                string portHeader = "Port 6881 - BitTorrent";
+                string portData = "- Reecon currently lacks BitTorrent support";
+                Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
+            }
             else if (port == 9389)
             {
                 string portHeader = "Port 9389 - ADWS (Active Directory Web Services)";
@@ -635,16 +616,14 @@ namespace Reecon
                 }
                 else if (theBanner.Contains("SSH-2.0-OpenSSH") || theBanner == "SSH-2.0-Go") // Probably SSH
                 {
-                    unknownPortResult += " - SSH";
+                    unknownPortResult += " - SSH" + Environment.NewLine;
                     if (theBanner.Contains("\r\nProtocol mismatch."))
                     {
                         theBanner = theBanner.Replace("\r\nProtocol mismatch.", "");
                         unknownPortResult += Environment.NewLine + "- TCP Protocol Mismatch";
                     }
-                    unknownPortResult += Environment.NewLine + "- SSH Version: " + theBanner;
-                    string authMethods = SSH.GetAuthMethods(ip, port);
-                    unknownPortResult += Environment.NewLine + "- Auth Methods: " + authMethods;
-                    Console.WriteLine(unknownPortResult);
+                    unknownPortResult += SSH.GetInfo(ip, port);
+                    Console.WriteLine(unknownPortResult + Environment.NewLine);
                 }
                 else if (
                     theBanner.Contains("Server: Apache") // Apache Web Server
@@ -706,6 +685,8 @@ namespace Reecon
                         Console.WriteLine("Port " + port + "- AMQP" + Environment.NewLine + "- Unknown AMQP Version: " + (int)theBannerBytes[4] + (int)theBannerBytes[5] + (int)theBannerBytes[6] + (int)theBannerBytes[7] + Environment.NewLine);
                     }
                 }
+                // 47538/tcp open  socks-proxy Socks4A
+                // -> [?? _ ??
                 else if (theBanner == "Reecon - Connection reset by peer")
                 {
                     Console.WriteLine(unknownPortResult + Environment.NewLine + "- Connection reset by peer (No Useful response)" + Environment.NewLine);
@@ -720,7 +701,7 @@ namespace Reecon
                 }
                 else
                 {
-                    Console.WriteLine(unknownPortResult + Environment.NewLine + "- Unknown Banner Response: -->" + theBanner + "<--");
+                    Console.WriteLine(unknownPortResult + Environment.NewLine + "- Unknown Banner Response: -->" + theBanner + "<--" + Environment.NewLine);
                 }
             }
         }

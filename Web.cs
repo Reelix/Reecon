@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Net;
 using System.Text.RegularExpressions;
 using System.Linq;
+using ReeCode;
 
 namespace Reecon
 {
     class Web
     {
         static WebClient wc = new WebClient();
-
+        static string url = "";
         public static void GetInfo(string[] args)
         {
             if (args.Length != 2)
@@ -17,13 +18,28 @@ namespace Reecon
                 Console.WriteLine("Web Usage: reecon -web http://site.com/");
                 return;
             }
-            string url = args[1];
+            url = args[1];
+            if (!url.StartsWith("http"))
+            {
+                Console.WriteLine("Invalid URL - Must start with http");
+                return;
+            }
             ScanPage(url);
 
         }
         public static void ScanPage(string url)
         {
-            string pageText = wc.DownloadString(url);
+            string pageText;
+            try
+            {
+                Console.WriteLine("Loading Page Data...");
+                pageText = wc.DownloadString(url);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error: " + ex.Message);
+                return;
+            }
             FindEmails(pageText);
             FindLinks(pageText);
         }
@@ -36,22 +52,41 @@ namespace Reecon
             List<string> matchList = General.MatchCollectionToList(emailMatches);
             foreach (string match in matchList)
             {
-                Console.WriteLine("- " + match);
+                Console.WriteLine("EMail: " + match);
             }
         }
 
-        public static void FindLinks(string text)
+        public static void FindLinks(string pageText)
         {
-            Regex linkRegex = new Regex(@"((http|ftp|https):\/\/[\w\-_]+(\.[\w\-_]+)+([\w\-\.,@?^=%&amp;:/~\+#]*[\w\-\@?^=%&amp;/~\+#])?)", RegexOptions.IgnoreCase);
-            MatchCollection linkMatches = linkRegex.Matches(text);
-            List<string> matchList = General.MatchCollectionToList(linkMatches);
-            foreach (string match in matchList)
+            // Find all matches
+            MatchCollection m1 = Regex.Matches(pageText, @"(<a.*?>.*?</a>)", RegexOptions.Singleline);
+
+            // Loop over each match.
+            foreach (Match m in m1)
             {
-                Console.WriteLine("- " + match);
-                if (match.Contains("="))
+                string value = m.Groups[1].Value;
+                string href = "";
+
+                // Get href attribute.
+                Match m2 = Regex.Match(value, @"href=\""(.*?)\""", RegexOptions.Singleline);
+                if (m2.Success)
                 {
-                    Console.WriteLine("-- LFI?");
-                    //LFI.Scan(match);
+                    href = m2.Groups[1].Value;
+                }
+
+                // Remove inner tags from text.
+                string text = Regex.Replace(value, @"\s*<.*?>\s*", "", RegexOptions.Singleline);
+
+                if (href.StartsWith("/"))
+                {
+                    if (url.EndsWith("/"))
+                    {
+                        href = url + href.TrimStart('/');
+                    }
+                }
+                if (href.Length > 1)
+                {
+                    Console.WriteLine(text + ": " + href);
                 }
             }
         }

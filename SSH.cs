@@ -12,20 +12,20 @@ namespace Reecon
         public static string GetInfo(string ip, int port)
         {
             string returnInfo = "";
-            string sshVersion = "- SSH Version: " + SSH.GetVersion(ip);
+            string sshVersion = "- SSH Version: " + SSH.GetVersion(ip, port);
             string authMethods = "- Authentication Methods: " + SSH.GetAuthMethods(ip, port);
             returnInfo = sshVersion + Environment.NewLine + authMethods;
             return returnInfo;
         }
         // Get version
-        public static string GetVersion(string ip)
+        public static string GetVersion(string ip, int port)
         {
             try
             {
                 Byte[] buffer = new Byte[512];
                 using (Socket sshSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
                 {
-                    sshSocket.Connect(ip, 22);
+                    sshSocket.Connect(ip, port);
                     int bytes = sshSocket.Receive(buffer, buffer.Length, 0);
                     string versionMessage = Encoding.ASCII.GetString(buffer, 0, bytes);
                     versionMessage = versionMessage.Trim().Replace(Environment.NewLine, "");
