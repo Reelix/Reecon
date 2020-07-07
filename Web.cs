@@ -25,8 +25,8 @@ namespace Reecon
                 return;
             }
             ScanPage(url);
-
         }
+
         public static void ScanPage(string url)
         {
             string pageText;

@@ -62,7 +62,15 @@ namespace Reecon
             if (General.IsInstalledOnLinux("smbclient", "/usr/bin/smbclient"))
             {
                 string smbClientItems = "";
-                List<string> processResults = General.GetProcessOutput("smbclient", " -L " + ip + " --no-pass -g");
+                List<string> processResults = General.GetProcessOutput("smbclient", " -L " + ip + " --no-pass -g"); // null auth
+                if (processResults.Count == 1 && processResults[0].Contains("NT_STATUS_ACCESS_DENIED"))
+                {
+                    return "- No Anonymous Access";
+                }
+                else if (processResults.Count == 2 && processResults[0] == "Anonymous login successful" && processResults[1] == "SMB1 disabled -- no workgroup available")
+                {
+                    return "- Anonamymous Access Allowed - But No Shares Found";
+                }
                 foreach (string item in processResults)
                 {
                     // type|name|comment

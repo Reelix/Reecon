@@ -9,16 +9,18 @@ namespace Reecon
 {
     class WinRM
     {
-        public static string GetInfo(string ip)
+        public static string GetInfo(string ip, int port)
         {
             string returnInfo = "";
 
             WebClient wc = new WebClient();
             wc.Headers.Add("Content-Type", "application/soap+xml;charset=UTF-8");
+            // 47001 - No Response?
+            // Test: CSL Potato
             Byte[] byteData = Encoding.ASCII.GetBytes("dsadsasa");
             try
             {
-                wc.UploadData("http://10.10.10.193:5985/wsman", byteData);
+                wc.UploadData("http://" + ip + ":" + port + "/wsman", byteData);
             }
             catch (WebException wex)
             {

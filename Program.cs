@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net; // 1 entry - Refactor?
 using System.Threading;
 
 namespace Reecon
@@ -17,27 +16,41 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.15a ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.15b ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0 && ip.Length == 0)
             {
                 Console.WriteLine("Usage");
                 Console.WriteLine("-----");
                 Console.WriteLine("Basic Scan:\tReecon IPHere (Optional: -noping to skip the ping - Not recommended!)");
+                Console.WriteLine("Display IP:\tReecon -ip");
                 Console.WriteLine("NMap:\t\tReecon -nmap IP FileName");
                 Console.WriteLine("NMap-Load Scan:\tReecon outfile.nmap (Requires a -nmap scan or -oG on regular nmap)");
+                Console.WriteLine("ROPCheck:\tReecon -rop FileName (Very buggy)");
                 Console.WriteLine("Shell Gen:\tReecon -shell");
                 Console.WriteLine("SMB Brute:\tReecon -smb-brute (Linux Only)");
-                Console.WriteLine("SMB Auth Test:\tReecon -smb IP User Pass (Windows Only)");
+                Console.WriteLine("SMB Auth Test:\tReecon -smb IP User Pass (Windows Only - Very buggy)");
                 Console.WriteLine("WinRM Brute:\tReecon -winrm-brute IP UserList PassList");
                 Console.WriteLine("LFI Test:\tReecon -lfi (Very buggy)");
                 Console.WriteLine("Web Spider:\tReecon -web url (Very buggy)");
                 Console.ResetColor();
                 return;
             }
+            if (args.Contains("-ip") || args.Contains("--ip"))
+            {
+                General.GetIP();
+                Console.ResetColor();
+                return;
+            }
             if (args.Contains("-lfi") || args.Contains("--lfi"))
             {
                 LFI.Scan(args);
+                Console.ResetColor();
+                return;
+            }
+            else if (args.Contains("-rop") || args.Contains("--rop"))
+            {
+                Pwn.Scan(args);
                 Console.ResetColor();
                 return;
             }
@@ -485,6 +498,31 @@ namespace Reecon
                 string portHeader = "Port 3389 - Windows Remote Desktop";
                 string portData = "- Reecon currently lacks Windows Remote Desktop support";
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
+
+                // TODO: https://nmap.org/nsedoc/scripts/rdp-ntlm-info.html
+                // https://svn.nmap.org/nmap/scripts/rdp-ntlm-info.nse
+                /*
+                string NTLM_NEGOTIATE_BLOB =  "30 37 A0 03 02 01 60 A1 30 30 2E 30 2C A0 2A 04 28"
+                                            + "4e 54 4c 4d 53 53 50 00" // Identifier - NTLMSSP
+                                            + "01 00 00 00" //Type: NTLMSSP Negotiate -01
+                                            + "B7 82 08 E2 " // Flags(NEGOTIATE_SIGN_ALWAYS | NEGOTIATE_NTLM | NEGOTIATE_SIGN | REQUEST_TARGET | NEGOTIATE_UNICODE)
+                                            + "00 00 " // DomainNameLen
+                                            + "00 00" // DomainNameMaxLen
+                                            + "00 00 00 00" // DomainNameBufferOffset
+                                            + "00 00 " // WorkstationLen
+                                            + "00 00" // WorkstationMaxLen
+                                            + "00 00 00 00" // WorkstationBufferOffset
+                                            + "0A" // ProductMajorVersion = 10
+                                            + "00 " // ProductMinorVersion = 0
+                                            + "63 45 " // ProductBuild = 0x4563 = 17763
+                                            + "00 00 00" // Reserved
+                                            + "0F"; // NTLMRevision = 5 = NTLMSSP_REVISION_W2K3
+
+
+                byte[] byteData = General.StringToByteArray(NTLM_NEGOTIATE_BLOB);
+                string result = General.BannerGrabBytes(ip, port, byteData);
+                Console.WriteLine("Result: " + result);
+                */
             }
             else if (port == 4369)
             {
@@ -494,6 +532,17 @@ namespace Reecon
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
                 postScanActions += "- EPMD: nmap " + ip + " -p4369 --script=epmd-info -sV" + Environment.NewLine;
             }
+            else if (port == 5222)
+            {
+                // TODO: Jabber
+                // 5222/tcp open  jabber              Ignite Realtime Openfire Jabber server 3.10.0 or later
+            }
+            else if (port == 5269)
+            {
+                // japper / xmpp-server
+                // nmap --script=xmpp-info 10.10.245.198 -p5269
+            }
+            // 5269/tcp open  xmpp                Wildfire XMPP Client ???
             else if (port == 5672)
             {
                 string portHeader = "Port 5672 - Advanced Message Queuing Protocol (AMQP)";
@@ -525,14 +574,14 @@ namespace Reecon
             {
                 // TODO: Figure out how to do basic evil-winrm.rb connections
                 // evil-winrm.rb -i 10.10.10.161
-                string portHeader = "Port 5985 - WinRM";
-                string portData = WinRM.GetInfo(ip);
+                string portHeader = "Port 5985 - WinRM"; // WSMAN (WBEM WS-Management HTTP) ?
+                string portData = WinRM.GetInfo(ip, 5985);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
             }
             else if (port == 5986)
             {
-                string portHeader = "Port 5986 - Secure WinRM";
-                string portData = WinRM.GetInfo(ip);
+                string portHeader = "Port 5986 - Secure WinRM"; // WSMANS (WBEM WS-Management HTTP over TLS/SSL) ?
+                string portData = WinRM.GetInfo(ip, 5986);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
             }
             else if (port == 6379)
@@ -625,6 +674,13 @@ namespace Reecon
                     unknownPortResult += SSH.GetInfo(ip, port);
                     Console.WriteLine(unknownPortResult + Environment.NewLine);
                 }
+                else if (theBanner.Contains("Server: Microsoft-HTTPAPI/2.0"))
+                {
+                    // winrm - http with special other stuff
+                    unknownPortResult += " - WinRM";
+                    string portData = WinRM.GetInfo(ip, port);
+                    Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
+                }
                 else if (
                     theBanner.Contains("Server: Apache") // Apache Web Server
                     || theBanner.Contains("Server: cloudflare") // Cloudflare Server
@@ -684,6 +740,12 @@ namespace Reecon
                     {
                         Console.WriteLine("Port " + port + "- AMQP" + Environment.NewLine + "- Unknown AMQP Version: " + (int)theBannerBytes[4] + (int)theBannerBytes[5] + (int)theBannerBytes[6] + (int)theBannerBytes[7] + Environment.NewLine);
                     }
+                }
+                else if (theBanner == "</stream:stream>")
+                {
+                    unknownPortResult += " - xmpp" + Environment.NewLine;
+                    unknownPortResult += " - Client Name: Wildfire XMPP Client" + Environment.NewLine;
+                    Console.WriteLine(unknownPortResult);
                 }
                 // 47538/tcp open  socks-proxy Socks4A
                 // -> [?? _ ??

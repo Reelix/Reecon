@@ -2,16 +2,9 @@
 using MyRawClient;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Net.Sockets;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Reecon
 {
-    
-
     class MySQL
     {
         // Port: 3306

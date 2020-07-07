@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
@@ -110,6 +111,56 @@ namespace Reecon
             return bannerText;
         }
 
+        // This is for custom requests where you know the actual bytes to send
+        // Doesn't really work yet
+        public static string BannerGrabBytes(string ip, int port, byte[] cmdBytes, int bufferSize = 512)
+        {
+            string bannerText = "";
+            Byte[] buffer = new Byte[bufferSize];
+            using (Socket bannerGrabSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+            {
+                bannerGrabSocket.ReceiveTimeout = 10000;
+                bannerGrabSocket.SendTimeout = 10000;
+                try
+                {
+                    var result = bannerGrabSocket.BeginConnect(ip, port, null, null); // Error if an invalid IP
+                    bool success = result.AsyncWaitHandle.WaitOne(10000, true);
+                    if (success)
+                    {
+                        if (!bannerGrabSocket.Connected)
+                        {
+                            bannerGrabSocket.Close();
+                            return "Reecon - Closed";
+                        }
+                        bannerGrabSocket.Send(cmdBytes, cmdBytes.Length, 0);
+                        int bytes = bannerGrabSocket.Receive(buffer, buffer.Length, 0);
+                        bannerText = Encoding.ASCII.GetString(buffer, 0, bytes);
+                        bannerText = bannerText.Trim();
+                        return bannerText;
+                    }
+                    else
+                    {
+                        bannerGrabSocket.Close();
+                        return "Reecon - Closed";
+                    }
+                }
+                catch (SocketException ex)
+                {
+                    return "General.BannerGrabBytes Error: " + ex.Message;
+                }
+            }
+        }
+
+        // Very slow and possibly doesn't work
+        public static byte[] StringToByteArray(string hex)
+        {
+            hex = hex.Replace(" ", "");
+            return Enumerable.Range(0, hex.Length)
+                             .Where(x => x % 2 == 0)
+                             .Select(x => Convert.ToByte(hex.Substring(x, 2), 16))
+                             .ToArray();
+        }
+
         public static bool IsUp(string ip)
         {
             using (Ping myPing = new Ping())
@@ -150,6 +201,11 @@ namespace Reecon
             Console.SetCursorPosition(0, currentLineCursor);
         }
 
+        /// <summary>
+        /// If you want to run a process and display the output
+        /// </summary>
+        /// <param name="processName"></param>
+        /// <param name="arguments"></param>
         public static void RunProcessWithOutput(string processName, string arguments)
         {
             // Console.WriteLine("Running Process " + processName + " with args: " + arguments);
@@ -162,6 +218,11 @@ namespace Reecon
             // Console.WriteLine("Process has run - Yay!");
         }
 
+        /// <summary>
+        /// If you want to run a process and hide the output
+        /// </summary>
+        /// <param name="processName"></param>
+        /// <param name="arguments"></param>
         public static void RunProcess(string processName, string arguments)
         {
             // Console.WriteLine("Running 2 Process " + processName + " with args: " + arguments);
@@ -176,6 +237,12 @@ namespace Reecon
             // Console.WriteLine("Process has run - Yay!");
         }
 
+        /// <summary>
+        /// If you want to run a process and return the output
+        /// </summary>
+        /// <param name="processName"></param>
+        /// <param name="arguments"></param>
+        /// <returns></returns>
         public static List<string> GetProcessOutput(string processName, string arguments)
         {
             // Console.WriteLine("Running Process " + processName + " with args: " + arguments);
@@ -255,6 +322,26 @@ namespace Reecon
                 }
             }
             return returnList;
+        }
+
+        public static void GetIP()
+        {
+            NetworkInterface[] networkInterfaces = NetworkInterface.GetAllNetworkInterfaces();
+            foreach (NetworkInterface ni in networkInterfaces)
+            {
+                IPInterfaceProperties properties = ni.GetIPProperties();
+                string name = ni.Name;
+                if (name != "lo") // Loopback
+                {
+                    foreach (UnicastIPAddressInformation ip in ni.GetIPProperties().UnicastAddresses)
+                    {
+                        if (ip.Address.AddressFamily == AddressFamily.InterNetwork)
+                        {
+                            Console.WriteLine($"{name}: {ip.Address}");
+                        }
+                    }
+                }
+            }
         }
     }
 }

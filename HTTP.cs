@@ -44,6 +44,7 @@ namespace Reecon
                 urlPrefix += "s";
             }
             WebHeaderCollection headers = null;
+
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(urlPrefix + "://" + ip + ":" + port);
             try
             {
@@ -69,8 +70,19 @@ namespace Reecon
             {
                 if (ex.Response == null)
                 {
-                    // WebClient wc = new WebClient();
-                    // string someString = wc.DownloadString("https://" + ip + ":" + port);
+                    if (ex.Message != null)
+                    {
+                        if (ex.Message.Trim() == "The request was aborted: Could not create SSL/TLS secure channel.")
+                        {
+                            // ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                            // ^ - Does NOT fix this :(
+                            Console.WriteLine("GetHTTPInfo.Error.SSLTLS - Bug Reelix to fix this");
+                        }
+                        else
+                        {
+                            Console.WriteLine("GetHTTPInfo.Error: " + ex.Message);
+                        }
+                    }
                     return (statusCode, null, null, null, null, null);
                 }
                 HttpWebResponse response = (HttpWebResponse)ex.Response;

@@ -60,15 +60,26 @@ namespace Reecon
                         rpcInfo = "- Possible anonymous access but no enumdomusers output" + Environment.NewLine;
                         rpcInfo += $"-> rpcclient -U \"\"%\"\" {ip}";
                     }
-                    else if (enumdomusersList.Count == 1 && (enumdomusersList[0].Trim() == "result was NT_STATUS_ACCESS_DENIED" || enumdomusersList[0].Trim() == "Cannot connect to server.  Error was NT_STATUS_ACCESS_DENIED"))
+                    else if (enumdomusersList.Count == 1)
                     {
-                        rpcInfo = "- No Anonamous RPC Access" + Environment.NewLine;
-                        // 23 -> https://room362.com/post/2017/reset-ad-user-password-with-linux/
-                        rpcInfo += "-- If you get access -> enumdomusers / queryuser usernameHere / setuserinfo2 userNameHere 23 'newPasswordHere'";
-                    }
-                    else if (enumdomusersList.Count == 1 && enumdomusersList[0].Trim() == "Cannot connect to server.  Error was NT_STATUS_RESOURCE_NAME_NOT_FOUND")
-                    {
-                        rpcInfo = "- Cannot connect - Are you sure it's up?";
+                        if (enumdomusersList[0].Trim() == "result was NT_STATUS_ACCESS_DENIED" || enumdomusersList[0].Trim() == "Cannot connect to server.  Error was NT_STATUS_ACCESS_DENIED")
+                        {
+                            rpcInfo = "- No Anonamous RPC Access" + Environment.NewLine;
+                            // 23 -> https://room362.com/post/2017/reset-ad-user-password-with-linux/
+                            rpcInfo += "-- If you get access -> enumdomusers / queryuser usernameHere / setuserinfo2 userNameHere 23 'newPasswordHere'";
+                        }
+                        else if (enumdomusersList[0].Trim() == "Cannot connect to server.  Error was NT_STATUS_RESOURCE_NAME_NOT_FOUND")
+                        {
+                            rpcInfo = "- Cannot connect - Are you sure it's up?";
+                        }
+                        else if (enumdomusersList[0].Trim() == "Cannot connect to server.  Error was NT_STATUS_IO_TIMEOUT")
+                        {
+                            rpcInfo = "- Cannot connect - It timed out :<";
+                        }
+                        else
+                        {
+                            Console.WriteLine("Unknown Path GetRPCInfo.Count1Unknown - Debug Info item: " + enumdomusersList[0].Trim());
+                        }
                     }
                     else if (enumdomusersList.Count > 3)
                     {
@@ -126,7 +137,7 @@ namespace Reecon
             }
             else
             {
-                rpcInfo = " - No RPC Info - Try run on Linux (rpcclient)";
+                rpcInfo = " - No RPC Info - Try run on Linux (rpcclient)";  
             }
             return rpcInfo;
         }
