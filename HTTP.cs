@@ -78,6 +78,18 @@ namespace Reecon
                             // ^ - Does NOT fix this :(
                             Console.WriteLine("GetHTTPInfo.Error.SSLTLS - Bug Reelix to fix this");
                         }
+                        else if (ex.Message.Trim() == "The underlying connection was closed: An unexpected error occurred on a send.")
+                        {
+                            // Ignore it
+                        }
+                        else if (ex.Message.Trim() == "The operation has timed out.")
+                        {
+                            // Ignore it
+                        }
+                        else if (ex.Message.Trim() == "Error: SecureChannelFailure (Authentication failed, see inner exception.)")
+                        {
+                            // Ignore it - Should we?
+                        }
                         else
                         {
                             Console.WriteLine("GetHTTPInfo.Error: " + ex.Message);
@@ -126,14 +138,24 @@ namespace Reecon
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(urlPrefix + "://" + ip + ":" + port + "/robots.txt");
             // Ignore invalid SSL Cert
             request.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
-
+            request.AllowAutoRedirect = false;
+            request.Timeout = 5000;
             try
             {
                 using (var response = request.GetResponse() as HttpWebResponse)
                 {
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
-                        returnText += "- Robots File exists: " + urlPrefix + "://" + ip + ":" + port + "/robots.txt" + Environment.NewLine;
+                        // Since it exists - Let's try read it!
+                        try
+                        {
+                            string robotsText = new StreamReader(response.GetResponseStream()).ReadToEnd();
+                            returnText += "- Robots File exists: " + urlPrefix + "://" + ip + ":" + port + "/robots.txt" + Environment.NewLine;
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("Bug Reelix - HTTP.CheckRobots Error: " + ex.Message + Environment.NewLine);
+                        }
                     }
                 }
             }
@@ -149,7 +171,19 @@ namespace Reecon
                 }
                 else
                 {
-                    Console.WriteLine("CheckRobots - Something weird happened: " + ex.Message);
+                    if (ex.Message.Trim().StartsWith("The remote name could not be resolved:"))
+                    {
+                        string message = ex.Message.Trim().Replace("The remote name could not be resolved:", "");
+                        returnText += "- Hostname Found: " + message.Trim().Trim('\'') + " - You need to do a manual robots.txt check" + Environment.NewLine;
+                    }
+                    else if (ex.Message == "The operation has timed out")
+                    {
+                        returnText += "- Robot Timeout :<" + Environment.NewLine;
+                    }
+                    else
+                    {
+                        Console.WriteLine("CheckRobots - Something weird happened: " + ex.Message);
+                    }
                 }
             }
             catch (Exception ex)
@@ -184,7 +218,15 @@ namespace Reecon
             if (StatusCode != HttpStatusCode.OK)
             {
                 // There's a low chance that it will return a StatusCode that is not in the HttpStatusCode list in which case (int)StatusCode will crash
-                if (StatusCode != HttpStatusCode.OK)
+                if (StatusCode == HttpStatusCode.MovedPermanently)
+                {
+                    if (Headers != null && Headers.Get("Location") != null)
+                    {
+                        responseText += "- Moved Permanently" + Environment.NewLine;
+                        responseText += "-> Location: " + Headers.Get("Location") + Environment.NewLine;
+                    }
+                }
+                else if (StatusCode != HttpStatusCode.OK)
                 {
                     try
                     {
@@ -206,7 +248,7 @@ namespace Reecon
             }
             if (PageText.Length > 0 && PageText.Length < 250)
             {
-                responseText += "- Page Text: " + PageText + Environment.NewLine;
+                responseText += "- Page Text: " + PageText.Trim() + Environment.NewLine;
             }
             if (!string.IsNullOrEmpty(DNS))
             {

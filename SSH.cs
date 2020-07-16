@@ -29,6 +29,14 @@ namespace Reecon
                     int bytes = sshSocket.Receive(buffer, buffer.Length, 0);
                     string versionMessage = Encoding.ASCII.GetString(buffer, 0, bytes);
                     versionMessage = versionMessage.Trim().Replace(Environment.NewLine, "");
+                    // SSH-2.0-OpenSSH_6.6.1p1
+                    // SSH-2.0-dropbear_0.45
+                    if (versionMessage.StartsWith("SSH-2.0-"))
+                    {
+                        versionMessage = versionMessage.Remove(0, 8);
+                        versionMessage = versionMessage.Replace("_", "");
+                        versionMessage += " (protocol 2.0)"; // Nmap's format
+                    }
                     return versionMessage;
                 }
             }
@@ -57,6 +65,14 @@ namespace Reecon
             {
                 return "- Port is closed";
             }
+            if (outputLines.Count == 1 && outputLines[0].Contains("no matching key exchange method found. Their offer:"))
+            {
+                return "- Weird Auth Method: " + outputLines[0];
+            }
+            if (outputLines.Count == 1 && outputLines[0].Trim() == "kex_exchange_identification: Connection closed by remote host")
+            {
+                return "- They have no auth methods to give you";
+            }
             if (outputLines.Contains("kex_exchange_identification: read: Connection reset by peer"))
             {
                 returnString = "- SSH Exists, but connection reset - Doesn't like you :(";
@@ -79,7 +95,8 @@ namespace Reecon
             // reelix@10.10.10.147: Permission denied(publickey, password).
             // reelix@10.10.10.110: Permission denied (publickey,keyboard-interactive).
             return returnString;
-
         }
+
+
     }
 }

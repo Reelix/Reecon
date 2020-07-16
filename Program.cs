@@ -16,7 +16,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.15b ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.16 ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0 && ip.Length == 0)
             {
@@ -27,6 +27,7 @@ namespace Reecon
                 Console.WriteLine("NMap:\t\tReecon -nmap IP FileName");
                 Console.WriteLine("NMap-Load Scan:\tReecon outfile.nmap (Requires a -nmap scan or -oG on regular nmap)");
                 Console.WriteLine("ROPCheck:\tReecon -rop FileName (Very buggy)");
+                Console.WriteLine("Searchsploit:\tReecon -searchsploit nameHere (Beta)");
                 Console.WriteLine("Shell Gen:\tReecon -shell");
                 Console.WriteLine("SMB Brute:\tReecon -smb-brute (Linux Only)");
                 Console.WriteLine("SMB Auth Test:\tReecon -smb IP User Pass (Windows Only - Very buggy)");
@@ -51,6 +52,12 @@ namespace Reecon
             else if (args.Contains("-rop") || args.Contains("--rop"))
             {
                 Pwn.Scan(args);
+                Console.ResetColor();
+                return;
+            }
+            else if (args.Contains("-searchsploit") || args.Contains("--searchsploit"))
+            {
+                Searchsploit.Search(args);
                 Console.ResetColor();
                 return;
             }
@@ -355,7 +362,8 @@ namespace Reecon
                 string port80result = "Port 80 - HTTP";
                 string portData = HTTP.GetInfo(ip, 80, false);
                 Console.WriteLine(port80result + Environment.NewLine + portData + Environment.NewLine);
-                postScanActions += "- gobuster dir -u=http://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http.txt -x.php,.txt" + Environment.NewLine;
+                postScanActions += "- gobuster dir -u=http://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http-medium.txt -x.php,.txt" + Environment.NewLine;
+                postScanActions += "- gobuster dir -u=http://" + ip + "/ -w ~/wordlists/common.txt -t 25 -o gobuster-http-common.txt -x.php,.txt" + Environment.NewLine;
 
             }
             else if (port == 88)
@@ -363,6 +371,19 @@ namespace Reecon
                 string portHeader = "Port 88 - Microsoft Windows Kerberos";
                 string portData = "- Reecon currently lacks Microsoft Windows Kerberos support";
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
+
+                // Post Scan
+                string defaultNamingContext = LDAP.GetDefaultNamingContext(ip, true);
+                defaultNamingContext = defaultNamingContext.Replace("DC=", "").Replace(",", ".");
+
+                // Username enum
+                postScanActions += "- Kerberos Username Enum: kerbrute userenum --dc " + defaultNamingContext + "/ -d " + ip + " users.txt" + Environment.NewLine;
+
+                // Requests TGT (Ticket Granting Tickets) for users
+                postScanActions += "- Kerberos TGT Request: sudo GetNPUsers.py " + defaultNamingContext + "/" + "-dc-ip " + ip + "-request" + Environment.NewLine;
+
+                // Test for users with 'Do not require Kerberos preauthentication'
+                postScanActions += "- Kerberos non-preauth: Kerbesudo GetNPUsers.py " + defaultNamingContext + "/ -usersfile sampleUsersHere.txt -dc-ip " + ip + Environment.NewLine;
             }
             else if (port == 110)
             {
@@ -397,9 +418,8 @@ namespace Reecon
             }
             else if (port == 143)
             {
-                // TODO: Refactor when you come across this again
-                string portHeader = "Port 143 - imap (Internet Message Access Protocol)";
-                string portData = "- Banner: " + General.BannerGrab(ip, 143);
+                string portHeader = "Port 143 - IMAP (Internet Message Access Protocol)";
+                string portData = IMAP.GetInfo(ip, 143);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
             }
             else if (port == 389)
@@ -409,18 +429,14 @@ namespace Reecon
                 string portHeader = "Port 389 - LDAP (Plain Text)";
                 string portData = LDAP.GetInfo(ip);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
-
-                // Post Scan
-                string defaultNamingContext = LDAP.GetDefaultNamingContext(ip, true);
-                defaultNamingContext = defaultNamingContext.Replace("DC=", "").Replace(",", ".");
-                postScanActions += "- sudo GetNPUsers.py " + defaultNamingContext + "/ -usersfile sampleUsersHere.txt -dc-ip " + ip + Environment.NewLine;
             }
             else if (port == 443)
             {
                 string portHeader = "Port 443 - HTTPS";
                 string portData = HTTP.GetInfo(ip, 443, true);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
-                postScanActions += "- gobuster dir -u=https://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http.txt -x.php,.txt" + Environment.NewLine;
+                postScanActions += "- gobuster dir -u=https://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-https-medium.txt -x.php,.txt" + Environment.NewLine;
+                postScanActions += "- gobuster dir -u=https://" + ip + "/ -w ~/wordlists/common -t 25 -o gobuster-https-common.txt -x.php,.txt" + Environment.NewLine;
             }
             else if (port == 445)
             {
@@ -448,6 +464,12 @@ namespace Reecon
             {
                 string portHeader = "Port 636 - LDAP over SSL";
                 string portData = "- Reecon currently lacks LDAP over SSL support - Check port 389";
+                Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
+            }
+            else if (port == 993)
+            {
+                string portHeader = "Port 993 - IMAPS (IMAP over SSL)";
+                string portData = "- Reecon currently lacks IMAPS support";
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
             }
             else if (port == 2049)
@@ -635,7 +657,7 @@ namespace Reecon
             }
             else if (port == 27017)
             {
-                // MonogoDB
+                // MongoDB
                 string portHeader = "Port 27017 - MongoDB";
                 string portData = "- Reecon currently lacks MongoDB support" + Environment.NewLine;
                 portData += "- NMap can get the version";
@@ -659,7 +681,7 @@ namespace Reecon
                 if (theBanner.StartsWith("220") && theBanner.Contains("ESMTP"))
                 {
                     unknownPortResult += " - SMTP";
-                    string smtpInfo = SMTP.ParseBanner(theBanner);
+                    string smtpInfo = SMTP.GetInfo(ip, port); // Can't just parse the banner directly since there could be other useful stuff
                     Console.WriteLine(unknownPortResult + Environment.NewLine + smtpInfo + Environment.NewLine);
 
                 }
@@ -688,19 +710,22 @@ namespace Reecon
                     || theBanner.StartsWith("HTTP/1.0")
                     || theBanner.Contains("Error code explanation: 400 = Bad request syntax or unsupported method.") // BaseHTTP/0.3 Python/2.7.12
                     || theBanner.Contains("<p>Error code: 400</p>") // TryHackMe - Task 12 Day 7
+                    || theBanner.Contains("<h1>Bad Request (400)</h1>")
                     ) // Probably HTTP or HTTPS
                 {
                     string httpData = HTTP.GetInfo(ip, port, false);
                     if (httpData != "")
                     {
                         Console.WriteLine(unknownPortResult + " - HTTP" + Environment.NewLine + httpData + Environment.NewLine);
-                        postScanActions += "- gobuster dir -u=http://" + ip + ":" + port + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http.txt -x.php,.txt" + Environment.NewLine;
+                        postScanActions += "- gobuster dir -u=http://" + ip + ":" + port + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-" + port + "-medium.txt -x.php,.txt" + Environment.NewLine;
+                        postScanActions += "- gobuster dir -u=http://" + ip + ":" + port + "/ -w ~/wordlists/common.txt -t 25 -o gobuster-" + port + "-common.txt -x.php,.txt" + Environment.NewLine;
                     }
                     string httpsData = HTTP.GetInfo(ip, port, true);
                     if (httpsData != "")
                     {
                         Console.WriteLine(unknownPortResult + " - HTTPS" + Environment.NewLine + httpsData + Environment.NewLine);
-                        postScanActions += "- gobuster dir -u=https://" + ip + ":" + port + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http.txt -x.php,.txt" + Environment.NewLine;
+                        postScanActions += "- gobuster dir -u=https://" + ip + ":" + port + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-" + port + "-medium.txt -x.php,.txt" + Environment.NewLine;
+                        postScanActions += "- gobuster dir -u=https://" + ip + ":" + port + "/ -w ~/wordlists/common.txt -t 25 -o gobuster-" + port + "-common.txt -x.php,.txt" + Environment.NewLine;
                     }
                 }
                 else if (theBanner == "-ERR unknown command 'Woof'") // Probably Redis

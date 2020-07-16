@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Reecon
 {
@@ -137,7 +134,7 @@ namespace Reecon
             }
             else
             {
-                rpcInfo = " - No RPC Info - Try run on Linux (rpcclient)";  
+                rpcInfo = " - No RPC Info - Try run on Linux (rpcclient)";
             }
             return rpcInfo;
         }

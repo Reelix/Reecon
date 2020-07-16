@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
@@ -12,18 +13,18 @@ namespace Reecon
 {
     class General
     {
-        public static string BannerGrab(string ip, int port, string initialText = "", int bufferSize = 512)
+        public static string BannerGrab(string ip, int port, string initialText = "", int bufferSize = 512, int timeout = 5000)
         {
             string bannerText = "";
             Byte[] buffer = new Byte[bufferSize];
             using (Socket bannerGrabSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
-                bannerGrabSocket.ReceiveTimeout = 5000;
-                bannerGrabSocket.SendTimeout = 5000;
+                bannerGrabSocket.ReceiveTimeout = timeout;
+                bannerGrabSocket.SendTimeout = timeout;
                 try
                 {
                     var result = bannerGrabSocket.BeginConnect(ip, port, null, null); // Error if an invalid IP
-                    bool success = result.AsyncWaitHandle.WaitOne(5000, true);
+                    bool success = result.AsyncWaitHandle.WaitOne(timeout, true);
                     if (success)
                     {
                         if (!bannerGrabSocket.Connected)
@@ -66,7 +67,7 @@ namespace Reecon
                     {
                         bannerText = "Reecon - Connection reset by peer";
                     }
-                    else 
+                    else
                     {
                         Console.WriteLine($"Error in BannerGrab with error code: {ex.ErrorCode}");
                         throw ex;
@@ -99,6 +100,8 @@ namespace Reecon
                     }
                 }
             }
+
+            // We can't get anything - Try some customs
             if (bannerText.Length == 0 && initialText.Length == 0)
             {
                 bannerText = BannerGrab(ip, port, "Woof" + Environment.NewLine + Environment.NewLine);
@@ -106,7 +109,8 @@ namespace Reecon
             else if (bannerText.Length == 0 && initialText.StartsWith("Woof"))
             {
                 // Nothing on the default - Try some HTTP
-                bannerText = BannerGrab(ip, port, "HEAD / HTTP/1.1" + Environment.NewLine + "Host: " + ip + Environment.NewLine + Environment.NewLine);
+                // Can't use Environment.NewLine since Linux interprets it as \n which is invalid for IIS
+                bannerText = BannerGrab(ip, port, "HEAD / HTTP/1.1\r\nHost: " + ip + "\r\n\r\n");
             }
             return bannerText;
         }

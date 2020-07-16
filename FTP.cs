@@ -19,8 +19,8 @@ namespace Reecon
             }
             if (ftpLoginInfo.Contains("Anonymous login allowed"))
             {
-                string fileListInfo = FTP.TryListFiles(ip, true, ftpUsername, "");
-                if (fileListInfo.Contains("invalid pasv_address"))
+                string fileListInfo = FTP.TryListFiles(ip, true, "anonymous", "");
+                if (fileListInfo.Contains("Not Implemented") || fileListInfo.Contains("invalid pasv_address"))
                 {
                     fileListInfo = FTP.TryListFiles(ip, false, ftpUsername, "");
                 }
@@ -32,6 +32,7 @@ namespace Reecon
             }
             return ftpLoginInfo.Trim(Environment.NewLine.ToCharArray());
         }
+
         public static string FtpLogin(string ftpServer, string username = "", string password = "")
         {
             string ftpLoginResult = "";
@@ -40,6 +41,7 @@ namespace Reecon
                 ftpServer = "ftp://" + ftpServer;
             }
             FtpWebRequest request = (FtpWebRequest)WebRequest.Create(ftpServer);
+            request.Timeout = 5000;
             request.UseBinary = true; // Better for downloading files if we ever need
             request.UsePassive = true; // A better way to receive file listing
             request.KeepAlive = false; // Closes FTP after we're done
@@ -69,7 +71,6 @@ namespace Reecon
                 }
                 if (response.WelcomeMessage.Trim() != "230 Login successful.")
                 {
-                    // Console.WriteLine("Welcome Success?");
                     ftpLoginResult += Environment.NewLine + "- Welcome Message: " + response.WelcomeMessage.Trim();
                 }
                 if (response.SupportsHeaders)
@@ -117,6 +118,7 @@ namespace Reecon
                 ftpServer = "ftp://" + ftpServer;
             }
             FtpWebRequest request = (FtpWebRequest)WebRequest.Create(ftpServer);
+            request.Timeout = 5000;
             request.UseBinary = true; // Better for downloading files if we ever need
             request.UsePassive = usePassive; // A better way to receive file listing
             request.KeepAlive = false; // Closes FTP after we're done
@@ -125,27 +127,44 @@ namespace Reecon
             try
             {
                 FtpWebResponse response = (FtpWebResponse)request.GetResponse();
+                if (!usePassive)
+                {
+                    fileListResult += "- PASV mode FALSE" + Environment.NewLine;
+                }
                 using (StreamReader myStreamReader = new StreamReader(response.GetResponseStream()))
                 {
-                    // TODO: Find a multi-file / directory FTP Server to format this better...
                     List<string> responseLines = myStreamReader.ReadToEnd().Trim().Split(new[] { Environment.NewLine }, StringSplitOptions.None).ToList().Where(x => !string.IsNullOrEmpty(x)).ToList();
                     if (responseLines.Count == 0)
                     {
-                        fileListResult += Environment.NewLine + "- No Files Or Folders Found";
+                        fileListResult += "- No Files Or Folders Found";
                     }
                     else
                     {
-                        fileListResult += Environment.NewLine + "- File Listing: ";
+                        fileListResult += "- File Listing: " + Environment.NewLine;
                         foreach (var file in responseLines)
                         {
-                            fileListResult += Environment.NewLine + "-- ";
+                            fileListResult += "-- ";
                             if (!string.IsNullOrEmpty(file) && file[0] == 'd')
                             {
-                                fileListResult += file + " (Directory) ";
+                                fileListResult += file + " (Directory) " + Environment.NewLine;
                             }
                             else
                             {
-                                fileListResult += file;
+                                fileListResult += file + Environment.NewLine;
+                                // If it has VERY specific permissions and it's the onle file there - Read it
+                                if (file.Contains("-rw-r--r--") && responseLines.Count == 1)
+                                {
+                                    string fileName = file.Remove(0, file.LastIndexOf(' ') + 1);
+                                    try
+                                    {
+                                        string fileContents = ReadFile(ftpServer, usePassive, username, password, fileName);
+                                        fileListResult += fileContents + Environment.NewLine;
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Console.WriteLine("Error: Cannot read file: " + ex.Message);
+                                    }
+                                }
                             }
                         }
                     }
@@ -156,16 +175,24 @@ namespace Reecon
             {
                 try
                 {
-                    FtpWebResponse response = (FtpWebResponse)wex.Response;
-                    if ((int)response.StatusCode == 500)
+                    FtpWebResponse innerResponse = (FtpWebResponse)wex.Response;
+                    try
                     {
-                        if (response.StatusDescription.Trim() == "500 OOPS: invalid pasv_address")
+                        string someVal = innerResponse.ContentType;
+                    }
+                    catch (NotImplementedException)
+                    {
+                        return "- Not Implemented";
+                    }
+                    if ((int)innerResponse.StatusCode == 500)
+                    {
+                        if (innerResponse.StatusDescription.Trim() == "500 OOPS: invalid pasv_address")
                         {
                             return "- Unable to list files: invalid pasv_address";
                         }
                         else
                         {
-                            return "- Unable to list files for unknown reason: " + response.StatusDescription;
+                            return "- Unable to list files for unknown reason: " + innerResponse.StatusDescription;
                         }
                     }
                 }
@@ -180,6 +207,27 @@ namespace Reecon
                 return ":(";
             }
             return ":(";
+        }
+
+        private static string ReadFile(string ftpServer, bool usePassive, string username, string password, string fileName)
+        {
+            string fileContents = "--- Contents of " + fileName + Environment.NewLine;
+
+            FtpWebRequest request = (FtpWebRequest)WebRequest.Create(ftpServer + "/" + fileName);
+            request.Timeout = 5000;
+            request.Credentials = new NetworkCredential(username, password);
+            request.Method = WebRequestMethods.Ftp.DownloadFile;
+
+            using (Stream stream = request.GetResponse().GetResponseStream())
+            using (StreamReader reader = new StreamReader(stream))
+            {
+                while (!reader.EndOfStream)
+                {
+                    string line = reader.ReadLine();
+                    fileContents += "--- " + line + Environment.NewLine;
+                }
+            }
+            return fileContents;
         }
     }
 }
