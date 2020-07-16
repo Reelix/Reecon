@@ -260,7 +260,17 @@ namespace Reecon
                 if (headerList.Contains("Server"))
                 {
                     headerList.Remove("Server");
-                    responseText += "- Server: " + Headers.Get("Server") + Environment.NewLine;
+                    string serverText = Headers.Get("Server").Trim();
+                    responseText += "- Server: " + serverText + Environment.NewLine;
+                    if (serverText.StartsWith("MiniServ/"))
+                    {
+                        responseText += "-- Webmin Server Detected" + Environment.NewLine;
+                        // 1.890, 1.900-1.920 - http://www.webmin.com/changes.html
+                        if (serverText.StartsWith("MiniServ/1.890") || serverText.StartsWith("MiniServ/1.900") || serverText.StartsWith("MiniServ/1.910") || serverText.StartsWith("MiniServ/1.920"))
+                        {
+                            responseText += "--- Possible Vulnerable Version: https://github.com/rapid7/metasploit-framework/blob/master/modules/exploits/linux/http/webmin_backdoor.rb" + Environment.NewLine;
+                        }
+                    }
                 }
                 if (headerList.Contains("X-Powered-By"))
                 {
