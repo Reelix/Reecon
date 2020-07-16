@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
@@ -25,7 +26,6 @@ namespace Reecon
                 using (Socket sshSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
                 {
                     sshSocket.Connect(ip, port);
-                    // s
                     int bytes = sshSocket.Receive(buffer, buffer.Length, 0);
                     string versionMessage = Encoding.ASCII.GetString(buffer, 0, bytes);
                     versionMessage = versionMessage.Trim().Replace(Environment.NewLine, "");
