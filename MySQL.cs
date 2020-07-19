@@ -7,7 +7,6 @@ namespace Reecon
     class MySQL
     {
         // Port: 3306
-
         public static string GetVersion(string ip)
         {
             string returnData = "";
