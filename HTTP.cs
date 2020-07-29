@@ -90,6 +90,11 @@ namespace Reecon
                         {
                             // Ignore it - Should we?
                         }
+                        else if (ex.Message.Trim() == "Error: ConnectFailure (Connection refused)")
+                        {
+                            // The port is probably closed to us
+                            // Ignore it - It's handled elswhere
+                        }
                         else
                         {
                             Console.WriteLine("GetHTTPInfo.Error: " + ex.Message);
@@ -246,9 +251,16 @@ namespace Reecon
             {
                 responseText += "- Page Title: " + PageTitle + Environment.NewLine;
             }
-            if (PageText.Length > 0 && PageText.Length < 250)
+            if (PageText.Length > 0)
             {
-                responseText += "- Page Text: " + PageText.Trim() + Environment.NewLine;
+                if (PageText.Length < 250)
+                {
+                    responseText += "- Page Text: " + PageText.Trim() + Environment.NewLine;
+                }
+                if (PageText.Contains("/wp-content/themes/") && PageText.Contains("/wp-includes/"))
+                {
+                    responseText += "- Wordpress detected! Run wpscan!" + Environment.NewLine;
+                }
             }
             if (!string.IsNullOrEmpty(DNS))
             {

@@ -16,7 +16,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.16a ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.16b ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0 && ip.Length == 0)
             {
@@ -342,6 +342,12 @@ namespace Reecon
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
 
             }
+            else if (port == 23)
+            {
+                string portHeader = "Port 23 - Telnet";
+                string portData = "- Just telnet in - Bug Reelix to update this though...";
+                Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
+            }
             else if (port == 25)
             {
                 string portHeader = "Port 25 - SMTP";
@@ -355,12 +361,19 @@ namespace Reecon
                 string portHeader = "Port 53 - DNS";
                 string portData = DNS.GetInfo(ip);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
+                postScanActions += "- Try a reverse lookup (Linux): dig @" + ip + " -x " + ip + Environment.NewLine;
                 postScanActions += "- Try a zone transfer (Linux): dig axfr domain.com @" + ip + Environment.NewLine;
             }
             else if (port == 80)
             {
                 string port80result = "Port 80 - HTTP";
                 string portData = HTTP.GetInfo(ip, 80, false);
+                // Can't do it in the class since it's also used for non-standard HTTP ports
+                // Might need to refactor
+                if (portData == "")
+                {
+                    portData = "- Are you sure the port is open?";
+                }
                 Console.WriteLine(port80result + Environment.NewLine + portData + Environment.NewLine);
                 postScanActions += "- gobuster dir -u=http://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http-medium.txt -x.php,.txt" + Environment.NewLine;
                 postScanActions += "- gobuster dir -u=http://" + ip + "/ -w ~/wordlists/common.txt -t 25 -o gobuster-http-common.txt -x.php,.txt" + Environment.NewLine;
@@ -380,10 +393,13 @@ namespace Reecon
                 postScanActions += "- Kerberos Username Enum: kerbrute userenum --dc " + defaultNamingContext + "/ -d " + ip + " users.txt" + Environment.NewLine;
 
                 // Requests TGT (Ticket Granting Tickets) for users
-                postScanActions += "- Kerberos TGT Request: sudo GetNPUsers.py " + defaultNamingContext + "/" + "-dc-ip " + ip + "-request" + Environment.NewLine;
+                postScanActions += "- Kerberos TGT Request: sudo GetNPUsers.py " + defaultNamingContext + "/" + " -dc-ip " + ip + " -request" + Environment.NewLine;
 
                 // Test for users with 'Do not require Kerberos preauthentication'
-                postScanActions += "- Kerberos non-preauth: Kerbesudo GetNPUsers.py " + defaultNamingContext + "/ -usersfile sampleUsersHere.txt -dc-ip " + ip + Environment.NewLine;
+                postScanActions += "- Kerberos non-preauth: sudo GetNPUsers.py " + defaultNamingContext + "/ -usersfile sampleUsersHere.txt -dc-ip " + ip + Environment.NewLine;
+
+                // Post exploitation
+                postScanActions += "- If you get details: python3 secretsdump.py usernameHere:\"passwordHere\"@" + ip + " | grep :" + Environment.NewLine;
             }
             else if (port == 110)
             {
@@ -470,6 +486,12 @@ namespace Reecon
             {
                 string portHeader = "Port 993 - IMAPS (IMAP over SSL)";
                 string portData = "- Reecon currently lacks IMAPS support";
+                Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
+            }
+            else if (port == 995)
+            {
+                string portHeader = "Port 995 - pop3s (pop3 over SSL)";
+                string portData = "- Reecon currently lacks pop3s support";
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
             }
             else if (port == 2049)

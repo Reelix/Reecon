@@ -34,6 +34,11 @@ namespace Reecon
             else if (architecture == Architecture.x64)
             {
                 Console.WriteLine("Architecture: x64");
+                /*
+                 * http://shell-storm.org/shellcode/
+                    -> Linux/x86-64 - Execute /bin/sh - 27 bytes by Dad`
+                    --> \x31\xc0\x48\xbb\xd1\x9d\x96\x91\xd0\x8c\x97\xff\x48\xf7\xdb\x53\x54\x5f\x99\x52\x57\x54\x5e\xb0\x3b\x0f\x05
+                */
             }
             else
             {
@@ -66,7 +71,30 @@ namespace Reecon
             }
             else
             {
-                Console.WriteLine("Error - ropper is not installed.");
+                Console.WriteLine("- ropper is not installed - Skipping gadget check and string search");
+            }
+            if (General.IsInstalledOnLinux("rabin2"))
+            {
+                List<string> rabin2Output  = General.GetProcessOutput("rabin2", "-I ./" + fileName);
+                foreach (string item in rabin2Output)
+                {
+                    if (item.Trim().StartsWith("nx") && item.Contains("false"))
+                    {
+                        Console.WriteLine("- nx is disabled - You can run your own shellcode!");
+                        if (architecture == Architecture.x64)
+                        {
+                            Console.WriteLine(@"Linux/x86-64 - Execute /bin/sh: \x31\xc0\x48\xbb\xd1\x9d\x96\x91\xd0\x8c\x97\xff\\x48\xf7\xdb\x53\x54\x5f\x99\x52\x57\x54\x5e\xb0\x3b\x0f\x05");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Bug Reelix to fix his code!");
+                        }
+                    }
+                }
+            }
+            else
+            {
+                Console.WriteLine("- rabin2 is not installed - Skipping nx check");
             }
             if (General.IsInstalledOnLinux("objdump"))
             {
@@ -89,7 +117,7 @@ namespace Reecon
             }
             else
             {
-                Console.WriteLine("Error - objdump is not installed");
+                Console.WriteLine("- objdump is not installed - Skipping syscalls");
             }
             Console.WriteLine("Finished");
         }

@@ -46,52 +46,97 @@ namespace Reecon
                         250 - SMTPUTF8
                         250 CHUNKING
                             */
-                        byte[] cmdBytes = Encoding.ASCII.GetBytes(("EHLO " + ip + "\n").ToCharArray());
-                        smtpSocket.Send(cmdBytes, cmdBytes.Length, 0);
+                        byte[] ehloBytes = Encoding.ASCII.GetBytes(("EHLO " + ip + "\n").ToCharArray());
+                        smtpSocket.Send(ehloBytes, ehloBytes.Length, 0);
                         bytes = smtpSocket.Receive(buffer, buffer.Length, 0);
-                        string ehloResult = Encoding.ASCII.GetString(buffer, 0, bytes);
+                        string ehloResponse = Encoding.ASCII.GetString(buffer, 0, bytes);
                         bool isPipeliningEnabled = false;
-                        if (ehloResult.Length != 0)
+                        if (ehloResponse.Length != 0)
                         {
-                            List<string> ehloItems = ehloResult.Split(Environment.NewLine.ToCharArray()).ToList();
-                            ehloItems.RemoveAll(string.IsNullOrEmpty);
-                            string commands = "";
-                            foreach (string item in ehloItems)
+                            // Bad EHLO Response
+                            if (ehloResponse.Trim() == "550 Forged EHLO/HELO data")
                             {
-                                string commandItem = item.Replace("250-", "");
-                                // This took awhile to fix.
-                                // The split can keep a \r if used on Linux for data from a Windows host
-                                // \r sends the carriage to the start of the line and can subsequently overrides text
-                                commandItem = commandItem.Replace("\r", "");
-                                if (commandItem == "PIPELINING")
+                                returnText += Environment.NewLine + "- EHLO requires the Domain Name - Additional checks may fail";
+                            }
+                            else if (ehloResponse.Trim().StartsWith("550 "))
+                            {
+                                returnText += Environment.NewLine + "- Unable to EHLO: " + ehloResponse.Remove(0, 4);
+                            }
+                            else
+                            {
+                                // Good EHLO Response - Parse it
+                                List<string> ehloItems = ehloResponse.Split(Environment.NewLine.ToCharArray()).ToList();
+                                ehloItems.RemoveAll(string.IsNullOrEmpty);
+                                string commands = "";
+                                foreach (string item in ehloItems)
                                 {
-                                    isPipeliningEnabled = true;
+                                    string commandItem = item.Replace("250-", "");
+                                    // This took awhile to fix.
+                                    // The split can keep a \r if used on Linux for data from a Windows host
+                                    // \r sends the carriage to the start of the line and can subsequently overrides text
+                                    commandItem = commandItem.Replace("\r", "");
+                                    if (commandItem == "PIPELINING")
+                                    {
+                                        isPipeliningEnabled = true;
+                                    }
+                                    commands += commandItem + ",";
                                 }
-                                commands += commandItem + ",";
+                                commands = commands.Trim(',');
+                                returnText += Environment.NewLine + "- SMTP Commands: " + commands;
+                                if (isPipeliningEnabled)
+                                {
+                                    returnText += Environment.NewLine + "- PIPELINING is enabled - Command Spam allowed!";
+                                }
                             }
-                            commands = commands.Trim(',');
-                            returnText += Environment.NewLine + "- SMTP Commands: " + commands;
-                            if (isPipeliningEnabled)
+                        }
+
+
+                        // Check the MAIL FROM to see if we can phish
+                        byte[] mailFromBytes = Encoding.ASCII.GetBytes(("MAIL FROM:<test@test.com>\n").ToCharArray());
+                        smtpSocket.Send(mailFromBytes, mailFromBytes.Length, 0);
+                        bytes = smtpSocket.Receive(buffer, buffer.Length, 0);
+                        string mailFromResponse = Encoding.ASCII.GetString(buffer, 0, bytes).Trim();
+                        // 550 HELO/EHLO not yet given -> Requires a valid EHLO First
+                        // 250 2.1.0 Ok
+                        // 550 Submission must be authenticated -> Requires Auth
+                        if (mailFromResponse.StartsWith("550 "))
+                        {
+                            mailFromResponse = mailFromResponse.Remove(0, 4);
+                            if (mailFromResponse == "Submission must be authenticated")
                             {
-                                returnText += Environment.NewLine + "- PIPELINING is enabled - Command Spam allowed!";
+                                returnText += Environment.NewLine + "- Unable to phish: Credentials are required for MAIL FROM";
                             }
-                            /*
-                                RCPT TO:<woof@woof.com>
-                                503 5.5.1 Error: need MAIL command
-                                MAIL FROM:<test@woof.com>
-                                250 2.1.0 Ok
-                            */
+                            else if (mailFromResponse == "HELO/EHLO not yet given")
+                            {
+                                returnText += Environment.NewLine + "- Unable to phish: Requires a valid EHLO";
+                            }
+                            else
+                            {
+                                returnText += Environment.NewLine + "- Unable to phish: " + mailFromResponse;
+                            }
+                        }
+                        else if (mailFromResponse.StartsWith("250 "))
+                        {
+                            // Can Spoof the Mail From - Might as well suggest a phish
                             returnText += Environment.NewLine + "- Maybe try phish?" + Environment.NewLine
-                                        + "-- MAIL FROM:<test@woof.com>" + Environment.NewLine
-                                        + "-- RCPT TO:<woof@woof.com>" + Environment.NewLine
-                                        + "-- DATA" + Environment.NewLine
-                                        + "-- Type Stuff here, put a . on its own line to queue the send";
+                                    + "-- MAIL FROM:<test@woof.com>" + Environment.NewLine
+                                    + "-- RCPT TO:<woof@woof.com>" + Environment.NewLine
+                                    + "-- DATA" + Environment.NewLine
+                                    + "-- Type Stuff here, put a . on its own line to queue the send";
+                        }
+                        else if (mailFromResponse.Trim() == "")
+                        {
+                            returnText += Environment.NewLine + "- No MAIL FROM response.";
+                        }
+                        else
+                        {
+                            returnText += Environment.NewLine + "- Unknown MAIL FROM Response: " + mailFromResponse;
                         }
                     }
                     else
                     {
                         returnText = "- Non-SMTP Banner Detected: " + smtpBanner;
-                    }    
+                    }
                 }
                 catch (Exception ex)
                 {

