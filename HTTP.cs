@@ -18,8 +18,11 @@ namespace Reecon
                 return "";
             }
             string portData = FormatResponse(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
-            string robotsFile = CheckRobots(ip, port, isHTTPS);
-            portData = robotsFile + portData;
+            string commonFiles = FindCommonFiles(ip, port, isHTTPS);
+            if (commonFiles != "")
+            {
+                portData += Environment.NewLine + commonFiles;
+            }
             string baseLFI = TestBaseLFI(ip, port);
             if (baseLFI != "")
             {
@@ -74,8 +77,6 @@ namespace Reecon
                     {
                         if (ex.Message.Trim() == "The request was aborted: Could not create SSL/TLS secure channel.")
                         {
-                            // ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                            // ^ - Does NOT fix this :(
                             Console.WriteLine("GetHTTPInfo.Error.SSLTLS - Bug Reelix to fix this");
                         }
                         else if (ex.Message.Trim() == "The underlying connection was closed: An unexpected error occurred on a send.")
@@ -132,71 +133,108 @@ namespace Reecon
             return (statusCode, pageTitle, pageText, dns, headers, cert);
         }
 
-        private static string CheckRobots(string ip, int port, bool isHTTPS)
+        private static string FindCommonFiles(string ip, int port, bool isHTTPS)
         {
+            // Mini gobuster :p
+            List<string> commonFiles = new List<string>
+            {
+                // robots.txt - Of course
+                "robots.txt",
+                // Most likely invalid folder for test purposes
+                "woof/",
+                // Common Index files
+                "index.php",
+                "index.html",
+                // Common images folder
+                "images/",
+                // Hidden mail server
+                "mail/",
+                // Admin stuff
+                "admin.php",
+                // Git repo
+                ".git/",
+                // SSH
+                ".ssh/id_rsa",
+                // Bash History
+                ".bash_history"
+            };
             string returnText = "";
-            string urlPrefix = "http";
-            if (isHTTPS)
+            foreach (string file in commonFiles)
             {
-                urlPrefix += "s";
-            }
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(urlPrefix + "://" + ip + ":" + port + "/robots.txt");
-            // Ignore invalid SSL Cert
-            request.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
-            request.AllowAutoRedirect = false;
-            request.Timeout = 5000;
-            try
-            {
-                using (var response = request.GetResponse() as HttpWebResponse)
+                string urlPrefix = "http";
+                if (isHTTPS)
                 {
-                    if (response.StatusCode == HttpStatusCode.OK)
+                    urlPrefix += "s";
+                }
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(urlPrefix + "://" + ip + ":" + port + "/" + file);
+                // Ignore invalid SSL Cert
+                request.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
+                request.AllowAutoRedirect = false;
+                request.Timeout = 5000;
+                try
+                {
+                    using (var response = request.GetResponse() as HttpWebResponse)
                     {
-                        // Since it exists - Let's try read it!
-                        try
+                        if (response.StatusCode == HttpStatusCode.OK)
                         {
-                            string robotsText = new StreamReader(response.GetResponseStream()).ReadToEnd();
-                            returnText += "- Robots File exists: " + urlPrefix + "://" + ip + ":" + port + "/robots.txt" + Environment.NewLine;
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine("Bug Reelix - HTTP.CheckRobots Error: " + ex.Message + Environment.NewLine);
+                            // Since it exists - Let's try read it!
+                            try
+                            {
+                                returnText += "- Common Path is readable: " + urlPrefix + "://" + ip + ":" + port + "/" + file  + Environment.NewLine;
+                                string pageText = new StreamReader(response.GetResponseStream()).ReadToEnd();
+                                string usefulInfo = Web.FindInfo(pageText, true);
+                                if (usefulInfo.Trim(Environment.NewLine.ToCharArray()) != "")
+                                {
+                                    returnText += usefulInfo + Environment.NewLine;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine("Bug Reelix - HTTP.FindCommonFiles Error: " + ex.Message + Environment.NewLine);
+                            }
                         }
                     }
                 }
-            }
-            catch (WebException ex)
-            {
-                if (ex.Response != null)
+                catch (WebException ex)
                 {
-                    HttpWebResponse response = (HttpWebResponse)ex.Response;
-                    if (response.StatusCode == HttpStatusCode.OK)
+                    if (ex.Response != null)
                     {
-                        returnText += "- Robots File exists: " + urlPrefix + "://" + ip + ":" + port + "/robots.txt" + Environment.NewLine;
-                    }
-                }
-                else
-                {
-                    if (ex.Message.Trim().StartsWith("The remote name could not be resolved:"))
-                    {
-                        string message = ex.Message.Trim().Replace("The remote name could not be resolved:", "");
-                        returnText += "- Hostname Found: " + message.Trim().Trim('\'') + " - You need to do a manual robots.txt check" + Environment.NewLine;
-                    }
-                    else if (ex.Message == "The operation has timed out")
-                    {
-                        returnText += "- Robot Timeout :<" + Environment.NewLine;
+                        HttpWebResponse response = (HttpWebResponse)ex.Response;
+                        if (response.StatusCode == HttpStatusCode.OK)
+                        {
+                            returnText += "- Common File exists: " + urlPrefix + "://" + ip + ":" + port + "/" + file + Environment.NewLine;
+                            string pageText = new StreamReader(response.GetResponseStream()).ReadToEnd();
+                            string usefulInfo = Web.FindInfo(pageText, true);
+                            if (usefulInfo.Trim(Environment.NewLine.ToCharArray()) != "")
+                            {
+                                returnText += usefulInfo + Environment.NewLine;
+                            }
+                        }
                     }
                     else
                     {
-                        Console.WriteLine("CheckRobots - Something weird happened: " + ex.Message);
+                        if (ex.Message.Trim().StartsWith("The remote name could not be resolved:"))
+                        {
+                            string message = ex.Message.Trim().Replace("The remote name could not be resolved:", "");
+                            returnText += "- Hostname Found: " + message.Trim().Trim('\'') + " - You need to do a manual common file check" + Environment.NewLine;
+                            return returnText;
+                        }
+                        else if (ex.Message == "The operation has timed out")
+                        {
+                            returnText += "- FindCommonFiles Timeout :<" + Environment.NewLine;
+                        }
+                        else
+                        {
+                            Console.WriteLine("FindCommonFiles - Something weird happened: " + ex.Message);
+                        }
                     }
                 }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("FindCommonFiles - Fatal Woof: " + ex.Message);
+                }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine("CheckRobots - Fatal Woof: " + ex.Message);
-            }
-
-            return returnText;
+            return returnText.Trim(Environment.NewLine.ToArray());
         }
 
         private static string TestBaseLFI(string ip, int port)
@@ -349,7 +387,8 @@ namespace Reecon
                     }
                 }
             }
-            responseText = responseText.TrimEnd(Environment.NewLine.ToCharArray()); // Clean off any redundant newlines
+            // Clean off any redundant newlines
+            responseText = responseText.TrimEnd(Environment.NewLine.ToCharArray());
             return responseText;
         }
     }

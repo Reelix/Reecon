@@ -7,7 +7,7 @@ namespace Reecon
 {
     class Web
     {
-        static WebClient wc = new WebClient();
+        static readonly WebClient wc = new WebClient();
         static string url = "";
         public static void GetInfo(string[] args)
         {
@@ -25,7 +25,7 @@ namespace Reecon
             ScanPage(url);
         }
 
-        public static void ScanPage(string url)
+        private static void ScanPage(string url)
         {
             string pageText;
             try
@@ -38,24 +38,49 @@ namespace Reecon
                 Console.WriteLine("Error: " + ex.Message);
                 return;
             }
-            FindEmails(pageText);
-            FindLinks(pageText);
+            string pageInfo = FindInfo(pageText);
+            Console.WriteLine(pageInfo);
         }
 
-        public static void FindEmails(string text)
+        public static string FindInfo(string pageText, bool doubleDash = false)
         {
+            string emailInfo = FindEmails(pageText, doubleDash);
+            string linkInfo = FindLinks(pageText, doubleDash);
+            if (emailInfo != "")
+            {
+                return emailInfo + Environment.NewLine + linkInfo;
+            }
+            else
+            {
+                return linkInfo;
+            }
+        }
+
+        private static string FindEmails(string text, bool doubleDash)
+        {
+            string returnInfo = "";
+
             // Do not change this Regex
             Regex emailRegex = new Regex(@"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", RegexOptions.IgnoreCase);
             MatchCollection emailMatches = emailRegex.Matches(text);
             List<string> matchList = General.MatchCollectionToList(emailMatches);
             foreach (string match in matchList)
             {
-                Console.WriteLine("EMail: " + match);
+                if (doubleDash)
+                {
+                    returnInfo += "-- EMail: " + match + Environment.NewLine;
+                }
+                else
+                {
+                    returnInfo += "- EMail: " + match + Environment.NewLine;
+                }
             }
+            return returnInfo.Trim(Environment.NewLine.ToCharArray());
         }
 
-        public static void FindLinks(string pageText)
+        private static string FindLinks(string pageText, bool doubleDash)
         {
+            string returnInfo = "";
             // Find all matches
             MatchCollection m1 = Regex.Matches(pageText, @"(<a.*?>.*?</a>)", RegexOptions.Singleline);
 
@@ -84,9 +109,17 @@ namespace Reecon
                 }
                 if (href.Length > 1)
                 {
-                    Console.WriteLine(text + ": " + href);
+                    if (doubleDash)
+                    {
+                        returnInfo += "-- " + text + ": " + href + Environment.NewLine;
+                    }
+                    else
+                    {
+                        returnInfo += "- " + text + ": " + href + Environment.NewLine;
+                    }
                 }
             }
+            return returnInfo.Trim(Environment.NewLine.ToCharArray());
         }
     }
 }

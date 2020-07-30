@@ -39,6 +39,7 @@ namespace Reecon
         }
     }
 
+#pragma warning disable IDE1006 // Naming Styles are supressed since these are case sensitive
     public class ElasticSearchObject
     {
         public string name { get; set; }
@@ -60,5 +61,5 @@ namespace Reecon
         public string minimum_wire_compatibility_version { get; set; }
         public string minimum_index_compatibility_version { get; set; }
     }
-
+#pragma warning restore IDE1006 // Naming Styles
 }

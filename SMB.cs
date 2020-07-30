@@ -12,20 +12,19 @@ namespace Reecon
     {
         public static string GetInfo(string ip)
         {
-            string returnInfo = "";
+            string returnText;
             if (General.GetOS() == General.OS.Windows)
             {
                 string portData = SMB.TestAnonymousAccess(ip);
                 string morePortData = SMB.TestAnonymousAccess(ip, "anonymous");
                 string evenMorePortData = SMB.TestAnonymousAccess(ip, "anonymous", "anonymous");
-                returnInfo = portData + morePortData + evenMorePortData;
+                returnText = portData + morePortData + evenMorePortData;
             }
             else
             {
-                returnInfo = SMB.TestAnonymousAccess_Linux(ip);
-                return returnInfo;
+                returnText = SMB.TestAnonymousAccess_Linux(ip);
             }
-            return returnInfo;
+            return returnText;
         }
         public static string TestAnonymousAccess(string IP, string username = "", string password = "")
         {

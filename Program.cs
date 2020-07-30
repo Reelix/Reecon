@@ -16,7 +16,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.16b ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.16c ( https://github.com/reelix/reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0 && ip.Length == 0)
             {
@@ -131,20 +131,6 @@ namespace Reecon
                 {
                     portList.AddRange(args[1].Split(',').ToList().Select(x => int.Parse(x)));
                 }
-                Console.Write("Scanning: " + ip);
-                if (portList.Count != 0)
-                {
-                    Console.Write(" (Port");
-                    if (portList.Count > 1)
-                    {
-                        Console.Write("s");
-                    }
-                    Console.WriteLine(": " + string.Join(",", portList) + ")");
-                }
-                else
-                {
-                    Console.WriteLine();
-                }
             }
             else
             {
@@ -155,6 +141,8 @@ namespace Reecon
                     ParsePorts(ip, false);
                 }
             }
+
+            // First check if it's actually up
             if (mustPing)
             {
                 Console.WriteLine("Checking if host is online...");
@@ -169,9 +157,25 @@ namespace Reecon
                 }
             }
 
-            if (portList.Count == 0)
+            // Everything parsed - Down to the scanning!
+            if (portList.Count != 0)
             {
-                // Cleanup from any previous runs
+                Console.Write("Scanning: " + ip);
+                // User defined ports - Only scan them
+                Console.Write(" (Port");
+                if (portList.Count > 1)
+                {
+                    Console.Write("s");
+                }
+                Console.WriteLine(": " + string.Join(",", portList) + ")");
+                ScanPorts(portList);
+            }
+            else
+            {
+                // No user defined ports - Default scan
+                Console.WriteLine("Scanning: " + ip);
+
+                // Cleanup from any previous broken runs
                 if (File.Exists("nmap-fast.txt"))
                 {
                     File.Delete("nmap-fast.txt");
@@ -180,42 +184,27 @@ namespace Reecon
                 {
                     File.Delete("nmap-normal.txt");
                 }
-                /*
-                if (File.Exists("nmap-slow.txt"))
-                {
-                    File.Delete("nmap-slow.txt");
-                }
-                if (File.Exists("nmap-all.txt"))
-                {
-                    File.Delete("nmap-all.txt");
-                }*/
 
                 // After each list is parsed, the file gets deleted.
+                // Except for 3, which leaves a human-readable nmap-all.txt
                 RunNMap(1);
-                ParsePorts("nmap-fast.txt");
+                List<int> newPorts = ParsePorts("nmap-fast.txt");
+                ScanPorts(newPorts);
+
                 RunNMap(2);
-                ParsePorts("nmap-normal.txt");
-                Console.WriteLine("Running a Level 3 NMap - This could take awhile");
+                newPorts = ParsePorts("nmap-normal.txt");
+                ScanPorts(newPorts);
+
                 RunNMap(3);
-                // This generates 2 files 
-                ParsePorts("nmap-slow.txt");
+                newPorts = ParsePorts("nmap-slow.txt");
+                ScanPorts(newPorts);
             }
 
-            // All files and params parsed - Scanning time!
             if (portList.Count == 0)
             {
+                // All scans done - But still no ports
                 Console.WriteLine("No open ports found to scan :<");
                 return;
-            }
-            else
-            {
-                ScanPorts(portList);
-            }
-
-            // Wait for the ScanPorts thread list to finish
-            foreach (Thread theThread in threadList)
-            {
-                theThread.Join();
             }
 
             // Everything done - Now for some helpful info!
@@ -251,23 +240,24 @@ namespace Reecon
             if (level == 1)
             {
                 // -F = Fast (100 Most Common Ports)
-                General.RunProcess("nmap", $"{ip} -sS -F --min-rate=100 -oG nmap-fast.txt");
+                General.RunProcess("sudo", $"nmap {ip} -sS -F --min-rate=50 -oG nmap-fast.txt");
             }
             else if (level == 2)
             {
                 // Top 1,000 Ports (Excl. Top 100?)
-                General.RunProcess("nmap", $"{ip} -sS --min-rate=500 -oG nmap-normal.txt");
+                General.RunProcess("sudo", $"nmap {ip} -sS --min-rate=500 -oG nmap-normal.txt");
             }
             else if (level == 3)
             {
                 // -p- = All Ports
-                General.RunProcess("nmap", $"{ip} -sS -p- --min-rate=5000 -oG nmap-slow.txt -oN nmap-all.txt");
+                General.RunProcess("sudo", $"nmap {ip} -sS -p- --min-rate=5000 -oG nmap-slow.txt -oN nmap-all.txt");
             }
         }
 
-        // Parses an -oG nmap file for ports
-        static void ParsePorts(string fileName, bool deleteFile = true)
+        // Parses an -oG nmap file for ports and scans the results
+        static List<int> ParsePorts(string fileName, bool deleteFile = true)
         {
+            List<int> returnList = new List<int>();
             // Console.WriteLine("Parsing: " + fileName);
             StreamReader sr1 = new StreamReader(fileName);
             string[] fileLines = sr1.ReadToEnd().Split(new[] { Environment.NewLine }, StringSplitOptions.None);
@@ -286,7 +276,7 @@ namespace Reecon
             if (!fileLines[2].Contains("/open/"))
             {
                 Console.WriteLine("No open ports found");
-                return;
+                return returnList;
             }
             string portLine = fileLines[2];
             string[] portItems = portLine.Split('\t');
@@ -301,28 +291,50 @@ namespace Reecon
                     if (!portList.Contains(port))
                     {
                         portList.Add(port);
+                        returnList.Add(port);
                     }
                 }
                 else
                 {
-                    if (!portList.Contains(port))
+                    if (status == "closed")
                     {
-                        portList.Add(port);
-                        Console.WriteLine("Unknown Status: " + port + " -> " + status);
+                        // Closed - Add it to the found list, but skip it
+                        if (!portList.Contains(port))
+                        {
+                            portList.Add(port);
+                        }
+                    }
+                    else
+                    {
+                        if (!portList.Contains(port))
+                        {
+                            portList.Add(port);
+                            Console.WriteLine("Unknown Status: " + port + " -> " + status);
+                        }
                     }
                 }
             }
+            return returnList;
         }
 
-        // Multithreaded port scan
         static void ScanPorts(List<int> portList)
         {
+            // Multi-threaded scan
             foreach (int port in portList)
             {
                 Thread myThread = new Thread(() => ScanPort(port));
                 threadList.Add(myThread);
                 myThread.Start();
             }
+
+            // Wait for the scans to finish
+            foreach (Thread theThread in threadList)
+            {
+                theThread.Join();
+            }
+
+            // And clear the thread list
+            threadList.Clear();
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0042:Deconstruct variable declaration")]
@@ -712,7 +724,6 @@ namespace Reecon
                     unknownPortResult += " - SSH" + Environment.NewLine;
                     if (theBanner.Contains("\r\nProtocol mismatch."))
                     {
-                        theBanner = theBanner.Replace("\r\nProtocol mismatch.", "");
                         unknownPortResult += Environment.NewLine + "- TCP Protocol Mismatch";
                     }
                     unknownPortResult += SSH.GetInfo(ip, port);

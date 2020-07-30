@@ -100,14 +100,16 @@ namespace Reecon
                 foreach (string item in dbItems)
                 {
                     string[] itemData = item.Split(',');
-                    DatabaseItem dbItem = new DatabaseItem();
-                    dbItem.ID = itemData[0];
-                    dbItem.Path = itemData[1];
-                    dbItem.Title = itemData[2];
-                    dbItem.ReleaseDate = itemData[3];
-                    dbItem.Author = itemData[4];
-                    dbItem.Type = itemData[5];
-                    dbItem.Platform = itemData[6];
+                    DatabaseItem dbItem = new DatabaseItem
+                    {
+                        ID = itemData[0],
+                        Path = itemData[1],
+                        Title = itemData[2],
+                        ReleaseDate = itemData[3],
+                        Author = itemData[4],
+                        Type = itemData[5],
+                        Platform = itemData[6]
+                    };
                     database.Add(dbItem);
                 }
                 

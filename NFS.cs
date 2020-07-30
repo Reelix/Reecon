@@ -33,6 +33,7 @@ namespace Reecon
                 else
                 {
                     fileList = "- showmount does not exist - Bug Reelix to update this section for more compatibility";
+                    return fileList;
                 }
             }
             else if (General.GetOS() == General.OS.Linux)
