@@ -142,6 +142,9 @@ namespace Reecon
                 "robots.txt",
                 // Most likely invalid folder for test purposes
                 "woof/",
+                // Common hidden folders
+                "hidden/",
+                "secret/",
                 // Common Index files
                 "index.php",
                 "index.html",
@@ -156,7 +159,11 @@ namespace Reecon
                 // SSH
                 ".ssh/id_rsa",
                 // Bash History
-                ".bash_history"
+                ".bash_history",
+                // NodeJS Environment File
+                ".env",
+                // General info file
+                ".DS_STORE"
             };
             string returnText = "";
             foreach (string file in commonFiles)
@@ -177,7 +184,7 @@ namespace Reecon
                     {
                         if (response.StatusCode == HttpStatusCode.OK)
                         {
-                            // Since it exists - Let's try read it!
+                            // Since it's readable - Let's deal with it!
                             try
                             {
                                 returnText += "- Common Path is readable: " + urlPrefix + "://" + ip + ":" + port + "/" + file  + Environment.NewLine;
@@ -187,11 +194,27 @@ namespace Reecon
                                 {
                                     returnText += usefulInfo + Environment.NewLine;
                                 }
+                                // Specific case for robots.txt since it's common and extra useful
+                                if (file == "robots.txt")
+                                {
+                                    foreach (var line in pageText.Split(Environment.NewLine.ToCharArray()))
+                                    {
+                                        if (line != "")
+                                        {
+                                            returnText += "-- " + line + Environment.NewLine;
+                                        }
+                                    }
+                                }
                             }
                             catch (Exception ex)
                             {
                                 Console.WriteLine("Bug Reelix - HTTP.FindCommonFiles Error: " + ex.Message + Environment.NewLine);
                             }
+                        }
+                        else if (response.StatusCode == HttpStatusCode.Forbidden)
+                        {
+                            // Forbidden is still useful
+                            returnText += "- Common Path is Forbidden: " + urlPrefix + "://" + ip + ":" + port + "/" + file + Environment.NewLine;
                         }
                     }
                 }

@@ -6,7 +6,7 @@ namespace Reecon
     {
         public static string GetInfo(string ip, int port)
         {
-            string returnInfo = "";
+            string returnInfo;
             string bannerInfo = General.BannerGrab(ip, port);
 
             // * OK [CAPABILITY IMAP4rev1 UIDPLUS CHILDREN NAMESPACE THREAD=ORDEREDSUBJECT THREAD=REFERENCES SORT QUOTA IDLE ACL ACL2=UNION STARTTLS ENABLE UTF8=ACCEPT] Courier-IMAP ready. Copyright 1998-2018 Double Precision, Inc.  See COPYING for distribution information.

@@ -8,7 +8,7 @@ namespace Reecon
 {
     class Redis
     {
-        public static string GetInfo(string ip)
+        public static string GetInfo(string ip, int port)
         {
             // This has only been tested on a non-passworded Redis 4 Server, so will probably break anywhere else
             string returnText = "";
@@ -16,11 +16,11 @@ namespace Reecon
             using (Socket redisSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
                 // Doing multiple requests with lots of data, so give it some time  
-                redisSocket.ReceiveTimeout = 5000;
+                redisSocket.ReceiveTimeout = 10000;
                 redisSocket.SendTimeout = 5000;
                 try
                 {
-                    redisSocket.Connect(ip, 6379); // Error if an invalid IP
+                    redisSocket.Connect(ip, port); // Error if an invalid IP
                     byte[] cmdBytes = Encoding.ASCII.GetBytes(("INFO" + Environment.NewLine).ToCharArray());
                     redisSocket.Send(cmdBytes, cmdBytes.Length, 0);
                     // Get basic info

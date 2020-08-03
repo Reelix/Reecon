@@ -16,7 +16,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.16c ( https://github.com/reelix/reecon )");
+            Console.WriteLine("Reecon - Version 0.17 ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0 && ip.Length == 0)
             {
@@ -494,6 +494,14 @@ namespace Reecon
                 string portData = "- Reecon currently lacks LDAP over SSL support - Check port 389";
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
             }
+            else if (port == 873)
+            {
+                // Yes - A lower case s in sync
+                string portHeader = "Port 873 - Rsync (Remote Sync)";
+                string portData = Rsync.GetInfo(ip, port);
+                Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
+                postScanActions += "- Rsync: rsync -av --list-only rsync://" + ip + "/folderNameHere/ (Remove --list-only and add a . at the end to download)";
+            }
             else if (port == 993)
             {
                 string portHeader = "Port 993 - IMAPS (IMAP over SSL)";
@@ -643,7 +651,7 @@ namespace Reecon
             else if (port == 6379)
             {
                 string portHeader = "Port 6379 - Redis";
-                string portData = Redis.GetInfo("10.10.10.160");
+                string portData = Redis.GetInfo(ip, port);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
             }
             else if (port == 6881)
@@ -764,7 +772,7 @@ namespace Reecon
                 else if (theBanner == "-ERR unknown command 'Woof'") // Probably Redis
                 {
                     unknownPortResult += " - Redis";
-                    string portData = Redis.GetInfo(ip);
+                    string portData = Redis.GetInfo(ip, port);
                     Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
                 }
                 else if (theBanner == "+OK Dovecot ready.")
@@ -803,6 +811,12 @@ namespace Reecon
                 {
                     unknownPortResult += " - xmpp" + Environment.NewLine;
                     unknownPortResult += " - Client Name: Wildfire XMPP Client" + Environment.NewLine;
+                    Console.WriteLine(unknownPortResult);
+                }
+                else if (theBanner.StartsWith("@RSYNCD"))
+                {
+                    unknownPortResult += " - Rsync" + Environment.NewLine;
+                    unknownPortResult += Rsync.GetInfo(ip, port);
                     Console.WriteLine(unknownPortResult);
                 }
                 // 47538/tcp open  socks-proxy Socks4A

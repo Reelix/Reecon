@@ -59,7 +59,8 @@
     <Reference Include="LdapForNet, Version=2.3.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>packages\LdapForNet.2.3.0\lib\netstandard2.0\LdapForNet.dll</HintPath>
     </Reference>
-    <Reference Include="MyRawClient">
+    <Reference Include="MyRawClient, Version=0.2.7418.7446, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>.\MyRawClient.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
@@ -91,6 +92,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Pwn.cs" />
     <Compile Include="Redis.cs" />
+    <Compile Include="Rsync.cs" />
     <Compile Include="Searchsploit.cs" />
     <Compile Include="Shell.cs" />
     <Compile Include="SMB.cs" />

