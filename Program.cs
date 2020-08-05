@@ -16,7 +16,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.17 ( https://github.com/Reelix/Reecon )");
+            Console.WriteLine("Reecon - Version 0.18 ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0 && ip.Length == 0)
             {
@@ -500,7 +500,7 @@ namespace Reecon
                 string portHeader = "Port 873 - Rsync (Remote Sync)";
                 string portData = Rsync.GetInfo(ip, port);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
-                postScanActions += "- Rsync: rsync -av --list-only rsync://" + ip + "/folderNameHere/ (Remove --list-only and add a . at the end to download)";
+                postScanActions += "- Rsync: rsync -av --list-only rsync://" + ip + "/folderNameHere/ (Remove --list-only and add a . at the end to download)" + Environment.NewLine;
             }
             else if (port == 993)
             {
@@ -519,6 +519,13 @@ namespace Reecon
                 string portHeader = "Port 2049 - NFS (Network File System)";
                 string portData = NFS.GetFileList(ip);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
+            }
+            else if (port == 3128)
+            {
+                string portHeader = "Port 3128 - Squid";
+                string portData = Squid.GetInfo(ip, 3128);
+                Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
+                postScanActions += $"- Squid: If you get a password, run: squidclient -v -h {ip} -w 'passwordHere' mgr:menu" + Environment.NewLine;
             }
             else if (port == 3268)
             {
@@ -714,7 +721,7 @@ namespace Reecon
             }
             else
             {
-                // Try parse the banner
+                // A port I'm not familiar with - Try parse the banner
                 string theBanner = General.BannerGrab(ip, port);
                 byte[] theBannerBytes = General.GetBytes(theBanner);
                 string unknownPortResult = "Port " + port;
@@ -727,7 +734,8 @@ namespace Reecon
                     Console.WriteLine(unknownPortResult + Environment.NewLine + smtpInfo + Environment.NewLine);
 
                 }
-                else if (theBanner.Contains("SSH-2.0-OpenSSH") || theBanner == "SSH-2.0-Go") // Probably SSH
+                // SSH
+                else if (theBanner.Contains("SSH-2.0-OpenSSH") || theBanner == "SSH-2.0-Go")
                 {
                     unknownPortResult += " - SSH" + Environment.NewLine;
                     if (theBanner.Contains("\r\nProtocol mismatch."))
@@ -737,13 +745,21 @@ namespace Reecon
                     unknownPortResult += SSH.GetInfo(ip, port);
                     Console.WriteLine(unknownPortResult + Environment.NewLine);
                 }
+                // WinRM - HTTP with special stuff
                 else if (theBanner.Contains("Server: Microsoft-HTTPAPI/2.0"))
                 {
-                    // winrm - http with special other stuff
                     unknownPortResult += " - WinRM";
                     string portData = WinRM.GetInfo(ip, port);
                     Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
                 }
+                // Squid - HTTP with different special stuff
+                else if (theBanner.Contains("Server: squid"))
+                {
+                    unknownPortResult += " - Squid";
+                    string portData = Squid.GetInfo(ip, port);
+                    Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
+                }
+                // Probably a general HTTP or HTTPS web server
                 else if (
                     theBanner.Contains("Server: Apache") // Apache Web Server
                     || theBanner.Contains("Server: cloudflare") // Cloudflare Server
@@ -752,7 +768,7 @@ namespace Reecon
                     || theBanner.Contains("Error code explanation: 400 = Bad request syntax or unsupported method.") // BaseHTTP/0.3 Python/2.7.12
                     || theBanner.Contains("<p>Error code: 400</p>") // TryHackMe - Task 12 Day 7
                     || theBanner.Contains("<h1>Bad Request (400)</h1>")
-                    ) // Probably HTTP or HTTPS
+                    )
                 {
                     string httpData = HTTP.GetInfo(ip, port, false);
                     if (httpData != "")

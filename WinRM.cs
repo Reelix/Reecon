@@ -44,8 +44,6 @@ namespace Reecon
 
             return returnInfo;
         }
-        
-
 
         public static void WinRMBrute(string[] args)
         {
