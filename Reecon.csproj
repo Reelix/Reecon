@@ -56,7 +56,7 @@
     <StartupObject>Reecon.Program</StartupObject>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="LdapForNet, Version=2.3.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="LdapForNet, Version=2.7.2.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>.\LdapForNet.dll</HintPath>
     </Reference>
