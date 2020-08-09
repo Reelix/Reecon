@@ -16,7 +16,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.18 ( https://github.com/Reelix/Reecon )");
+            Console.WriteLine("Reecon - Version 0.19 ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0 && ip.Length == 0)
             {
@@ -215,17 +215,8 @@ namespace Reecon
             }
             else
             {
-                postScanActions += "- nmap -sC -sV -p" + string.Join(",", portList) + " " + ip + " -oN nmap.txt";
-                if (portList.Contains(21))
-                {
-                    Console.WriteLine("- Check out Port 21 for things I missed");
-                }
-                if (portList.Contains(2049))
-                {
-                    Console.WriteLine("- rpcinfo -p " + ip);
-                    Console.WriteLine("- showmount -e " + ip);
-                    Console.WriteLine("-> mount -t nfs -o vers=2 " + ip + ":/mountNameHere /mnt");
-                }
+                postScanActions += $"- Nmap Version Scan: nmap -sC -sV -p{string.Join(",", portList)} {ip} -oN nmap.txt" + Environment.NewLine;
+                postScanActions += $"- Nmap UDP Scan: nmap -sU {ip}";
                 Console.WriteLine(postScanActions);
             }
             DateTime endDate = DateTime.Now;
@@ -346,6 +337,7 @@ namespace Reecon
                 string portHeader = "Port 21 - FTP";
                 string portData = FTP.GetInfo(ip);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
+                postScanActions += "- Check out Port 21 for things I missed" + Environment.NewLine;
             }
             else if (port == 22)
             {
@@ -519,6 +511,11 @@ namespace Reecon
                 string portHeader = "Port 2049 - NFS (Network File System)";
                 string portData = NFS.GetFileList(ip);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
+
+                postScanActions += "- RPC" + Environment.NewLine;
+                postScanActions += "-- rpcinfo -p " + ip + Environment.NewLine;
+                postScanActions += "-- showmount -e " + ip + Environment.NewLine;
+                postScanActions += "--- mount -t nfs -o vers=2 " + ip + ":/mountNameHere /mnt" + Environment.NewLine;
             }
             else if (port == 3128)
             {
@@ -667,6 +664,55 @@ namespace Reecon
                 string portData = "- Reecon currently lacks BitTorrent support";
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
             }
+            else if (port == 9100)
+            {
+                // TODO: Clean - Should the file be named "Printer.cs" or "jetdirect.cs" ???
+                string portHeader = $"Port {port} - Printer (jetdirect)";
+                // PJL
+
+                // Yoinked from Nmap
+                string bannerInfo = General.BannerGrab(ip, port, "@PJL INFO ID\r\n");
+                string portData = "";
+                if (bannerInfo != "")
+                {
+                    portData += "- Version: " + bannerInfo + Environment.NewLine;
+                    // Yoinked from PRET
+                    List<string> dirList = General.BannerGrab(ip, port, "@PJL FSDIRLIST NAME=\"0:/ \" ENTRY=1 COUNT=65535\r\n").Split("\r\n".ToCharArray()).ToList();
+                    // Clean new lines
+                    dirList.RemoveAll(string.IsNullOrEmpty);
+                    // Append each item
+                    portData += "- Directory List: " + Environment.NewLine;
+                    foreach (string dir in dirList)
+                    {
+                        portData += "-- " + dir + Environment.NewLine;
+                    }
+                    portData = portData.Trim(Environment.NewLine.ToCharArray());
+
+                    // PFL Successful - Add pjl to the post scan actions
+                    postScanActions += $"- Printer: pret.py {ip} pjl ( https://github.com/RUB-NDS/PRET )" + Environment.NewLine;
+                }
+                else
+                {
+                    portData = "- Unknown - Bug Reelix!";
+                }
+                // TODO: Add PCL, XEX, IPDS
+                Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
+            }
+            else if (port >= 9101 && port <= 9107)
+            {
+                // All of these are common ports o-O
+                // PJL, PCL, XEX, IPDS
+                string portHeader = $"Port {port} - Printer (Unkown)";
+                string portData = "- Reecon currently lacks Unknown Printer support";
+                Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
+            }
+            else if (port == 9200)
+            {
+                string portHeader = "Port 9200 - Elasticsearch HTTP Interface";
+                string portData = Elasticsearch.GetInfo(ip);
+                Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
+
+            }
             else if (port == 9389)
             {
                 string portHeader = "Port 9389 - ADWS (Active Directory Web Services)";
@@ -678,13 +724,6 @@ namespace Reecon
                 string portHeader = "Port 9418 - Git";
                 string portData = "- Reecon currently lacks Git support";
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
-            }
-            else if (port == 9200)
-            {
-                string portHeader = "Port 9200 - Elasticsearch HTTP Interface";
-                string portData = Elasticsearch.GetInfo(ip);
-                Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
-
             }
             else if (port == 9300)
             {

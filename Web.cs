@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
 
@@ -44,16 +45,63 @@ namespace Reecon
 
         public static string FindInfo(string pageText, bool doubleDash = false)
         {
-            string emailInfo = FindEmails(pageText, doubleDash);
+            string formInfo = FindFormData(pageText, doubleDash);
+            string emailInfo = FindEmails(pageText, doubleDash); // Contains an Environment.NewLine if it finds anything
             string linkInfo = FindLinks(pageText, doubleDash);
-            if (emailInfo != "")
+            return formInfo + emailInfo + linkInfo;
+        }
+
+        private static string FindFormData(string text, bool doubleDash)
+        {
+            // This is very hacky and will probably break
+            // I can't just use the WebBrowser control since it's not cross-platform on devices with no GUI
+            string returnText = "";
+            if (text.Contains("<form"))
             {
-                return emailInfo + Environment.NewLine + linkInfo;
+                text = text.Remove(0, text.IndexOf("<form"));
+                if (text.Contains("</form>"))
+                {
+                    returnText += "- Form Found" + Environment.NewLine;
+                    text = text.Substring(0, text.IndexOf("</form>"));
+                    List<string> formData = text.Split(Environment.NewLine.ToCharArray()).ToList();
+                    foreach (string line in formData)
+                    {
+                        if (line.Trim().StartsWith("<form"))
+                        {
+                            string formHeader = line.Trim();
+                            if (formHeader.Contains("action=\""))
+                            {
+                                string formAction = formHeader.Remove(0, formHeader.IndexOf("action=\"") + 8);
+                                formAction = formAction.Substring(0, formAction.IndexOf("\""));
+                                returnText += "-- Form Action: " + formAction + Environment.NewLine;
+                            }
+                            if (formHeader.Contains("method=\""))
+                            {
+                                string formMethod = formHeader.Remove(0, formHeader.IndexOf("method=\"") + 8);
+                                formMethod = formMethod.Substring(0, formMethod.IndexOf("\""));
+                                returnText += "-- Form Method: " + formMethod + Environment.NewLine;
+                            }
+                        }
+
+                        if (line.Trim().StartsWith("<input"))
+                        {
+                            string inputLine = line.Trim(); ;
+                            if (inputLine.Contains("name=\""))
+                            {
+                                string inputName = inputLine.Remove(0, inputLine.IndexOf("name=\"") + 6);
+                                inputName = inputName.Substring(0, inputName.IndexOf("\""));
+                                returnText += "-- Input Name: " + inputName + Environment.NewLine;
+                            }
+                        }
+
+                        if (line.Trim().StartsWith("<button"))
+                        {
+                            returnText += "-- Button: " + line.Trim() + Environment.NewLine;
+                        }
+                    }
+                }
             }
-            else
-            {
-                return linkInfo;
-            }
+            return returnText;
         }
 
         private static string FindEmails(string text, bool doubleDash)
@@ -75,7 +123,7 @@ namespace Reecon
                     returnInfo += "- EMail: " + match + Environment.NewLine;
                 }
             }
-            return returnInfo.Trim(Environment.NewLine.ToCharArray());
+            return returnInfo;
         }
 
         private static string FindLinks(string pageText, bool doubleDash)
