@@ -109,7 +109,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <None Include="packages.config" />
     <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>
@@ -133,10 +132,8 @@
    </PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PostBuildEvent>..\..\packages\ILMerge.3.0.29\tools\net452\ILMerge.exe Reecon.exe /out:Reecon2.exe LdapForNet.dll MyRawClient.dll
+    <PostBuildEvent>"$(ProjectDir)ILMerge.exe" Reecon.exe /out:Reecon2.exe LdapForNet.dll MyRawClient.dll
 del Reecon.exe
-move Reecon2.exe Reecon.exe
-scp.exe -i C:\Reelix\Google\google-ssh.key "C:\Reelix\C# Projects\GitHub\Reecon\bin\Release\Reecon.exe" reelix@reelix.h4ck.me:/home/reelix/htb/utils/
-ssh -i C:\Reelix\Google\google-ssh.key reelix@reelix.h4ck.me "~/scripts/fixreecon.sh"</PostBuildEvent>
+move Reecon2.exe Reecon.exe</PostBuildEvent>
   </PropertyGroup>
 </Project>
