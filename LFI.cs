@@ -22,6 +22,11 @@ namespace Reecon
         }
         private static void ScanPath(string path)
         {
+            if (!path.StartsWith("http"))
+            {
+                Console.WriteLine("Error: LFI path must start with http");
+                return;
+            }
             Console.WriteLine("Starting LFI Scan - This feature is still in Alpha");
             // Init
             InitialChecks(path);
@@ -38,8 +43,8 @@ namespace Reecon
                     "/var/www/html/forum/.htpasswd",
 
                     // Wordpress
-                    "var/www/html/wp-config.php",
-                    "var/www/html/wordpress/wp-config.php"
+                    "/var/www/html/wp-config.php",
+                    "/var/www/html/wordpress/wp-config.php"
                 };
                 DoLFI(webChecks);
 
@@ -130,7 +135,10 @@ namespace Reecon
                 "/etc/passwd",
                 "/etc/resolv.conf",
                 "/var/www/index.php",
-                "/var/www/html/index.php"
+                "/var/www/html/index.php",
+                "/etc/hostname", // Box Hostname
+                "/etc/issue", // Shows the Release
+                "/etc/group" // Groups
             };
             bool hasResult = DoLFI(linuxChecks);
             if (hasResult)
@@ -172,7 +180,8 @@ namespace Reecon
                 try
                 {
                     int resultLength = wc.DownloadString(toCheck).Length;
-                    if (resultLength != notFoundLength)
+                    // - 6 = Lenght of the NotFound Search = Reelix
+                    if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length - 6))
                     {
                         Console.WriteLine(resultLength + " -- " + toCheck);
                         // Don't need to try more if it's already true
@@ -188,7 +197,9 @@ namespace Reecon
                 try
                 {
                     int resultLength = wc.DownloadString(toCheck).Length;
-                    if (resultLength != notFoundLength)
+                    // - 6 = Length of the NotFound Search = Reelix
+                    // + 15 = Length of the bypass
+                    if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length - 6 + 15))
                     {
                         Console.WriteLine(resultLength + " -- " + toCheck);
                         return true;

@@ -226,16 +226,17 @@ namespace Reecon
         /// </summary>
         /// <param name="processName"></param>
         /// <param name="arguments"></param>
-        public static void RunProcess(string processName, string arguments)
+        public static void RunProcess(string processName, string arguments, int waitForExitSeconds = 500)
         {
-            // Console.WriteLine("Running 2 Process " + processName + " with args: " + arguments);
+            // Console.WriteLine("Running Process " + processName + " with args: " + arguments);
             Process p = new Process();
             p.StartInfo.UseShellExecute = false;
             p.StartInfo.RedirectStandardOutput = true;
+            p.StartInfo.RedirectStandardError = true;
             p.StartInfo.FileName = processName;
             p.StartInfo.Arguments = arguments;
             p.Start();
-            p.WaitForExit();
+            p.WaitForExit(waitForExitSeconds * 1000);
             p.Close();
             // Console.WriteLine("Process has run - Yay!");
         }

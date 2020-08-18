@@ -23,6 +23,11 @@ namespace Reecon
 
         private static void ScanFile(string fileName)
         {
+            if (!fileName.StartsWith("./"))
+            {
+                Console.WriteLine("fileName must start with ./");
+                return;
+            }
             Architecture architecture = IDElf(fileName);
             if (architecture == Architecture.x86)
             {
@@ -30,33 +35,39 @@ namespace Reecon
                 // You can get a segfault address of x86 programs by going
                 // dmesg | tail -2 (Sometimes the last entry isn't for it)
                 // dmesg | grep "ret2win32" | tail -1
+
+                // pwn cyclic 500
+                // aaaabaaacaaadaaaeaaafaaagaaahaaaiaaajaaakaaalaaamaaanaaaoaaapaaaqaaaraaasaaataaauaaavaaawaaaxaaayaaazaabbaabcaabdaabeaabfaabgaabhaabiaabjaabkaablaabmaabnaaboaabpaabqaabraabsaabtaabuaabvaabwaabxaabyaabzaacbaaccaacdaaceaacfaacgaachaaciaacjaackaaclaacmaacnaacoaacpaacqaacraacsaactaacuaacvaacwaacxaacyaaczaadbaadcaaddaadeaadfaadgaadhaadiaadjaadkaadlaadmaadnaadoaadpaadqaadraadsaadtaaduaadvaadwaadxaadyaadzaaebaaecaaedaaeeaaefaaegaaehaaeiaaejaaekaaelaaemaaenaaeoaaepaaeqaaeraaesaaetaaeuaaevaaewaaexaaeyaae
+                General.RunProcess("/bin/bash", " -c \"echo 'aaaabaaacaaadaaaeaaafaaagaaahaaaiaaajaaakaaalaaamaaanaaaoaaapaaaqaaaraaasaaataaauaaavaaawaaaxaaayaaazaabbaabcaabdaabeaabfaabgaabhaabiaabjaabkaablaabmaabnaaboaabpaabqaabraabsaabtaabuaabvaabwaabxaabyaabzaacbaaccaacdaaceaacfaacgaachaaciaacjaackaaclaacmaacnaacoaacpaacqaacraacsaactaacuaacvaacwaacxaacyaaczaadbaadcaaddaadeaadfaadgaadhaadiaadjaadkaadlaadmaadnaadoaadpaadqaadraadsaadtaaduaadvaadwaadxaadyaadzaaebaaecaaedaaeeaaefaaegaaehaaeiaaejaaekaaelaaemaaenaaeoaaepaaeqaaeraaesaaetaaeuaaevaaewaaexaaeyaae' | " + fileName + "\"", 5);
+                List<string> dmesgOutput = General.GetProcessOutput("dmesg", "");
+                foreach (string item in dmesgOutput)
+                {
+                    //  segfault at 6161616c ip 000000006161616c sp 00000000ffc68c60 error 14 in libc-2.31.so[f7cdb000+1d000]
+                    if (item.Contains(fileName.TrimStart("./".ToCharArray())) && item.Contains("segfault at "))
+                    {
+                        Console.WriteLine("- Cyclic Segfault: " + item.Remove(0, item.IndexOf("segfault at ") + 12).Substring(0, 9));
+                    }
+                }
+
             }
             else if (architecture == Architecture.x64)
             {
                 Console.WriteLine("Architecture: x64");
-                /*
-                 * http://shell-storm.org/shellcode/
-                    -> Linux/x86-64 - Execute /bin/sh - 27 bytes by Dad`
-                    --> \x31\xc0\x48\xbb\xd1\x9d\x96\x91\xd0\x8c\x97\xff\x48\xf7\xdb\x53\x54\x5f\x99\x52\x57\x54\x5e\xb0\x3b\x0f\x05
-                */
             }
             else
             {
                 Console.WriteLine("Architecture: Unknown - Can only deal with ELFs");
             }
 
-            // pwn cyclic 500
-            // aaaabaaacaaadaaaeaaafaaagaaahaaaiaaajaaakaaalaaamaaanaaaoaaapaaaqaaaraaasaaataaauaaavaaawaaaxaaayaaazaabbaabcaabdaabeaabfaabgaabhaabiaabjaabkaablaabmaabnaaboaabpaabqaabraabsaabtaabuaabvaabwaabxaabyaabzaacbaaccaacdaaceaacfaacgaachaaciaacjaackaaclaacmaacnaacoaacpaacqaacraacsaactaacuaacvaacwaacxaacyaaczaadbaadcaaddaadeaadfaadgaadhaadiaadjaadkaadlaadmaadnaadoaadpaadqaadraadsaadtaaduaadvaadwaadxaadyaadzaaebaaecaaedaaeeaaefaaegaaehaaeiaaejaaekaaelaaemaaenaaeoaaepaaeqaaeraaesaaetaaeuaaevaaewaaexaaeyaae
-
             if (General.IsInstalledOnLinux("ropper"))
             {
-                Console.WriteLine("Searching for 'pop rdi; ret;'");
+                // Console.WriteLine("Searching for 'pop rdi; ret;'");
                 List<string> ropperOutput = General.GetProcessOutput("ropper", $"--nocolor --file {fileName} --search \"pop rdi; ret;\"");
                 foreach (string item in ropperOutput)
                 {
                     if (!item.StartsWith("[INFO]") && !item.StartsWith("[LOAD]"))
                     {
-                        Console.WriteLine("pop rdi; ret; (pop_rdi) --> " + item);
+                        Console.WriteLine("- pop rdi; ret; (pop_rdi) --> " + item);
                     }
                 }
                 ropperOutput = General.GetProcessOutput("ropper", $"--nocolor --file {fileName} --string \"/bin/sh\"");
@@ -64,7 +75,7 @@ namespace Reecon
                 {
                     if (!item.StartsWith("[INFO]") && !item.StartsWith("[LOAD]") && item.Contains("/bin/sh"))
                     {
-                        Console.WriteLine("/bin/sh --> " + item);
+                        Console.WriteLine("- /bin/sh --> " + item);
                     }
                 }
                 // // ropper --file sudo_pwn_file_here --string "/bin/sh"
@@ -87,8 +98,13 @@ namespace Reecon
                         }
                         else
                         {
+                            // http://shell-storm.org/shellcode/
                             Console.WriteLine("Bug Reelix to fix his code!");
                         }
+                    }
+                    else if (item.Trim().StartsWith("nx") && item.Contains("true"))
+                    {
+                        Console.WriteLine("- nx is enabled - No custom shellcode for you!");
                     }
                 }
             }
@@ -105,13 +121,13 @@ namespace Reecon
                     {
                         Console.WriteLine("system --> " + item);
                     }
-                    if (item.Contains("puts@plt") && item.Trim().EndsWith(":"))
+                    if (item.Trim().EndsWith(" <puts@plt>:"))
                     {
-                        Console.WriteLine("puts@plt (plt_puts) --> " + item);
+                        Console.WriteLine("- puts@plt (plt_puts) --> " + item);
                     }
                     if (item.Contains("puts@GLIBC"))
-                    {
-                        Console.WriteLine("puts@GLIBC (got_puts) --> " + item);
+                       {
+                        Console.WriteLine("- puts@GLIBC (got_puts) --> " + item);
                     }
                 }
             }

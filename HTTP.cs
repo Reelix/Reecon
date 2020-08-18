@@ -145,6 +145,7 @@ namespace Reecon
                 // Common hidden folders
                 "hidden/",
                 "secret/",
+                "backup/",
                 // Common Index files
                 "index.php",
                 "index.html",
@@ -163,7 +164,10 @@ namespace Reecon
                 // NodeJS Environment File
                 ".env",
                 // General info file
-                ".DS_STORE"
+                ".DS_STORE",
+                // Wordpress stuff
+                "wp-config.php",
+                "wp-config.php.bak",
             };
             string returnText = "";
             foreach (string file in commonFiles)

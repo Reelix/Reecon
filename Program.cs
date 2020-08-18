@@ -16,7 +16,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.19a ( https://github.com/Reelix/Reecon )");
+            Console.WriteLine("Reecon - Version 0.20 ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0 && ip.Length == 0)
             {
@@ -592,6 +592,14 @@ namespace Reecon
                 Console.WriteLine("Result: " + result);
                 */
             }
+            else if (port == 3690)
+            {
+                // Banner: ( success ( 2 2 ( ) ( edit-pipeline svndiff1 accepts-svndiff2 absent-entries commit-revprops depth log-revprops atomic-revprops partial-replay inherited-props ephemeral-txnprops file-revs-reverse list ) ) )
+                string portHeader = "Port 3690 - SVN (Subversion)";
+                string portData = SVN.GetInfo(ip);
+                Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
+                postScanActions += "- svn diff -r1 svn://" + ip + Environment.NewLine;
+            }
             else if (port == 4369)
             {
                 // TODO: https://svn.nmap.org/nmap/scripts/epmd-info.nse
@@ -807,6 +815,7 @@ namespace Reecon
                     || theBanner.Contains("Error code explanation: 400 = Bad request syntax or unsupported method.") // BaseHTTP/0.3 Python/2.7.12
                     || theBanner.Contains("<p>Error code: 400</p>") // TryHackMe - Task 12 Day 7
                     || theBanner.Contains("<h1>Bad Request (400)</h1>")
+                    || theBanner.Trim().StartsWith("<!DOCTYPE html>") // General HTML
                     )
                 {
                     string httpData = HTTP.GetInfo(ip, port, false);
@@ -872,6 +881,12 @@ namespace Reecon
                 {
                     unknownPortResult += " - Rsync" + Environment.NewLine;
                     unknownPortResult += Rsync.GetInfo(ip, port);
+                    Console.WriteLine(unknownPortResult);
+                }
+                else if (theBanner.Trim().StartsWith("( success ( 2 2 ( ) ( edit-pipeline"))
+                {
+                    unknownPortResult += " - SVN (Subversion)" + Environment.NewLine;
+                    unknownPortResult += "- Bug Reelix to fix this. Ref: Port 3690";
                     Console.WriteLine(unknownPortResult);
                 }
                 // 47538/tcp open  socks-proxy Socks4A
