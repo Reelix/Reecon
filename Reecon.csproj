@@ -117,6 +117,9 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="FluentFTP">
+      <Version>32.4.3</Version>
+    </PackageReference>
     <PackageReference Include="ILMerge" Version="3.0.29" />
     <PackageReference Include="LdapForNet">
       <Version>2.7.2</Version>

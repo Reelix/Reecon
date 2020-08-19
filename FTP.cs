@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FluentFTP;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -108,122 +109,51 @@ namespace Reecon
 
         public static string TryListFiles(string ftpServer, bool usePassive, string username = "", string password = "")
         {
-            string fileListResult = "";
-            if (!ftpServer.StartsWith("ftp://"))
+            string toReturn = "";
+            FtpClient client = new FtpClient(ftpServer);
+            client.Credentials = new NetworkCredential(username, password);
+            client.Connect();
+            /*
+            Console.WriteLine("Test Type: " + client.ServerType.ToString());
+            Console.WriteLine("Test Handler: " + client.ServerHandler);
+            Console.WriteLine("Test OS: " + client.ServerOS);
+            */
+            toReturn += "-- OS Type: " + client.ServerOS + Environment.NewLine;
+            FtpListItem[] itemList = client.GetListing("/", FtpListOption.AllFiles);
+            if (itemList.Count() == 0)
             {
-                ftpServer = "ftp://" + ftpServer;
+                toReturn += "- No Files Or Folders Found" + Environment.NewLine;
             }
-            FtpWebRequest request = (FtpWebRequest)WebRequest.Create(ftpServer);
-            request.Timeout = 5000;
-            request.UsePassive = usePassive; // A better way to receive file listing
-            request.KeepAlive = false; // Closes FTP after we're done
-            request.Method = WebRequestMethods.Ftp.ListDirectoryDetails;
-            request.Credentials = new NetworkCredential(username, password);
-            try
+            foreach (FtpListItem item in client.GetListing("/", FtpListOption.AllFiles))
             {
-                FtpWebResponse response = (FtpWebResponse)request.GetResponse();
-                using (StreamReader myStreamReader = new StreamReader(response.GetResponseStream()))
+                string fileType = "";
+                if (item.Type == FtpFileSystemObjectType.Directory)
                 {
-                    List<string> responseLines = myStreamReader.ReadToEnd().Trim().Split(new[] { Environment.NewLine }, StringSplitOptions.None).ToList().Where(x => !string.IsNullOrEmpty(x)).ToList();
-                    if (responseLines.Count == 0)
+                    fileType = " (Directory - Might want to look into this)";
+                }
+                else if (item.Type == FtpFileSystemObjectType.File)
+                {
+                    fileType = " (File)";
+                }
+                else
+                {
+                    fileType = " (Fix Me!)";
+                }
+                toReturn += "-- " + item.Name + fileType + Environment.NewLine;
+                if (item.Type == FtpFileSystemObjectType.File && item.Name.EndsWith(".txt"))
+                {
+                    using (Stream stream = client.OpenRead(item.FullName))
+                    using (StreamReader reader = new StreamReader(stream))
                     {
-                        fileListResult += "- No Files Or Folders Found";
-                    }
-                    else
-                    {
-                        fileListResult += "- File Listing: " + Environment.NewLine;
-                        foreach (var file in responseLines)
+                        while (!reader.EndOfStream)
                         {
-                            fileListResult += "-- ";
-                            if (!string.IsNullOrEmpty(file) && file[0] == 'd')
-                            {
-                                fileListResult += file + " (Directory) " + Environment.NewLine;
-                            }
-                            else
-                            {
-                                fileListResult += file + Environment.NewLine;
-                                // If it has read permissions and it's one of few files there - Read it
-                                if ((file.Contains("-rw-r--r--") || file.Contains("rw-rw-r--") || file.Contains("rw-rw-rw-")) && responseLines.Count <= 3)
-                                {
-                                    string fileName = file.Remove(0, file.LastIndexOf(' ') + 1);
-                                    try
-                                    {
-                                        string fileContents = ReadFile(ftpServer, usePassive, username, password, fileName);
-                                        fileListResult += fileContents + Environment.NewLine;
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        if (ex.Message.Trim() == "The operation has timed out.")
-                                        {
-                                            fileListResult += "--- Timed out reading file " + fileName + " - You might need to do so manually";
-                                        }
-                                    }
-                                }
-                            }
+                            string line = reader.ReadLine();
+                            toReturn += "--- Text: " + line + Environment.NewLine;
                         }
                     }
                 }
-                return fileListResult;
             }
-            catch (WebException wex)
-            {
-                try
-                {
-                    FtpWebResponse innerResponse = (FtpWebResponse)wex.Response;
-                    try
-                    {
-                        string someVal = innerResponse.ContentType;
-                    }
-                    catch (NotImplementedException)
-                    {
-                        return "- Not Implemented";
-                    }
-                    if ((int)innerResponse.StatusCode == 500)
-                    {
-                        if (innerResponse.StatusDescription.Trim() == "500 OOPS: invalid pasv_address")
-                        {
-                            return "- Unable to list files: invalid pasv_address";
-                        }
-                        else
-                        {
-                            return "- Unable to list files for unknown reason: " + innerResponse.StatusDescription;
-                        }
-                    }
-                }
-                catch
-                {
-                    Console.WriteLine("TryListFiles wex parse error: " + wex.Message);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Unknown TryListFiles Error: " + ex.Message);
-                return ":(";
-            }
-            return ":(";
-        }
-
-        private static string ReadFile(string ftpServer, bool usePassive, string username, string password, string fileName)
-        {
-            string fileContents = "--- Contents of " + fileName + Environment.NewLine;
-
-            FtpWebRequest request = (FtpWebRequest)WebRequest.Create(ftpServer + "/" + fileName);
-            // request.UseBinary = true; // More reliable way of downloading files
-            request.Timeout = 5000;
-            request.UsePassive = usePassive;
-            request.Credentials = new NetworkCredential(username, password);
-            request.Method = WebRequestMethods.Ftp.DownloadFile;
-
-            using (Stream stream = request.GetResponse().GetResponseStream())
-            using (StreamReader reader = new StreamReader(stream))
-            {
-                while (!reader.EndOfStream)
-                {
-                    string line = reader.ReadLine();
-                    fileContents += "--- " + line + Environment.NewLine;
-                }
-            }
-            return fileContents;
+            return toReturn;
         }
     }
 }
