@@ -12,13 +12,20 @@ namespace Reecon
     {
         public static string GetInfo(string ip, int port, bool isHTTPS)
         {
-            var httpInfo = GetHTTPInfo(ip, port, isHTTPS);
+            string url = "http";
+            if (isHTTPS)
+            {
+                url += "s";
+            }
+            url += $"://{ip}:{port}/";
+
+            var httpInfo = GetHTTPInfo(url);
             if (httpInfo == (0, null, null, null, null, null))
             {
                 return "";
             }
             string portData = FormatResponse(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
-            string commonFiles = FindCommonFiles(ip, port, isHTTPS);
+            string commonFiles = Web.FindCommonFiles(url);
             if (commonFiles != "")
             {
                 portData += Environment.NewLine + commonFiles;
@@ -35,20 +42,15 @@ namespace Reecon
             return portData;
         }
 
-        private static (HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert) GetHTTPInfo(string ip, int port, bool isHTTPS)
+        private static (HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert) GetHTTPInfo(string url)
         {
             string pageTitle = "";
             string pageText = "";
             string dns = "";
-            string urlPrefix = "http";
             HttpStatusCode statusCode = new HttpStatusCode();
-            if (isHTTPS)
-            {
-                urlPrefix += "s";
-            }
             WebHeaderCollection headers = null;
 
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(urlPrefix + "://" + ip + ":" + port);
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
             try
             {
                 // Ignore invalid SSL Cert
@@ -133,141 +135,7 @@ namespace Reecon
             return (statusCode, pageTitle, pageText, dns, headers, cert);
         }
 
-        private static string FindCommonFiles(string ip, int port, bool isHTTPS)
-        {
-            // Mini gobuster :p
-            List<string> commonFiles = new List<string>
-            {
-                // robots.txt - Of course
-                "robots.txt",
-                // Most likely invalid folder for test purposes
-                "woof/",
-                // Common hidden folders
-                "hidden/",
-                "secret/",
-                "backup/",
-                // Common Index files
-                "index.php",
-                "index.html",
-                // Common images folder
-                "images/",
-                // Hidden mail server
-                "mail/",
-                // Admin stuff
-                "admin.php",
-                // Git repo
-                ".git/",
-                // SSH
-                ".ssh/id_rsa",
-                // Bash History
-                ".bash_history",
-                // NodeJS Environment File
-                ".env",
-                // General info file
-                ".DS_STORE",
-                // Wordpress stuff
-                "blog/",
-                "wordpress/",
-                "wordpress/wp-config.php.bak",
-                "wp-config.php",
-                "wp-config.php.bak",
-                // phpmyadmin
-                "phpmyadmin/"
-            };
-            string returnText = "";
-            foreach (string file in commonFiles)
-            {
-                string urlPrefix = "http";
-                if (isHTTPS)
-                {
-                    urlPrefix += "s";
-                }
-                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(urlPrefix + "://" + ip + ":" + port + "/" + file);
-                // Ignore invalid SSL Cert
-                request.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
-                request.AllowAutoRedirect = false;
-                request.Timeout = 5000;
-                try
-                {
-                    using (var response = request.GetResponse() as HttpWebResponse)
-                    {
-                        if (response.StatusCode == HttpStatusCode.OK)
-                        {
-                            // Since it's readable - Let's deal with it!
-                            try
-                            {
-                                returnText += "- Common Path is readable: " + urlPrefix + "://" + ip + ":" + port + "/" + file  + Environment.NewLine;
-                                string pageText = new StreamReader(response.GetResponseStream()).ReadToEnd();
-                                string usefulInfo = Web.FindInfo(pageText, true);
-                                if (usefulInfo.Trim(Environment.NewLine.ToCharArray()) != "")
-                                {
-                                    returnText += usefulInfo + Environment.NewLine;
-                                }
-                                // Specific case for robots.txt since it's common and extra useful
-                                if (file == "robots.txt")
-                                {
-                                    foreach (var line in pageText.Split(Environment.NewLine.ToCharArray()))
-                                    {
-                                        if (line != "")
-                                        {
-                                            returnText += "-- " + line + Environment.NewLine;
-                                        }
-                                    }
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine("Bug Reelix - HTTP.FindCommonFiles Error: " + ex.Message + Environment.NewLine);
-                            }
-                        }
-                        else if (response.StatusCode == HttpStatusCode.Forbidden)
-                        {
-                            // Forbidden is still useful
-                            returnText += "- Common Path is Forbidden: " + urlPrefix + "://" + ip + ":" + port + "/" + file + Environment.NewLine;
-                        }
-                    }
-                }
-                catch (WebException ex)
-                {
-                    if (ex.Response != null)
-                    {
-                        HttpWebResponse response = (HttpWebResponse)ex.Response;
-                        if (response.StatusCode == HttpStatusCode.OK)
-                        {
-                            returnText += "- Common File exists: " + urlPrefix + "://" + ip + ":" + port + "/" + file + Environment.NewLine;
-                            string pageText = new StreamReader(response.GetResponseStream()).ReadToEnd();
-                            string usefulInfo = Web.FindInfo(pageText, true);
-                            if (usefulInfo.Trim(Environment.NewLine.ToCharArray()) != "")
-                            {
-                                returnText += usefulInfo + Environment.NewLine;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (ex.Message.Trim().StartsWith("The remote name could not be resolved:"))
-                        {
-                            string message = ex.Message.Trim().Replace("The remote name could not be resolved:", "");
-                            returnText += "- Hostname Found: " + message.Trim().Trim('\'') + " - You need to do a manual common file check" + Environment.NewLine;
-                            return returnText;
-                        }
-                        else if (ex.Message == "The operation has timed out")
-                        {
-                            returnText += "- FindCommonFiles Timeout :<" + Environment.NewLine;
-                        }
-                        else
-                        {
-                            Console.WriteLine("FindCommonFiles - Something weird happened: " + ex.Message);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("FindCommonFiles - Fatal Woof: " + ex.Message);
-                }
-            }
-            return returnText.Trim(Environment.NewLine.ToArray());
-        }
+        
 
         private static string TestBaseLFI(string ip, int port)
         {
@@ -330,6 +198,7 @@ namespace Reecon
                 if (PageText.Contains("/wp-content/themes/") && PageText.Contains("/wp-includes/"))
                 {
                     responseText += "- Wordpress detected! Run wpscan!" + Environment.NewLine;
+                    responseText += "-- hydra -L users.txt -P passwords.txt site.com http-post-form \"/blog/wp-login.php:log=^USER^&pwd=^PASS^&wp-submit=Log In&testcookie=1:S=Location\" -I -t 50" + Environment.NewLine;
                 }
             }
             if (!string.IsNullOrEmpty(DNS))

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
@@ -24,6 +25,8 @@ namespace Reecon
                 return;
             }
             ScanPage(url);
+            Console.WriteLine("Searching for common files...");
+            Console.WriteLine(FindCommonFiles(url));
         }
 
         private static void ScanPage(string url)
@@ -31,7 +34,7 @@ namespace Reecon
             string pageText;
             try
             {
-                Console.WriteLine("Loading Page Data...");
+                Console.WriteLine("Scanning...");
                 pageText = wc.DownloadString(url);
             }
             catch (Exception ex)
@@ -45,10 +48,16 @@ namespace Reecon
 
         public static string FindInfo(string pageText, bool doubleDash = false)
         {
-            string formInfo = FindFormData(pageText);
-            string emailInfo = FindEmails(pageText, doubleDash); // Contains an Environment.NewLine if it finds anything
-            string linkInfo = FindLinks(pageText, doubleDash);
-            return formInfo + emailInfo + linkInfo;
+            string foundInfo = "";
+            if (pageText.Contains("/wp-content/themes/") && pageText.Contains("/wp-includes/"))
+            {
+                foundInfo += "- Wordpress detected! Run wpscan!" + Environment.NewLine;
+                foundInfo += "-- hydra -L users.txt -P passwords.txt site.com http-post-form \"/blog/wp-login.php:log=^USER^&pwd=^PASS^&wp-submit=Log In&testcookie=1:S=Location\" -I -t 50" + Environment.NewLine;
+            }
+            foundInfo += FindFormData(pageText);
+            foundInfo += FindEmails(pageText, doubleDash);
+            foundInfo += FindLinks(pageText, doubleDash);
+            return foundInfo.Trim(Environment.NewLine.ToCharArray());
         }
 
         private static string FindFormData(string text)
@@ -83,6 +92,7 @@ namespace Reecon
                             }
                         }
 
+                        // Bugs out if the input tag is spread over multiple lines
                         if (line.Trim().StartsWith("<input"))
                         {
                             string inputName = "";
@@ -98,9 +108,9 @@ namespace Reecon
                                 inputValue = inputLine.Remove(0, inputLine.IndexOf("value=\"") + 6);
                                 inputValue = inputValue.Substring(0, inputValue.IndexOf("\""));
                             }
-                            if (inputName != "" || inputValue != "")
+                            if (inputName != "")
                             {
-                                returnText += "-- Input -> Name: " + inputName + ", Value: " + inputValue + Environment.NewLine;
+                                returnText += "-- Input -> Name: " + inputName + (inputValue != "" ? ", Value: " + inputValue : "") + Environment.NewLine;
                             }
                         }
 
@@ -178,6 +188,173 @@ namespace Reecon
                 }
             }
             return returnInfo.Trim(Environment.NewLine.ToCharArray());
+        }
+
+        public static string FindCommonFiles(string url)
+        {
+            if (!url.EndsWith("/"))
+            {
+                url += "/";
+            }
+            // Mini gobuster :p
+            List<string> commonFiles = new List<string>
+            {
+                // robots.txt - Of course
+                "robots.txt",
+                // Most likely invalid folder for test purposes
+                "woof/",
+                // Common hidden folders
+                "hidden/",
+                "secret/",
+                "backup/",
+                // Common Index files
+                "index.php",
+                "index.html",
+                // Common images folder
+                "images/",
+                // Hidden mail server
+                "mail/",
+                // Admin stuff
+                "admin.php",
+                // Git repo
+                ".git/HEAD",
+                // SSH
+                ".ssh/id_rsa",
+                // Bash History
+                ".bash_history",
+                // NodeJS Environment File
+                ".env",
+                // General info file
+                ".DS_STORE",
+                // Wordpress stuff
+                "blog/",
+                "wordpress/",
+                "wordpress/wp-config.php.bak",
+                "wp-config.php",
+                "wp-config.php.bak",
+                // phpmyadmin
+                "phpmyadmin/"
+            };
+            string returnText = "";
+            foreach (string file in commonFiles)
+            {
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url + file);
+                // Ignore invalid SSL Cert
+                request.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
+                request.AllowAutoRedirect = false;
+                request.Timeout = 5000;
+                try
+                {
+                    using (var response = request.GetResponse() as HttpWebResponse)
+                    {
+                        if (response.StatusCode == HttpStatusCode.OK)
+                        {
+                            // Since it's readable - Let's deal with it!
+                            try
+                            {
+                                returnText += $"- Common Path is readable: {url}{file}" + Environment.NewLine;
+                                string pageText = new StreamReader(response.GetResponseStream()).ReadToEnd();
+                                // Specific case for robots.txt since it's common and extra useful
+                                if (file == "robots.txt")
+                                {
+                                    foreach (var line in pageText.Split(Environment.NewLine.ToCharArray()))
+                                    {
+                                        if (line != "")
+                                        {
+                                            returnText += "-- " + line + Environment.NewLine;
+                                        }
+                                    }
+                                }
+                                // Git repo!
+                                else if (file == ".git/HEAD")
+                                {
+                                    returnText += "-- Git repo found!" + Environment.NewLine;
+
+                                    // https://github.com/arthaud/git-dumper/issues/9
+                                    WebClient wc = new WebClient();
+                                    try
+                                    {
+                                        if (wc.DownloadString($"{url}.git/").Contains("../"))
+                                        {
+                                            // -q: Quiet (So the console doesn't get spammed)
+                                            // -r: Download everything
+                                            // -np: But don't go all the way backwards
+                                            // -nH: So you only have the ".git" folder and not the IP folder as well
+                                            returnText += $"--- Download the repo: wget -q -r -np -nH {url}.git/" + Environment.NewLine;
+                                            returnText += "--- Get the logs: git log --pretty=format:\"%h - %an (%ae): %s %b\"" + Environment.NewLine;
+                                            returnText += "--- Show a specific commit: git show 2eb93ac (Press q to close)" + Environment.NewLine;
+                                            continue;
+                                        }
+                                    }
+                                    catch
+                                    { }
+                                    returnText += "--- Download: https://raw.githubusercontent.com/arthaud/git-dumper/master/git-dumper.py" + Environment.NewLine;
+                                    returnText += $"--- Run: python3 git-dumper.py {url}{file} .git" + Environment.NewLine;
+                                    returnText += "--- Get the logs: git log --pretty=format:\"%h - %an (%ae): %s %b\"" + Environment.NewLine;
+                                    returnText += "--- Show a specific commit: git show 2eb93ac (Press q to close)" + Environment.NewLine;
+                                }
+                                else
+                                {
+                                    string usefulInfo = Web.FindInfo(pageText, true);
+                                    if (usefulInfo.Trim(Environment.NewLine.ToCharArray()) != "")
+                                    {
+                                        returnText += usefulInfo + Environment.NewLine;
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine("Bug Reelix - HTTP.FindCommonFiles Error: " + ex.Message + Environment.NewLine);
+                            }
+                        }
+                        else if (response.StatusCode == HttpStatusCode.Forbidden)
+                        {
+                            // Forbidden is still useful
+                            returnText += $"- Common Path is Forbidden: {url}{file}" + Environment.NewLine;
+                        }
+                    }
+                }
+                catch (WebException ex)
+                {
+                    if (ex.Response != null)
+                    {
+                        HttpWebResponse response = (HttpWebResponse)ex.Response;
+                        if (response.StatusCode == HttpStatusCode.OK)
+                        {
+                            returnText += $"- Common File exists: {url}{file}" + Environment.NewLine;
+                            string pageText = new StreamReader(response.GetResponseStream()).ReadToEnd();
+                            string usefulInfo = Web.FindInfo(pageText, true);
+                            if (usefulInfo.Trim(Environment.NewLine.ToCharArray()) != "")
+                            {
+                                returnText += usefulInfo + Environment.NewLine;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (ex.Message.Trim().StartsWith("The remote name could not be resolved:"))
+                        {
+                            string message = ex.Message.Trim().Replace("The remote name could not be resolved:", "");
+                            returnText += "- Hostname Found: " + message.Trim().Trim('\'') + " - You need to do a manual common file check" + Environment.NewLine;
+                            return returnText;
+                        }
+                        else if (ex.Message == "The operation has timed out")
+                        {
+                            returnText += "- FindCommonFiles Timeout :<" + Environment.NewLine;
+                        }
+                        else
+                        {
+                            Console.WriteLine("FindCommonFiles - Something weird happened: " + ex.Message);
+                            return returnText;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("FindCommonFiles - Fatal Woof: " + ex.Message);
+                }
+            }
+            return returnText.Trim(Environment.NewLine.ToArray());
         }
     }
 }

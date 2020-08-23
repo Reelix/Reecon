@@ -16,7 +16,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.21 ( https://github.com/Reelix/Reecon )");
+            Console.WriteLine("Reecon - Version 0.21a ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
@@ -33,7 +33,7 @@ namespace Reecon
                 Console.WriteLine("SMB Auth Test:\tReecon -smb IP User Pass (Windows Only - Very buggy)");
                 Console.WriteLine("WinRM Brute:\tReecon -winrm-brute IP UserList PassList");
                 Console.WriteLine("LFI Test:\tReecon -lfi (Very buggy)");
-                Console.WriteLine("Web Spider:\tReecon -web url (Very buggy)");
+                Console.WriteLine("Web Info:\tReecon -web url (Very buggy)");
                 Console.ResetColor();
                 return;
             }
@@ -132,6 +132,13 @@ namespace Reecon
             else
             {
                 target = args[0];
+            }
+
+            if (target.StartsWith("http://"))
+            {
+                Console.WriteLine("Cannot do a standard scan on a URL - Try a -web scan");
+                Console.ResetColor();
+                return;
             }
 
             // Custom ports

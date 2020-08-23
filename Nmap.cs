@@ -85,6 +85,11 @@ namespace Reecon
         // Parses an -oG nmap file for ports and scans the results
         public static (string Target, List<int> Ports) ParseFile(string fileName, bool deleteFile = true)
         {
+            if (!File.Exists(fileName))
+            {
+                Console.WriteLine("Error - Cannot find file: " + fileName);
+                Environment.Exit(0);
+            }
             string returnTarget;
             List<int> allPorts = new List<int>();
             List<int> returnPorts = new List<int>();
