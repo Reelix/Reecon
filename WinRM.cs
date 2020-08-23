@@ -21,6 +21,7 @@ namespace Reecon
             try
             {
                 wc.UploadData("http://" + ip + ":" + port + "/wsman", byteData);
+                returnInfo = "- wsman upload returned no error - Bug Reelix";
             }
             catch (WebException wex)
             {
@@ -36,13 +37,52 @@ namespace Reecon
                         }
                         else if (headerName == "WWW-Authenticate")
                         {
-                            returnInfo += "- Authentication Methods: " + headerValue;
+                            returnInfo += "- Authentication Methods: " + headerValue + Environment.NewLine;
                         }
                     }
+                    if (returnInfo == "")
+                    {
+                        returnInfo = "- wsman found, but headers are weird - Bug Reelix";
+                    }
+                }
+                else if (((HttpWebResponse)wex.Response).StatusCode == HttpStatusCode.NotFound)
+                {
+                    bool isProbablyWinRM = false;
+                    bool containsAuthentication = false;
+                    foreach (string item in wex.Response.Headers)
+                    {
+                        string headerName = item;
+                        string headerValue = wex.Response.Headers[headerName];
+                        if (headerName == "Server")
+                        {
+                            returnInfo += "- Server: " + headerValue + Environment.NewLine;
+                            if (headerValue == "Microsoft-HTTPAPI/2.0")
+                            {
+                                isProbablyWinRM = true;
+                            }
+                        }
+                        else if (headerName == "WWW-Authenticate")
+                        {
+                            returnInfo += "- Authentication Methods: " + headerValue + Environment.NewLine;
+                            containsAuthentication = true;
+                        }
+                    }
+                    if (!containsAuthentication)
+                    {
+                        returnInfo += "- Authentication Methods: None";
+                    }
+                    else if (!isProbablyWinRM)
+                    {
+                        returnInfo += "- No wsman found - Probably not WinRM";
+                    }
+                }
+                else
+                {
+                    returnInfo += "- Unknown response: " + ((HttpWebResponse)wex.Response).StatusCode + " - Bug Reelix";
                 }
             }
 
-            return returnInfo;
+            return returnInfo.Trim(Environment.NewLine.ToCharArray());
         }
 
         public static void WinRMBrute(string[] args)

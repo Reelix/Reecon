@@ -45,13 +45,13 @@ namespace Reecon
 
         public static string FindInfo(string pageText, bool doubleDash = false)
         {
-            string formInfo = FindFormData(pageText, doubleDash);
+            string formInfo = FindFormData(pageText);
             string emailInfo = FindEmails(pageText, doubleDash); // Contains an Environment.NewLine if it finds anything
             string linkInfo = FindLinks(pageText, doubleDash);
             return formInfo + emailInfo + linkInfo;
         }
 
-        private static string FindFormData(string text, bool doubleDash)
+        private static string FindFormData(string text)
         {
             // This is very hacky and will probably break
             // I can't just use the WebBrowser control since it's not cross-platform on devices with no GUI
@@ -85,12 +85,22 @@ namespace Reecon
 
                         if (line.Trim().StartsWith("<input"))
                         {
+                            string inputName = "";
+                            string inputValue = "";
                             string inputLine = line.Trim(); ;
                             if (inputLine.Contains("name=\""))
                             {
-                                string inputName = inputLine.Remove(0, inputLine.IndexOf("name=\"") + 6);
+                                inputName = inputLine.Remove(0, inputLine.IndexOf("name=\"") + 6);
                                 inputName = inputName.Substring(0, inputName.IndexOf("\""));
-                                returnText += "-- Input Name: " + inputName + Environment.NewLine;
+                            }
+                            if (inputLine.Contains("value=\""))
+                            {
+                                inputValue = inputLine.Remove(0, inputLine.IndexOf("value=\"") + 6);
+                                inputValue = inputValue.Substring(0, inputValue.IndexOf("\""));
+                            }
+                            if (inputName != "" || inputValue != "")
+                            {
+                                returnText += "-- Input -> Name: " + inputName + ", Value: " + inputValue + Environment.NewLine;
                             }
                         }
 

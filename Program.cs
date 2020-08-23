@@ -8,17 +8,17 @@ namespace Reecon
 {
     class Program
     {
+        static string target = "";
         static readonly List<int> portList = new List<int>();
-        static string ip = ""; // For Dev
         static readonly List<Thread> threadList = new List<Thread>();
         public static string postScanActions = "";
         static void Main(string[] args)
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.20a ( https://github.com/Reelix/Reecon )");
+            Console.WriteLine("Reecon - Version 0.21 ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
-            if (args.Length == 0 && ip.Length == 0)
+            if (args.Length == 0)
             {
                 Console.WriteLine("Usage");
                 Console.WriteLine("-----");
@@ -37,13 +37,15 @@ namespace Reecon
                 Console.ResetColor();
                 return;
             }
+
+            // Check if it's anything custom
             if (args.Contains("-ip") || args.Contains("--ip"))
             {
                 General.GetIP();
                 Console.ResetColor();
                 return;
             }
-            if (args.Contains("-lfi") || args.Contains("--lfi"))
+            else if (args.Contains("-lfi") || args.Contains("--lfi"))
             {
                 LFI.Scan(args);
                 Console.ResetColor();
@@ -83,6 +85,7 @@ namespace Reecon
                 string user = args[2];
                 string pass = args[3];
                 Console.WriteLine(SMB.TestAnonymousAccess(ip, user, pass));
+                Console.ResetColor();
                 return;
             }
             else if (args.Contains("-winrm-brute"))
@@ -99,54 +102,49 @@ namespace Reecon
             }
             else if (args.Contains("-nmap") || args.Contains("--nmap"))
             {
-                ip = args[1];
-                string fileName = args[2];
-                DateTime beforeNmapDate = DateTime.Now;
-                Console.WriteLine("Doing an optimized Nmap scan on " + ip + " - This may take awhile...");
-                General.RunProcess("nmap", "-sS -p- --min-rate=5000 " + ip + " -oG " + fileName + ".nmap -oN " + fileName + ".txt");
-                DateTime afterNmapDate = DateTime.Now;
-                TimeSpan nmapScanDuration = afterNmapDate - beforeNmapDate;
-                Console.WriteLine("Scan complete in " + string.Format("{0:0.00}s", nmapScanDuration.TotalSeconds) + " - " + fileName + ".nmap for reecon and " + fileName + ".txt for reading");
+                Nmap.DefaultScan(args);
+                Console.ResetColor();
                 return;
             }
+
+            // Check if you should check if the target is up
             bool mustPing = true;
             if (args.Contains("-noping") || args.Contains("--noping"))
             {
                 mustPing = false;
             }
-            if (ip.Length == 0 && args.Length > 0)
+
+            // Everything below here has a maximum of 2 args
+            if (args.Length > 2)
             {
-                if (args[0].Trim().Length == 0)
-                {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("Needs an IP!");
-                    return;
-                }
-                ip = args[0];
-                if (ip.EndsWith(".nmap"))
-                {
-                    ParsePorts(ip, false);
-                }
-                else if (args.Length > 1)
-                {
-                    portList.AddRange(args[1].Split(',').ToList().Select(x => int.Parse(x)));
-                }
+                Console.WriteLine("You probably typo'd something");
+                return;
+            }
+
+            // Target
+            if (args[0].EndsWith(".nmap"))
+            {
+                string fileName = args[0];
+                var result = Nmap.ParseFile(fileName, false);
+                target = result.Target;
+                portList.AddRange(result.Ports);
             }
             else
             {
-                Console.WriteLine("Hard Coded IP - Dev Mode!");
-                Console.WriteLine("Scanning: " + ip);
-                if (ip.EndsWith(".nmap"))
-                {
-                    ParsePorts(ip, false);
-                }
+                target = args[0];
+            }
+
+            // Custom ports
+            if (args.Length == 2 && !args.Contains("noping"))
+            {
+                portList.AddRange(args[1].Split(',').ToList().Select(x => int.Parse(x)));
             }
 
             // First check if it's actually up
             if (mustPing)
             {
                 Console.WriteLine("Checking if host is online...");
-                bool isHostOnline = General.IsUp(ip);
+                bool isHostOnline = General.IsUp(target);
                 General.ClearPreviousConsoleLine();
 
                 if (!isHostOnline)
@@ -158,10 +156,11 @@ namespace Reecon
             }
 
             // Everything parsed - Down to the scanning!
+
+            // Ports have been defined (Either nmap or custom)
             if (portList.Count != 0)
             {
-                Console.Write("Scanning: " + ip);
-                // User defined ports - Only scan them
+                Console.Write("Scanning: " + target);
                 Console.Write(" (Port");
                 if (portList.Count > 1)
                 {
@@ -172,8 +171,8 @@ namespace Reecon
             }
             else
             {
-                // No user defined ports - Default scan
-                Console.WriteLine("Scanning: " + ip);
+                // No ports yet - Default scan
+                Console.WriteLine("Scanning: " + target);
 
                 // Cleanup from any previous broken runs
                 if (File.Exists("nmap-fast.txt"))
@@ -187,22 +186,27 @@ namespace Reecon
 
                 // After each list is parsed, the file gets deleted.
                 // Except for 3, which leaves a human-readable nmap-all.txt
-                RunNMap(1);
-                List<int> newPorts = ParsePorts("nmap-fast.txt");
+
+                // TODO: At the moment some ports are scanned 3 times - Need to fix that...
+                Nmap.CustomScan(1, target);
+                List<int> newPorts = Nmap.ParseFile("nmap-fast.txt").Ports;
+                portList.AddRange(newPorts);
                 ScanPorts(newPorts);
 
-                RunNMap(2);
-                newPorts = ParsePorts("nmap-normal.txt");
+                Nmap.CustomScan(2, target);
+                newPorts = Nmap.ParseFile("nmap-normal.txt").Ports;
+                portList.AddRange(newPorts);
                 ScanPorts(newPorts);
 
-                RunNMap(3);
-                newPorts = ParsePorts("nmap-slow.txt");
+                Nmap.CustomScan(3, target);
+                newPorts = Nmap.ParseFile("nmap-slow.txt").Ports;
+                portList.AddRange(newPorts);
                 ScanPorts(newPorts);
             }
 
             if (portList.Count == 0)
             {
-                // All scans done - But still no ports
+                // All parsing and scans done - But still no ports
                 Console.WriteLine("No open ports found to scan :<");
                 return;
             }
@@ -211,101 +215,20 @@ namespace Reecon
             Console.WriteLine("Finished - Some things you probably want to do: ");
             if (portList.Count == 0)
             {
-                Console.WriteLine("- nmap -sC -sV -p- " + ip + " -oN nmap.txt");
+                // Something broke, or there are only UDP Ports :|
+                Console.WriteLine("- nmap -sC -sV -p- " + target + " -oN nmap.txt");
+                Console.WriteLine("- nmap -sU " + target + " -oN nmap-UDP.txt");
             }
             else
             {
-                postScanActions += $"- Nmap Version Scan: nmap -sC -sV -p{string.Join(",", portList)} {ip} -oN nmap.txt" + Environment.NewLine;
-                postScanActions += $"- Nmap UDP Scan: nmap -sU {ip}";
+                postScanActions += $"- Nmap Version Scan: nmap -sC -sV -p{string.Join(",", portList)} {target} -oN nmap.txt" + Environment.NewLine;
+                postScanActions += $"- Nmap UDP Scan: nmap -sU {target}";
                 Console.WriteLine(postScanActions);
             }
             DateTime endDate = DateTime.Now;
             TimeSpan t = endDate - startDate;
             Console.WriteLine("Done in " + string.Format("{0:0.00}s", t.TotalSeconds) + " - Have fun :)");
             Console.ResetColor();
-        }
-
-        static void RunNMap(int level)
-        {
-            Console.WriteLine($"Starting a Level {level} Nmap on IP {ip}");
-            if (level == 1)
-            {
-                // -F = Fast (100 Most Common Ports)
-                General.RunProcess("sudo", $"nmap {ip} -sS -F --min-rate=50 -oG nmap-fast.txt");
-            }
-            else if (level == 2)
-            {
-                // Top 1,000 Ports (Excl. Top 100?)
-                General.RunProcess("sudo", $"nmap {ip} -sS --min-rate=500 -oG nmap-normal.txt");
-            }
-            else if (level == 3)
-            {
-                // -p- = All Ports
-                General.RunProcess("sudo", $"nmap {ip} -sS -p- --min-rate=5000 -oG nmap-slow.txt -oN nmap-all.txt");
-            }
-        }
-
-        // Parses an -oG nmap file for ports and scans the results
-        static List<int> ParsePorts(string fileName, bool deleteFile = true)
-        {
-            List<int> returnList = new List<int>();
-            // Console.WriteLine("Parsing: " + fileName);
-            StreamReader sr1 = new StreamReader(fileName);
-            string[] fileLines = sr1.ReadToEnd().Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-            sr1.Close();
-            if (deleteFile)
-            {
-                File.Delete(fileName);
-            }
-            // fileLines[1]: Host: 10.10.10.175 ()   Status: Up
-            ip = fileLines[1].Split(' ')[1];
-            if (fileLines[1].Contains("0 hosts up"))
-            {
-                Console.WriteLine("Error - Host is down :(");
-                Environment.Exit(0);
-            }
-            if (!fileLines[2].Contains("/open/"))
-            {
-                Console.WriteLine("No open ports found");
-                return returnList;
-            }
-            string portLine = fileLines[2];
-            string[] portItems = portLine.Split('\t');
-            string portSection = portItems[1];
-            portSection = portSection.Replace("Ports: ", "");
-            foreach (var item in portSection.Split(new[] { ", " }, StringSplitOptions.None))
-            {
-                int port = int.Parse(item.Split('/')[0]);
-                string status = item.Split('/')[1];
-                if (status == "open")
-                {
-                    if (!portList.Contains(port))
-                    {
-                        portList.Add(port);
-                        returnList.Add(port);
-                    }
-                }
-                else
-                {
-                    if (status == "closed")
-                    {
-                        // Closed - Add it to the found list, but skip it
-                        if (!portList.Contains(port))
-                        {
-                            portList.Add(port);
-                        }
-                    }
-                    else
-                    {
-                        if (!portList.Contains(port))
-                        {
-                            portList.Add(port);
-                            Console.WriteLine("Unknown Status: " + port + " -> " + status);
-                        }
-                    }
-                }
-            }
-            return returnList;
         }
 
         static void ScanPorts(List<int> portList)
@@ -335,14 +258,14 @@ namespace Reecon
             if (port == 21)
             {
                 string portHeader = "Port 21 - FTP";
-                string portData = FTP.GetInfo(ip);
+                string portData = FTP.GetInfo(target);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
                 postScanActions += "- Check out Port 21 for things I missed" + Environment.NewLine;
             }
             else if (port == 22)
             {
                 string portHeader = "Port 22 - SSH";
-                string portData = SSH.GetInfo(ip, 22);
+                string portData = SSH.GetInfo(target, 22);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
 
             }
@@ -355,7 +278,7 @@ namespace Reecon
             else if (port == 25)
             {
                 string portHeader = "Port 25 - SMTP";
-                string portData = SMTP.GetInfo(ip, 25);
+                string portData = SMTP.GetInfo(target, 25);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
 
             }
@@ -363,15 +286,15 @@ namespace Reecon
             {
                 // TODO: https://svn.nmap.org/nmap/scripts/dns-nsid.nse
                 string portHeader = "Port 53 - DNS";
-                string portData = DNS.GetInfo(ip);
+                string portData = DNS.GetInfo(target);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
-                postScanActions += "- Try a reverse lookup (Linux): dig @" + ip + " -x " + ip + Environment.NewLine;
-                postScanActions += "- Try a zone transfer (Linux): dig axfr domain.com @" + ip + Environment.NewLine;
+                postScanActions += $"- Try a reverse lookup (Linux): dig @{target} -x {target}" + Environment.NewLine;
+                postScanActions += $"- Try a zone transfer (Linux): dig axfr domain.com @{target}" + Environment.NewLine;
             }
             else if (port == 80)
             {
                 string port80result = "Port 80 - HTTP";
-                string portData = HTTP.GetInfo(ip, 80, false);
+                string portData = HTTP.GetInfo(target, 80, false);
                 // Can't do it in the class since it's also used for non-standard HTTP ports
                 // Might need to refactor
                 if (portData == "")
@@ -379,8 +302,8 @@ namespace Reecon
                     portData = "- Are you sure the port is open?";
                 }
                 Console.WriteLine(port80result + Environment.NewLine + portData + Environment.NewLine);
-                postScanActions += "- gobuster dir -u=http://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http-medium.txt -x.php,.txt" + Environment.NewLine;
-                postScanActions += "- gobuster dir -u=http://" + ip + "/ -w ~/wordlists/common.txt -t 25 -o gobuster-http-common.txt -x.php,.txt" + Environment.NewLine;
+                postScanActions += $"- gobuster dir -u=http://{target}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http-medium.txt -x.php,.txt" + Environment.NewLine;
+                postScanActions += $"- gobuster dir -u=http://{target}/ -w ~/wordlists/common.txt -t 25 -o gobuster-http-common.txt -x.php,.txt" + Environment.NewLine;
 
             }
             else if (port == 88)
@@ -390,25 +313,25 @@ namespace Reecon
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
 
                 // Post Scan
-                string defaultNamingContext = LDAP.GetDefaultNamingContext(ip, true);
+                string defaultNamingContext = LDAP.GetDefaultNamingContext(target, true);
                 defaultNamingContext = defaultNamingContext.Replace("DC=", "").Replace(",", ".");
 
                 // Username enum
-                postScanActions += "- Kerberos Username Enum: kerbrute userenum --dc " + defaultNamingContext + "/ -d " + ip + " users.txt" + Environment.NewLine;
+                postScanActions += $"- Kerberos Username Enum: kerbrute userenum --dc {defaultNamingContext}/ -d {target} users.txt" + Environment.NewLine;
 
                 // Requests TGT (Ticket Granting Tickets) for users
-                postScanActions += "- Kerberos TGT Request: sudo GetNPUsers.py " + defaultNamingContext + "/" + " -dc-ip " + ip + " -request" + Environment.NewLine;
+                postScanActions += $"- Kerberos TGT Request: sudo GetNPUsers.py {defaultNamingContext}/ -dc-ip {target} -request" + Environment.NewLine;
 
                 // Test for users with 'Do not require Kerberos preauthentication'
-                postScanActions += "- Kerberos non-preauth: sudo GetNPUsers.py " + defaultNamingContext + "/ -usersfile sampleUsersHere.txt -dc-ip " + ip + Environment.NewLine;
+                postScanActions += $"- Kerberos non-preauth: sudo GetNPUsers.py {defaultNamingContext}/ -usersfile sampleUsersHere.txt -dc-ip {target}" + Environment.NewLine;
 
                 // Post exploitation
-                postScanActions += "- If you get details: python3 secretsdump.py usernameHere:\"passwordHere\"@" + ip + " | grep :" + Environment.NewLine;
+                postScanActions += $"- If you get details: python3 secretsdump.py usernameHere:\"passwordHere\"@{target} | grep :" + Environment.NewLine;
             }
             else if (port == 110)
             {
                 string portHeader = "Port 110 - pop3";
-                string portData = POP3.GetInfo(ip);
+                string portData = POP3.GetInfo(target);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
 
             }
@@ -416,7 +339,7 @@ namespace Reecon
             {
                 // TODO: Refactor
                 string port111result = "Port 111 - rpcbind";
-                List<string> processOutput = General.GetProcessOutput("rpcinfo", "-p " + ip);
+                List<string> processOutput = General.GetProcessOutput("rpcinfo", "-p " + target);
                 string rpcOutput = "";
                 foreach (string item in processOutput)
                 {
@@ -433,13 +356,13 @@ namespace Reecon
             else if (port == 139)
             {
                 string portHeader = "Port 139 - NETBIOS Session Service (netbios-ssn)";
-                string portData = NETBIOS.GetInfo(ip);
+                string portData = NETBIOS.GetInfo(target);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
             }
             else if (port == 143)
             {
                 string portHeader = "Port 143 - IMAP (Internet Message Access Protocol)";
-                string portData = IMAP.GetInfo(ip, 143);
+                string portData = IMAP.GetInfo(target, 143);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
             }
             else if (port == 389)
@@ -447,26 +370,27 @@ namespace Reecon
                 // https://github.com/mono/mono/blob/master/mcs/class/System.DirectoryServices.Protocols/System.DirectoryServices.Protocols/SearchRequest.cs
                 // Wow Mono - Just Wow...
                 string portHeader = "Port 389 - LDAP (Plain Text)";
-                string portData = LDAP.GetInfo(ip);
+                string portData = LDAP.GetInfo(target);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
             }
             else if (port == 443)
             {
                 string portHeader = "Port 443 - HTTPS";
-                string portData = HTTP.GetInfo(ip, 443, true);
+                string portData = HTTP.GetInfo(target, 443, true);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
-                postScanActions += "- gobuster dir -u=https://" + ip + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-https-medium.txt -x.php,.txt" + Environment.NewLine;
-                postScanActions += "- gobuster dir -u=https://" + ip + "/ -w ~/wordlists/common -t 25 -o gobuster-https-common.txt -x.php,.txt" + Environment.NewLine;
+                postScanActions += $"- gobuster dir -u=https://{target}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-https-medium.txt -x.php,.txt" + Environment.NewLine;
+                postScanActions += $"- gobuster dir -u=https://{target}/ -w ~/wordlists/common -t 25 -o gobuster-https-common.txt -x.php,.txt" + Environment.NewLine;
             }
             else if (port == 445)
             {
                 string portHeader = "Port 445 - Microsoft SMB";
-                string portData = SMB.GetInfo(ip);
+                string portData = SMB.GetInfo(target);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
                 if (General.GetOS() == General.OS.Windows)
                 {
-                    postScanActions = "- Port 445 - Linux (SMBClient) has better info on this: smbclient -L " + ip + " --no-pass" + Environment.NewLine;
+                    postScanActions += $"- Port 445 - Linux (SMBClient) has better info on this: smbclient -L {target} --no-pass" + Environment.NewLine;
                 }
+                postScanActions += $"- Port 445 - I miss a lot: nmap -sC -sV -p445 {target}" + Environment.NewLine;
             }
             else if (port == 464)
             {
@@ -490,9 +414,9 @@ namespace Reecon
             {
                 // Yes - A lower case s in sync
                 string portHeader = "Port 873 - Rsync (Remote Sync)";
-                string portData = Rsync.GetInfo(ip, port);
+                string portData = Rsync.GetInfo(target, port);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
-                postScanActions += "- Rsync: rsync -av --list-only rsync://" + ip + "/folderNameHere/ (Remove --list-only and add a . at the end to download)" + Environment.NewLine;
+                postScanActions += $"- Rsync: rsync -av --list-only rsync://{target}/folderNameHere/ (Remove --list-only and add a . at the end to download)" + Environment.NewLine;
             }
             else if (port == 993)
             {
@@ -509,20 +433,20 @@ namespace Reecon
             else if (port == 2049)
             {
                 string portHeader = "Port 2049 - NFS (Network File System)";
-                string portData = NFS.GetFileList(ip);
+                string portData = NFS.GetFileList(target);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
 
                 postScanActions += "- RPC" + Environment.NewLine;
-                postScanActions += "-- rpcinfo -p " + ip + Environment.NewLine;
-                postScanActions += "-- showmount -e " + ip + Environment.NewLine;
-                postScanActions += "--- mount -t nfs -o vers=2 " + ip + ":/mountNameHere /mnt" + Environment.NewLine;
+                postScanActions += "-- rpcinfo -p " + target + Environment.NewLine;
+                postScanActions += "-- showmount -e " + target + Environment.NewLine;
+                postScanActions += $"--- mount -t nfs -o vers=2 {target}:/mountNameHere /mnt" + Environment.NewLine;
             }
             else if (port == 3128)
             {
                 string portHeader = "Port 3128 - Squid";
-                string portData = Squid.GetInfo(ip, 3128);
+                string portData = Squid.GetInfo(target, 3128);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
-                postScanActions += $"- Squid: If you get a password, run: squidclient -v -h {ip} -w 'passwordHere' mgr:menu" + Environment.NewLine;
+                postScanActions += $"- Squid: If you get a password, run: squidclient -v -h {target} -w 'passwordHere' mgr:menu" + Environment.NewLine;
             }
             else if (port == 3268)
             {
@@ -542,11 +466,11 @@ namespace Reecon
                 // Console.WriteLine("Port 3306 - MySQL" + Environment.NewLine + "- Reecon currently lacks MySQL support" + Environment.NewLine + "- Banner: " + theBanner + Environment.NewLine);
                 // TODO: Refactor
                 string port3306Result = "Port 3306 - MySQL" + Environment.NewLine;
-                string version = MySQL.GetVersion(ip);
+                string version = MySQL.GetVersion(target);
                 port3306Result += version;
                 if (!version.Contains("Access Denied"))
                 {
-                    port3306Result += "- Try: hydra -L users.txt -P passwords.txt " + ip + " mysql" + Environment.NewLine;
+                    port3306Result += $"- Try: hydra -L users.txt -P passwords.txt {target} mysql" + Environment.NewLine;
                 }
                 // string greeting = MySQL.ReceiveGreeting(ip);
                 // port3306Result += greeting + Environment.NewLine;
@@ -596,9 +520,9 @@ namespace Reecon
             {
                 // Banner: ( success ( 2 2 ( ) ( edit-pipeline svndiff1 accepts-svndiff2 absent-entries commit-revprops depth log-revprops atomic-revprops partial-replay inherited-props ephemeral-txnprops file-revs-reverse list ) ) )
                 string portHeader = "Port 3690 - SVN (Subversion)";
-                string portData = SVN.GetInfo(ip);
+                string portData = SVN.GetInfo(target);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
-                postScanActions += "- svn diff -r1 svn://" + ip + Environment.NewLine;
+                postScanActions += "- svn diff -r1 svn://" + target + Environment.NewLine;
             }
             else if (port == 4369)
             {
@@ -606,7 +530,7 @@ namespace Reecon
                 string portHeader = "Port 4369 - Erlang Port Mapper Daemon (EPMD)";
                 string portData = "- Reecon currently lacks EPMD support" + Environment.NewLine + "- Check NMap";
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
-                postScanActions += "- EPMD: nmap " + ip + " -p4369 --script=epmd-info -sV" + Environment.NewLine;
+                postScanActions += $"- EPMD: nmap {target} -p4369 --script=epmd-info -sV" + Environment.NewLine;
             }
             else if (port == 5222)
             {
@@ -622,7 +546,7 @@ namespace Reecon
             else if (port == 5672)
             {
                 string portHeader = "Port 5672 - Advanced Message Queuing Protocol (AMQP)";
-                string portData = General.BannerGrab(ip, 5672, "Woof" + Environment.NewLine + Environment.NewLine);
+                string portData = General.BannerGrab(target, 5672, "Woof" + Environment.NewLine + Environment.NewLine);
                 if (portData.StartsWith("AMQP"))
                 {
                     if (portData[4] == 0 && portData[5] == 0 && portData[6] == 9 && portData[7] == 1)
@@ -633,7 +557,7 @@ namespace Reecon
                         // Oh gawd....
                         // \u0001\0\0\0\0\u0001?\0\n\0\n\0\t\0\0\u0001?\fcapabilitiesF\0\0\0?\u0012publisher_confirmst\u0001\u001aexchange_exchange_bindingst\u0001\nbasic.nackt\u0001\u0016consumer_cancel_notifyt\u0001\u0012connection.blockedt\u0001\u0013consumer_prioritiest\u0001\u001cauthentication_failure_closet\u0001\u0010per_consumer_qost\u0001\u000fdirect_reply_tot\u0001\fcluster_nameS\0\0\0\u0010rabbit@dyplesher\tcopyrightS\0\0\0.Copyright (C) 2007-2018 Pivotal Software, Inc.\vinformationS\0\0\05Licensed under the MPL.  See http://www.rabbitmq.com/\bplatformS\0\0\0\u0011Erlang/OTP 22.0.7\aproductS\0\0\0\bRabbitMQ\aversionS\0\0\0\u00053.7.8\0\0\0\u000ePLAIN AMQPLAIN\0\0\0\u0005en_US?
                         // https://svn.nmap.org/nmap/nselib/amqp.lua
-                        postScanActions += "- AMQP is up and nmap knows more: nmap --script amqp-info -p" + port + " " + ip + Environment.NewLine;
+                        postScanActions += $"- AMQP is up and nmap knows more: nmap --script amqp-info -p{port} {target}" + Environment.NewLine;
                     }
                     else
                     {
@@ -651,19 +575,19 @@ namespace Reecon
                 // TODO: Figure out how to do basic evil-winrm.rb connections
                 // evil-winrm.rb -i 10.10.10.161
                 string portHeader = "Port 5985 - WinRM"; // WSMAN (WBEM WS-Management HTTP) ?
-                string portData = WinRM.GetInfo(ip, 5985);
+                string portData = WinRM.GetInfo(target, 5985);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
             }
             else if (port == 5986)
             {
                 string portHeader = "Port 5986 - Secure WinRM"; // WSMANS (WBEM WS-Management HTTP over TLS/SSL) ?
-                string portData = WinRM.GetInfo(ip, 5986);
+                string portData = WinRM.GetInfo(target, 5986);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
             }
             else if (port == 6379)
             {
                 string portHeader = "Port 6379 - Redis";
-                string portData = Redis.GetInfo(ip, port);
+                string portData = Redis.GetInfo(target, port);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
             }
             else if (port == 6881)
@@ -679,13 +603,13 @@ namespace Reecon
                 // PJL
 
                 // Yoinked from Nmap
-                string bannerInfo = General.BannerGrab(ip, port, "@PJL INFO ID\r\n");
+                string bannerInfo = General.BannerGrab(target, port, "@PJL INFO ID\r\n");
                 string portData = "";
                 if (bannerInfo != "")
                 {
                     portData += "- Version: " + bannerInfo + Environment.NewLine;
                     // Yoinked from PRET
-                    List<string> dirList = General.BannerGrab(ip, port, "@PJL FSDIRLIST NAME=\"0:/ \" ENTRY=1 COUNT=65535\r\n").Split("\r\n".ToCharArray()).ToList();
+                    List<string> dirList = General.BannerGrab(target, port, "@PJL FSDIRLIST NAME=\"0:/ \" ENTRY=1 COUNT=65535\r\n").Split("\r\n".ToCharArray()).ToList();
                     // Clean new lines
                     dirList.RemoveAll(string.IsNullOrEmpty);
                     // Append each item
@@ -697,7 +621,7 @@ namespace Reecon
                     portData = portData.Trim(Environment.NewLine.ToCharArray());
 
                     // PFL Successful - Add pjl to the post scan actions
-                    postScanActions += $"- Printer: pret.py {ip} pjl ( https://github.com/RUB-NDS/PRET )" + Environment.NewLine;
+                    postScanActions += $"- Printer: pret.py {target} pjl ( https://github.com/RUB-NDS/PRET )" + Environment.NewLine;
                 }
                 else
                 {
@@ -717,7 +641,7 @@ namespace Reecon
             else if (port == 9200)
             {
                 string portHeader = "Port 9200 - Elasticsearch HTTP Interface";
-                string portData = Elasticsearch.GetInfo(ip);
+                string portData = Elasticsearch.GetInfo(target);
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
 
             }
@@ -769,7 +693,7 @@ namespace Reecon
             else
             {
                 // A port I'm not familiar with - Try parse the banner
-                string theBanner = General.BannerGrab(ip, port);
+                string theBanner = General.BannerGrab(target, port);
                 byte[] theBannerBytes = General.GetBytes(theBanner);
                 string unknownPortResult = "Port " + port;
 
@@ -777,7 +701,7 @@ namespace Reecon
                 if (theBanner.StartsWith("220") && theBanner.Contains("ESMTP"))
                 {
                     unknownPortResult += " - SMTP";
-                    string smtpInfo = SMTP.GetInfo(ip, port); // Can't just parse the banner directly since there could be other useful stuff
+                    string smtpInfo = SMTP.GetInfo(target, port); // Can't just parse the banner directly since there could be other useful stuff
                     Console.WriteLine(unknownPortResult + Environment.NewLine + smtpInfo + Environment.NewLine);
 
                 }
@@ -789,21 +713,21 @@ namespace Reecon
                     {
                         unknownPortResult += Environment.NewLine + "- TCP Protocol Mismatch";
                     }
-                    unknownPortResult += SSH.GetInfo(ip, port);
+                    unknownPortResult += SSH.GetInfo(target, port);
                     Console.WriteLine(unknownPortResult + Environment.NewLine);
                 }
                 // WinRM - HTTP with special stuff
                 else if (theBanner.Contains("Server: Microsoft-HTTPAPI/2.0"))
                 {
                     unknownPortResult += " - WinRM";
-                    string portData = WinRM.GetInfo(ip, port);
+                    string portData = WinRM.GetInfo(target, port);
                     Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
                 }
                 // Squid - HTTP with different special stuff
                 else if (theBanner.Contains("Server: squid"))
                 {
                     unknownPortResult += " - Squid";
-                    string portData = Squid.GetInfo(ip, port);
+                    string portData = Squid.GetInfo(target, port);
                     Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
                 }
                 // Probably a general HTTP or HTTPS web server
@@ -818,31 +742,31 @@ namespace Reecon
                     || theBanner.Trim().StartsWith("<!DOCTYPE html>") // General HTML
                     )
                 {
-                    string httpData = HTTP.GetInfo(ip, port, false);
+                    string httpData = HTTP.GetInfo(target, port, false);
                     if (httpData != "")
                     {
                         Console.WriteLine(unknownPortResult + " - HTTP" + Environment.NewLine + httpData + Environment.NewLine);
-                        postScanActions += "- gobuster dir -u=http://" + ip + ":" + port + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-" + port + "-medium.txt -x.php,.txt" + Environment.NewLine;
-                        postScanActions += "- gobuster dir -u=http://" + ip + ":" + port + "/ -w ~/wordlists/common.txt -t 25 -o gobuster-" + port + "-common.txt -x.php,.txt" + Environment.NewLine;
+                        postScanActions += $"- gobuster dir -u=http://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-" + port + "-medium.txt -x.php,.txt" + Environment.NewLine;
+                        postScanActions += $"- gobuster dir -u=http://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-" + port + "-common.txt -x.php,.txt" + Environment.NewLine;
                     }
-                    string httpsData = HTTP.GetInfo(ip, port, true);
+                    string httpsData = HTTP.GetInfo(target, port, true);
                     if (httpsData != "")
                     {
                         Console.WriteLine(unknownPortResult + " - HTTPS" + Environment.NewLine + httpsData + Environment.NewLine);
-                        postScanActions += "- gobuster dir -u=https://" + ip + ":" + port + "/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-" + port + "-medium.txt -x.php,.txt" + Environment.NewLine;
-                        postScanActions += "- gobuster dir -u=https://" + ip + ":" + port + "/ -w ~/wordlists/common.txt -t 25 -o gobuster-" + port + "-common.txt -x.php,.txt" + Environment.NewLine;
+                        postScanActions += $"- gobuster dir -u=https://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-{port}-medium.txt -x.php,.txt" + Environment.NewLine;
+                        postScanActions += $"- gobuster dir -u=https://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-{port}-common.txt -x.php,.txt" + Environment.NewLine;
                     }
                 }
                 else if (theBanner == "-ERR unknown command 'Woof'") // Probably Redis
                 {
                     unknownPortResult += " - Redis";
-                    string portData = Redis.GetInfo(ip, port);
+                    string portData = Redis.GetInfo(target, port);
                     Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
                 }
                 else if (theBanner == "+OK Dovecot ready.")
                 {
                     unknownPortResult += " - pop3 (Dovecot)" + Environment.NewLine;
-                    unknownPortResult += POP3.GetInfo(ip);
+                    unknownPortResult += POP3.GetInfo(target);
                     Console.WriteLine(unknownPortResult);
                 }
                 else if (theBanner == "ncacn_http/1.0")
@@ -864,7 +788,7 @@ namespace Reecon
                         // Oh gawd....
                         // \u0001\0\0\0\0\u0001?\0\n\0\n\0\t\0\0\u0001?\fcapabilitiesF\0\0\0?\u0012publisher_confirmst\u0001\u001aexchange_exchange_bindingst\u0001\nbasic.nackt\u0001\u0016consumer_cancel_notifyt\u0001\u0012connection.blockedt\u0001\u0013consumer_prioritiest\u0001\u001cauthentication_failure_closet\u0001\u0010per_consumer_qost\u0001\u000fdirect_reply_tot\u0001\fcluster_nameS\0\0\0\u0010rabbit@dyplesher\tcopyrightS\0\0\0.Copyright (C) 2007-2018 Pivotal Software, Inc.\vinformationS\0\0\05Licensed under the MPL.  See http://www.rabbitmq.com/\bplatformS\0\0\0\u0011Erlang/OTP 22.0.7\aproductS\0\0\0\bRabbitMQ\aversionS\0\0\0\u00053.7.8\0\0\0\u000ePLAIN AMQPLAIN\0\0\0\u0005en_US?
                         // https://svn.nmap.org/nmap/nselib/amqp.lua
-                        postScanActions += "- AMQP is up and nmap knows more: nmap --script amqp-info -p" + port + " " + ip + Environment.NewLine;
+                        postScanActions += $"- AMQP is up and nmap knows more: nmap --script amqp-info -p{port} {target}" + Environment.NewLine;
                     }
                     else
                     {
@@ -880,7 +804,7 @@ namespace Reecon
                 else if (theBanner.StartsWith("@RSYNCD"))
                 {
                     unknownPortResult += " - Rsync" + Environment.NewLine;
-                    unknownPortResult += Rsync.GetInfo(ip, port);
+                    unknownPortResult += Rsync.GetInfo(target, port);
                     Console.WriteLine(unknownPortResult);
                 }
                 else if (theBanner.Trim().StartsWith("( success ( 2 2 ( ) ( edit-pipeline"))

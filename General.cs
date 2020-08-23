@@ -115,11 +115,10 @@ namespace Reecon
         }
 
         // This is for custom requests where you know the actual bytes to send
-        // Doesn't really work yet
-        public static string BannerGrabBytes(string ip, int port, byte[] cmdBytes, int bufferSize = 512)
+        public static byte[] BannerGrabBytes(string ip, int port, List<byte[]> bytesToSend, int bufferSize = 1024)
         {
-            string bannerText = "";
-            Byte[] buffer = new Byte[bufferSize];
+            byte[] returBuffer = new byte[0];
+            byte[] buffer = new byte[bufferSize];
             using (Socket bannerGrabSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
                 bannerGrabSocket.ReceiveTimeout = 10000;
@@ -133,35 +132,27 @@ namespace Reecon
                         if (!bannerGrabSocket.Connected)
                         {
                             bannerGrabSocket.Close();
-                            return "Reecon - Closed";
+                            return Encoding.ASCII.GetBytes("Reecon - Closed");
                         }
-                        bannerGrabSocket.Send(cmdBytes, cmdBytes.Length, 0);
-                        int bytes = bannerGrabSocket.Receive(buffer, buffer.Length, 0);
-                        bannerText = Encoding.ASCII.GetString(buffer, 0, bytes);
-                        bannerText = bannerText.Trim();
-                        return bannerText;
+                        foreach (byte[] cmdBytes in bytesToSend)
+                        {
+                            bannerGrabSocket.Send(cmdBytes);
+                            int receivedBytes = bannerGrabSocket.Receive(buffer);
+                            returBuffer = buffer.Take(receivedBytes).ToArray();
+                        }
+                        return returBuffer;
                     }
                     else
                     {
                         bannerGrabSocket.Close();
-                        return "Reecon - Closed";
+                        return Encoding.ASCII.GetBytes("Reecon - Closed");
                     }
                 }
                 catch (SocketException ex)
                 {
-                    return "General.BannerGrabBytes Error: " + ex.Message;
+                    return Encoding.ASCII.GetBytes("General.BannerGrabBytes Error: " + ex.Message);
                 }
             }
-        }
-
-        // Very slow and possibly doesn't work
-        public static byte[] StringToByteArray(string hex)
-        {
-            hex = hex.Replace(" ", "");
-            return Enumerable.Range(0, hex.Length)
-                             .Where(x => x % 2 == 0)
-                             .Select(x => Convert.ToByte(hex.Substring(x, 2), 16))
-                             .ToArray();
         }
 
         public static bool IsUp(string ip)

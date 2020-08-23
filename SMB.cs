@@ -12,20 +12,46 @@ namespace Reecon
     {
         public static string GetInfo(string ip)
         {
-            string returnText;
+            string toReturn = "";
+            toReturn += GetOSDetails(ip);
+            if (SMB_MS17_010.IsVulnerable(ip))
+            {
+                toReturn += "----> VULNERABLE TO ETERNAL BLUE (MS10-017) <-----" + Environment.NewLine;
+            }
             if (General.GetOS() == General.OS.Windows)
             {
                 string portData = SMB.TestAnonymousAccess(ip);
                 string morePortData = SMB.TestAnonymousAccess(ip, "anonymous");
                 string evenMorePortData = SMB.TestAnonymousAccess(ip, "anonymous", "anonymous");
-                returnText = portData + morePortData + evenMorePortData;
+                toReturn += portData + morePortData + evenMorePortData;
             }
             else
             {
-                returnText = SMB.TestAnonymousAccess_Linux(ip);
+                toReturn += SMB.TestAnonymousAccess_Linux(ip);
             }
-            return returnText;
+            return toReturn.Trim(Environment.NewLine.ToCharArray());
         }
+
+        // Taken from: https://github.com/TeskeVirtualSystem/MS17010Test
+        private static string GetOSDetails(string ip)
+        {
+            string osDetails = "";
+            byte[] negotiateBytes = negotiateProtoRequest();
+            byte[] sessionBytes = sessionSetupAndxRequest();
+            List<byte[]> bytesToSend = new List<byte[]>() { negotiateBytes, sessionBytes };
+            byte[] byteResult = General.BannerGrabBytes(ip, 445, bytesToSend);
+            var sessionSetupAndxResponse = byteResult.Skip(36).ToArray();
+            var nativeOsB = sessionSetupAndxResponse.Skip(9).ToArray();
+            var osData = Encoding.ASCII.GetString(nativeOsB).Split('\x00');
+            osDetails += "- OS Name: " + osData[0] + Environment.NewLine;
+            if (osData.Count() >= 3)
+            {
+                osDetails += "- OS Build: " + osData[1] + Environment.NewLine;
+                osDetails += "- OS Workgroup: " + osData[2] + Environment.NewLine;
+            }
+            return osDetails;
+        }
+
         public static string TestAnonymousAccess(string IP, string username = "", string password = "")
         {
             string toReturn = "";
@@ -68,7 +94,7 @@ namespace Reecon
                 }
                 else if (processResults.Count == 2 && processResults[0] == "Anonymous login successful" && processResults[1] == "SMB1 disabled -- no workgroup available")
                 {
-                    return "- Anonamymous Access Allowed - But No Shares Found";
+                    return "- Anonymous Access Allowed - But No Shares Found";
                 }
                 foreach (string item in processResults)
                 {
@@ -78,11 +104,11 @@ namespace Reecon
                         string itemType = item.Split('|')[0];
                         string itemName = item.Split('|')[1];
                         string itemComment = item.Split('|')[2];
-                        smbClientItems += "> " + itemType + ": " + itemName + " " + (itemComment == "" ? "" : "(" + itemComment + ")") + Environment.NewLine;
+                        smbClientItems += "- " + itemType + ": " + itemName + " " + (itemComment == "" ? "" : "(" + itemComment + ")") + Environment.NewLine;
                         List<string> subProcessResults = General.GetProcessOutput("smbclient", "//" + ip + "/" + itemName + " --no-pass -c \"ls\"");
                         if (subProcessResults.Count > 1)
                         {
-                            smbClientItems += "-> " + itemName + " has ls perms!" + Environment.NewLine + "-> smbclient //" + ip + "/" + itemName + " --no-pass" + Environment.NewLine;
+                            smbClientItems += "-- " + itemName + " has ls perms! -> smbclient //" + ip + "/" + itemName + " --no-pass" + Environment.NewLine;
                         }
                     }
                 }
@@ -154,6 +180,102 @@ namespace Reecon
             }
             // smbclient -L \\\\10.10.10.172 -USABatchJobs%SABatchJobs
 
+        }
+
+        public static void SMBTest(string ip)
+        {
+
+            Console.ReadLine();
+        }
+
+        // https://github.com/nixawk/labs/blob/master/MS17_010/smb_exploit.py
+        private static byte[] negotiateProtoRequest()
+        {
+            byte[] netbios = new byte[]
+            {
+                0x00, // Message Type
+                0x00, 0x00, 0x54 // Length
+            };
+
+            byte[] smbHeader = new byte[]
+            {
+                0xFF, 0x53, 0x4D, 0x42, // 'server_component': .SMB
+                0x72,                   // 'smb_command': Negotiate Protocol
+                0x00, 0x00, 0x00, 0x00, // 'nt_status'
+                0x18,                   // 'flags'
+                0x01, 0x28,             // 'flags2'
+                0x00, 0x00,             // 'process_id_high'
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 'signature'
+                0x00, 0x00,             // 'reserved'
+                0x00, 0x00,             // 'tree_id'
+                0x2F, 0x4B,             // 'process_id'
+                0x00, 0x00,             // 'user_id'
+                0xC5, 0x5E              // 'multiplex_id'
+            };
+
+            byte[] negotiateProtoRequest = new byte[]
+            {
+                0x00, // 'word_count'
+                0x31, 0x00, // 'byte_count'
+                
+                // Requested Dialects
+                0x02, // 'dialet_buffer_format'
+                0x4C, 0x41, 0x4E, 0x4D, 0x41, 0x4E, 0x31, 0x2E, 0x30, 0x00, // 'dialet_name': LANMAN1.0
+                
+                0x02, // 'dialet_buffer_format'
+                0x4C, 0x4D, 0x31, 0x2E, 0x32, 0x58, 0x30, 0x30, 0x32, 0x00, // 'dialet_name': LM1.2X002
+
+                0x02, // 'dialet_buffer_format'
+                0x4E, 0x54, 0x20, 0x4C, 0x41, 0x4E, 0x4D, 0x41, 0x4E, 0x20, 0x31, 0x2E, 0x30, 0x00, // 'dialet_name3': NT LANMAN 1.0
+                
+                0x02, // 'dialet_buffer_format'
+                0x4E, 0x54, 0x20, 0x4C, 0x4D, 0x20, 0x30, 0x2E, 0x31, 0x32, 0x00 // 'dialet_name4': NT LM 0.12
+            };
+
+            return netbios.Concat(smbHeader).Concat(negotiateProtoRequest).ToArray();
+        }
+
+        public static byte[] sessionSetupAndxRequest()
+        {
+            byte[] netbios = new byte[] { 0x00, 0x00, 0x00, 0x63 };
+            byte[] smbHeader = new byte[]
+            {
+                0xFF, 0x53, 0x4D, 0x42,
+                0x73,
+                0x00, 0x00, 0x00, 0x00,
+                0x18,
+                0x01, 0x20,
+                0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00,
+                0x00, 0x00,
+                0x2F, 0x4B,
+                0x00, 0x00,
+                0xC5, 0x5E
+            };
+
+            byte[] setupAndxRequest = new byte[]
+            {
+                0x0D,
+                0xFF,
+                0x00,
+                0x00, 0x00,
+                0xDF, 0xFF,
+                0x02, 0x00,
+                0x01, 0x00,
+                0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00,
+                0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00,
+                0x40, 0x00, 0x00, 0x00,
+                0x26, 0x00,
+                0x00,
+                0x2e, 0x00,
+                0x57, 0x69, 0x6e, 0x64, 0x6f, 0x77, 0x73, 0x20, 0x32, 0x30, 0x30, 0x30, 0x20, 0x32, 0x31, 0x39, 0x35, 0x00,
+                0x57, 0x69, 0x6e, 0x64, 0x6f, 0x77, 0x73, 0x20, 0x32, 0x30, 0x30, 0x30, 0x20, 0x35, 0x2e, 0x30, 0x00,
+            };
+
+            return netbios.Concat(smbHeader).Concat(setupAndxRequest).ToArray();
         }
     }
 }

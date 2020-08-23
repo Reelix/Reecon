@@ -166,8 +166,13 @@ namespace Reecon
                 // General info file
                 ".DS_STORE",
                 // Wordpress stuff
+                "blog/",
+                "wordpress/",
+                "wordpress/wp-config.php.bak",
                 "wp-config.php",
                 "wp-config.php.bak",
+                // phpmyadmin
+                "phpmyadmin/"
             };
             string returnText = "";
             foreach (string file in commonFiles)
