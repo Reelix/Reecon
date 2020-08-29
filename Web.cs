@@ -26,7 +26,14 @@ namespace Reecon
             }
             ScanPage(url);
             Console.WriteLine("Searching for common files...");
-            Console.WriteLine(FindCommonFiles(url));
+
+            // Used elsewhere so it can't just have its own output
+            string commonFiles = FindCommonFiles(url);
+            if (commonFiles.Trim() != "")
+            {
+                Console.WriteLine(commonFiles);
+            }
+            Console.WriteLine("Web Info Scan Finished");
         }
 
         private static void ScanPage(string url)
@@ -43,7 +50,10 @@ namespace Reecon
                 return;
             }
             string pageInfo = FindInfo(pageText);
-            Console.WriteLine(pageInfo);
+            if (pageInfo.Trim() != "")
+            {
+                Console.WriteLine(pageInfo);
+            }
         }
 
         public static string FindInfo(string pageText, bool doubleDash = false)
@@ -192,10 +202,38 @@ namespace Reecon
 
         public static string FindCommonFiles(string url)
         {
+            string returnText = "";
+
             if (!url.EndsWith("/"))
             {
                 url += "/";
             }
+
+            // Wildcard test
+            // WebClient throws an error on 403 (Forbidden) and 404 (Not Found) pages           
+            int notFoundLength = 0;
+            try
+            {
+                WebClient wc = new WebClient();
+                string wildcardURL = url + "be0df04b-f5ff-4b4f-af99-00968cf08fed";
+                string test = wc.DownloadString(wildcardURL);
+                notFoundLength = test.Length;
+                returnText += $"- Wildcard paths such as {wildcardURL} return - This may cause issues..." + Environment.NewLine;
+            }
+            catch { }
+
+            bool skipPHP = false;
+            // PHP wildcards can be differnt
+            try
+            {
+                WebClient wc = new WebClient();
+                string test = wc.DownloadString(url + "be0df04b-f5ff-4b4f-af99-00968cf08fed.php");
+                notFoundLength = test.Length;
+                returnText += "- .php wildcard paths returns - Skipping PHP" + Environment.NewLine;
+                skipPHP = true;
+            }
+            catch { }
+
             // Mini gobuster :p
             List<string> commonFiles = new List<string>
             {
@@ -233,9 +271,16 @@ namespace Reecon
                 "wp-config.php",
                 "wp-config.php.bak",
                 // phpmyadmin
-                "phpmyadmin/"
+                "phpmyadmin/",
+                // Kibana
+                "app/kibana"
             };
-            string returnText = "";
+
+            if (skipPHP)
+            {
+                commonFiles.RemoveAll(x => x.EndsWith(".php"));
+            }
+
             foreach (string file in commonFiles)
             {
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url + file);
@@ -252,55 +297,88 @@ namespace Reecon
                             // Since it's readable - Let's deal with it!
                             try
                             {
-                                returnText += $"- Common Path is readable: {url}{file}" + Environment.NewLine;
                                 string pageText = new StreamReader(response.GetResponseStream()).ReadToEnd();
-                                // Specific case for robots.txt since it's common and extra useful
-                                if (file == "robots.txt")
+                                if (pageText.Length != notFoundLength)
                                 {
-                                    foreach (var line in pageText.Split(Environment.NewLine.ToCharArray()))
+                                    returnText += $"- Common Path is readable: {url}{file}" + Environment.NewLine;
+                                    // Specific case for robots.txt since it's common and extra useful
+                                    if (file == "robots.txt")
                                     {
-                                        if (line != "")
+                                        foreach (var line in pageText.Split(Environment.NewLine.ToCharArray()))
                                         {
-                                            returnText += "-- " + line + Environment.NewLine;
+                                            if (line != "")
+                                            {
+                                                returnText += "-- " + line + Environment.NewLine;
+                                            }
                                         }
                                     }
-                                }
-                                // Git repo!
-                                else if (file == ".git/HEAD")
-                                {
-                                    returnText += "-- Git repo found!" + Environment.NewLine;
+                                    // Git repo!
+                                    else if (file == ".git/HEAD")
+                                    {
+                                        returnText += "-- Git repo found!" + Environment.NewLine;
 
-                                    // https://github.com/arthaud/git-dumper/issues/9
-                                    WebClient wc = new WebClient();
-                                    try
-                                    {
-                                        if (wc.DownloadString($"{url}.git/").Contains("../"))
+                                        // https://github.com/arthaud/git-dumper/issues/9
+                                        WebClient wc = new WebClient();
+                                        try
                                         {
-                                            // -q: Quiet (So the console doesn't get spammed)
-                                            // -r: Download everything
-                                            // -np: But don't go all the way backwards
-                                            // -nH: So you only have the ".git" folder and not the IP folder as well
-                                            returnText += $"--- Download the repo: wget -q -r -np -nH {url}.git/" + Environment.NewLine;
-                                            returnText += "--- Get the logs: git log --pretty=format:\"%h - %an (%ae): %s %b\"" + Environment.NewLine;
-                                            returnText += "--- Show a specific commit: git show 2eb93ac (Press q to close)" + Environment.NewLine;
-                                            continue;
+                                            if (wc.DownloadString($"{url}.git/").Contains("../"))
+                                            {
+                                                // -q: Quiet (So the console doesn't get spammed)
+                                                // -r: Download everything
+                                                // -np: But don't go all the way backwards
+                                                // -nH: So you only have the ".git" folder and not the IP folder as well
+                                                returnText += $"--- Download the repo: wget -q -r -np -nH {url}.git/" + Environment.NewLine;
+                                                returnText += "--- Get the logs: git log --pretty=format:\"%h - %an (%ae): %s %b\"" + Environment.NewLine;
+                                                returnText += "--- Show a specific commit: git show 2eb93ac (Press q to close)" + Environment.NewLine;
+                                                continue;
+                                            }
+                                        }
+                                        catch { }
+                                        returnText += "--- Download: https://raw.githubusercontent.com/arthaud/git-dumper/master/git-dumper.py" + Environment.NewLine;
+                                        returnText += $"--- Run: python3 git-dumper.py {url}{file} .git" + Environment.NewLine;
+                                        returnText += "--- Get the logs: git log --pretty=format:\"%h - %an (%ae): %s %b\"" + Environment.NewLine;
+                                        returnText += "--- Show a specific commit: git show 2eb93ac (Press q to close)" + Environment.NewLine;
+                                    }
+                                    else if (file == "app/kibana")
+                                    {
+                                        returnText += "-- Kibana!" + Environment.NewLine;
+                                        try
+                                        {
+                                            WebClient wc = new WebClient();
+                                            string toCheck = $"{url}{file}";
+                                            string pageData = wc.DownloadString($"{url}{file}");
+                                            if (pageData.IndexOf("&quot;version&quot;:&quot;") != -1)
+                                            {
+                                                string versionText = pageData.Remove(0, pageData.IndexOf("&quot;version&quot;:&quot;") + 26);
+                                                versionText = versionText.Substring(0, versionText.IndexOf("&quot;"));
+                                                returnText += "--- Version: " + versionText + Environment.NewLine;
+                                                returnText += "---- Kibana versions before 5.6.15 and 6.6.1 -> CVE-2019-7609 -> https://github.com/mpgn/CVE-2019-7609" + Environment.NewLine;
+                                            }
+                                            else
+                                            {
+                                                returnText += $"--- Version: {url}{file}#/management/" + Environment.NewLine;
+                                            }
+                                        }
+                                        catch
+                                        {
+                                            returnText += $"--- Version: {url}{file}#/management/" + Environment.NewLine;
+                                        }
+                                        returnText += $"--- Elasticsearch Console: {url}{file}#/dev_tools/console" + Environment.NewLine;
+                                        returnText += "---- General Info: GET /" + Environment.NewLine;
+                                        returnText += "---- Get Indices: GET /_cat/indices?v" + Environment.NewLine;
+                                        // These aren't meant to be params
+                                        returnText += "---- Get Index Info: GET /{index}/_search/?pretty&size={docs.count}" + Environment.NewLine;
+                                    }
+                                    else
+                                    {
+                                        string usefulInfo = Web.FindInfo(pageText, true);
+                                        if (usefulInfo.Trim(Environment.NewLine.ToCharArray()) != "")
+                                        {
+                                            returnText += usefulInfo + Environment.NewLine;
                                         }
                                     }
-                                    catch
-                                    { }
-                                    returnText += "--- Download: https://raw.githubusercontent.com/arthaud/git-dumper/master/git-dumper.py" + Environment.NewLine;
-                                    returnText += $"--- Run: python3 git-dumper.py {url}{file} .git" + Environment.NewLine;
-                                    returnText += "--- Get the logs: git log --pretty=format:\"%h - %an (%ae): %s %b\"" + Environment.NewLine;
-                                    returnText += "--- Show a specific commit: git show 2eb93ac (Press q to close)" + Environment.NewLine;
                                 }
-                                else
-                                {
-                                    string usefulInfo = Web.FindInfo(pageText, true);
-                                    if (usefulInfo.Trim(Environment.NewLine.ToCharArray()) != "")
-                                    {
-                                        returnText += usefulInfo + Environment.NewLine;
-                                    }
-                                }
+
                             }
                             catch (Exception ex)
                             {

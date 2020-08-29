@@ -28,6 +28,7 @@ namespace Reecon
                 Console.WriteLine("fileName must start with ./");
                 return;
             }
+
             Architecture architecture = IDElf(fileName);
             if (architecture == Architecture.x86)
             {
@@ -42,7 +43,7 @@ namespace Reecon
                 List<string> dmesgOutput = General.GetProcessOutput("dmesg", "");
                 foreach (string item in dmesgOutput)
                 {
-                    //  segfault at 6161616c ip 000000006161616c sp 00000000ffc68c60 error 14 in libc-2.31.so[f7cdb000+1d000]
+                    //  segfault at 6161616c ip 000000006161616c x
                     if (item.Contains(fileName.TrimStart("./".ToCharArray())) && item.Contains("segfault at "))
                     {
                         Console.WriteLine("- Cyclic Segfault: " + item.Remove(0, item.IndexOf("segfault at ") + 12).Substring(0, 9));
@@ -53,6 +54,7 @@ namespace Reecon
             else if (architecture == Architecture.x64)
             {
                 Console.WriteLine("Architecture: x64");
+                // TODO: Find where it segfaults, -1
             }
             else
             {
@@ -61,13 +63,43 @@ namespace Reecon
 
             if (General.IsInstalledOnLinux("ropper"))
             {
-                // Console.WriteLine("Searching for 'pop rdi; ret;'");
-                List<string> ropperOutput = General.GetProcessOutput("ropper", $"--nocolor --file {fileName} --search \"pop rdi; ret;\"");
+                List<string> ropperOutput = General.GetProcessOutput("ropper", $"--nocolor --file {fileName} --search \"ret;\"");
                 foreach (string item in ropperOutput)
                 {
                     if (!item.StartsWith("[INFO]") && !item.StartsWith("[LOAD]"))
                     {
-                        Console.WriteLine("- pop rdi; ret; (pop_rdi) --> " + item);
+                        string pwnItem = item.Trim();
+                        pwnItem = pwnItem.Replace(": ret;", "");
+                        if (pwnItem.Length == 18) // x64
+                        {
+                            pwnItem += " -- payload += p64(0x" + pwnItem.Substring(pwnItem.Length - 6, 6) + ")";
+                            // 0x16 - x64 address
+                        }
+                        else
+                        {
+                            Console.WriteLine("Not 18 - " + pwnItem.Length);
+                        }
+                        Console.WriteLine("- ret; (Only function calls) --> " + pwnItem);
+                    }
+                }
+
+                ropperOutput = General.GetProcessOutput("ropper", $"--nocolor --file {fileName} --search \"pop rdi; ret;\"");
+                foreach (string item in ropperOutput)
+                {
+                    if (!item.StartsWith("[INFO]") && !item.StartsWith("[LOAD]"))
+                    {
+                        string pwnItem = item.Trim(); ;
+                        pwnItem = pwnItem.Replace(": pop rdi; ret;", "");
+                        if (pwnItem.Length == 18)
+                        {
+                            pwnItem += " -- payload += p64(0x" + pwnItem.Substring(pwnItem.Length - 6, 6) + ")";
+                            // 0x16 - x64 address
+                        }
+                        else
+                        {
+                            Console.WriteLine("Not 18 - " + pwnItem.Length);
+                        }
+                        Console.WriteLine("- pop rdi; ret; (Can set values) --> " + pwnItem);
                     }
                 }
                 ropperOutput = General.GetProcessOutput("ropper", $"--nocolor --file {fileName} --string \"/bin/sh\"");
@@ -75,7 +107,18 @@ namespace Reecon
                 {
                     if (!item.StartsWith("[INFO]") && !item.StartsWith("[LOAD]") && item.Contains("/bin/sh"))
                     {
-                        Console.WriteLine("- /bin/sh --> " + item);
+                        string pwnItem = item.Trim();
+                        pwnItem = pwnItem.Replace("/bin/sh", "").Trim(); ;
+                        if (pwnItem.Length == 10)
+                        {
+                            pwnItem += " -- payload += p64(0x" + pwnItem.Substring(pwnItem.Length - 6, 6) + ")";
+                            // 0x16 - x64 address
+                        }
+                        else
+                        {
+                            Console.WriteLine("Not 10 - " + pwnItem.Length);
+                        }
+                        Console.WriteLine("- /bin/sh --> " + pwnItem);
                     }
                 }
                 // // ropper --file sudo_pwn_file_here --string "/bin/sh"
@@ -86,7 +129,7 @@ namespace Reecon
             }
             if (General.IsInstalledOnLinux("rabin2"))
             {
-                List<string> rabin2Output  = General.GetProcessOutput("rabin2", "-I ./" + fileName);
+                List<string> rabin2Output = General.GetProcessOutput("rabin2", "-I ./" + fileName);
                 foreach (string item in rabin2Output)
                 {
                     if (item.Trim().StartsWith("nx") && item.Contains("false"))
@@ -119,17 +162,29 @@ namespace Reecon
                 {
                     if (item.Contains("call") && item.Contains("system")) // callq contains call
                     {
-                        Console.WriteLine("system --> " + item);
+                        Console.WriteLine("- system --> " + item);
                     }
                     if (item.Trim().EndsWith(" <puts@plt>:"))
                     {
                         Console.WriteLine("- puts@plt (plt_puts) --> " + item);
                     }
                     if (item.Contains("puts@GLIBC"))
-                       {
+                    {
                         Console.WriteLine("- puts@GLIBC (got_puts) --> " + item);
                     }
                 }
+
+                objdumpOutput = General.GetProcessOutput("objdump", $"-t {fileName}");
+                foreach (string item in objdumpOutput)
+                {
+                    // .text = Name
+                    // " g" = Global
+                    if (item.Contains(".text") && item.Contains(" g "))
+                    {
+                        Console.WriteLine("- Useful Symbol: " + item);
+                    }
+                }
+                // objdump -t ./file.elf | grep .text
             }
             else
             {

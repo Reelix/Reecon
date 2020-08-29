@@ -93,7 +93,7 @@ namespace Reecon
                         {
                             // Ignore it - Should we?
                         }
-                        else if (ex.Message.Trim() == "Error: ConnectFailure (Connection refused)")
+                        else if (ex.Message.Trim() == "Error: ConnectFailure (Connection refused)" || ex.Message.Trim() == "Error: ConnectFailure (No route to host)")
                         {
                             // The port is probably closed to us
                             // Ignore it - It's handled elswhere
@@ -135,21 +135,19 @@ namespace Reecon
             return (statusCode, pageTitle, pageText, dns, headers, cert);
         }
 
-        
-
         private static string TestBaseLFI(string ip, int port)
         {
             string result = General.BannerGrab(ip, port, "GET /../../../../../../etc/passwd HTTP/1.1" + Environment.NewLine + "Host: " + ip + Environment.NewLine + Environment.NewLine, 2500);
             if (result.Contains("root"))
             {
-                return "- etc/passwd File Found VIA Base LFI! --> GET /../../../../../../etc/passwd" + Environment.NewLine + result;
+                return "- /etc/passwd File Found VIA Base LFI! --> GET /../../../../../../etc/passwd" + Environment.NewLine + result;
                 // Need to format this better...
 
             }
             result = General.BannerGrab(ip, port, "GET /../../../../../../windows/win.ini HTTP/1.1" + Environment.NewLine + "Host: " + ip + Environment.NewLine + Environment.NewLine, 2500);
             if (result.Contains("for 16-bit app support"))
             {
-                return "- windows/win.ini File Found VIA Base LFI! --> GET /../../../../../../windows/win.ini" + Environment.NewLine + result;
+                return "- /windows/win.ini File Found VIA Base LFI! --> GET /../../../../../../windows/win.ini" + Environment.NewLine + result;
             }
             return "";
         }
@@ -157,7 +155,11 @@ namespace Reecon
         private static string FormatResponse(HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert)
         {
             string responseText = "";
-
+            List<string> headerList = new List<string>();
+            if (Headers != null)
+            {
+                headerList = Headers.AllKeys.ToList();
+            }
             if (StatusCode != HttpStatusCode.OK)
             {
                 // There's a low chance that it will return a StatusCode that is not in the HttpStatusCode list in which case (int)StatusCode will crash
@@ -167,13 +169,23 @@ namespace Reecon
                     {
                         responseText += "- Moved Permanently" + Environment.NewLine;
                         responseText += "-> Location: " + Headers.Get("Location") + Environment.NewLine;
+                        headerList.Remove("Location");
+                    }
+                }
+                else if (StatusCode == HttpStatusCode.Redirect)
+                {
+                    if (Headers != null && Headers.Get("Location") != null)
+                    {
+                        responseText += "- Redirect" + Environment.NewLine;
+                        responseText += "-> Location: " + Headers.Get("Location") + Environment.NewLine;
+                        headerList.Remove("Location");
                     }
                 }
                 else if (StatusCode != HttpStatusCode.OK)
                 {
                     try
                     {
-                        responseText += "- Non-OK Status Code: " + (int)StatusCode + " " + StatusCode + Environment.NewLine;
+                        responseText += "- Weird Status Code: " + (int)StatusCode + " " + StatusCode + Environment.NewLine;
                     }
                     catch
                     {
@@ -182,6 +194,7 @@ namespace Reecon
                     if (Headers != null && Headers.Get("Location") != null)
                     {
                         responseText += "-> Location: " + Headers.Get("Location") + Environment.NewLine;
+                        headerList.Remove("Location");
                     }
                 }
             }
@@ -205,9 +218,10 @@ namespace Reecon
             {
                 responseText += "- DNS: " + DNS + Environment.NewLine;
             }
-            if (Headers != null)
+            if (headerList.Any())
             {
-                List<string> headerList = Headers.AllKeys.ToList();
+                headerList = Headers.AllKeys.ToList();
+                // Useful info
                 if (headerList.Contains("Server"))
                 {
                     headerList.Remove("Server");
@@ -223,21 +237,37 @@ namespace Reecon
                         }
                     }
                 }
+                // Useful info
                 if (headerList.Contains("X-Powered-By"))
                 {
                     headerList.Remove("X-Powered-By");
                     responseText += "- X-Powered-By: " + Headers.Get("X-Powered-By") + Environment.NewLine;
                 }
+                // Requires a login
                 if (headerList.Contains("WWW-Authenticate"))
                 {
                     headerList.Remove("WWW-Authenticate");
                     responseText += "- WWW-Authenticate: " + Headers.Get("WWW-Authenticate") + Environment.NewLine;
                 }
+                // Kabana
                 if (headerList.Contains("kbn-name"))
                 {
                     headerList.Remove("kbn-name");
                     responseText += "- kbn-name: " + Headers.Get("kbn-name") + Environment.NewLine;
+                    responseText += "-- You should get more kibana-based info further down" + Environment.NewLine; ;
                 }
+                if (headerList.Contains("kbn-version"))
+                {
+                    headerList.Remove("kbn-version");
+                    responseText += "- kbn-version: " + Headers.Get("kbn-version") + Environment.NewLine;
+                }
+                // Useful cookies
+                if (headerList.Contains("Set-Cookie"))
+                {
+                    headerList.Remove("Set-Cookie");
+                    responseText += "- Set-Cookie: " + Headers.Get("Set-Cookie") + Environment.NewLine;
+                }
+                // Fun content types
                 if (headerList.Contains("Content-Type"))
                 {
                     string contentType = Headers.Get("Content-Type");

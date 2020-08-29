@@ -16,7 +16,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.21a ( https://github.com/Reelix/Reecon )");
+            Console.WriteLine("Reecon - Version 0.21b ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
@@ -26,7 +26,7 @@ namespace Reecon
                 Console.WriteLine("Display IP:\tReecon -ip");
                 Console.WriteLine("NMap:\t\tReecon -nmap IP FileName");
                 Console.WriteLine("NMap-Load Scan:\tReecon outfile.nmap (Requires a -nmap scan or -oG on regular nmap)");
-                Console.WriteLine("ROPCheck:\tReecon -rop FileName (Very buggy)");
+                Console.WriteLine("Binary Pwn:\tReecon -pwn FileName (Very buggy)");
                 Console.WriteLine("Searchsploit:\tReecon -searchsploit nameHere (Beta)");
                 Console.WriteLine("Shell Gen:\tReecon -shell");
                 Console.WriteLine("SMB Brute:\tReecon -smb-brute (Linux Only)");
@@ -51,7 +51,7 @@ namespace Reecon
                 Console.ResetColor();
                 return;
             }
-            else if (args.Contains("-rop") || args.Contains("--rop"))
+            else if (args.Contains("-pwn") || args.Contains("--pwn"))
             {
                 Pwn.Scan(args);
                 Console.ResetColor();
@@ -306,7 +306,7 @@ namespace Reecon
                 // Might need to refactor
                 if (portData == "")
                 {
-                    portData = "- Are you sure the port is open?";
+                    portData = "- Unable to enumerate - Are you sure the port is open?";
                 }
                 Console.WriteLine(port80result + Environment.NewLine + portData + Environment.NewLine);
                 postScanActions += $"- gobuster dir -u=http://{target}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http-medium.txt -x.php,.txt" + Environment.NewLine;
