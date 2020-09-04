@@ -19,25 +19,25 @@ namespace Reecon
                 Console.WriteLine("Usage: -nmap ip outfile");
                 return;
             }
-            string ip = "";
+            string target = "";
             string fileName = "";
             if (args.Length == 2)
             {
-                ip = args[1];
+                target = args[1];
                 Console.WriteLine("Outfile name (1 word, no extension)");
                 fileName = Console.ReadLine();
             }
             else if (args.Length == 3)
             {
-                ip = args[1];
+                target = args[1];
                 fileName = args[2];
             }
             DateTime beforeNmapDate = DateTime.Now;
-            Console.WriteLine("Doing an optimized Nmap scan on " + ip + " - This may take awhile...");
-            General.RunProcess("nmap", "-sS -p- --min-rate=5000 " + ip + " -oG " + fileName + ".nmap -oN " + fileName + ".txt");
+            Console.WriteLine($"Doing an optimized Nmap scan on {target} - This may take awhile...");
+            General.RunProcess($"nmap", $"-sS -p- --min-rate=5000 {target} -oG {fileName}.nmap -oN nmap-{fileName}.txt");
             DateTime afterNmapDate = DateTime.Now;
             TimeSpan nmapScanDuration = afterNmapDate - beforeNmapDate;
-            Console.WriteLine("Scan complete in " + string.Format("{0:0.00}s", nmapScanDuration.TotalSeconds) + " - " + fileName + ".nmap for reecon and " + fileName + ".txt for reading");
+            Console.WriteLine("Scan complete in " + string.Format("{0:0.00}s", nmapScanDuration.TotalSeconds) + $" - {fileName}.nmap for reecon and nmap-{fileName}.txt for reading");
         }
 
         public static void CustomScan(int level, string target)

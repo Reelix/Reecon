@@ -51,7 +51,7 @@ namespace Reecon
             }
             catch (Exception)
             {
-                throw;
+                return false;
             }
             return false;
         }

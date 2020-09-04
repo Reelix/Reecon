@@ -7,14 +7,16 @@ using System.Text;
 
 namespace Reecon
 {
-    class NETBIOS // 139 (TCP + UDP)
+    class NETBIOS // TCP 139
     {
-        public static string GetInfo(string ip)
+        public static string GetInfo(string target, int port)
         {
             string toReturn = "";
-            toReturn += GetNBStatInfo(ip);
-            toReturn += GetDNSHostEntry(ip);
-            toReturn += GetRPCInfo(ip);
+            toReturn += GetNBStatInfo(target); // Uses UDP Port 137
+            toReturn += GetDNSHostEntry(target);
+            // https://www.samba.org/samba/docs/current/man-html/rpcclient.1.html
+            // The standard (well-known) TCP port number for an SMB/CIFS server is 139, which is the default.
+            toReturn += GetRPCInfo(target);
             toReturn += "- nmap -sC -sV may have some additional information for this port";
             return toReturn;
         }
@@ -164,6 +166,12 @@ namespace Reecon
                         rpcInfo = "- Possible anonymous access but no enumdomusers output" + Environment.NewLine;
                         rpcInfo += $"-> rpcclient -U \"\"%\"\" {ip}";
                     }
+                    else if (enumdomusersList.Any(x => x.Contains("NT_STATUS_ACCESS_DENIED")))
+                    {
+                        rpcInfo = "- No anonymous RPC access" + Environment.NewLine;
+                        // 23 -> https://room362.com/post/2017/reset-ad-user-password-with-linux/
+                        rpcInfo += "-- If you get access -> enumdomusers / queryuser usernameHere / setuserinfo2 userNameHere 23 'newPasswordHere'" + Environment.NewLine;
+                    }
                     else if (enumdomusersList.Count == 1)
                     {
                         string firstItem = enumdomusersList[0];
@@ -173,12 +181,6 @@ namespace Reecon
                             rpcInfo += QueryEnumDomUser(ip, firstItem);
                             // 23 -> https://room362.com/post/2017/reset-ad-user-password-with-linux/
                             rpcInfo += "- Might as well try a password reset: rpcclient -> setuserinfo2 usernameHere 23 'newPasswordHere'" + Environment.NewLine;
-                        }
-                        else if (firstItem == "result was NT_STATUS_ACCESS_DENIED" || firstItem == "Cannot connect to server.  Error was NT_STATUS_ACCESS_DENIED")
-                        {
-                            rpcInfo = "- No Anonamous RPC Access" + Environment.NewLine;
-                            // 23 -> https://room362.com/post/2017/reset-ad-user-password-with-linux/
-                            rpcInfo += "-- If you get access -> enumdomusers / queryuser usernameHere / setuserinfo2 userNameHere 23 'newPasswordHere'" + Environment.NewLine;
                         }
                         else if (firstItem == "Cannot connect to server.  Error was NT_STATUS_RESOURCE_NAME_NOT_FOUND")
                         {
@@ -193,13 +195,14 @@ namespace Reecon
                             Console.WriteLine("Unknown Path GetRPCInfo.Count1Unknown - Debug Info item: " + enumdomusersList[0].Trim());
                         }
                     }
+                    
                     else if (enumdomusersList.Count == 2 || enumdomusersList.Count == 3)
                     {
                         foreach (string item in enumdomusersList)
                         {
                             Console.WriteLine("Debug Info item: " + item);
                         }
-                        rpcInfo = "- Unknown Path GetRPCInfo.smallReturnCount - Bug Reelix";
+                        rpcInfo = "- Unknown Path GetRPCInfo.smallReturnCount - Bug Reelix" + Environment.NewLine;
                     }
                     else if (enumdomusersList.Count > 3)
                     {

@@ -1,0 +1,43 @@
+﻿21|FTP|FTP
+22|SSH|SSH
+23|N/A|Telnet
+25|SMTP|SMTP
+53|DNS|DNS
+80|HTTP|HTTP
+88|N/A|Microsoft Windows Kerberos
+110|POP3|POP3
+111|N/A|rpcbind
+135|N/A|Microsoft Windows RPC
+139|NETBIOS|NETBIOS Session Service (netbios-ssn)
+143|IMAP|IMAP (Internet Message Access Protocol)
+389|LDAP|LDAP (Plain Text)
+443|HTTPS|HTTPS
+445|SMB|Microsoft SMB
+464|N/A|Kerberos (kpasswd)
+593|N/A|Microsoft Windows RPC over HTTP
+636|N/A|LDAPSSL (LDAP over SSL)
+873|Rsync|Rsync (Remote Sync)
+993|N/A|IMAPS (IMAP over SSL)
+995|N/A|pop3s (pop3 over SSL)
+2049|NFS|NFS (Network File System)
+3128|Squid|Squid
+3268|N/A|LDAP (Global Catalog)
+3269|N/A|LDAP (Global Catalog) over SSL
+3306|MySQL|MySQL
+3690|SVN|SVN (Subversion)
+4369|N/A|Erlang Port Mapper Daemon (EPMD)
+5222|N/A|Jabber
+5269|N/A|xmpp-server
+5985|WinRM|WinRM
+5986|WinRM|Secure WinRM
+6379|Redis|Redis
+6881|N/A|BitTorrent
+9101-9107|N/A|Printer (Unkown)
+9200|Elasticsearch|Elasticsearch HTTP Interface
+9300|N/A|Elasticsearch Communication Port
+9389|N/A|ADWS (Active Directory Web Services)
+9418|N/A|Git
+11211|N/A|Memcache
+25568|N/A|Minecraft
+27017|N/A|MongoDB
+49664-49690|N/A|Microsoft Windows RPC

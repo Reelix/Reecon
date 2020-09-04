@@ -37,6 +37,10 @@ namespace Reecon
                         versionMessage = versionMessage.Replace("_", "");
                         versionMessage += " (protocol 2.0)"; // Nmap's format
                     }
+                    if (versionMessage.Trim() == "")
+                    {
+                        versionMessage = "Port is open, but no version info";
+                    }
                     return versionMessage;
                 }
             }
@@ -46,7 +50,7 @@ namespace Reecon
                 {
                     return "Port is closed";
                 }
-                return "SSG.GetVersion - Fatal Woof!";
+                return "SSG.GetVersion - Fatal Woof: " + se.Message;
             }
         }
 
@@ -75,7 +79,7 @@ namespace Reecon
             }
             if (outputLines.Contains("kex_exchange_identification: read: Connection reset by peer"))
             {
-                returnString = "- SSH Exists, but connection reset - Doesn't like you :(";
+                returnString = "- Port is open, but connection reset with no info :(";
                 return returnString;
             }
             if (!outputLines.Any(x => x.Contains("Permission denied")))

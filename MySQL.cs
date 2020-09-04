@@ -7,10 +7,13 @@ namespace Reecon
     class MySQL
     {
         // Port: 3306
-        public static string GetVersion(string ip)
+        // https://github.com/danielmiessler/SecLists/blob/master/Passwords/Default-Credentials/mysql-betterdefaultpasslist.txt
+        // https://svn.nmap.org/nmap/scripts/mysql-info.nse
+        // --> https://svn.nmap.org/nmap/nselib/mysql.lua -> receiveGreeting
+        public static string GetInfo(string target, string port)
         {
             string returnData = "";
-            string connectionString = "Server=" + ip + ";Database=test;Uid=reelixuser123;Pwd=;";
+            string connectionString = $"Server={target};Port={port};Database=test;Uid=reelixuser123;Pwd=;";
             MyRawConnection connection = new MyRawConnection(connectionString);
             try
             {
@@ -55,7 +58,7 @@ namespace Reecon
         }
         
         // Currently requires the GIGANTIC MySQL.dll as well as a dozen other refs >_<
-        public static string TestDefaults(string ip)
+        public static string TestDefaults(string target, string port)
         {
             List<string> testDetails = new List<string>()
             {
@@ -88,7 +91,7 @@ namespace Reecon
             {
                 string username = toTest.Split(':')[0];
                 string password = toTest.Split(':')[1];
-                string success = TestPassword(ip, username, password);
+                string success = TestPassword(target, port, username, password);
                 if (success == "true")
                 {
                     // Wow o_O
@@ -106,9 +109,9 @@ namespace Reecon
             return "- No Default Credentails Found (Tried " + tried + " / " + testDetails.Count + " variations)";
         }
 
-        private static string TestPassword(string ip, string username, string password)
+        private static string TestPassword(string target, string port, string username, string password)
         {
-            string connectionString = "Server=" + ip + ";Database=test;Uid=" + username + ";Pwd=" + password + ";";
+            string connectionString = $"Server={target};Port={port};Database=test;Uid=" + username + ";Pwd=" + password + ";";
             MyRawConnection connection = new MyRawConnection(connectionString);
             try
             {

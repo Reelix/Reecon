@@ -1,29 +1,31 @@
 ﻿using FluentFTP;
+using Pastel;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net;
 
 namespace Reecon
 {
-    class FTP
+    class FTP // Port 21
     {
-        public static string GetInfo(string ip)
+        public static string GetInfo(string target, int port)
         {
             string ftpUsername = "";
-            string ftpLoginInfo = FTP.FtpLogin(ip, ftpUsername);
+            string ftpLoginInfo = FTP.FtpLogin(target, ftpUsername);
             if (ftpLoginInfo.Contains("Unable to login: This FTP server is anonymous only.") || ftpLoginInfo.Contains("Unable to login: USER: command requires a parameter") || ftpLoginInfo.Contains("Unable to login: Login with USER first.") || ftpLoginInfo.Contains("530 This FTP server is anonymous only."))
             {
                 ftpUsername = "anonymous";
-                ftpLoginInfo = FTP.FtpLogin(ip, ftpUsername, "");
+                ftpLoginInfo = FTP.FtpLogin(target, ftpUsername, "");
             }
             if (ftpLoginInfo.Contains("Anonymous login allowed"))
             {
-                string fileListInfo = FTP.TryListFiles(ip, true, "anonymous", "");
+                string fileListInfo = FTP.TryListFiles(target, port, true, "anonymous", "");
                 if (fileListInfo.Contains("Not Implemented") || fileListInfo.Contains("invalid pasv_address"))
                 {
-                    fileListInfo = FTP.TryListFiles(ip, false, ftpUsername, "");
+                    fileListInfo = FTP.TryListFiles(target, port, false, ftpUsername, "");
                 }
                 if (!fileListInfo.StartsWith(Environment.NewLine))
                 {
@@ -84,7 +86,7 @@ namespace Reecon
                 }
                 if (string.IsNullOrEmpty(username) || username == "anonymous")
                 {
-                    ftpLoginResult += Environment.NewLine + "- Anonymous login allowed (Username: anonymous Password: *Leave Blank*)";
+                    ftpLoginResult += Environment.NewLine + "- " + "Anonymous login allowed (Username: anonymous Password: *Leave Blank*)".Pastel(Color.Orange);
                 }
                 else
                 {
@@ -107,11 +109,10 @@ namespace Reecon
 
         }
 
-        public static string TryListFiles(string ftpServer, bool usePassive, string username = "", string password = "")
+        public static string TryListFiles(string ftpServer, int port, bool usePassive, string username = "", string password = "")
         {
             string toReturn = "";
-            FtpClient client = new FtpClient(ftpServer);
-            client.Credentials = new NetworkCredential(username, password);
+            FtpClient client = new FtpClient(ftpServer, port, username, password);
             client.Connect();
             /*
             Console.WriteLine("Test Type: " + client.ServerType.ToString());
@@ -122,7 +123,7 @@ namespace Reecon
             FtpListItem[] itemList = client.GetListing("/", FtpListOption.AllFiles);
             if (itemList.Count() == 0)
             {
-                toReturn += "- No Files Or Folders Found" + Environment.NewLine;
+                toReturn += "-- No Files Or Folders Found" + Environment.NewLine;
             }
             foreach (FtpListItem item in client.GetListing("/", FtpListOption.AllFiles))
             {

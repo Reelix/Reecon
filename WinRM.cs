@@ -11,6 +11,9 @@ namespace Reecon
     {
         public static string GetInfo(string ip, int port)
         {
+            // TODO: Figure out how to do basic evil-winrm.rb connections
+            // evil-winrm.rb -i 10.10.10.161
+
             string returnInfo = "";
 
             WebClient wc = new WebClient();

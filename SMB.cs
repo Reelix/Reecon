@@ -10,84 +10,54 @@ namespace Reecon
 {
     class SMB //445
     {
-        public static string GetInfo(string ip)
+        public static string GetInfo(string target, int port)
         {
             string toReturn = "";
-            toReturn += GetOSDetails(ip);
-            if (SMB_MS17_010.IsVulnerable(ip))
+            toReturn += GetOSDetails(target);
+            if (SMB_MS17_010.IsVulnerable(target))
             {
                 toReturn += "----> VULNERABLE TO ETERNAL BLUE (MS10-017) <-----" + Environment.NewLine;
             }
-            if (General.GetOS() == General.OS.Windows)
+            if (General.GetOS() == General.OS.Linux)
             {
-                string portData = SMB.TestAnonymousAccess(ip);
-                string morePortData = SMB.TestAnonymousAccess(ip, "anonymous");
-                string evenMorePortData = SMB.TestAnonymousAccess(ip, "anonymous", "anonymous");
-                toReturn += portData + morePortData + evenMorePortData;
+                toReturn += SMB.TestAnonymousAccess_Linux(target);
             }
             else
             {
-                toReturn += SMB.TestAnonymousAccess_Linux(ip);
+                toReturn += "- Reecon currently lacks SMB Support on Windows (Ironic, I know)";
             }
             return toReturn.Trim(Environment.NewLine.ToCharArray());
         }
 
         // Taken from: https://github.com/TeskeVirtualSystem/MS17010Test
-        private static string GetOSDetails(string ip)
+        private static string GetOSDetails(string target)
         {
             string osDetails = "";
             byte[] negotiateBytes = negotiateProtoRequest();
             byte[] sessionBytes = sessionSetupAndxRequest();
             List<byte[]> bytesToSend = new List<byte[]>() { negotiateBytes, sessionBytes };
-            byte[] byteResult = General.BannerGrabBytes(ip, 445, bytesToSend);
+            byte[] byteResult = General.BannerGrabBytes(target, 445, bytesToSend);
             var sessionSetupAndxResponse = byteResult.Skip(36).ToArray();
             var nativeOsB = sessionSetupAndxResponse.Skip(9).ToArray();
             var osData = Encoding.ASCII.GetString(nativeOsB).Split('\x00');
-            osDetails += "- OS Name: " + osData[0] + Environment.NewLine;
-            if (osData.Count() >= 3)
+            if (osData[0] != "et by peer") // Invalid response that was cut off
             {
-                osDetails += "- OS Build: " + osData[1] + Environment.NewLine;
-                osDetails += "- OS Workgroup: " + osData[2] + Environment.NewLine;
+                osDetails += "- OS Name: " + osData[0] + Environment.NewLine;
+                if (osData.Count() >= 3)
+                {
+                    osDetails += "- OS Build: " + osData[1] + Environment.NewLine;
+                    osDetails += "- OS Workgroup: " + osData[2] + Environment.NewLine;
+                }
             }
             return osDetails;
         }
 
-        public static string TestAnonymousAccess(string IP, string username = "", string password = "")
-        {
-            string toReturn = "";
-            try
-            {
-                using (SMB_NetworkShareAccesser.Access(IP, username, password))
-                {
-                    SMB_GetNetShares getNetShares = new SMB_GetNetShares();
-                    List<SMB_GetNetShares.SHARE_INFO_1> shareInfoList = getNetShares.EnumNetShares(IP).ToList();
-                    foreach (var shareInfo in shareInfoList)
-                    {
-                        toReturn += " - Anonymous Share: " + shareInfo.shi1_netname + " - " + shareInfo.shi1_type + " - " + shareInfo.shi1_remark + Environment.NewLine;
-                    }
-                    toReturn = toReturn.Trim(Environment.NewLine.ToCharArray());
-                }
-            }
-            catch (Exception ex)
-            {
-                if (ex.Message == "The user name or password is incorrect")
-                {
-                    toReturn = "";
-                }
-                else
-                {
-                    toReturn += " - Unable to connect: " + ex.Message;
-                }
-            }
-            return toReturn;
-        }
-
-        private static string TestAnonymousAccess_Linux(string ip)
+        private static string TestAnonymousAccess_Linux(string target)
         {
             if (General.IsInstalledOnLinux("smbclient", "/usr/bin/smbclient"))
             {
                 string smbClientItems = "";
-                List<string> processResults = General.GetProcessOutput("smbclient", " -L " + ip + " --no-pass -g"); // null auth
+                List<string> processResults = General.GetProcessOutput("smbclient", $" -L {target} --no-pass -g"); // null auth
                 if (processResults.Count == 1 && processResults[0].Contains("NT_STATUS_ACCESS_DENIED"))
                 {
                     return "- No Anonymous Access";
@@ -105,10 +75,10 @@ namespace Reecon
                         string itemName = item.Split('|')[1];
                         string itemComment = item.Split('|')[2];
                         smbClientItems += "- " + itemType + ": " + itemName + " " + (itemComment == "" ? "" : "(" + itemComment + ")") + Environment.NewLine;
-                        List<string> subProcessResults = General.GetProcessOutput("smbclient", "//" + ip + "/" + itemName + " --no-pass -c \"ls\"");
+                        List<string> subProcessResults = General.GetProcessOutput("smbclient", $"//{target}/{itemName} --no-pass -c \"ls\"");
                         if (subProcessResults.Count > 1)
                         {
-                            smbClientItems += "-- " + itemName + " has ls perms! -> smbclient //" + ip + "/" + itemName + " --no-pass" + Environment.NewLine;
+                            smbClientItems += $"-- {itemName} has ls perms! -> smbclient //{target}/{itemName} --no-pass" + Environment.NewLine;
                         }
                     }
                 }
@@ -180,12 +150,6 @@ namespace Reecon
             }
             // smbclient -L \\\\10.10.10.172 -USABatchJobs%SABatchJobs
 
-        }
-
-        public static void SMBTest(string ip)
-        {
-
-            Console.ReadLine();
         }
 
         // https://github.com/nixawk/labs/blob/master/MS17_010/smb_exploit.py

@@ -2,16 +2,17 @@
 using LdapForNet.Native;
 using System;
 using System.Collections.Generic;
-using static LdapForNet.Native.Native;
 
 namespace Reecon
 {
     class LDAP // Port 389
     {
+        // https://github.com/mono/mono/blob/master/mcs/class/System.DirectoryServices.Protocols/System.DirectoryServices.Protocols/SearchRequest.cs
+        // Wow Mono - Just Wow...
         public static string GetInfo(string ip)
         {
             string returnInfo = "";
-            returnInfo += LDAP.GetDefaultNamingContext(ip).Trim(Environment.NewLine.ToCharArray()) + Environment.NewLine;
+            returnInfo += LDAP.GetDefaultNamingContext(ip);
             returnInfo += LDAP.GetAccountInfo(ip);
             return returnInfo;
         }
@@ -24,32 +25,55 @@ namespace Reecon
                 LdapCredential anonymousCredential = new LdapCredential();
                 try
                 {
-                    ldapConnection.Bind(LdapAuthType.Simple, anonymousCredential);
+                    ldapConnection.Bind(Native.LdapAuthType.Simple, anonymousCredential);
                 }
                 catch (LdapException le)
                 {
-                    return Environment.NewLine + "- Connection Error: " + le.Message;
+                    return "- Connection Error: " + le.Message + Environment.NewLine;
                 }
                 catch (Exception ex)
                 {
-                    return Environment.NewLine + "- Unknown Error: " + ex.Message;
+                    return "- Unknown Error: " + ex.Message + Environment.NewLine;
                 }
                 // ldapConnection.AuthType = AuthType.Anonymous;
 
-                var searchEntries = ldapConnection.Search(null, "(objectclass=*)", scope: LdapSearchScope.LDAP_SCOPE_BASE);
+                var searchEntries = ldapConnection.Search(null, "(objectclass=*)", scope: Native.LdapSearchScope.LDAP_SCOPE_BASE);
                 // SearchRequest request = new SearchRequest(null, "(objectclass=*)", System.DirectoryServices.Protocols.SearchScope.Base, "defaultNamingContext");
 
                 // SearchResponse result = (SearchResponse)ldapConnection.SendRequest(request);
 
                 if (searchEntries.Count == 1)
                 {
-                    string defaultNamingContext = searchEntries[0].Attributes["defaultNamingContext"][0].ToString();
-                    // ldapServiceName / dnsHostName
-                    if (!raw)
+                    if (searchEntries[0].Attributes.ContainsKey("defaultNamingContext"))
                     {
-                        ldapInfo = "- defaultNamingContext: ";
+                        string defaultNamingContext = searchEntries[0].Attributes["defaultNamingContext"][0].ToString();
+                        if (raw)
+                        {
+                            ldapInfo = defaultNamingContext;
+                        }
+                        else
+                        {
+                            ldapInfo = $"- defaultNamingContext: {defaultNamingContext}" + Environment.NewLine;
+                        }
                     }
-                    ldapInfo += defaultNamingContext;
+                    else if (searchEntries[0].Attributes.ContainsKey("objectClass"))
+                    {
+                        string objectClass = searchEntries[0].Attributes["objectClass"][0].ToString();
+                        ldapInfo = "- No defaultNamingContext, but we have an objectClass: " + objectClass + Environment.NewLine;
+                    }
+                    else
+                    {
+                        ldapInfo = "- Error: No defaultNamingContext! Keys: " + searchEntries[0].Attributes.Count + Environment.NewLine;
+                        foreach (var item in searchEntries[0].Attributes)
+                        {
+                            ldapInfo += "- Found Key: " + item.Key + " with value " + item.Value + Environment.NewLine; ;
+                        }
+                    }
+                }
+                else
+
+                {
+                    ldapInfo = "- Multiple items found! Bug Reelix!" + Environment.NewLine;
                 }
             }
             return ldapInfo;
@@ -61,14 +85,25 @@ namespace Reecon
 
             using (LdapConnection ldapConnection = new LdapConnection())
             {
-                ldapConnection.Connect(ip);
-                LdapCredential anonymousCredential = new LdapCredential();
-                ldapConnection.Bind(Native.LdapAuthType.Simple, anonymousCredential);
+                try
+                {
+                    ldapConnection.Connect(ip);
+                    LdapCredential anonymousCredential = new LdapCredential();
+                    ldapConnection.Bind(Native.LdapAuthType.Simple, anonymousCredential);
+                }
+                catch (Exception ex)
+                {
+                    return "- No anonymous authentication allowed" + Environment.NewLine;
+                }
                 var rootDse = ldapConnection.GetRootDse();
                 IList<LdapEntry> searchEntries;
                 try
                 {
-                    searchEntries = ldapConnection.Search(rootDse.Attributes["defaultNamingContext"][0], "(objectclass=user)", scope: LdapSearchScope.LDAP_SCOPE_SUB);
+                    if (!rootDse.Attributes.ContainsKey("defaultNamingContext"))
+                    {
+                        return "- rootDse has no defaultNamingContext. Keys: " + rootDse.Attributes.Count;
+                    }
+                    searchEntries = ldapConnection.Search(rootDse.Attributes["defaultNamingContext"][0], "(objectclass=user)", scope: Native.LdapSearchScope.LDAP_SCOPE_SUB);
                 }
                 catch (LdapException)
                 {
@@ -86,19 +121,19 @@ namespace Reecon
                         Console.WriteLine("Woof - Contact Reelix - Something broke in the LDAP Migration!!!");
                         //accountName = Encoding.UTF8.GetString((byte[])result.Attributes["samaccountname"][0]);
                     }
-                    ldapInfo += Environment.NewLine + " - Account Name: " + accountName;
+                    ldapInfo += " - Account Name: " + accountName + Environment.NewLine;
                     string commonName = result.Attributes["cn"].Count > 0 ? (string)result.Attributes["cn"][0] : string.Empty;
-                    ldapInfo += Environment.NewLine + " -- Common Name: " + commonName;
+                    ldapInfo += " -- Common Name: " + commonName + Environment.NewLine;
                     if (result.Attributes.ContainsKey("userPrincipalName"))
                     {
-                        ldapInfo += " -- userPrincipalName: " + result.Attributes["userPrincipalName"][0];
+                        ldapInfo += " -- userPrincipalName: " + result.Attributes["userPrincipalName"][0] + Environment.NewLine;
                     }
                     if (result.Attributes["lastLogon"].Count == 1)
                     {
                         string lastLoggedIn = result.Attributes["lastLogon"][0];
                         if (lastLoggedIn != "0")
                         {
-                            ldapInfo += Environment.NewLine + " -- lastLogon: " + DateTime.FromFileTime(long.Parse(lastLoggedIn));
+                            ldapInfo += " -- lastLogon: " + DateTime.FromFileTime(long.Parse(lastLoggedIn)) + Environment.NewLine;
                         }
                     }
                     else
@@ -108,11 +143,11 @@ namespace Reecon
                     if (result.Attributes.ContainsKey("description"))
                     {
                         string description = (string)result.Attributes["description"][0];
-                        ldapInfo += Environment.NewLine + " -- Description: " + result.Attributes["description"][0];
+                        ldapInfo += " -- Description: " + result.Attributes["description"][0] + Environment.NewLine;
                     }
                 }
             }
-            return ldapInfo;
+            return ldapInfo.Trim(Environment.NewLine.ToCharArray());
         }
     }
 }

@@ -1,12 +1,14 @@
-﻿using System;
+﻿using Pastel;
+using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 
 namespace Reecon
 {
     class NFS // Port 2049
     {
-        public static string GetFileList(string ip)
+        public static string GetInfo(string target, int port)
         {
             // TODO: https://svn.nmap.org/nmap/scripts/nfs-ls.nse
 
@@ -15,7 +17,7 @@ namespace Reecon
             {
                 if (File.Exists(@"C:\Windows\System32\showmount.exe"))
                 {
-                    List<string> outputLines = General.GetProcessOutput(@"C:\Windows\System32\showmount.exe", "-e " + ip);
+                    List<string> outputLines = General.GetProcessOutput(@"C:\Windows\System32\showmount.exe", "-e " + target);
                     if (outputLines.Count > 1)
                     {
                         outputLines.RemoveAt(0);
@@ -25,7 +27,7 @@ namespace Reecon
                             fileList += "-- " + line + Environment.NewLine;
                         }
                         fileList = fileList.Trim(Environment.NewLine.ToCharArray());
-                        fileList += Environment.NewLine + "- To Mount --> mount \\\\" + ip + "\\shareNameHere x:";
+                        fileList += Environment.NewLine + $"- To Mount --> mount \\\\{target}\\shareNameHere x:";
                     }
                     fileList = fileList.Trim(Environment.NewLine.ToCharArray());
                     return fileList;
@@ -40,20 +42,20 @@ namespace Reecon
             {
                 if (General.IsInstalledOnLinux("showmount", "/sbin/showmount") == true)
                 {
-                    List<string> showmountOutput = General.GetProcessOutput("showmount", "-e " + ip);
-                    foreach (string result in showmountOutput)
+                    List<string> showmountOutput = General.GetProcessOutput("showmount", "-e " + target);
+                    foreach (string line in showmountOutput)
                     {
-                        fileList += result + Environment.NewLine;
+                        if (line.Contains(" (everyone)"))
+                        {
+                            fileList += "- " + line.Pastel(Color.Orange) + Environment.NewLine;
+                            fileList += "-- " + $"mount -t nfs -o vers=2 {target}:/mountNameHere /mnt".Pastel(Color.Orange) + Environment.NewLine;
+                        }
+                        else
+                        {
+                            fileList += "- " + line + Environment.NewLine;
+                        }
                     }
-                    // Turn Windows Features
-                    return fileList;
-
-                    //
-                    // Linux
-                    //
-
-                    // which showmount (/sbin/showmount ?)
-                    // sudo apt install nfs-common
+                    return fileList.Trim(Environment.NewLine.ToCharArray());
 
                     //
                     // Windows
