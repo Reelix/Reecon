@@ -19,13 +19,13 @@ namespace Reecon
     {
         private static List<Port> PortInfoList = new List<Port>();
 
+        // Parse Ports.txt into useful information
         public static void LoadPortInfo()
         {
             var assembly = Assembly.GetExecutingAssembly();
             string resource = assembly.GetManifestResourceNames().Single(str => str.EndsWith("Ports.txt"));
             if (!string.IsNullOrEmpty(resource))
             {
-                Console.WriteLine("Ports.txt found!");
                 using (Stream stream = assembly.GetManifestResourceStream(resource))
                 using (StreamReader reader = new StreamReader(stream))
                 {
@@ -67,18 +67,10 @@ namespace Reecon
             }
         }
 
-        public bool ContainsPort(int port)
-        {
-            if (PortInfoList.Any(x => x.Number == port))
-            {
-                return true;
-            }
-            return false;
-        }
-
         public static string ScanPort(string target, int port)
         {
             string toReturn = "";
+            // See if the port is in our list of known ports
             if (PortInfoList.Any(x => x.Number == port))
             {
                 try
@@ -86,69 +78,89 @@ namespace Reecon
                     Port thePort = PortInfoList.First(x => x.Number == port);
                     if (thePort.FileName == "N/A")
                     {
-                        toReturn = " - Reecon currently lacks " + thePort.FriendlyName + " support";
+                        toReturn = $"- Reecon currently lacks {thePort.FriendlyName} support";
                         string additionalPortInfo = GetAdditionalPortInfo(target, port);
                         return additionalPortInfo;
                     }
                     else
                     {
-                        Type t = Type.GetType("Reecon." + thePort.FileName);
+                        // Get the file and see if it exists
+                        Type t = Type.GetType($"Reecon.{thePort.FileName}");
                         if (t != null)
                         {
+                            // Get the standard "GetInfo" method
                             MethodInfo method = t.GetMethod("GetInfo", BindingFlags.Static | BindingFlags.Public);
                             if (method != null)
                             {
                                 string portHeader = $"Port {thePort.Number} - {thePort.FriendlyName}";
                                 try
                                 {
+                                    // Send it the standard target / port
                                     var result = method.Invoke(null, new Object[] { target, port });
+                                    // Receive the result
                                     string portData = result.ToString();
+                                    // Display it
                                     Console.WriteLine(portHeader.Pastel(Color.Green) + Environment.NewLine + portData + Environment.NewLine);
+                                    // Find anything else that may be useful for the "Some things you probably want to do" list
                                     string additionalPortInfo = GetAdditionalPortInfo(target, port);
                                     return additionalPortInfo;
                                 }
                                 catch (Exception ex)
                                 {
-                                    Console.WriteLine("Error: Cannot find GetInfo(target, port) in " + thePort.FileName + ": " + ex.Message);
+                                    Console.WriteLine("Error: Cannot in GetInfo(target, port) in " + thePort.FileName + ": " + ex.Message);
+                                    if (ex.Message.Trim() == "Exception has been thrown by the target of an invocation.")
+                                    {
+                                        if (ex.InnerException != null)
+                                        {
+                                            Console.WriteLine("- " + ex.InnerException.Message);
+                                        }
+                                        else
+                                        {
+                                            Console.WriteLine("No inner exception :<");
+                                        }
+                                    }
                                 }
                             }
                             else
                             {
-                                Console.WriteLine("Error - Missing Method: " + thePort.FileName + ".GetInfo");
+                                Console.WriteLine($"Error - Missing Method: {thePort.FileName}.GetInfo");
                             }
                         }
                         else
                         {
-                            Console.WriteLine("Missing Class: " + thePort.FileName);
+                            Console.WriteLine($"Missing Class: {thePort.FileName}");
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("Error: " + ex);
+                    Console.WriteLine($"Error: {ex.Message}");
                 }
             }
             else
             {
-                Console.WriteLine("Unknown Port: " + port + " - Info may not be reliable");
+                // The port is not in our list
+                Console.WriteLine($"Unknown Port: {port} - Info may not be reliable");
+                // See if we can still figure out what it does based on the banner info
                 string portInfo = FindUnknownPortInfo(target, port);
                 toReturn = portInfo;
             }
             return toReturn;
         }
 
+        // Figure out what a port is based off its banner
         public static string FindUnknownPortInfo(string target, int port)
         {
             string postScanActions = "";
             // A port I'm not familiar with - Try parse the banner
             string theBanner = General.BannerGrab(target, port);
             byte[] theBannerBytes = General.GetBytes(theBanner);
-            string unknownPortResult = "Port " + port;
+            string unknownPortResult = ("Port " + port).Pastel(Color.Green);
 
             // 220 ib01.supersechosting.htb ESMTP Exim 4.89 Sat, 19 Oct 2019 16:02:49 +0200
             if (theBanner.StartsWith("220") && theBanner.Contains("ESMTP"))
             {
-                unknownPortResult += " - SMTP";
+                unknownPortResult += " - SMTP".Pastel(Color.Green);
                 string smtpInfo = SMTP.GetInfo(target, port); // Can't just parse the banner directly since there could be other useful stuff
                 Console.WriteLine(unknownPortResult + Environment.NewLine + smtpInfo + Environment.NewLine);
 
@@ -156,7 +168,7 @@ namespace Reecon
             // SSH
             else if (theBanner.Contains("SSH-2.0-OpenSSH") || theBanner == "SSH-2.0-Go")
             {
-                unknownPortResult += " - SSH" + Environment.NewLine;
+                unknownPortResult += " - SSH".Pastel(Color.Green) + Environment.NewLine;
                 if (theBanner.Contains("\r\nProtocol mismatch."))
                 {
                     unknownPortResult += Environment.NewLine + "- TCP Protocol Mismatch";
@@ -167,14 +179,14 @@ namespace Reecon
             // WinRM - HTTP with special stuff
             else if (theBanner.Contains("Server: Microsoft-HTTPAPI/2.0"))
             {
-                unknownPortResult += " - WinRM";
+                unknownPortResult += " - WinRM".Pastel(Color.Green);
                 string portData = WinRM.GetInfo(target, port);
                 Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
             }
             // Squid - HTTP with different special stuff
             else if (theBanner.Contains("Server: squid"))
             {
-                unknownPortResult += " - Squid";
+                unknownPortResult += " - Squid".Pastel(Color.Green);
                 string portData = Squid.GetInfo(target, port);
                 Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
             }
@@ -193,35 +205,35 @@ namespace Reecon
                 string httpData = HTTP.GetInfo(target, port);
                 if (httpData != "")
                 {
-                    Console.WriteLine(unknownPortResult + " - HTTP" + Environment.NewLine + httpData + Environment.NewLine);
+                    Console.WriteLine(unknownPortResult + " - HTTP".Pastel(Color.Green) + Environment.NewLine + httpData + Environment.NewLine);
                     postScanActions += $"- gobuster dir -u=http://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-" + port + "-medium.txt -x.php,.txt" + Environment.NewLine;
                     postScanActions += $"- gobuster dir -u=http://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-" + port + "-common.txt -x.php,.txt" + Environment.NewLine;
                 }
                 string httpsData = HTTPS.GetInfo(target, port);
                 if (httpsData != "")
                 {
-                    Console.WriteLine(unknownPortResult + " - HTTPS" + Environment.NewLine + httpsData + Environment.NewLine);
+                    Console.WriteLine(unknownPortResult + " - HTTPS".Pastel(Color.Green) + Environment.NewLine + httpsData + Environment.NewLine);
                     postScanActions += $"- gobuster dir -u=https://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-{port}-medium.txt -x.php,.txt" + Environment.NewLine;
                     postScanActions += $"- gobuster dir -u=https://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-{port}-common.txt -x.php,.txt" + Environment.NewLine;
                 }
             }
             else if (theBanner == "-ERR unknown command 'Woof'") // Probably Redis
             {
-                unknownPortResult += " - Redis";
+                unknownPortResult += "- Redis".Pastel(Color.Green);
                 string portData = Redis.GetInfo(target, port);
                 Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
             }
             else if (theBanner == "+OK Dovecot ready.")
             {
-                unknownPortResult += " - pop3 (Dovecot)" + Environment.NewLine;
+                unknownPortResult += "- pop3 (Dovecot)".Pastel(Color.Green) + Environment.NewLine;
                 unknownPortResult += POP3.GetInfo(target);
                 Console.WriteLine(unknownPortResult);
             }
             else if (theBanner == "ncacn_http/1.0")
             {
                 // Woof
-                unknownPortResult += " - Microsoft Windows RPC over HTTP" + Environment.NewLine;
-                unknownPortResult += " - Reecon currently lacks Microsoft Windows RPC over HTTP support" + Environment.NewLine;
+                unknownPortResult += "- Microsoft Windows RPC over HTTP".Pastel(Color.Green) + Environment.NewLine;
+                unknownPortResult += "- Reecon currently lacks Microsoft Windows RPC over HTTP support" + Environment.NewLine;
                 Console.WriteLine(unknownPortResult);
             }
             else if (theBanner.StartsWith("AMQP") && theBannerBytes.Length == 8)
@@ -230,7 +242,7 @@ namespace Reecon
                 // 4-7: Version
                 if (theBannerBytes[4] == 0 && theBannerBytes[5] == 0 && theBannerBytes[6] == 9 && theBannerBytes[7] == 1)
                 {
-                    Console.WriteLine("Port " + port + " - AMQP" + Environment.NewLine + "- Version 0-9-1" + Environment.NewLine + "- Bug Reelix to finish AMQP decoding..." + Environment.NewLine);
+                    Console.WriteLine("Port " + port + " - AMQP".Pastel(Color.Green) + Environment.NewLine + "- Version 0-9-1" + Environment.NewLine + "- Bug Reelix to finish AMQP decoding..." + Environment.NewLine);
                     // theBanner = General.BannerGrab(ip, port, theBanner); // Need to send the bytes of AMQP0091
 
                     // Oh gawd....
@@ -240,24 +252,24 @@ namespace Reecon
                 }
                 else
                 {
-                    Console.WriteLine("Port " + port + "- AMQP" + Environment.NewLine + "- Unknown AMQP Version: " + (int)theBannerBytes[4] + (int)theBannerBytes[5] + (int)theBannerBytes[6] + (int)theBannerBytes[7] + Environment.NewLine);
+                    Console.WriteLine($"Port {port} - AMQP".Pastel(Color.Green) + Environment.NewLine + "- Unknown AMQP Version: " + (int)theBannerBytes[4] + (int)theBannerBytes[5] + (int)theBannerBytes[6] + (int)theBannerBytes[7] + Environment.NewLine);
                 }
             }
             else if (theBanner == "</stream:stream>")
             {
-                unknownPortResult += " - xmpp" + Environment.NewLine;
-                unknownPortResult += " - Client Name: Wildfire XMPP Client" + Environment.NewLine;
+                unknownPortResult += "- xmpp".Pastel(Color.Green) + Environment.NewLine;
+                unknownPortResult += "- Client Name: Wildfire XMPP Client" + Environment.NewLine;
                 Console.WriteLine(unknownPortResult);
             }
             else if (theBanner.StartsWith("@RSYNCD"))
             {
-                unknownPortResult += " - Rsync" + Environment.NewLine;
+                unknownPortResult += "- Rsync".Pastel(Color.Green) + Environment.NewLine;
                 unknownPortResult += Rsync.GetInfo(target, port);
                 Console.WriteLine(unknownPortResult);
             }
             else if (theBanner.Trim().StartsWith("( success ( 2 2 ( ) ( edit-pipeline"))
             {
-                unknownPortResult += " - SVN (Subversion)" + Environment.NewLine;
+                unknownPortResult += "- SVN (Subversion)".Pastel(Color.Green) + Environment.NewLine;
                 unknownPortResult += "- Bug Reelix to fix this. Ref: Port 3690";
                 Console.WriteLine(unknownPortResult);
             }
@@ -282,6 +294,7 @@ namespace Reecon
             return postScanActions;
         }
 
+        // For the "Some things you probably want to do" list
         public static string GetAdditionalPortInfo(string target, int port)
         {
             string postScanActions = "";

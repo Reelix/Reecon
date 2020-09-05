@@ -10,7 +10,7 @@ namespace Reecon
     {
         public static string GetInfo(string target, int port)
         {
-            string url = "https://{ip}:{port}/";
+            string url = $"https://{target}:{port}/";
             var httpInfo = Web.GetHTTPInfo(url);
             if (httpInfo == (0, null, null, null, null, null))
             {

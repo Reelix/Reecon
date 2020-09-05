@@ -16,7 +16,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.22 ( https://github.com/Reelix/Reecon )");
+            Console.WriteLine("Reecon - Version 0.22a ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
@@ -98,6 +98,7 @@ namespace Reecon
             if (args.Contains("-noping") || args.Contains("--noping"))
             {
                 mustPing = false;
+                args = args.Where(x => !(x.Contains("noping"))).ToArray();
             }
 
             // Everything below here has a maximum of 2 args
@@ -128,7 +129,7 @@ namespace Reecon
             }
 
             // Custom ports
-            if (args.Length == 2 && !args.Contains("noping"))
+            if (args.Length == 2)
             {
                 portList.AddRange(args[1].Split(',').ToList().Select(x => int.Parse(x)));
             }
@@ -216,7 +217,7 @@ namespace Reecon
             else
             {
                 postScanList.Add($"- Nmap Version Scan: nmap -sC -sV -p{string.Join(",", portList)} {target} -oN nmap.txt" + Environment.NewLine);
-                postScanList.Add($"- Nmap UDP Scan: nmap -sU {target}");
+                postScanList.Add($"- Nmap UDP Scan: nmap -sU {target}" + Environment.NewLine);
                 foreach (string item in postScanList)
                 {
                     // They already have newlines in them

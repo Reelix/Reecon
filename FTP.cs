@@ -14,7 +14,15 @@ namespace Reecon
         public static string GetInfo(string target, int port)
         {
             string ftpUsername = "";
-            string ftpLoginInfo = FTP.FtpLogin(target, ftpUsername);
+            string ftpLoginInfo = "";
+            try
+            {
+                ftpLoginInfo = FTP.FtpLogin(target, ftpUsername);
+            }
+            catch (Exception ex)
+            {
+                return ("- Error: Unable to test FTP: " + ex.Message).Pastel(Color.Red);
+            }
             if (ftpLoginInfo.Contains("Unable to login: This FTP server is anonymous only.") || ftpLoginInfo.Contains("Unable to login: USER: command requires a parameter") || ftpLoginInfo.Contains("Unable to login: Login with USER first.") || ftpLoginInfo.Contains("530 This FTP server is anonymous only."))
             {
                 ftpUsername = "anonymous";
@@ -36,9 +44,10 @@ namespace Reecon
             return ftpLoginInfo.Trim(Environment.NewLine.ToCharArray());
         }
 
-        public static string FtpLogin(string ftpServer, string username = "", string password = "")
+        public static string FtpLogin(string target, string username = "", string password = "")
         {
             string ftpLoginResult = "";
+            string ftpServer = target;
             if (!ftpServer.StartsWith("ftp://"))
             {
                 ftpServer = "ftp://" + ftpServer;
@@ -100,11 +109,49 @@ namespace Reecon
                 {
                     return Environment.NewLine + "- Unable to connect :<";
                 }
-                // Console.WriteLine("Some ex: " + ex.Message);
-                FtpWebResponse response = (FtpWebResponse)ex.Response;
-                ftpLoginResult += Environment.NewLine + "- Banner: " + response.BannerMessage.Trim();
-                ftpLoginResult += Environment.NewLine + "- Status: " + response.StatusDescription.Trim();
-                return ftpLoginResult;
+
+                if (ex.Response != null)
+                {
+                    FtpWebResponse response = (FtpWebResponse)ex.Response;
+                    if (response != null)
+                    {
+                        if (response.BannerMessage != null && response.StatusDescription != null)
+                        {
+                            ftpLoginResult += Environment.NewLine + "- Banner: " + response.BannerMessage.Trim();
+                            ftpLoginResult += Environment.NewLine + "- Status: " + response.StatusDescription.Trim();
+                        }
+                        else
+                        {
+                            ftpLoginResult += "- Unable to get any FTP response: " + ex.Message + Environment.NewLine;
+                            try
+                            {
+                                ftpLoginResult += "- Banner: " + General.BannerGrab(target, 21);
+                            }
+                            catch (Exception iex)
+                            {
+                                ftpLoginResult += "- Unable to get any banner response: " + iex.Message;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        ftpLoginResult += "- Unable to get FTP response: " + ex.Message + Environment.NewLine;
+                        try
+                        {
+                            ftpLoginResult += "- Banner: " + General.BannerGrab(target, 21);
+                        }
+                        catch (Exception iex)
+                        {
+                            ftpLoginResult += "- Unable to get any banner response: " + iex.Message;
+                        }
+                    }
+                    return ftpLoginResult;
+                }
+                else
+                {
+                    ftpLoginResult += "- Unable to get any any response: " + ex.Message;
+                    return ftpLoginResult;
+                }
             }
 
         }

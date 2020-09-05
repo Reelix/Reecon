@@ -258,6 +258,7 @@ namespace Reecon
                 "mail/",
                 // Admin stuff
                 "admin.php",
+                "admin/",
                 // Git repo
                 ".git/HEAD",
                 // SSH
@@ -404,6 +405,10 @@ namespace Reecon
                         {
                             // Forbidden is still useful
                             returnText += $"- Common Path is Forbidden: {url}{file}" + Environment.NewLine;
+                        }
+                        else if (response.StatusCode == HttpStatusCode.Redirect)
+                        {
+                            returnText += $"- Common Path redirects: {url}{file}" + Environment.NewLine;
                         }
                     }
                 }
@@ -591,7 +596,7 @@ namespace Reecon
             }
             if (!string.IsNullOrEmpty(PageTitle))
             {
-                responseText += "- Page Title: " + PageTitle + Environment.NewLine;
+                responseText += "- Page Title: " + PageTitle.Trim() + Environment.NewLine;
             }
             if (PageText.Length > 0)
             {
