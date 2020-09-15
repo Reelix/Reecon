@@ -37,7 +37,19 @@ namespace Reecon
                             bannerGrabSocket.Send(cmdBytes, cmdBytes.Length, 0);
                         }
                         int bytes = bannerGrabSocket.Receive(buffer, buffer.Length, 0);
-                        bannerText = Encoding.ASCII.GetString(buffer, 0, bytes);
+                        if (bytes == 1)
+                        {
+                            // Streaming result
+                            while (bytes != 0)
+                            {
+                                bannerText += Encoding.ASCII.GetString(buffer, 0, bytes);
+                                bytes = bannerGrabSocket.Receive(buffer, buffer.Length, 0);
+                            }
+                        }
+                        else
+                        {
+                            bannerText += Encoding.ASCII.GetString(buffer, 0, bytes);
+                        }
                         bannerText = bannerText.Trim();
                     }
                     else
@@ -54,7 +66,7 @@ namespace Reecon
                     // https://github.com/mono/mono/blob/master/mcs/class/System/Test/System.Net.Sockets/NetworkStreamTest.cs#L71-L72
                     if (ex.ErrorCode == 10060 || ex.ErrorCode == 10035)
                     {
-                        bannerText = "";
+                        // Do nothing - An empty banner response is handled later
                     }
                     // No connection could be made because the target machine actively refused it
                     else if (ex.ErrorCode == 10061)
@@ -103,7 +115,7 @@ namespace Reecon
             // We can't get anything - Try some customs
             if (bannerText.Length == 0 && initialText.Length == 0)
             {
-                bannerText = BannerGrab(ip, port, "Woof" + Environment.NewLine + Environment.NewLine);
+                bannerText = BannerGrab(ip, port, "Woof\r\n\r\n");
             }
             else if (bannerText.Length == 0 && initialText.StartsWith("Woof"))
             {
@@ -117,7 +129,7 @@ namespace Reecon
         // This is for custom requests where you know the actual bytes to send
         public static byte[] BannerGrabBytes(string ip, int port, List<byte[]> bytesToSend, int bufferSize = 1024)
         {
-            byte[] returBuffer = new byte[0];
+            byte[] returBuffer = Array.Empty<byte>();
             byte[] buffer = new byte[bufferSize];
             using (Socket bannerGrabSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {

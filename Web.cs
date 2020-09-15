@@ -287,7 +287,6 @@ namespace Reecon
             {
                 commonFiles.RemoveAll(x => x.EndsWith(".php"));
             }
-
             foreach (string file in commonFiles)
             {
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url + file);
@@ -300,6 +299,7 @@ namespace Reecon
                 {
                     using (var response = request.GetResponse() as HttpWebResponse)
                     {
+                        var headers = response.Headers;
                         if (response.StatusCode == HttpStatusCode.OK)
                         {
                             // Since it's readable - Let's deal with it!
@@ -409,6 +409,14 @@ namespace Reecon
                         else if (response.StatusCode == HttpStatusCode.Redirect)
                         {
                             returnText += $"- Common Path redirects: {url}{file}" + Environment.NewLine;
+                            if (headers != null && headers.Get("Location") != null)
+                            {
+                                returnText += $"-- Redirection Location: {headers.Get("Location")}" + Environment.NewLine;
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Unknown response for {file} - {response.StatusCode}");
                         }
                     }
                 }
@@ -661,7 +669,12 @@ namespace Reecon
                 if (headerList.Contains("Set-Cookie"))
                 {
                     headerList.Remove("Set-Cookie");
-                    responseText += "- Set-Cookie: " + Headers.Get("Set-Cookie") + Environment.NewLine;
+                    string setCookie = Headers.Get("Set-Cookie");
+                    responseText += "- Set-Cookie: " + setCookie + Environment.NewLine;
+                    if (setCookie.StartsWith("CUTENEWS_SESSION"))
+                    {
+                        responseText += "-- " + $"CuteNews Found - Browse to http://{DNS}/CuteNews/index.php".Pastel(Color.Orange) + Environment.NewLine;
+                    }
                 }
                 // Fun content types
                 if (headerList.Contains("Content-Type"))

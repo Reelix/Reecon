@@ -87,7 +87,7 @@ namespace Reecon
                 }
                 if (response.SupportsHeaders)
                 {
-                    var headers = response.Headers;
+                    WebHeaderCollection headers = response.Headers;
                     if (headers != null && headers.Count != 0)
                     {
                         ftpLoginResult += Environment.NewLine + "- Headers (Contact Reelix): " + string.Join(",", headers.AllKeys);

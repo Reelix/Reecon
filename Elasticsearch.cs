@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using Newtonsoft.Json;
+using System.Text.Json;
+
 
 namespace Reecon
 {
@@ -14,7 +15,7 @@ namespace Reecon
             WebClient wc = new WebClient();
             // Get basic data
             string pageData = wc.DownloadString($"http://{ip}:9200/");
-            ElasticSearchObject theObject = JsonConvert.DeserializeObject<ElasticSearchObject>(pageData);
+            ElasticSearchObject theObject = JsonSerializer.Deserialize<ElasticSearchObject>(pageData);
             // Simialr formatting to nmap
             returnString += $"- Version: {theObject.version.number} (name: {theObject.name}; cluster: {theObject.cluster_name}; Lucene: {theObject.version.lucene_version}){Environment.NewLine}";
             // Get indices

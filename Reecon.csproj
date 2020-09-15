@@ -1,147 +1,23 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="packages\ILMerge.3.0.29\build\ILMerge.props" Condition="Exists('packages\ILMerge.3.0.29\build\ILMerge.props')" />
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{B21517AB-9864-4A09-9942-D8DE432BD637}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>Reecon</RootNamespace>
-    <AssemblyName>Reecon</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <Deterministic>true</Deterministic>
-    <IsWebBootstrapper>false</IsWebBootstrapper>
-    <PublishUrl>publish\</PublishUrl>
-    <Install>true</Install>
-    <InstallFrom>Disk</InstallFrom>
-    <UpdateEnabled>false</UpdateEnabled>
-    <UpdateMode>Foreground</UpdateMode>
-    <UpdateInterval>7</UpdateInterval>
-    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
-    <UpdatePeriodically>false</UpdatePeriodically>
-    <UpdateRequired>false</UpdateRequired>
-    <MapFileExtensions>true</MapFileExtensions>
-    <ApplicationRevision>0</ApplicationRevision>
-    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
-    <UseApplicationTrust>false</UseApplicationTrust>
-    <BootstrapperEnabled>true</BootstrapperEnabled>
-    <TargetFrameworkProfile />
-    <NuGetPackageImportStamp>
-    </NuGetPackageImportStamp>
+	<TargetFramework>net5.0</TargetFramework>
+	<PublishSingleFile>true</PublishSingleFile>
+	<RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
-  </PropertyGroup>
-  <PropertyGroup>
-    <StartupObject>Reecon.Program</StartupObject>
-  </PropertyGroup>
+
   <ItemGroup>
-    <Reference Include="MyRawClient, Version=0.2.7418.7446, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>.\MyRawClient.dll</HintPath>
-    </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.DirectoryServices" />
-    <Reference Include="System.DirectoryServices.Protocols" />
-    <Reference Include="System.Drawing" />
-    <Reference Include="System.Net.Http" />
-    <Reference Include="System.Security" />
-    <Reference Include="System.Web.Extensions" />
-    <Reference Include="System.Xml" />
+    <PackageReference Include="FluentFTP" Version="32.4.4" />
+    <PackageReference Include="LdapForNet" Version="2.7.9" />
+    <PackageReference Include="MySqlConnector" Version="1.0.1" />
+    <PackageReference Include="Npgsql" Version="4.1.4" />
   </ItemGroup>
-  <ItemGroup>
-    <Compile Include="ConsoleColor.cs" />
-    <Compile Include="DNS.cs" />
-    <Compile Include="Elasticsearch.cs" />
-    <Compile Include="FTP.cs" />
-    <Compile Include="General.cs" />
-    <Compile Include="HTTP.cs" />
-    <Compile Include="HTTPS.cs" />
-    <Compile Include="IMAP.cs" />
-    <Compile Include="LDAP.cs" />
-    <Compile Include="LFI.cs" />
-    <Compile Include="MySQL.cs" />
-    <Compile Include="NETBIOS.cs" />
-    <Compile Include="NFS.cs" />
-    <Compile Include="Nmap.cs" />
-    <Compile Include="POP3.cs" />
-    <Compile Include="PortInfo.cs" />
-    <Compile Include="Program.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Pwn.cs" />
-    <Compile Include="Redis.cs" />
-    <Compile Include="RPCBind.cs" />
-    <Compile Include="Rsync.cs" />
-    <Compile Include="Searchsploit.cs" />
-    <Compile Include="Shell.cs" />
-    <Compile Include="SMB.cs" />
-    <Compile Include="SMB_MS17-010.cs" />
-    <Compile Include="SMTP.cs" />
-    <Compile Include="Squid.cs" />
-    <Compile Include="SSH.cs" />
-    <Compile Include="SVN.cs" />
-    <Compile Include="Web.cs" />
-    <Compile Include="WebClientExtensions.cs" />
-    <Compile Include="WinRM.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="App.config" />
-    <None Include="README.md" />
-  </ItemGroup>
-  <ItemGroup>
-    <BootstrapperPackage Include=".NETFramework,Version=v4.7.2">
-      <Visible>False</Visible>
-      <ProductName>Microsoft .NET Framework 4.7.2 %28x86 and x64%29</ProductName>
-      <Install>true</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.5 SP1</ProductName>
-      <Install>false</Install>
-    </BootstrapperPackage>
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="FluentFTP">
-      <Version>32.4.3</Version>
-    </PackageReference>
-    <PackageReference Include="ILMerge" Version="3.0.29" />
-    <PackageReference Include="LdapForNet">
-      <Version>2.7.2</Version>
-    </PackageReference>
-    <PackageReference Include="Newtonsoft.Json">
-      <Version>12.0.3</Version>
-    </PackageReference>
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Ports.txt" />
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <PropertyGroup>
-    <PostBuildEvent Condition="'$(OS)' == 'Windows_NT' ">
-	"$(ILMergeConsolePath)" "$(TargetDir)Reecon.exe" /out:Reecon2.exe "$(TargetDir)LdapForNet.dll" "$(TargetDir)MyRawClient.dll" "$(TargetDir)FluentFTP.dll"
-    del Reecon.exe
-	move Reecon2.exe Reecon.exe
-    </PostBuildEvent>
-  </PropertyGroup>
+
 </Project>
+  

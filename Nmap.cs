@@ -114,7 +114,7 @@ namespace Reecon
             string[] portItems = portLine.Split('\t');
             string portSection = portItems[1];
             portSection = portSection.Replace("Ports: ", "");
-            foreach (var item in portSection.Split(new[] { ", " }, StringSplitOptions.None))
+            foreach (string item in portSection.Split(new[] { ", " }, StringSplitOptions.None))
             {
                 int port = int.Parse(item.Split('/')[0]);
                 string status = item.Split('/')[1];

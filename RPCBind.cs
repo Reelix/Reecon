@@ -8,7 +8,7 @@ namespace Reecon
 {
     class RPCBind
     {
-        public static string GetInfo(string target, string port)
+        public static string GetInfo(string target, int port)
         {
             string toReturn = "";
             List<string> processOutput = General.GetProcessOutput("rpcinfo", "-p " + target);
@@ -16,7 +16,7 @@ namespace Reecon
             {
                 toReturn += "- " + item + Environment.NewLine;
             }
-            return toReturn;
+            return toReturn.Trim(Environment.NewLine.ToCharArray());
         }
     }
 }

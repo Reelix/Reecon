@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Text;
-using System.Web.Script.Serialization;
 
 namespace ReeCode
 {
@@ -133,6 +130,8 @@ namespace ReeCode
         /// </summary>
         public static string Post(this WebClient theWebClient, string URL, Dictionary<string, string> postValues, bool isJSON = false)
         {
+            throw new NotImplementedException("Bug Reelix to fix this...");
+            /*
             NameValueCollection postCollection = new NameValueCollection();
             foreach (var item in postValues)
             {
@@ -180,7 +179,7 @@ namespace ReeCode
                     Console.WriteLine("Error in Post - " + wex.Message);
                     return "";
                 }
-            }
+            }*/
         }
     }
 
