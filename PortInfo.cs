@@ -23,6 +23,12 @@ namespace Reecon
         public static void LoadPortInfo()
         {
             var assembly = Assembly.GetExecutingAssembly();
+            int embeddedItemCount = assembly.GetManifestResourceNames().Length;
+            if (embeddedItemCount == 0)
+            {
+                Console.WriteLine("Error - Cannot find Ports.txt :<");
+                Environment.Exit(0);
+            }
             string resource = assembly.GetManifestResourceNames().Single(str => str.EndsWith("Ports.txt"));
             if (!string.IsNullOrEmpty(resource))
             {
