@@ -17,7 +17,7 @@ namespace Reecon
             // https://www.samba.org/samba/docs/current/man-html/rpcclient.1.html
             // The standard (well-known) TCP port number for an SMB/CIFS server is 139, which is the default.
             toReturn += GetRPCInfo(target);
-            toReturn += "- nmap -sC -sV may have some additional information for this port";
+            toReturn += $"- nmap -sC -sV may have some additional information for port {port}";
             return toReturn;
         }
 

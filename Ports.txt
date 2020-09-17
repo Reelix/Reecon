@@ -24,6 +24,7 @@
 3268|N/A|LDAP (Global Catalog)
 3269|N/A|LDAP (Global Catalog) over SSL
 3306|MySQL|MySQL
+3389|N/A|Remote Desktop
 3690|SVN|SVN (Subversion)
 4369|N/A|Erlang Port Mapper Daemon (EPMD)
 5222|N/A|Jabber

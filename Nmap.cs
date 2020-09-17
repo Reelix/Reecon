@@ -31,10 +31,10 @@ namespace Reecon
             }
             DateTime beforeNmapDate = DateTime.Now;
             Console.WriteLine($"Doing an optimized Nmap scan on {target} - This may take awhile...");
-            General.RunProcess($"nmap", $"-sS -p- --min-rate=5000 {target} -oG {fileName}.nmap -oN nmap-{fileName}.txt");
+            General.RunProcess($"nmap", $"-sS -p- --min-rate=5000 {target} -oG {fileName}.nmap");
             DateTime afterNmapDate = DateTime.Now;
             TimeSpan nmapScanDuration = afterNmapDate - beforeNmapDate;
-            Console.WriteLine("Scan complete in " + string.Format("{0:0.00}s", nmapScanDuration.TotalSeconds) + $" - {fileName}.nmap for reecon and nmap-{fileName}.txt for reading");
+            Console.WriteLine("Scan complete in " + string.Format("{0:0.00}s", nmapScanDuration.TotalSeconds) + $" - {fileName}.nmap for reecon");
         }
 
         public static void CustomScan(int level, string target)

@@ -60,55 +60,30 @@ namespace Reecon
                 }
                 catch (SocketException ex)
                 {
-                    // 10060 - Timeout (WSAETIMEDOUT)
-                    // 10035 - Blocking (WSAEWOULDBLOCK)
-                    // Mono on Linux and Mono on Windows has different errors
-                    // https://github.com/mono/mono/blob/master/mcs/class/System/Test/System.Net.Sockets/NetworkStreamTest.cs#L71-L72
-                    if (ex.ErrorCode == 10060 || ex.ErrorCode == 10035)
+                    if (ex.SocketErrorCode == SocketError.TimedOut)
                     {
-                        // Do nothing - An empty banner response is handled later
+                        // Could just mean that we're using the wrong info to grab the banner
+                        // Do nothing - A timeout response is handled later
                     }
-                    // No connection could be made because the target machine actively refused it
-                    else if (ex.ErrorCode == 10061)
+                    else if (ex.SocketErrorCode == SocketError.ConnectionRefused)
                     {
-                        bannerText = "Reecon - Closed";
+                        bannerText = "Reecon - Connection refused";
                     }
                     // Connection reset by peer
-                    else if (ex.ErrorCode == 10054)
+                    else if (ex.SocketErrorCode == SocketError.ConnectionReset)
                     {
-                        bannerText = "Reecon - Connection reset by peer";
+                        bannerText = "Reecon - Connection reset";
                     }
                     else
                     {
-                        Console.WriteLine($"Error in BannerGrab with error code: {ex.ErrorCode}");
-                        throw ex;
+                        Console.WriteLine($"Error in BannerGrab with SocketErrorCode code: {ex.SocketErrorCode}");
+                        return "";
                     }
                 }
                 catch (Exception ex)
                 {
-                    /*
-                    // Mono - Linux Message
-                    if (ex.Message == "Operation on non-blocking socket would block")
-                    {
-                        bannerText = "";
-                    }
-                    // Mono - Windows Message / .NET Framework Message
-                    else if (ex.Message == "A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond")
-                    {
-                        bannerText = "";
-                    }
-                    */
-                    // Someone doesn't want us here - Need to find the specific ErrorCode to stick it above
-                    if (ex.Message == "Connection reset by peer")
-                    {
-                        Console.WriteLine("In Exception with connection reset by peer");
-                        bannerText = "Connection reset by peer";
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Error in General.BannerGrab ({ip}:{port} - {ex.Message})");
-                        return "";
-                    }
+                    Console.WriteLine($"Error in General.BannerGrab ({ip}:{port} - {ex.Message})");
+                    return "";
                 }
             }
 
