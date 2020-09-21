@@ -144,31 +144,29 @@ namespace Reecon
 
         public static bool IsUp(string ip)
         {
-            using (Ping myPing = new Ping())
+            using Ping myPing = new Ping();
+            try
             {
-                try
+                PingOptions myOptions = new PingOptions();
+                PingReply reply = myPing.Send(ip, 1000);
+                if (reply.Status == IPStatus.Success)
                 {
-                    PingOptions myOptions = new PingOptions();
-                    PingReply reply = myPing.Send(ip, 1000);
-                    if (reply.Status == IPStatus.Success)
-                    {
-                        return true;
-                    }
+                    return true;
+                }
+                return false;
+            }
+            catch (SocketException ex)
+            {
+                if (ex.Message.StartsWith("Could not resolve host"))
+                {
+                    // Invalid hostname - Cannot resolve
                     return false;
                 }
-                catch (SocketException ex)
+                else
                 {
-                    if (ex.Message.StartsWith("Could not resolve host"))
-                    {
-                        // Invalid hostname - Cannot resolve
-                        return false;
-                    }
-                    else
-                    {
-                        Console.WriteLine(ex.Message);
-                        System.Threading.Thread.Sleep(2500);
-                        return false;
-                    }
+                    Console.WriteLine(ex.Message);
+                    System.Threading.Thread.Sleep(2500);
+                    return false;
                 }
             }
         }

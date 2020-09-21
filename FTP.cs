@@ -1,7 +1,6 @@
 ﻿using FluentFTP;
 using Pastel;
 using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -41,6 +40,11 @@ namespace Reecon
                 }
                 ftpLoginInfo += fileListInfo;
             }
+            string SSLCertInfo = FindFTPSSLCert(target);
+            if (!string.IsNullOrEmpty(SSLCertInfo))
+            {
+                ftpLoginInfo += Environment.NewLine + SSLCertInfo;
+            }
             return ftpLoginInfo.Trim(Environment.NewLine.ToCharArray());
         }
 
@@ -52,6 +56,7 @@ namespace Reecon
             {
                 ftpServer = "ftp://" + ftpServer;
             }
+
             FtpWebRequest request = (FtpWebRequest)WebRequest.Create(ftpServer);
             request.Timeout = 5000;
             request.UseBinary = true; // Better for downloading files if we ever need
@@ -154,6 +159,45 @@ namespace Reecon
                 }
             }
 
+        }
+
+        public static string FindFTPSSLCert(string target)
+        {
+            string toReturn = "";
+            try
+            {
+                if (!target.StartsWith("ftp://"))
+                {
+                    target = "ftp://" + target;
+                }
+                FtpClient client = new FtpClient(target, "reelixwoof", "reelixwoof");
+                client.EncryptionMode = FtpEncryptionMode.Explicit; // Port 990 for Implicit
+                client.ValidateCertificate += new FtpSslValidation(OnValidateCertificate);
+                client.Connect();
+
+                void OnValidateCertificate(FtpClient control, FtpSslValidationEventArgs e)
+                {
+                    string issuer = e.Certificate.Issuer;
+                    string subject = e.Certificate.Subject;
+                    toReturn = "-- SSL Cert Issuer: " + issuer + Environment.NewLine;
+                    if (issuer != subject)
+                    {
+                        toReturn += "-- SSL Cert Subject: " + subject;
+                    }
+                    /*
+                    Console.WriteLine("Issuer: " + e.Certificate.Issuer);
+                    Console.WriteLine("Subject: " + e.Certificate.Subject);
+                    Console.WriteLine("Raw: " + e.Certificate.GetRawCertDataString());
+                    */
+                    // add logic to test if certificate is valid here
+                    e.Accept = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                // We don't really care
+            }
+            return toReturn.Trim(Environment.NewLine.ToCharArray());
         }
 
         public static string TryListFiles(string ftpServer, int port, bool usePassive, string username = "", string password = "")

@@ -10,7 +10,11 @@ namespace Reecon
             {
                 string url = $"http://{target}:{port}/";
                 var httpInfo = Web.GetHTTPInfo(url);
-                if (httpInfo == (0, null, null, null, null, null))
+                if (httpInfo.AdditionalInfo == "Timeout")
+                {
+                    return "- Timeout";
+                }
+                else if (httpInfo == (0, null, null, null, null, null, null))
                 {
                     return "";
                 }

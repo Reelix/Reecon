@@ -16,7 +16,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.23 ( https://github.com/Reelix/Reecon )");
+            Console.WriteLine("Reecon - Version 0.24 ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
@@ -89,6 +89,12 @@ namespace Reecon
             else if (args.Contains("-nmap") || args.Contains("--nmap"))
             {
                 Nmap.DefaultScan(args);
+                Console.ResetColor();
+                return;
+            }
+            else if (args.Contains("-osint") || (args.Contains("--osint")))
+            {
+                OSINT.GetInfo(args);
                 Console.ResetColor();
                 return;
             }
@@ -217,7 +223,7 @@ namespace Reecon
             else
             {
                 postScanList.Add($"- Nmap Version Scan: nmap -sC -sV -p{string.Join(",", portList)} {target} -oN nmap.txt" + Environment.NewLine);
-                postScanList.Add($"- Nmap UDP Scan: nmap -sU {target}" + Environment.NewLine);
+                postScanList.Add($"- Nmap UDP Scan: sudo nmap -sU {target}" + Environment.NewLine);
                 foreach (string item in postScanList)
                 {
                     // They already have newlines in them

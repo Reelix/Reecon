@@ -7,9 +7,7 @@ namespace Reecon
 {
     class LDAP // Port 389
     {
-        // https://github.com/mono/mono/blob/master/mcs/class/System.DirectoryServices.Protocols/System.DirectoryServices.Protocols/SearchRequest.cs
-        // Wow Mono - Just Wow...
-        public static string GetInfo(string ip)
+        public static string GetInfo(string ip, int port)
         {
             string returnInfo = "";
             returnInfo += LDAP.GetDefaultNamingContext(ip);
@@ -66,17 +64,16 @@ namespace Reecon
                         ldapInfo = "- Error: No defaultNamingContext! Keys: " + searchEntries[0].Attributes.Count + Environment.NewLine;
                         foreach (var item in searchEntries[0].Attributes)
                         {
-                            ldapInfo += "- Found Key: " + item.Key + " with value " + item.Value + Environment.NewLine; ;
+                            ldapInfo += "- Found Key: " + item.Key + " with value " + item.Value + Environment.NewLine;
                         }
                     }
                 }
                 else
-
                 {
                     ldapInfo = "- Multiple items found! Bug Reelix!" + Environment.NewLine;
                 }
             }
-            return ldapInfo;
+            return ldapInfo.Trim(Environment.NewLine.ToCharArray());
         }
 
         public static string GetAccountInfo(string ip)

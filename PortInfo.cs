@@ -82,9 +82,10 @@ namespace Reecon
                 try
                 {
                     Port thePort = PortInfoList.First(x => x.Number == port);
+                    string portHeader = $"Port {thePort.Number} - {thePort.FriendlyName}";
                     if (thePort.FileName == "N/A")
                     {
-                        toReturn = $"- Reecon currently lacks {thePort.FriendlyName} support";
+                        Console.WriteLine(portHeader.Pastel(Color.Green) + Environment.NewLine + $"- Reecon currently lacks {thePort.FriendlyName} support" + Environment.NewLine);
                         string additionalPortInfo = GetAdditionalPortInfo(target, port);
                         return additionalPortInfo;
                     }
@@ -98,7 +99,6 @@ namespace Reecon
                             MethodInfo method = t.GetMethod("GetInfo", BindingFlags.Static | BindingFlags.Public);
                             if (method != null)
                             {
-                                string portHeader = $"Port {thePort.Number} - {thePort.FriendlyName}";
                                 try
                                 {
                                     // Send it the standard target / port
@@ -113,7 +113,7 @@ namespace Reecon
                                 }
                                 catch (Exception ex)
                                 {
-                                    Console.WriteLine("Error: Cannot in GetInfo(target, port) in " + thePort.FileName + ": " + ex.Message);
+                                    Console.WriteLine("Error: Cannot run GetInfo(target, port) in " + thePort.FileName + ": " + ex.Message + " -- Bug Reelix!");
                                     if (ex.Message.Trim() == "Exception has been thrown by the target of an invocation.")
                                     {
                                         if (ex.InnerException != null)
@@ -366,10 +366,6 @@ namespace Reecon
             }
             else if (port == 3389)
             {
-                string portHeader = "Port 3389 - Windows Remote Desktop";
-                string portData = "- Reecon currently lacks Windows Remote Desktop support";
-                Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
-
                 // TODO: https://nmap.org/nsedoc/scripts/rdp-ntlm-info.html
                 // https://svn.nmap.org/nmap/scripts/rdp-ntlm-info.nse
                 /*

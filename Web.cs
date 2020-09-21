@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace Reecon
@@ -63,11 +64,6 @@ namespace Reecon
         public static string FindInfo(string pageText, bool doubleDash = false)
         {
             string foundInfo = "";
-            if (pageText.Contains("/wp-content/themes/") && pageText.Contains("/wp-includes/"))
-            {
-                foundInfo += "- Wordpress detected! Run wpscan!" + Environment.NewLine;
-                foundInfo += "-- hydra -L users.txt -P passwords.txt site.com http-post-form \"/blog/wp-login.php:log=^USER^&pwd=^PASS^&wp-submit=Log In&testcookie=1:S=Location\" -I -t 50" + Environment.NewLine;
-            }
             foundInfo += FindFormData(pageText);
             foundInfo += FindEmails(pageText, doubleDash);
             foundInfo += FindLinks(pageText, doubleDash);
@@ -406,7 +402,7 @@ namespace Reecon
                             // Forbidden is still useful
                             returnText += $"- Common Path is Forbidden: {url}{file}" + Environment.NewLine;
                         }
-                        else if (response.StatusCode == HttpStatusCode.Redirect)
+                        else if (response.StatusCode == HttpStatusCode.Redirect || response.StatusCode == HttpStatusCode.Moved)
                         {
                             returnText += $"- Common Path redirects: {url}{file}" + Environment.NewLine;
                             if (headers != null && headers.Get("Location") != null)
@@ -463,7 +459,7 @@ namespace Reecon
             return returnText.Trim(Environment.NewLine.ToArray());
         }
 
-        public static (HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert) GetHTTPInfo(string url)
+        public static (HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert, string AdditionalInfo) GetHTTPInfo(string url)
         {
             string pageTitle = "";
             string pageText = "";
@@ -492,11 +488,19 @@ namespace Reecon
                     response.Close();
                 }
             }
+            catch (TimeoutException ex)
+            {
+                Console.WriteLine("Moo: " + ex.Message);
+            }
             catch (WebException ex)
             {
                 if (ex.Response == null)
                 {
-                    if (ex.Message != null)
+                    if (ex.Status == WebExceptionStatus.Timeout)
+                    {
+                        return (statusCode, null, null, null, null, null, "Timeout");
+                    }
+                    else if (ex.Message != null)
                     {
                         if (ex.Message.Trim() == "The request was aborted: Could not create SSL/TLS secure channel.")
                         {
@@ -504,27 +508,26 @@ namespace Reecon
                         }
                         else if (ex.Message.Trim() == "The underlying connection was closed: An unexpected error occurred on a send.")
                         {
-                            // Ignore it
+                            Console.WriteLine("Legacy error - Bug Reelix!");
                         }
                         else if (ex.Message.Trim() == "The operation has timed out.")
                         {
-                            // Ignore it
+                            Console.WriteLine("Legacy error - Bug Reelix!");
                         }
                         else if (ex.Message.Trim() == "Error: SecureChannelFailure (Authentication failed, see inner exception.)")
                         {
-                            // Ignore it - Should we?
+                            Console.WriteLine("Legacy error - Bug Reelix!");
                         }
                         else if (ex.Message.Trim() == "Error: ConnectFailure (Connection refused)" || ex.Message.Trim() == "Error: ConnectFailure (No route to host)")
                         {
-                            // The port is probably closed to us
-                            // Ignore it - It's handled elswhere
+                            Console.WriteLine("Legacy error - Bug Reelix!");
                         }
                         else
                         {
                             Console.WriteLine("GetHTTPInfo.Error: " + ex.Message);
                         }
                     }
-                    return (statusCode, null, null, null, null, null);
+                    return (statusCode, null, null, null, null, null, null);
                 }
                 HttpWebResponse response = (HttpWebResponse)ex.Response;
                 statusCode = response.StatusCode;
@@ -540,7 +543,7 @@ namespace Reecon
             {
                 // Something went really wrong...
                 Console.WriteLine("GetHTTPInfo - Fatal Woof :( - " + ex.Message);
-                return (statusCode, null, null, null, null, null);
+                return (statusCode, null, null, null, null, null, null);
             }
 
             if (pageText.Contains("<title>") && pageText.Contains("</title>"))
@@ -553,7 +556,7 @@ namespace Reecon
             {
                 cert = new X509Certificate2(request.ServicePoint.Certificate);
             }
-            return (statusCode, pageTitle, pageText, dns, headers, cert);
+            return (statusCode, pageTitle, pageText, dns, headers, cert, null);
         }
 
         public static string FormatHTTPInfo(HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert)
@@ -614,8 +617,24 @@ namespace Reecon
                 }
                 if (PageText.Contains("/wp-content/themes/") && PageText.Contains("/wp-includes/"))
                 {
-                    responseText += "- Wordpress detected! Run wpscan!" + Environment.NewLine;
+                    responseText += "- Wordpress detected!" + Environment.NewLine;
+                    try
+                    {
+                        string jsonData = wc.DownloadString("http://" + DNS + "/wp-json/wp/v2/users");
+                        var document = JsonDocument.Parse(jsonData);
+                        foreach (JsonElement element in document.RootElement.EnumerateArray())
+                        {
+                            string wpUser = element.GetProperty("name").GetString();
+                            responseText += ("-- Wordpress User Found: " + wpUser).Pastel(Color.Orange) + Environment.NewLine;
+                        }
+                    }
+                    catch (WebException)
+                    {
+                        // Thrown on 404's and such - Ignore it
+                    }
+                    responseText += "-- wpscan --url http://" + DNS + "/ --enumerate u1-5" + Environment.NewLine;
                     responseText += "-- hydra -L users.txt -P passwords.txt site.com http-post-form \"/blog/wp-login.php:log=^USER^&pwd=^PASS^&wp-submit=Log In&testcookie=1:S=Location\" -I -t 50" + Environment.NewLine;
+
                 }
             }
             if (!string.IsNullOrEmpty(DNS))
