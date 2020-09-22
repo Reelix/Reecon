@@ -31,7 +31,15 @@ namespace Reecon
             }
             DateTime beforeNmapDate = DateTime.Now;
             Console.WriteLine($"Doing an optimized Nmap scan on {target} - This may take awhile...");
-            General.RunProcess($"nmap", $"-sS -p- --min-rate=5000 {target} -oG {fileName}.nmap");
+            if (General.GetOS() == General.OS.Linux)
+            {
+
+                General.RunProcess($"sudo", $"nmap -sS -p- --min-rate=5000 {target} -oG {fileName}.nmap");
+            }
+            else
+            {
+                General.RunProcess($"nmap", $"-sS -p- --min-rate=5000 {target} -oG {fileName}.nmap");
+            }
             DateTime afterNmapDate = DateTime.Now;
             TimeSpan nmapScanDuration = afterNmapDate - beforeNmapDate;
             Console.WriteLine("Scan complete in " + string.Format("{0:0.00}s", nmapScanDuration.TotalSeconds) + $" - {fileName}.nmap for reecon");

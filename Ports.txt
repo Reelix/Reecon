@@ -34,6 +34,7 @@
 5986|WinRM|Secure WinRM
 6379|Redis|Redis
 6881|N/A|BitTorrent
+8000|HTTP|Alternate HTTP Port
 8080|HTTP|Alternate HTTP Port
 9101-9107|N/A|Printer (Unkown)
 9200|Elasticsearch|Elasticsearch HTTP Interface

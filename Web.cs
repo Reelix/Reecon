@@ -202,6 +202,7 @@ namespace Reecon
 
         public static string FindCommonFiles(string url)
         {
+            // Console.WriteLine("In FindCommonFiles with: " + url);{url}{file}" + Environment.NewLine;
             string returnText = "";
 
             if (!url.EndsWith("/"))
@@ -285,135 +286,135 @@ namespace Reecon
             }
             foreach (string file in commonFiles)
             {
-                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url + file);
-                request.Method = "HEAD";
-                // Ignore invalid SSL Cert
-                request.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
-                request.AllowAutoRedirect = false;
-                request.Timeout = 5000;
+                string path = url + file;
                 try
                 {
-                    using (var response = request.GetResponse() as HttpWebResponse)
+                    var response = Web.GetHTTPInfo(path);
+                    if (response.StatusCode == HttpStatusCode.OK)
                     {
-                        var headers = response.Headers;
-                        if (response.StatusCode == HttpStatusCode.OK)
+                        // Since it's readable - Let's deal with it!
+                        try
                         {
-                            // Since it's readable - Let's deal with it!
-                            try
+                            string pageText = response.PageText;
+                            if (pageText.Length != notFoundLength)
                             {
-                                string pageText = new StreamReader(response.GetResponseStream()).ReadToEnd();
-                                if (pageText.Length != notFoundLength)
+                                returnText += "- " + $"Common Path is readable: {url}{file}".Pastel(Color.Orange) + Environment.NewLine;
+                                // Specific case for robots.txt since it's common and extra useful
+                                if (file == "robots.txt")
                                 {
-                                    returnText += "- " + $"Common Path is readable: {url}{file}".Pastel(Color.Orange) + Environment.NewLine;
-                                    // Specific case for robots.txt since it's common and extra useful
-                                    if (file == "robots.txt")
+                                    foreach (var line in pageText.Split(Environment.NewLine.ToCharArray()))
                                     {
-                                        foreach (var line in pageText.Split(Environment.NewLine.ToCharArray()))
+                                        if (line != "")
                                         {
-                                            if (line != "")
-                                            {
-                                                returnText += "-- " + line + Environment.NewLine;
-                                            }
-                                        }
-                                    }
-                                    // Git repo!
-                                    else if (file == ".git/HEAD")
-                                    {
-                                        returnText += "-- Git repo found!" + Environment.NewLine;
-
-                                        // https://github.com/arthaud/git-dumper/issues/9
-                                        WebClient wc = new WebClient();
-                                        try
-                                        {
-                                            if (wc.DownloadString($"{url}.git/").Contains("../"))
-                                            {
-                                                // -q: Quiet (So the console doesn't get spammed)
-                                                // -r: Download everything
-                                                // -np: But don't go all the way backwards
-                                                // -nH: So you only have the ".git" folder and not the IP folder as well
-                                                returnText += $"--- Download the repo: wget -q -r -np -nH {url}.git/" + Environment.NewLine;
-                                                returnText += "--- Get the logs: git log --pretty=format:\"%h - %an (%ae): %s %b\"" + Environment.NewLine;
-                                                returnText += "--- Show a specific commit: git show 2eb93ac (Press q to close)" + Environment.NewLine;
-                                                continue;
-                                            }
-                                        }
-                                        catch { }
-                                        returnText += "--- Download: https://raw.githubusercontent.com/arthaud/git-dumper/master/git-dumper.py" + Environment.NewLine;
-                                        returnText += $"--- Run: python3 git-dumper.py {url}{file} .git" + Environment.NewLine;
-                                        returnText += "--- Get the logs: git log --pretty=format:\"%h - %an (%ae): %s %b\"" + Environment.NewLine;
-                                        returnText += "--- Show a specific commit: git show 2eb93ac (Press q to close)" + Environment.NewLine;
-                                    }
-                                    // Bolt
-                                    else if (file == "bolt-public/img/bolt-logo.png")
-                                    {
-                                        returnText += "-- Bolt CMS!" + Environment.NewLine;
-                                        returnText += $"-- Admin Page: {url}bolt" + Environment.NewLine;
-                                        returnText += "-- If you get details and the version is 3.6.* or 3.7: https://www.rapid7.com/db/modules/exploit/unix/webapp/bolt_authenticated_rce" + Environment.NewLine;
-                                    }
-                                    // Kibana!
-                                    else if (file == "app/kibana")
-                                    {
-                                        returnText += "-- Kibana!" + Environment.NewLine;
-                                        try
-                                        {
-                                            WebClient wc = new WebClient();
-                                            string toCheck = $"{url}{file}";
-                                            string pageData = wc.DownloadString($"{url}{file}");
-                                            if (pageData.IndexOf("&quot;version&quot;:&quot;") != -1)
-                                            {
-                                                string versionText = pageData.Remove(0, pageData.IndexOf("&quot;version&quot;:&quot;") + 26);
-                                                versionText = versionText.Substring(0, versionText.IndexOf("&quot;"));
-                                                returnText += "--- Version: " + versionText + Environment.NewLine;
-                                                returnText += "---- Kibana versions before 5.6.15 and 6.6.1 -> CVE-2019-7609 -> https://github.com/mpgn/CVE-2019-7609" + Environment.NewLine;
-                                            }
-                                            else
-                                            {
-                                                returnText += $"--- Version: {url}{file}#/management/" + Environment.NewLine;
-                                            }
-                                        }
-                                        catch
-                                        {
-                                            returnText += $"--- Version: {url}{file}#/management/" + Environment.NewLine;
-                                        }
-                                        returnText += $"--- Elasticsearch Console: {url}{file}#/dev_tools/console" + Environment.NewLine;
-                                        returnText += "---- General Info: GET /" + Environment.NewLine;
-                                        returnText += "---- Get Indices: GET /_cat/indices?v" + Environment.NewLine;
-                                        // These aren't meant to be params
-                                        returnText += "---- Get Index Info: GET /{index}/_search/?pretty&size={docs.count}" + Environment.NewLine;
-                                    }
-                                    else
-                                    {
-                                        string usefulInfo = Web.FindInfo(pageText, true);
-                                        if (usefulInfo.Trim(Environment.NewLine.ToCharArray()) != "")
-                                        {
-                                            returnText += usefulInfo + Environment.NewLine;
+                                            returnText += "-- " + line + Environment.NewLine;
                                         }
                                     }
                                 }
+                                // Git repo!
+                                else if (file == ".git/HEAD")
+                                {
+                                    returnText += "-- Git repo found!" + Environment.NewLine;
 
+                                    // https://github.com/arthaud/git-dumper/issues/9
+                                    WebClient wc = new WebClient();
+                                    try
+                                    {
+                                        if (wc.DownloadString($"{url}.git/").Contains("../"))
+                                        {
+                                            // -q: Quiet (So the console doesn't get spammed)
+                                            // -r: Download everything
+                                            // -np: But don't go all the way backwards
+                                            // -nH: So you only have the ".git" folder and not the IP folder as well
+                                            returnText += $"--- Download the repo: wget -q -r -np -nH {url}.git/" + Environment.NewLine;
+                                            returnText += "--- Get the logs: git log --pretty=format:\"%h - %an (%ae): %s %b\"" + Environment.NewLine;
+                                            returnText += "--- Show a specific commit: git show 2eb93ac (Press q to close)" + Environment.NewLine;
+                                            continue;
+                                        }
+                                    }
+                                    catch { }
+                                    returnText += "--- Download: https://raw.githubusercontent.com/arthaud/git-dumper/master/git-dumper.py" + Environment.NewLine;
+                                    returnText += $"--- Run: python3 git-dumper.py {url}{file} .git" + Environment.NewLine;
+                                    returnText += "--- Get the logs: git log --pretty=format:\"%h - %an (%ae): %s %b\"" + Environment.NewLine;
+                                    returnText += "--- Show a specific commit: git show 2eb93ac (Press q to close)" + Environment.NewLine;
+                                }
+                                // Bolt
+                                else if (file == "bolt-public/img/bolt-logo.png")
+                                {
+                                    returnText += "-- Bolt CMS!" + Environment.NewLine;
+                                    returnText += $"-- Admin Page: {url}bolt" + Environment.NewLine;
+                                    returnText += "-- If you get details and the version is 3.6.* or 3.7: https://www.rapid7.com/db/modules/exploit/unix/webapp/bolt_authenticated_rce" + Environment.NewLine;
+                                }
+                                // Kibana!
+                                else if (file == "app/kibana")
+                                {
+                                    returnText += "-- Kibana!" + Environment.NewLine;
+                                    try
+                                    {
+                                        WebClient wc = new WebClient();
+                                        string toCheck = $"{url}{file}";
+                                        string pageData = wc.DownloadString($"{url}{file}");
+                                        if (pageData.IndexOf("&quot;version&quot;:&quot;") != -1)
+                                        {
+                                            string versionText = pageData.Remove(0, pageData.IndexOf("&quot;version&quot;:&quot;") + 26);
+                                            versionText = versionText.Substring(0, versionText.IndexOf("&quot;"));
+                                            returnText += "--- Version: " + versionText + Environment.NewLine;
+                                            returnText += "---- Kibana versions before 5.6.15 and 6.6.1 -> CVE-2019-7609 -> https://github.com/mpgn/CVE-2019-7609" + Environment.NewLine;
+                                        }
+                                        else
+                                        {
+                                            returnText += $"--- Version: {url}{file}#/management/" + Environment.NewLine;
+                                        }
+                                    }
+                                    catch
+                                    {
+                                        returnText += $"--- Version: {url}{file}#/management/" + Environment.NewLine;
+                                    }
+                                    returnText += $"--- Elasticsearch Console: {url}{file}#/dev_tools/console" + Environment.NewLine;
+                                    returnText += "---- General Info: GET /" + Environment.NewLine;
+                                    returnText += "---- Get Indices: GET /_cat/indices?v" + Environment.NewLine;
+                                    // These aren't meant to be params
+                                    returnText += "---- Get Index Info: GET /{index}/_search/?pretty&size={docs.count}" + Environment.NewLine;
+                                }
+                                else
+                                {
+                                    string usefulInfo = Web.FindInfo(pageText, true);
+                                    if (usefulInfo.Trim(Environment.NewLine.ToCharArray()) != "")
+                                    {
+                                        returnText += usefulInfo + Environment.NewLine;
+                                    }
+                                }
                             }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine("Bug Reelix - HTTP.FindCommonFiles Error: " + ex.Message + Environment.NewLine);
-                            }
+
                         }
-                        else if (response.StatusCode == HttpStatusCode.Forbidden)
+                        catch (Exception ex)
                         {
-                            // Forbidden is still useful
-                            returnText += $"- Common Path is Forbidden: {url}{file}" + Environment.NewLine;
+                            Console.WriteLine("Bug Reelix - HTTP.FindCommonFiles Error: " + ex.Message + Environment.NewLine);
                         }
-                        else if (response.StatusCode == HttpStatusCode.Redirect || response.StatusCode == HttpStatusCode.Moved)
+                    }
+                    else if (response.StatusCode == HttpStatusCode.Forbidden)
+                    {
+                        // Forbidden is still useful
+                        returnText += $"- Common Path is Forbidden: {url}{file}" + Environment.NewLine;
+                    }
+                    else if (response.StatusCode == HttpStatusCode.Redirect || response.StatusCode == HttpStatusCode.Moved)
+                    {
+                        returnText += $"- Common Path redirects: {url}{file}" + Environment.NewLine;
+                        if (response.Headers != null && response.Headers.Get("Location") != null)
                         {
-                            returnText += $"- Common Path redirects: {url}{file}" + Environment.NewLine;
-                            if (headers != null && headers.Get("Location") != null)
-                            {
-                                returnText += $"-- Redirection Location: {headers.Get("Location")}" + Environment.NewLine;
-                            }
+                            returnText += $"-- Redirection Location: {response.Headers.Get("Location")}" + Environment.NewLine;
                         }
-                        else
+                    }
+                    else if (response.StatusCode == HttpStatusCode.Unauthorized)
+                    {
+                        returnText += $"- Common path requires authentication: {url}{file}" + Environment.NewLine;
+                        if (response.PageText != "")
                         {
-                            Console.WriteLine($"Unknown response for {file} - {response.StatusCode}");
+                            returnText += $"-- Page Text: {response.PageText}" + Environment.NewLine;
                         }
+                    }
+                    else if (response.StatusCode != HttpStatusCode.NotFound)
+                    {
+                        Console.WriteLine($"Unknown response for {file} - {response.StatusCode}");
                     }
                 }
                 catch (WebException ex)
@@ -446,7 +447,14 @@ namespace Reecon
                         }
                         else
                         {
-                            Console.WriteLine("FindCommonFiles - Something weird happened: " + ex.Message);
+                            if (ex.Message != null)
+                            {
+                                Console.WriteLine("FindCommonFiles - Something weird happened: " + ex.Message);
+                            }
+                            else
+                            {
+                                Console.WriteLine("FindCommonFiles - Something REALLY weird happened - And it left no error message!");
+                            }
                             return returnText;
                         }
                     }
@@ -588,6 +596,10 @@ namespace Reecon
                         headerList.Remove("Location");
                     }
                 }
+                else if (StatusCode == HttpStatusCode.NotFound)
+                {
+                    responseText += "- Base page is a 404" + Environment.NewLine;
+                }
                 else if (StatusCode != HttpStatusCode.OK)
                 {
                     try
@@ -634,7 +646,10 @@ namespace Reecon
                     }
                     responseText += "-- wpscan --url http://" + DNS + "/ --enumerate u1-5" + Environment.NewLine;
                     responseText += "-- hydra -L users.txt -P passwords.txt site.com http-post-form \"/blog/wp-login.php:log=^USER^&pwd=^PASS^&wp-submit=Log In&testcookie=1:S=Location\" -I -t 50" + Environment.NewLine;
-
+                }
+                else if (PageText.Trim() == "<b>The source you requested could not be found.</b>")
+                {
+                    responseText += "-- Possible Icecast Server detected" + Environment.NewLine; // Thanks nmap!
                 }
             }
             if (!string.IsNullOrEmpty(DNS))

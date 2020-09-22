@@ -193,7 +193,7 @@ namespace Reecon
                     e.Accept = true;
                 }
             }
-            catch (Exception ex)
+            catch
             {
                 // We don't really care
             }

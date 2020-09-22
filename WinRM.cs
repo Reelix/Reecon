@@ -79,6 +79,10 @@ namespace Reecon
                         returnInfo += "- No wsman found - Probably not WinRM";
                     }
                 }
+                else if (((HttpWebResponse)wex.Response).StatusCode == HttpStatusCode.ServiceUnavailable)
+                {
+                    returnInfo += "- Service Unavailable (It's broken)";
+                }
                 else
                 {
                     returnInfo += "- Unknown response: " + ((HttpWebResponse)wex.Response).StatusCode + " - Bug Reelix";

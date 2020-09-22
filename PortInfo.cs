@@ -36,7 +36,7 @@ namespace Reecon
                 using (StreamReader reader = new StreamReader(stream))
                 {
                     string portData = reader.ReadToEnd();
-                    List<string> portItems = portData.Split(new[] { Environment.NewLine }, StringSplitOptions.None).ToList();
+                    List<string> portItems = portData.Replace("\r\n", "\n").Split('\n').ToList(); // OS Friendly File Split
                     foreach (string port in portItems)
                     {
                         int splitItems = port.Split('|').Length;
