@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -7,11 +8,34 @@ using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Reecon
 {
     class General
     {
+        public static List<string> MultiBannerGrab(string ip, int port, int bufferSize = 512, int timeout = 5000)
+        {
+            List<string> returnList = new List<string>();
+            ConcurrentBag<string> resultCollection = new ConcurrentBag<string>();
+            List<string> toTest = new List<string>();
+            toTest.Add("");
+            toTest.Add("Woof\r\n\r\n");
+            toTest.Add("HEAD / HTTP/1.1\r\nHost: " + ip + "\r\n\r\n");
+            Parallel.ForEach(toTest, theBanner => resultCollection.Add(BannerGrabThread(ip, port, theBanner, bufferSize = 512, timeout)));
+            returnList.AddRange(resultCollection.ToList());
+            if (returnList.Any(x => x == "Reecon - Connection reset")) // Something forced a reset
+            {
+                // Console.WriteLine("Testing a reset web grab");
+                if (Web.BasicHTTPSTest(ip, port))
+                {
+                    returnList.Add("Reecon - HTTPS");
+                }
+            }
+            return returnList.ToList();
+        }
+
         public static string BannerGrab(string ip, int port, string initialText = "", int bufferSize = 512, int timeout = 10000)
         {
             string bannerText = "";
@@ -100,6 +124,84 @@ namespace Reecon
             }
             return bannerText;
         }
+
+        private static string BannerGrabThread(string ip, int port, string initialText = "", int bufferSize = 512, int timeout = 10000)
+        {
+            string bannerText = "";
+            Byte[] buffer = new Byte[bufferSize];
+            using (Socket bannerGrabSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+            {
+                bannerGrabSocket.ReceiveTimeout = timeout;
+                bannerGrabSocket.SendTimeout = timeout;
+                try
+                {
+                    var result = bannerGrabSocket.BeginConnect(ip, port, null, null); // Error if an invalid IP
+                    bool success = result.AsyncWaitHandle.WaitOne(timeout, true);
+                    if (success)
+                    {
+                        if (!bannerGrabSocket.Connected)
+                        {
+                            bannerGrabSocket.Close();
+                            return "Reecon - Closed";
+                        }
+                        if (initialText.Length != 0)
+                        {
+                            Byte[] cmdBytes = Encoding.ASCII.GetBytes(initialText.ToCharArray());
+                            bannerGrabSocket.Send(cmdBytes, cmdBytes.Length, 0);
+                        }
+                        int bytes = bannerGrabSocket.Receive(buffer, buffer.Length, 0);
+                        if (bytes == 1)
+                        {
+                            // Streaming result
+                            while (bytes != 0)
+                            {
+                                bannerText += Encoding.ASCII.GetString(buffer, 0, bytes);
+                                bytes = bannerGrabSocket.Receive(buffer, buffer.Length, 0);
+                            }
+                        }
+                        else
+                        {
+                            bannerText += Encoding.ASCII.GetString(buffer, 0, bytes);
+                        }
+                        bannerText = bannerText.Trim();
+                    }
+                    else
+                    {
+                        bannerGrabSocket.Close();
+                        return "Reecon - Closed";
+                    }
+                }
+                catch (SocketException ex)
+                {
+                    if (ex.SocketErrorCode == SocketError.TimedOut)
+                    {
+                        // Could just mean that we're using the wrong info to grab the banner
+                        // Do nothing - A timeout response is handled later
+                    }
+                    else if (ex.SocketErrorCode == SocketError.ConnectionRefused)
+                    {
+                        bannerText = "Reecon - Connection refused";
+                    }
+                    // Connection reset by peer
+                    else if (ex.SocketErrorCode == SocketError.ConnectionReset)
+                    {
+                        bannerText = "Reecon - Connection reset";
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Error in BannerGrab with SocketErrorCode code: {ex.SocketErrorCode}");
+                        return "";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error in General.BannerGrab ({ip}:{port} - {ex.Message})");
+                    return "";
+                }
+            }
+            return bannerText;
+        }
+
 
         // This is for custom requests where you know the actual bytes to send
         public static byte[] BannerGrabBytes(string ip, int port, List<byte[]> bytesToSend, int bufferSize = 1024)

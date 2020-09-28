@@ -202,7 +202,7 @@ namespace Reecon
 
         public static string FindCommonFiles(string url)
         {
-            // Console.WriteLine("In FindCommonFiles with: " + url);{url}{file}" + Environment.NewLine;
+            // Console.WriteLine("In FindCommonFiles with " + url);
             string returnText = "";
 
             if (!url.EndsWith("/"))
@@ -215,6 +215,7 @@ namespace Reecon
             int notFoundLength = -1;
             try
             {
+                // Console.WriteLine("Testing Wildcard");
                 WebClient wc = new WebClient();
                 string wildcardURL = url + "be0df04b-f5ff-4b4f-af99-00968cf08fed";
                 string test = wc.DownloadString(wildcardURL);
@@ -227,6 +228,7 @@ namespace Reecon
             // PHP wildcards can be differnt
             try
             {
+                // Console.WriteLine("Testing php wildcard");
                 WebClient wc = new WebClient();
                 string test = wc.DownloadString(url + "be0df04b-f5ff-4b4f-af99-00968cf08fed.php");
                 notFoundLength = test.Length;
@@ -286,6 +288,7 @@ namespace Reecon
             }
             foreach (string file in commonFiles)
             {
+                // Console.WriteLine("In Enum: " + file);
                 string path = url + file;
                 try
                 {
@@ -377,10 +380,17 @@ namespace Reecon
                                 }
                                 else
                                 {
-                                    string usefulInfo = Web.FindInfo(pageText, true);
-                                    if (usefulInfo.Trim(Environment.NewLine.ToCharArray()) != "")
+                                    if (response.PageTitle.StartsWith("Index of /"))
                                     {
-                                        returnText += usefulInfo + Environment.NewLine;
+                                        returnText += "-- " + "Open directory listing".Pastel(Color.Orange);
+                                    }
+                                    else
+                                    {
+                                        string usefulInfo = Web.FindInfo(pageText, true);
+                                        if (usefulInfo.Trim(Environment.NewLine.ToCharArray()) != "")
+                                        {
+                                            returnText += usefulInfo + Environment.NewLine;
+                                        }
                                     }
                                 }
                             }
@@ -474,12 +484,21 @@ namespace Reecon
             string dns = "";
             HttpStatusCode statusCode = new HttpStatusCode();
             WebHeaderCollection headers = null;
+            X509Certificate2 cert = null;
+            // X509Certificate2 customCert = new CustomSSLCert();
 
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
             try
             {
                 // Ignore invalid SSL Cert
-                request.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
+                request.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) =>
+                {
+                    if (certificate != null)
+                    {
+                        cert = new X509Certificate2(certificate);
+                    }
+                    return true;
+                };
                 request.AllowAutoRedirect = false;
 
                 // Can crash here due to a WebException on 401 Unauthorized / 403 Forbidden errors, so have to do some things twice
@@ -559,7 +578,6 @@ namespace Reecon
                 pageTitle = pageText.Remove(0, pageText.IndexOf("<title>") + "<title>".Length);
                 pageTitle = pageTitle.Substring(0, pageTitle.IndexOf("</title>"));
             }
-            X509Certificate2 cert = null;
             if (request.ServicePoint.Certificate != null)
             {
                 cert = new X509Certificate2(request.ServicePoint.Certificate);
@@ -724,14 +742,15 @@ namespace Reecon
             }
             if (SSLCert != null)
             {
-                string certIssuer = SSLCert.Issuer;
-                string certSubject = SSLCert.Subject;
+                X509Certificate2 theCert = SSLCert;
+                string certIssuer = theCert.Issuer;
+                string certSubject = theCert.Subject;
                 // string certAltName = SSLCert.SubjectName.Name;
                 responseText += "- SSL Cert Issuer: " + certIssuer + Environment.NewLine;
                 responseText += "- SSL Cert Subject: " + certSubject + Environment.NewLine;
-                if (SSLCert.Extensions != null)
+                if (theCert.Extensions != null)
                 {
-                    X509ExtensionCollection extensionCollection = SSLCert.Extensions;
+                    X509ExtensionCollection extensionCollection = theCert.Extensions;
                     foreach (X509Extension extension in extensionCollection)
                     {
                         string extensionType = extension.Oid.FriendlyName;
@@ -781,6 +800,26 @@ namespace Reecon
                 return "- /windows/win.ini File Found VIA Base LFI! --> GET /../../../../../../windows/win.ini" + Environment.NewLine + result;
             }
             return "";
+        }
+
+        public static bool BasicHTTPSTest(string target, int port)
+        {
+            try
+            {
+                // HttpWebRequest has the ability to ignore invalid SSL Certs - WebRequest doesn't
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create($"https://{target}:{port}/");
+                // HEAD request - Faster
+                request.Method = "HEAD";
+                // Ignore invalid SSL Certs
+                request.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
+                WebResponse r = request.GetResponse();
+                return true;
+            }
+            catch
+            {
+                // Nope
+                return false;
+            }
         }
     }
 }

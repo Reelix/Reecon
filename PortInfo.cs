@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Reflection;
 
 namespace Reecon
@@ -159,144 +160,179 @@ namespace Reecon
         {
             string postScanActions = "";
             // A port I'm not familiar with - Try parse the banner
-            string theBanner = General.BannerGrab(target, port);
-            byte[] theBannerBytes = General.GetBytes(theBanner);
+            List<string> bannerList = General.MultiBannerGrab(target, port);
+            bannerList.RemoveAll(x => x == "");
             string unknownPortResult = ("Port " + port).Pastel(Color.Green);
 
-            // 220 ib01.supersechosting.htb ESMTP Exim 4.89 Sat, 19 Oct 2019 16:02:49 +0200
-            if (theBanner.StartsWith("220") && theBanner.Contains("ESMTP"))
+            if (!bannerList.Any())
             {
-                unknownPortResult += " - SMTP".Pastel(Color.Green);
-                string smtpInfo = SMTP.GetInfo(target, port); // Can't just parse the banner directly since there could be other useful stuff
-                Console.WriteLine(unknownPortResult + Environment.NewLine + smtpInfo + Environment.NewLine);
+                unknownPortResult += " - Empty";
+                Console.WriteLine(unknownPortResult + Environment.NewLine + "- No Response" + Environment.NewLine);
+                return "";
+            }
 
-            }
-            // SSH
-            else if (theBanner.Contains("SSH-2.0-OpenSSH") || theBanner == "SSH-2.0-Go")
+            foreach (string theBanner in bannerList)
             {
-                unknownPortResult += " - SSH".Pastel(Color.Green) + Environment.NewLine;
-                if (theBanner.Contains("\r\nProtocol mismatch."))
+                // Console.WriteLine("Checking: " + theBanner);
+                // We now have a proper banner
+                if (theBanner.StartsWith("220") && theBanner.Contains("ESMTP"))
                 {
-                    unknownPortResult += Environment.NewLine + "- TCP Protocol Mismatch";
-                }
-                unknownPortResult += SSH.GetInfo(target, port);
-                Console.WriteLine(unknownPortResult + Environment.NewLine);
-            }
-            // WinRM - HTTP with special stuff
-            else if (theBanner.Contains("Server: Microsoft-HTTPAPI/2.0"))
-            {
-                unknownPortResult += " - WinRM".Pastel(Color.Green);
-                string portData = WinRM.GetInfo(target, port);
-                Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
-            }
-            // Squid - HTTP with different special stuff
-            else if (theBanner.Contains("Server: squid"))
-            {
-                unknownPortResult += " - Squid".Pastel(Color.Green);
-                string portData = Squid.GetInfo(target, port);
-                Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
-            }
-            // Probably a general HTTP or HTTPS web server
-            else if (
-                theBanner.Contains("Server: Apache") // Apache Web Server
-                || theBanner.Contains("Server: cloudflare") // Cloudflare Server
-                || theBanner.StartsWith("HTTP/1.1")
-                || theBanner.StartsWith("HTTP/1.0")
-                || theBanner.Contains("Error code explanation: 400 = Bad request syntax or unsupported method.") // BaseHTTP/0.3 Python/2.7.12
-                || theBanner.Contains("<p>Error code: 400</p>") // TryHackMe - Task 12 Day 7
-                || theBanner.Contains("<h1>Bad Request (400)</h1>")
-                || theBanner.Trim().StartsWith("<!DOCTYPE html>") // General HTML
-                )
-            {
-                string httpData = HTTP.GetInfo(target, port);
-                if (httpData != "")
-                {
-                    Console.WriteLine(unknownPortResult + " - HTTP".Pastel(Color.Green) + Environment.NewLine + httpData + Environment.NewLine);
-                    postScanActions += $"- gobuster dir -u=http://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-" + port + "-medium.txt -x.php,.txt" + Environment.NewLine;
-                    postScanActions += $"- gobuster dir -u=http://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-" + port + "-common.txt -x.php,.txt" + Environment.NewLine;
-                }
-                string httpsData = HTTPS.GetInfo(target, port);
-                if (httpsData != "")
-                {
-                    Console.WriteLine(unknownPortResult + " - HTTPS".Pastel(Color.Green) + Environment.NewLine + httpsData + Environment.NewLine);
-                    postScanActions += $"- gobuster dir -u=https://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-{port}-medium.txt -x.php,.txt" + Environment.NewLine;
-                    postScanActions += $"- gobuster dir -u=https://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-{port}-common.txt -x.php,.txt" + Environment.NewLine;
-                }
-            }
-            else if (theBanner == "-ERR unknown command 'Woof'") // Probably Redis
-            {
-                unknownPortResult += "- Redis".Pastel(Color.Green);
-                string portData = Redis.GetInfo(target, port);
-                Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
-            }
-            else if (theBanner == "+OK Dovecot ready.")
-            {
-                unknownPortResult += "- pop3 (Dovecot)".Pastel(Color.Green) + Environment.NewLine;
-                unknownPortResult += POP3.GetInfo(target);
-                Console.WriteLine(unknownPortResult);
-            }
-            else if (theBanner == "ncacn_http/1.0")
-            {
-                // Woof
-                unknownPortResult += "- Microsoft Windows RPC over HTTP".Pastel(Color.Green) + Environment.NewLine;
-                unknownPortResult += "- Reecon currently lacks Microsoft Windows RPC over HTTP support" + Environment.NewLine;
-                Console.WriteLine(unknownPortResult);
-            }
-            else if (theBanner.StartsWith("AMQP") && theBannerBytes.Length == 8)
-            {
-                // First 0-3: AMQP
-                // 4-7: Version
-                if (theBannerBytes[4] == 0 && theBannerBytes[5] == 0 && theBannerBytes[6] == 9 && theBannerBytes[7] == 1)
-                {
-                    Console.WriteLine("Port " + port + " - AMQP".Pastel(Color.Green) + Environment.NewLine + "- Version 0-9-1" + Environment.NewLine + "- Bug Reelix to finish AMQP decoding..." + Environment.NewLine);
-                    // theBanner = General.BannerGrab(ip, port, theBanner); // Need to send the bytes of AMQP0091
+                    unknownPortResult += " - SMTP".Pastel(Color.Green);
+                    string smtpInfo = SMTP.GetInfo(target, port); // Can't just parse the banner directly since there could be other useful stuff
+                    Console.WriteLine(unknownPortResult + Environment.NewLine + smtpInfo + Environment.NewLine);
 
-                    // Oh gawd....
-                    // \u0001\0\0\0\0\u0001?\0\n\0\n\0\t\0\0\u0001?\fcapabilitiesF\0\0\0?\u0012publisher_confirmst\u0001\u001aexchange_exchange_bindingst\u0001\nbasic.nackt\u0001\u0016consumer_cancel_notifyt\u0001\u0012connection.blockedt\u0001\u0013consumer_prioritiest\u0001\u001cauthentication_failure_closet\u0001\u0010per_consumer_qost\u0001\u000fdirect_reply_tot\u0001\fcluster_nameS\0\0\0\u0010rabbit@dyplesher\tcopyrightS\0\0\0.Copyright (C) 2007-2018 Pivotal Software, Inc.\vinformationS\0\0\05Licensed under the MPL.  See http://www.rabbitmq.com/\bplatformS\0\0\0\u0011Erlang/OTP 22.0.7\aproductS\0\0\0\bRabbitMQ\aversionS\0\0\0\u00053.7.8\0\0\0\u000ePLAIN AMQPLAIN\0\0\0\u0005en_US?
-                    // https://svn.nmap.org/nmap/nselib/amqp.lua
-                    postScanActions += $"- AMQP is up and nmap knows more: nmap --script amqp-info -p{port} {target}" + Environment.NewLine;
                 }
-                else
+                // SSH
+                else if (theBanner.Contains("SSH-2.0-OpenSSH") || theBanner == "SSH-2.0-Go")
                 {
-                    Console.WriteLine($"Port {port} - AMQP".Pastel(Color.Green) + Environment.NewLine + "- Unknown AMQP Version: " + (int)theBannerBytes[4] + (int)theBannerBytes[5] + (int)theBannerBytes[6] + (int)theBannerBytes[7] + Environment.NewLine);
+                    unknownPortResult += " - SSH".Pastel(Color.Green) + Environment.NewLine;
+                    if (theBanner.Contains("\r\nProtocol mismatch."))
+                    {
+                        unknownPortResult += Environment.NewLine + "- TCP Protocol Mismatch";
+                    }
+                    unknownPortResult += SSH.GetInfo(target, port);
+                    Console.WriteLine(unknownPortResult + Environment.NewLine);
                 }
-            }
-            else if (theBanner == "</stream:stream>")
-            {
-                unknownPortResult += "- xmpp".Pastel(Color.Green) + Environment.NewLine;
-                unknownPortResult += "- Client Name: Wildfire XMPP Client" + Environment.NewLine;
-                Console.WriteLine(unknownPortResult);
-            }
-            else if (theBanner.StartsWith("@RSYNCD"))
-            {
-                unknownPortResult += "- Rsync".Pastel(Color.Green) + Environment.NewLine;
-                unknownPortResult += Rsync.GetInfo(target, port);
-                Console.WriteLine(unknownPortResult);
-            }
-            else if (theBanner.Trim().StartsWith("( success ( 2 2 ( ) ( edit-pipeline"))
-            {
-                unknownPortResult += "- SVN (Subversion)".Pastel(Color.Green) + Environment.NewLine;
-                unknownPortResult += "- Bug Reelix to fix this. Ref: Port 3690";
-                Console.WriteLine(unknownPortResult);
+                // WinRM - HTTP with special stuff
+                else if (theBanner.Contains("Server: Microsoft-HTTPAPI/2.0"))
+                {
+                    unknownPortResult += " - WinRM".Pastel(Color.Green);
+                    string portData = WinRM.GetInfo(target, port);
+                    Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
+                }
+                // Squid - HTTP with different special stuff
+                else if (theBanner.Contains("Server: squid"))
+                {
+                    unknownPortResult += " - Squid".Pastel(Color.Green);
+                    string portData = Squid.GetInfo(target, port);
+                    Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
+                }
+                else if (theBanner == "Reecon - HTTPS")
+                {
+                    // Console.WriteLine("Found HTTPS - Enumerating");
+                    string httpsData = HTTPS.GetInfo(target, port);
+                    if (httpsData != "")
+                    {
+                        Console.WriteLine(unknownPortResult + " - HTTPS".Pastel(Color.Green) + Environment.NewLine + httpsData + Environment.NewLine);
+                        postScanActions += $"- gobuster dir -u=https://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-{port}-medium.txt -x.php,.txt" + Environment.NewLine;
+                        postScanActions += $"- gobuster dir -u=https://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-{port}-common.txt -x.php,.txt" + Environment.NewLine;
+                    }
+                }
+                // Probably a general HTTP or HTTPS web server - Try both
+                else if (
+                    theBanner.Contains("Server: Apache") // Apache Web Server
+                    || theBanner.Contains("Server: cloudflare") // Cloudflare Server
+                    || theBanner.StartsWith("HTTP/1.1")
+                    || theBanner.StartsWith("HTTP/1.0")
+                    || theBanner.Contains("Error code explanation: 400 = Bad request syntax or unsupported method.") // BaseHTTP/0.3 Python/2.7.12
+                    || theBanner.Contains("<p>Error code: 400</p>") // TryHackMe - Task 12 Day 7
+                    || theBanner.Contains("<h1>Bad Request (400)</h1>")
+                    || theBanner.Trim().StartsWith("<!DOCTYPE html>") // General HTML
+                    )
+                {
+                    string httpData = HTTP.GetInfo(target, port);
+                    if (httpData != "")
+                    {
+                        Console.WriteLine(unknownPortResult + " - HTTP".Pastel(Color.Green) + Environment.NewLine + httpData + Environment.NewLine);
+                        postScanActions += $"- gobuster dir -u=http://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-" + port + "-medium.txt -x.php,.txt" + Environment.NewLine;
+                        postScanActions += $"- gobuster dir -u=http://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-" + port + "-common.txt -x.php,.txt" + Environment.NewLine;
+                    }
+                    string httpsData = HTTPS.GetInfo(target, port);
+                    if (httpsData != "")
+                    {
+                        Console.WriteLine(unknownPortResult + " - HTTPS".Pastel(Color.Green) + Environment.NewLine + httpsData + Environment.NewLine);
+                        postScanActions += $"- gobuster dir -u=https://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-{port}-medium.txt -x.php,.txt" + Environment.NewLine;
+                        postScanActions += $"- gobuster dir -u=https://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-{port}-common.txt -x.php,.txt" + Environment.NewLine;
+                    }
+                }
+                else if (theBanner == "-ERR unknown command 'Woof'") // Probably Redis
+                {
+                    unknownPortResult += "- Redis".Pastel(Color.Green);
+                    string portData = Redis.GetInfo(target, port);
+                    Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
+                }
+                else if (theBanner == "+OK Dovecot ready.")
+                {
+                    unknownPortResult += "- pop3 (Dovecot)".Pastel(Color.Green) + Environment.NewLine;
+                    unknownPortResult += POP3.GetInfo(target);
+                    Console.WriteLine(unknownPortResult);
+                }
+                else if (theBanner == "ncacn_http/1.0")
+                {
+                    // Woof
+                    unknownPortResult += "- Microsoft Windows RPC over HTTP".Pastel(Color.Green) + Environment.NewLine;
+                    unknownPortResult += "- Reecon currently lacks Microsoft Windows RPC over HTTP support" + Environment.NewLine;
+                    Console.WriteLine(unknownPortResult);
+                }
+                else if (theBanner.StartsWith("AMQP"))
+                {
+                    byte[] theBannerBytes = General.GetBytes(theBanner);
+                    if (bannerList.Count != 8)
+                    {
+                        Console.WriteLine("AMQP found with an invalid Banner Byte Count! Bug Reelix");
+                        return "";
+                    }
+                    // First 0-3: AMQP
+                    // 4-7: Version
+                    if (theBannerBytes[4] == 0 && theBannerBytes[5] == 0 && theBannerBytes[6] == 9 && theBannerBytes[7] == 1)
+                    {
+                        Console.WriteLine("Port " + port + " - AMQP".Pastel(Color.Green) + Environment.NewLine + "- Version 0-9-1" + Environment.NewLine + "- Bug Reelix to finish AMQP decoding..." + Environment.NewLine);
+                        // theBanner = General.BannerGrab(ip, port, theBanner); // Need to send the bytes of AMQP0091
+
+                        // Oh gawd....
+                        // \u0001\0\0\0\0\u0001?\0\n\0\n\0\t\0\0\u0001?\fcapabilitiesF\0\0\0?\u0012publisher_confirmst\u0001\u001aexchange_exchange_bindingst\u0001\nbasic.nackt\u0001\u0016consumer_cancel_notifyt\u0001\u0012connection.blockedt\u0001\u0013consumer_prioritiest\u0001\u001cauthentication_failure_closet\u0001\u0010per_consumer_qost\u0001\u000fdirect_reply_tot\u0001\fcluster_nameS\0\0\0\u0010rabbit@dyplesher\tcopyrightS\0\0\0.Copyright (C) 2007-2018 Pivotal Software, Inc.\vinformationS\0\0\05Licensed under the MPL.  See http://www.rabbitmq.com/\bplatformS\0\0\0\u0011Erlang/OTP 22.0.7\aproductS\0\0\0\bRabbitMQ\aversionS\0\0\0\u00053.7.8\0\0\0\u000ePLAIN AMQPLAIN\0\0\0\u0005en_US?
+                        // https://svn.nmap.org/nmap/nselib/amqp.lua
+                        postScanActions += $"- AMQP is up and nmap knows more: nmap --script amqp-info -p{port} {target}" + Environment.NewLine;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Port {port} - AMQP".Pastel(Color.Green) + Environment.NewLine + "- Unknown AMQP Version: " + (int)theBannerBytes[4] + (int)theBannerBytes[5] + (int)theBannerBytes[6] + (int)theBannerBytes[7] + Environment.NewLine);
+                    }
+                }
+                else if (theBanner == "</stream:stream>")
+                {
+                    unknownPortResult += "- xmpp".Pastel(Color.Green) + Environment.NewLine;
+                    unknownPortResult += "- Client Name: Wildfire XMPP Client" + Environment.NewLine;
+                    Console.WriteLine(unknownPortResult);
+                }
+                else if (theBanner.StartsWith("@RSYNCD"))
+                {
+                    unknownPortResult += "- Rsync".Pastel(Color.Green) + Environment.NewLine;
+                    unknownPortResult += Rsync.GetInfo(target, port);
+                    Console.WriteLine(unknownPortResult);
+                }
+                else if (theBanner.Trim().StartsWith("( success ( 2 2 ( ) ( edit-pipeline"))
+                {
+                    unknownPortResult += "- SVN (Subversion)".Pastel(Color.Green) + Environment.NewLine;
+                    unknownPortResult += "- Bug Reelix to fix this. Ref: Port 3690";
+                    Console.WriteLine(unknownPortResult);
+                }
             }
             // 47538/tcp open  socks-proxy Socks4A
             // -> [?? _ ??
-            else if (theBanner == "Reecon - Connection reset by peer")
+
+            if (unknownPortResult == "")
             {
-                Console.WriteLine(unknownPortResult + Environment.NewLine + "- Connection reset by peer (No Useful response)" + Environment.NewLine);
+                unknownPortResult += " - Unknown (Dumping possible outcomes)".Pastel(Color.Red) + Environment.NewLine;
+                // Truly unknown - Find the best result
+                foreach (string theBanner in bannerList)
+                {
+                    if (theBanner == "Reecon - Connection reset by peer")
+                    {
+                        unknownPortResult += "- Connection reset by peer (No Useful response)" + Environment.NewLine;
+                    }
+                    else if (theBanner == "Reecon - Closed")
+                    {
+                        unknownPortResult += "- Port is closed" + Environment.NewLine;
+                    }
+                    else
+                    {
+                        unknownPortResult += "- Unknown Response: -->" + theBanner + "<--" + Environment.NewLine;
+                    }
+                }
+                Console.WriteLine(unknownPortResult);
             }
-            else if (theBanner == "Reecon - Closed")
-            {
-                Console.WriteLine(unknownPortResult + Environment.NewLine + "- Port is closed" + Environment.NewLine);
-            }
-            else if (theBanner.Length == 0)
-            {
-                Console.WriteLine(unknownPortResult + Environment.NewLine + "- No Banner Response" + Environment.NewLine);
-            }
-            else
-            {
-                Console.WriteLine(unknownPortResult + Environment.NewLine + "- Unknown Banner Response: -->" + theBanner + "<--" + Environment.NewLine);
-            }
+            
             return postScanActions;
         }
 

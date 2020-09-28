@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Reecon
 {
@@ -11,6 +7,7 @@ namespace Reecon
         public static string GetInfo(string target, int port)
         {
             string url = $"https://{target}:{port}/";
+            // Console.WriteLine("GetInfo - GetHTTPInfo");
             var httpInfo = Web.GetHTTPInfo(url);
             if (httpInfo.AdditionalInfo == "Timeout")
             {
@@ -21,11 +18,13 @@ namespace Reecon
                 return "";
             }
             string portData = Web.FormatHTTPInfo(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
+            // Console.WriteLine("GetInfo - FindCommonFiles");
             string commonFiles = Web.FindCommonFiles(url);
             if (commonFiles != "")
             {
                 portData += Environment.NewLine + commonFiles;
             }
+            // Console.WriteLine("GetInfo - TestBaseLF");
             string baseLFI = Web.TestBaseLFI(target, port);
             if (baseLFI != "")
             {
