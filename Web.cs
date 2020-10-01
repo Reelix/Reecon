@@ -549,6 +549,10 @@ namespace Reecon
                         {
                             Console.WriteLine("Legacy error - Bug Reelix!");
                         }
+                        else if (ex.Message == "The SSL connection could not be established, see inner exception.")
+                        {
+                            return (statusCode, null, null, null, null, null, null);
+                        }
                         else
                         {
                             Console.WriteLine("GetHTTPInfo.Error: " + ex.Message);
@@ -697,7 +701,12 @@ namespace Reecon
                 if (headerList.Contains("X-Powered-By"))
                 {
                     headerList.Remove("X-Powered-By");
-                    responseText += "- X-Powered-By: " + Headers.Get("X-Powered-By") + Environment.NewLine;
+                    string poweredBy = Headers.Get("X-Powered-By");
+                    responseText += "- X-Powered-By: " + poweredBy + Environment.NewLine;
+                    if (poweredBy.Contains("JBoss"))
+                    {
+                        responseText += "-- " + "JBoss Detected - Run jexboss - https://github.com/joaomatosf/jexboss <-----".Pastel(Color.Orange) + Environment.NewLine;
+                    }
                 }
                 // Requires a login
                 if (headerList.Contains("WWW-Authenticate"))
@@ -732,7 +741,16 @@ namespace Reecon
                 if (headerList.Contains("Content-Type"))
                 {
                     string contentType = Headers.Get("Content-Type");
-                    if (contentType != "text/html")
+                    if (contentType.StartsWith("text/html"))
+                    {
+                        // Skip it
+                    }
+                    else if (contentType.StartsWith("image"))
+                    {
+                        // The entire thing is an image - It's special!
+                        responseText += "- Content Type: " + Headers.Get("Content-Type").Pastel(Color.Orange) + " <--- It's an image!" + Environment.NewLine;
+                    }
+                    else
                     {
                         // A unique content type - Might be interesting
                         responseText += "- Content-Type: " + Headers.Get("Content-Type") + Environment.NewLine;

@@ -15,6 +15,7 @@
 445|SMB|Microsoft SMB
 464|N/A|Kerberos (kpasswd)
 593|N/A|Microsoft Windows RPC over HTTP
+631|HTTP|IPP (Internet Printing Protocol)
 636|N/A|LDAPSSL (LDAP over SSL)
 873|Rsync|Rsync (Remote Sync)
 993|N/A|IMAPS (IMAP over SSL)
@@ -36,7 +37,7 @@
 6881|N/A|BitTorrent
 8000|HTTP|Alternate HTTP Port
 8080|HTTP|Alternate HTTP Port
-9101-9107|N/A|Printer (Unkown)
+9101-9107|N/A|Printer (Unknown)
 9200|Elasticsearch|Elasticsearch HTTP Interface
 9300|N/A|Elasticsearch Communication Port
 9389|N/A|ADWS (Active Directory Web Services)

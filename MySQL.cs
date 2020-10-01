@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using MySqlConnector;
 
 namespace Reecon
 {
     class MySQL
     {
+        static MySqlConnection connection;
         // Port: 3306
         // https://github.com/danielmiessler/SecLists/blob/master/Passwords/Default-Credentials/mysql-betterdefaultpasslist.txt
         // https://svn.nmap.org/nmap/scripts/mysql-info.nse
@@ -14,7 +16,7 @@ namespace Reecon
         {
             string returnData = "";
             
-            MySqlConnection connection = new MySqlConnection($"Server={target};Port={port};Database=test;Uid=reelixuser123;Pwd=;");
+            MySqlConnection connection = new MySqlConnection($"Server={target};Port={port};Database=;Uid=reelixuser123;Pwd=;");
 
             try
             {
@@ -28,8 +30,34 @@ namespace Reecon
                     returnData += "- Version: Unknown";
                 }
             }
+            catch (MySqlException ex)
+            {
+                // Access Denied (Incorrect password)
+                if (ex.Number == 1045)
+                {
+                    string defaultCredsResult = TestDefaults(target, port);
+                    return defaultCredsResult;
+                }
+                else if (ex.Number == 1130)
+                {
+                    // Not allowed
+                    if (ex.Message.Contains("MariaDB"))
+                    {
+                        return "- MariaDB Server";
+                    }
+                    else
+                    {
+                        return "- Unknown MySQL Server - Bug Reelix";
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Unknown MySQL Error: " + ex.Number + " -- " + ex.Message);
+                }
+            }
             catch (Exception ex)
             {
+                Console.WriteLine("Error type: " + ex.Message);
                 if (ex.Message.Contains("ERR 1044"))
                 {
                     if (connection.ServerVersion != null)
@@ -96,10 +124,9 @@ namespace Reecon
                 if (success == "true")
                 {
                     // Wow o_O
-                    Console.WriteLine("Creds Found: " + username + ":" + password);
-                    Console.ReadLine();
-                    Console.ReadLine();
-                    return "- Default Credentails Found: " + username + ":" + password;
+                    string toReturn = "- Default Credentails Found: " + username + ":" + password + Environment.NewLine;
+                    toReturn += $"-- mysql -h {target} -u {username} -p {password}";
+                    return toReturn;
                 }
                 else if (success == "break")
                 {
@@ -112,12 +139,32 @@ namespace Reecon
 
         private static string TestPassword(string target, int port, string username, string password)
         {
-            string connectionString = $"Server={target};Port={port};Database=test;Uid=" + username + ";Pwd=" + password + ";";
-            MySqlConnection connection = new MySqlConnection(connectionString);
+            string connectionString = $"Server={target};Port={port};Database=;Uid=" + username + ";Pwd=" + password + ";";
+            connection = new MySqlConnection(connectionString);
             try
             {
                 connection.Open();
                 return "true";
+            }
+            catch (MySqlException ex)
+            {
+                if (ex.Number == 1045)
+                {
+                    return "";
+                }
+                // Correct creds - Inval
+                else if (ex.Number == 1049)
+                {
+                    Console.WriteLine("Woof: " + ex.Message);
+                    return "true";
+                }
+                else if (ex.Number == 1049)
+                {
+                    Console.WriteLine("Error whilst testing MySQL Passwords");
+                    Console.WriteLine("Unknown MySQL Error: " + ex.Number + " -- " + ex.Message);
+                    return "break";
+                }
+                return "break";
             }
             catch (Exception ex)
             {

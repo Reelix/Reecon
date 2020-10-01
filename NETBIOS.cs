@@ -164,7 +164,34 @@ namespace Reecon
                     if (enumdomusersList.Count == 0)
                     {
                         rpcInfo = "- Possible anonymous access but no enumdomusers output" + Environment.NewLine;
-                        rpcInfo += $"-> rpcclient -U \"\"%\"\" {ip}";
+                        rpcInfo += $"-> rpcclient -U \"\"%\"\" {ip}" + Environment.NewLine;
+                        List<string> srvinfoList = General.GetProcessOutput("rpcclient", $"-U \"\"%\"\" {ip} -c \"srvinfo\"");
+                        if (srvinfoList.Count != 0)
+                        {
+                            rpcInfo += "- srvinfo: " + srvinfoList[0] + Environment.NewLine;
+                        }
+                        List<string> sidList = General.GetProcessOutput("rpcclient", $"-U \"\"%\"\" {ip} -c \"lsaenumsid\"");
+                        if (sidList.Count != 0)
+                        {
+                            rpcInfo += "- Found SIDs" + Environment.NewLine;
+                            // Remove the "found X SIDs" text
+                            sidList.RemoveAll(x => x.StartsWith("found "));
+
+                            // Remove blanks
+                            sidList.RemoveAll(x => string.IsNullOrEmpty(x));
+
+                            string sidListString = string.Join(' ', sidList);
+
+                            // Enumerate the rest
+                            List<string> sidResolution = General.GetProcessOutput("rpcclient", $"-U \"\"%\"\" {ip} -c \"lookupsids {sidListString}\"");
+                            if (sidResolution.Count != 0)
+                            {
+                                foreach (string result in sidResolution)
+                                {
+                                    rpcInfo += "-- " + result + Environment.NewLine;
+                                }
+                            }
+                        }
                     }
                     else if (enumdomusersList.Any(x => x.Contains("NT_STATUS_ACCESS_DENIED")))
                     {

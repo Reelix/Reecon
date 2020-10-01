@@ -161,12 +161,18 @@ namespace Reecon
             string postScanActions = "";
             // A port I'm not familiar with - Try parse the banner
             List<string> bannerList = General.MultiBannerGrab(target, port);
+
+            // Remove empty entries
             bannerList.RemoveAll(x => x == "");
-            string unknownPortResult = ("Port " + port).Pastel(Color.Green);
+
+            // And dupes
+            bannerList = bannerList.Distinct().ToList();
+
+            string unknownPortResult = ""; // ("Port " + port).Pastel(Color.Green);
 
             if (!bannerList.Any())
             {
-                unknownPortResult += " - Empty";
+                unknownPortResult += $"Port {port} - Empty".Pastel(Color.Green);
                 Console.WriteLine(unknownPortResult + Environment.NewLine + "- No Response" + Environment.NewLine);
                 return "";
             }
@@ -177,7 +183,7 @@ namespace Reecon
                 // We now have a proper banner
                 if (theBanner.StartsWith("220") && theBanner.Contains("ESMTP"))
                 {
-                    unknownPortResult += " - SMTP".Pastel(Color.Green);
+                    unknownPortResult += $"Port {port} - SMTP".Pastel(Color.Green);
                     string smtpInfo = SMTP.GetInfo(target, port); // Can't just parse the banner directly since there could be other useful stuff
                     Console.WriteLine(unknownPortResult + Environment.NewLine + smtpInfo + Environment.NewLine);
 
@@ -185,7 +191,7 @@ namespace Reecon
                 // SSH
                 else if (theBanner.Contains("SSH-2.0-OpenSSH") || theBanner == "SSH-2.0-Go")
                 {
-                    unknownPortResult += " - SSH".Pastel(Color.Green) + Environment.NewLine;
+                    unknownPortResult += $"Port {port} - SSH".Pastel(Color.Green) + Environment.NewLine;
                     if (theBanner.Contains("\r\nProtocol mismatch."))
                     {
                         unknownPortResult += Environment.NewLine + "- TCP Protocol Mismatch";
@@ -196,14 +202,14 @@ namespace Reecon
                 // WinRM - HTTP with special stuff
                 else if (theBanner.Contains("Server: Microsoft-HTTPAPI/2.0"))
                 {
-                    unknownPortResult += " - WinRM".Pastel(Color.Green);
+                    unknownPortResult += $"Port {port} - WinRM".Pastel(Color.Green);
                     string portData = WinRM.GetInfo(target, port);
                     Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
                 }
                 // Squid - HTTP with different special stuff
                 else if (theBanner.Contains("Server: squid"))
                 {
-                    unknownPortResult += " - Squid".Pastel(Color.Green);
+                    unknownPortResult += $"Port {port} - Squid".Pastel(Color.Green);
                     string portData = Squid.GetInfo(target, port);
                     Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
                 }
@@ -213,7 +219,7 @@ namespace Reecon
                     string httpsData = HTTPS.GetInfo(target, port);
                     if (httpsData != "")
                     {
-                        Console.WriteLine(unknownPortResult + " - HTTPS".Pastel(Color.Green) + Environment.NewLine + httpsData + Environment.NewLine);
+                        Console.WriteLine(unknownPortResult += $"Port {port} - HTTPS".Pastel(Color.Green) + Environment.NewLine + httpsData + Environment.NewLine);
                         postScanActions += $"- gobuster dir -u=https://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-{port}-medium.txt -x.php,.txt" + Environment.NewLine;
                         postScanActions += $"- gobuster dir -u=https://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-{port}-common.txt -x.php,.txt" + Environment.NewLine;
                     }
@@ -233,27 +239,28 @@ namespace Reecon
                     string httpData = HTTP.GetInfo(target, port);
                     if (httpData != "")
                     {
-                        Console.WriteLine(unknownPortResult + " - HTTP".Pastel(Color.Green) + Environment.NewLine + httpData + Environment.NewLine);
+                        Console.WriteLine(unknownPortResult += $"Port {port} - HTTP".Pastel(Color.Green) + Environment.NewLine + httpData + Environment.NewLine);
                         postScanActions += $"- gobuster dir -u=http://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-" + port + "-medium.txt -x.php,.txt" + Environment.NewLine;
                         postScanActions += $"- gobuster dir -u=http://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-" + port + "-common.txt -x.php,.txt" + Environment.NewLine;
                     }
                     string httpsData = HTTPS.GetInfo(target, port);
                     if (httpsData != "")
                     {
-                        Console.WriteLine(unknownPortResult + " - HTTPS".Pastel(Color.Green) + Environment.NewLine + httpsData + Environment.NewLine);
+                        Console.WriteLine(unknownPortResult += $"Port {port} - HTTPS".Pastel(Color.Green) + Environment.NewLine + httpsData + Environment.NewLine);
                         postScanActions += $"- gobuster dir -u=https://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-{port}-medium.txt -x.php,.txt" + Environment.NewLine;
                         postScanActions += $"- gobuster dir -u=https://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-{port}-common.txt -x.php,.txt" + Environment.NewLine;
                     }
+                    break;
                 }
                 else if (theBanner == "-ERR unknown command 'Woof'") // Probably Redis
                 {
-                    unknownPortResult += "- Redis".Pastel(Color.Green);
+                    unknownPortResult += $"Port {port} - Redis".Pastel(Color.Green);
                     string portData = Redis.GetInfo(target, port);
                     Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
                 }
                 else if (theBanner == "+OK Dovecot ready.")
                 {
-                    unknownPortResult += "- pop3 (Dovecot)".Pastel(Color.Green) + Environment.NewLine;
+                    unknownPortResult += $"Port {port} - pop3 (Dovecot)".Pastel(Color.Green) + Environment.NewLine;
                     unknownPortResult += POP3.GetInfo(target);
                     Console.WriteLine(unknownPortResult);
                 }
@@ -291,19 +298,19 @@ namespace Reecon
                 }
                 else if (theBanner == "</stream:stream>")
                 {
-                    unknownPortResult += "- xmpp".Pastel(Color.Green) + Environment.NewLine;
+                    unknownPortResult += $"Port {port} - xmpp".Pastel(Color.Green) + Environment.NewLine;
                     unknownPortResult += "- Client Name: Wildfire XMPP Client" + Environment.NewLine;
                     Console.WriteLine(unknownPortResult);
                 }
                 else if (theBanner.StartsWith("@RSYNCD"))
                 {
-                    unknownPortResult += "- Rsync".Pastel(Color.Green) + Environment.NewLine;
+                    unknownPortResult += $"Port {port} - Rsync".Pastel(Color.Green) + Environment.NewLine;
                     unknownPortResult += Rsync.GetInfo(target, port);
                     Console.WriteLine(unknownPortResult);
                 }
                 else if (theBanner.Trim().StartsWith("( success ( 2 2 ( ) ( edit-pipeline"))
                 {
-                    unknownPortResult += "- SVN (Subversion)".Pastel(Color.Green) + Environment.NewLine;
+                    unknownPortResult += $"Port {port} - SVN (Subversion)".Pastel(Color.Green) + Environment.NewLine;
                     unknownPortResult += "- Bug Reelix to fix this. Ref: Port 3690";
                     Console.WriteLine(unknownPortResult);
                 }
@@ -313,26 +320,58 @@ namespace Reecon
 
             if (unknownPortResult == "")
             {
-                unknownPortResult += " - Unknown (Dumping possible outcomes)".Pastel(Color.Red) + Environment.NewLine;
-                // Truly unknown - Find the best result
-                foreach (string theBanner in bannerList)
+                // If there are 2 results and 1 "Closed" - Removed the Closed
+                if (bannerList.Count == 2)
                 {
+                    if (bannerList.Count(x => x == "Reecon - Closed") == 1)
+                    {
+                        bannerList.RemoveAll(x => x == "Reecon - Closed");
+                    }
+                }
+                if (bannerList.Count == 1)
+                {
+                    string theBanner = bannerList[0];
                     if (theBanner == "Reecon - Connection reset by peer")
                     {
+                        unknownPortResult += $"Port {port} - Reset" + Environment.NewLine;
                         unknownPortResult += "- Connection reset by peer (No Useful response)" + Environment.NewLine;
                     }
                     else if (theBanner == "Reecon - Closed")
                     {
+                        unknownPortResult += $"Port {port} - Closed".Pastel(Color.Green) + Environment.NewLine;
                         unknownPortResult += "- Port is closed" + Environment.NewLine;
                     }
                     else
                     {
+                        unknownPortResult += $"Port {port} - Unknown".Pastel(Color.Green) + Environment.NewLine;
                         unknownPortResult += "- Unknown Response: -->" + theBanner + "<--" + Environment.NewLine;
+                        unknownPortResult += $"- TODO: nmap -sC -sV {target} -p{port}" + Environment.NewLine;
+                    }
+                }
+                else
+                {
+                    unknownPortResult += $"Port {port} - Unknown (Dumping possible outcomes)".Pastel(Color.Red) + Environment.NewLine;
+                    // Truly unknown - Find the best result
+                    foreach (string theBanner in bannerList)
+                    {
+                        if (theBanner == "Reecon - Connection reset by peer")
+                        {
+                            unknownPortResult += "- Connection reset by peer (No Useful response)" + Environment.NewLine;
+                        }
+                        else if (theBanner == "Reecon - Closed")
+                        {
+                            unknownPortResult += "- Port is closed" + Environment.NewLine;
+                        }
+                        else
+                        {
+                            unknownPortResult += "- Unknown Response: -->" + theBanner + "<--" + Environment.NewLine;
+                            unknownPortResult += $"- TODO: nmap -sC -sV {target} -p{port}" + Environment.NewLine;
+                        }
                     }
                 }
                 Console.WriteLine(unknownPortResult);
             }
-            
+
             return postScanActions;
         }
 
@@ -479,8 +518,10 @@ namespace Reecon
             {
                 // TODO: Clean - Should the file be named "Printer.cs" or "jetdirect.cs" ???
                 string portHeader = $"Port {port} - Printer (jetdirect)";
+
                 // PJL
 
+                // http://hacking-printers.net/wiki/index.php/Printer_Security_Testing_Cheat_Sheet
                 // Yoinked from Nmap
                 string bannerInfo = General.BannerGrab(target, port, "@PJL INFO ID\r\n");
                 string portData = "";
@@ -506,7 +547,7 @@ namespace Reecon
                 {
                     portData = "- Unknown - Bug Reelix!";
                 }
-                // TODO: Add PCL, XEX, IPDS
+                // TODO: Add PCL (Printer Command Language), XEX, IPDS
                 Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
             }
             else if (port == 11211)
