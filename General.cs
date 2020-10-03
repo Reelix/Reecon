@@ -244,18 +244,32 @@ namespace Reecon
             }
         }
 
-        public static bool IsUp(string ip)
+        public static bool? IsUp(string ip)
         {
             using Ping myPing = new Ping();
             try
             {
                 PingOptions myOptions = new PingOptions();
-                PingReply reply = myPing.Send(ip, 1000);
-                if (reply.Status == IPStatus.Success)
+                try
                 {
-                    return true;
+                    PingReply reply = myPing.Send(ip, 1000);
+                    if (reply.Status == IPStatus.Success)
+                    {
+                        return true;
+                    }
+                    return false;
                 }
-                return false;
+                catch (PingException pex)
+                {
+                    if (pex.Message == "An exception occurred during a Ping request.")
+                    {
+                        return null;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
             }
             catch (SocketException ex)
             {

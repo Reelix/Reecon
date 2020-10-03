@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Pastel;
+using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -147,7 +149,10 @@ namespace Reecon
             }
             catch (Exception ex)
             {
-                dnsInfo += "- Unable to get GNSHostEntry: " + ex.Message + Environment.NewLine;
+                if (ex.Message != "Name or service not known")
+                {
+                    dnsInfo += "- Unable to get DNS Host Entry: " + ex.Message + Environment.NewLine;
+                }
             }
             return dnsInfo;
         }
@@ -155,24 +160,36 @@ namespace Reecon
         private static string GetRPCInfo(string ip)
         {
             string rpcInfo = "";
+            bool anonAccess = false;
             if (General.GetOS() == General.OS.Linux)
             {
                 if (General.IsInstalledOnLinux("rpcclient", "/usr/bin/rpcclient"))
                 {
-                    // https://pen-testing.sans.org/blog/2013/07/24/plundering-windows-account-info-via-authenticated-smb-sessions
+                    // Find the Domain Name
+                    List<string> domainNameList = General.GetProcessOutput("rpcclient", $"-U \"\"%\"\" {ip} -c \"lsaquery\"");
+                    domainNameList.RemoveAll(x => !x.StartsWith("Domain Name:"));
+                    if (domainNameList.Count == 1)
+                    {
+                        anonAccess = true;
+                        rpcInfo += "- " + domainNameList[0] + Environment.NewLine;
+                    }
+
+                    // Find basic users
                     List<string> enumdomusersList = General.GetProcessOutput("rpcclient", $"-U \"\"%\"\" {ip} -c \"enumdomusers\"");
                     if (enumdomusersList.Count == 0)
                     {
-                        rpcInfo = "- Possible anonymous access but no enumdomusers output" + Environment.NewLine;
-                        rpcInfo += $"-> rpcclient -U \"\"%\"\" {ip}" + Environment.NewLine;
                         List<string> srvinfoList = General.GetProcessOutput("rpcclient", $"-U \"\"%\"\" {ip} -c \"srvinfo\"");
                         if (srvinfoList.Count != 0)
                         {
+                            anonAccess = true;
                             rpcInfo += "- srvinfo: " + srvinfoList[0] + Environment.NewLine;
                         }
+
+                        // Find public SIDs with lsaenumsid
                         List<string> sidList = General.GetProcessOutput("rpcclient", $"-U \"\"%\"\" {ip} -c \"lsaenumsid\"");
                         if (sidList.Count != 0)
                         {
+                            anonAccess = true;
                             rpcInfo += "- Found SIDs" + Environment.NewLine;
                             // Remove the "found X SIDs" text
                             sidList.RemoveAll(x => x.StartsWith("found "));
@@ -192,12 +209,69 @@ namespace Reecon
                                 }
                             }
                         }
+
+                        // Find sneaky SIDs
+                        List<string> sneakyNameLookup = General.GetProcessOutput("rpcclient", $"-U \"\"%\"\" {ip} -c \"lookupnames administrator guest krbtgt root bin none");
+                        sneakyNameLookup.RemoveAll(x => !x.Contains("(User: "));
+                        if (sneakyNameLookup.Count != 0)
+                        {
+                            anonAccess = true;
+                            List<string> sneakySIDBaseList = new List<string>();
+                            foreach (string name in sneakyNameLookup)
+                            {
+                                string sneakySID = name.Split(' ')[1];
+                                if (!sidList.Contains(sneakySID))
+                                {
+                                    // Just add the base - We lookup later
+                                    string sneakySIDBase = sneakySID.Substring(0, sneakySID.LastIndexOf("-") + 1);
+                                    if (!sneakySIDBaseList.Contains(sneakySIDBase))
+                                    {
+                                        sneakySIDBaseList.Add(sneakySIDBase);
+                                    }
+                                }
+                            }
+
+                            if (sneakySIDBaseList.Count != 0)
+                            {
+                                List<string> sneakySIDList = new List<string>();
+                                foreach (string sneakyBase in sneakySIDBaseList)
+                                {
+                                    // Low ones are just system names - Can ignore them - Proper ones start from 1000
+                                    sneakySIDList.Add(sneakyBase + "1000");
+                                    sneakySIDList.Add(sneakyBase + "1001");
+                                    sneakySIDList.Add(sneakyBase + "1002");
+                                    sneakySIDList.Add(sneakyBase + "1003");
+                                    sneakySIDList.Add(sneakyBase + "1004");
+                                    sneakySIDList.Add(sneakyBase + "1005");
+                                    sneakySIDList.Add(sneakyBase + "1006");
+                                    sneakySIDList.Add(sneakyBase + "1007");
+                                    sneakySIDList.Add(sneakyBase + "1008");
+                                    sneakySIDList.Add(sneakyBase + "1009");
+                                    sneakySIDList.Add(sneakyBase + "1010");
+                                    List<string> sneakySIDLookup = General.GetProcessOutput("rpcclient", $"-U \"\"%\"\" {ip} -c \"lookupsids " + string.Join(" ", sneakySIDList) + "\"");
+                                    if (sneakySIDLookup.Count != 0)
+                                    {
+                                        foreach (string lookupResult in sneakySIDLookup)
+                                        {
+                                            string name = lookupResult.Substring(0, lookupResult.IndexOf(" (1)"));
+
+                                            name = name.Remove(0, name.LastIndexOf("\\") + 1);
+
+                                            // Invalid ones simply have the number itself instead of the name
+                                            // A bit hacky, but it works
+                                            if (!int.TryParse(name, out int toIgnore))
+                                            {
+                                                rpcInfo += "-- Sneaky Name Found: " + name + Environment.NewLine;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                     else if (enumdomusersList.Any(x => x.Contains("NT_STATUS_ACCESS_DENIED")))
                     {
-                        rpcInfo = "- No anonymous RPC access" + Environment.NewLine;
-                        // 23 -> https://room362.com/post/2017/reset-ad-user-password-with-linux/
-                        rpcInfo += "-- If you get access -> enumdomusers / queryuser usernameHere / setuserinfo2 userNameHere 23 'newPasswordHere'" + Environment.NewLine;
+                        // Request was denied - We ignore it though
                     }
                     else if (enumdomusersList.Count == 1)
                     {
@@ -222,7 +296,6 @@ namespace Reecon
                             Console.WriteLine("Unknown Path GetRPCInfo.Count1Unknown - Debug Info item: " + enumdomusersList[0].Trim());
                         }
                     }
-                    
                     else if (enumdomusersList.Count == 2 || enumdomusersList.Count == 3)
                     {
                         foreach (string item in enumdomusersList)
@@ -245,6 +318,16 @@ namespace Reecon
                     else
                     {
                         Console.WriteLine("GetRPCInfo.FatalError - How'd it even get here???");
+                    }
+                    if (anonAccess == true)
+                    {
+                        rpcInfo += "- " + "Anonymous access permitted! -> rpcclient -U \"\"%\"\" {ip}".Pastel(Color.Orange) + Environment.NewLine;
+                    }
+                    else
+                    {
+                        rpcInfo += "- No anonymous RPC access" + Environment.NewLine;
+                        // 23 -> https://room362.com/post/2017/reset-ad-user-password-with-linux/
+                        rpcInfo += "-- If you get access -> enumdomusers / queryuser usernameHere / setuserinfo2 userNameHere 23 'newPasswordHere'" + Environment.NewLine;
                     }
                 }
                 else

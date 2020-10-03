@@ -43,7 +43,7 @@ namespace Reecon
                     // Not allowed
                     if (ex.Message.Contains("MariaDB"))
                     {
-                        return "- MariaDB Server";
+                        return "- MariaDB Server (No External Authentication)";
                     }
                     else
                     {

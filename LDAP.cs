@@ -12,8 +12,9 @@ namespace Reecon
             string returnInfo = "";
             returnInfo += LDAP.GetDefaultNamingContext(ip);
             returnInfo += LDAP.GetAccountInfo(ip);
-            return returnInfo;
+            return returnInfo.Trim(Environment.NewLine.ToCharArray());
         }
+
         public static string GetDefaultNamingContext(string ip, bool raw = false)
         {
             string ldapInfo = string.Empty;
@@ -73,7 +74,7 @@ namespace Reecon
                     ldapInfo = "- Multiple items found! Bug Reelix!" + Environment.NewLine;
                 }
             }
-            return ldapInfo.Trim(Environment.NewLine.ToCharArray());
+            return ldapInfo;
         }
 
         public static string GetAccountInfo(string ip)

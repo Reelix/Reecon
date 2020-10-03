@@ -92,7 +92,7 @@ namespace Reecon
                 Console.ResetColor();
                 return;
             }
-            else if (args.Contains("-osint") || (args.Contains("--osint")))
+            else if (args.Contains("-osint") || args.Contains("--osint"))
             {
                 OSINT.GetInfo(args);
                 Console.ResetColor();
@@ -104,7 +104,7 @@ namespace Reecon
             if (args.Contains("-noping") || args.Contains("--noping"))
             {
                 mustPing = false;
-                args = args.Where(x => !(x.Contains("noping"))).ToArray();
+                args = args.Where(x => !x.Contains("noping")).ToArray();
             }
 
             // Everything below here has a maximum of 2 args
@@ -143,11 +143,16 @@ namespace Reecon
             // First check if it's actually up
             if (mustPing)
             {
-                Console.WriteLine("Checking if host is online...");
-                bool isHostOnline = General.IsUp(target);
+                Console.WriteLine("Checking if target is online...");
+                bool? isHostOnline = General.IsUp(target);
                 General.ClearPreviousConsoleLine();
 
-                if (!isHostOnline)
+                if (isHostOnline == null)
+                {
+                    Console.WriteLine("Invalid target: " + target);
+                    return;
+                }
+                if (!isHostOnline.Value)
                 {
                     Console.WriteLine("Host is not responding to pings :(");
                     Console.WriteLine("If you are sure it's up and are specifying ports, you can use -noping");

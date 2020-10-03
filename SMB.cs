@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Pastel;
+using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -74,11 +76,11 @@ namespace Reecon
                         string itemType = item.Split('|')[0];
                         string itemName = item.Split('|')[1];
                         string itemComment = item.Split('|')[2];
-                        smbClientItems += "- " + itemType + ": " + itemName + " " + (itemComment == "" ? "" : "(" + itemComment + ")") + Environment.NewLine;
+                        smbClientItems += "- " + itemType + ": " + itemName + " " + (itemComment == "" ? "" : "(" + itemComment.Trim() + ")") + Environment.NewLine;
                         List<string> subProcessResults = General.GetProcessOutput("smbclient", $"//{target}/{itemName} --no-pass -c \"ls\"");
                         if (subProcessResults.Count > 1)
                         {
-                            smbClientItems += $"-- {itemName} has ls perms! -> smbclient //{target}/{itemName} --no-pass" + Environment.NewLine;
+                            smbClientItems += "-- " + $"{itemName} has ls perms! -> smbclient //{target}/{itemName} --no-pass".Pastel(Color.Orange) + Environment.NewLine;
                         }
                     }
                 }

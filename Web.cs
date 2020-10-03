@@ -768,11 +768,15 @@ namespace Reecon
                 responseText += "- SSL Cert Subject: " + certSubject + Environment.NewLine;
                 if (theCert.Extensions != null)
                 {
+                    // Console.WriteLine("Extensions is not null");
                     X509ExtensionCollection extensionCollection = theCert.Extensions;
                     foreach (X509Extension extension in extensionCollection)
                     {
-                        string extensionType = extension.Oid.FriendlyName;
-                        if (extensionType == "Subject Alternative Name")
+                        string friendlyName = extension.Oid.FriendlyName;
+                        // Console.WriteLine("Extension Name: " + extensionType);
+                        // Windows: Subject Alternative Name
+                        // Linux: X509v3 Subject Alternative Name
+                        if (friendlyName.Contains("Subject Alternative Name"))
                         {
 
                             AsnEncodedData asndata = new AsnEncodedData(extension.Oid, extension.RawData);
