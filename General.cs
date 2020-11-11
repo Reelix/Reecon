@@ -354,7 +354,7 @@ namespace Reecon
             p.Start();
             p.BeginOutputReadLine();
             p.BeginErrorReadLine();
-            p.WaitForExit();
+            p.WaitForExit();    
             p.Close();
             outputLines.RemoveAll(string.IsNullOrEmpty); // Useful?
             return outputLines;

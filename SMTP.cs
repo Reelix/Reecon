@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Pastel;
+using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
@@ -28,10 +30,36 @@ namespace Reecon
                     if (smtpBanner.StartsWith("220") && smtpBanner.Contains("ESMTP"))
                     {
                         // We got a valid response! Let's do some parsing!
+                        // 220 ESMTP MAIL Service ready (EXCHANGE.HTB.LOCAL)
                         smtpBanner = smtpBanner.Remove(0, 4);
-                        string hostName = smtpBanner.Substring(0, smtpBanner.IndexOf(" ESMTP"));
-                        string nameAndDate = smtpBanner.Remove(0, smtpBanner.IndexOf(" ESMTP") + 7).Trim("\r\n".ToCharArray()); // Remove the space afterwards
-                        returnText = $"- Host: {hostName}" + Environment.NewLine + $"- Name: {nameAndDate}";
+                        string hostName = smtpBanner.Substring(0, smtpBanner.IndexOf("ESMTP"));
+                        string nameAndDate = smtpBanner.Remove(0, smtpBanner.IndexOf("ESMTP ") + 6);
+                        string newlineChars = "";
+                        if (nameAndDate.EndsWith("\r\n"))
+                        {
+                            returnText += "- Windows Newline Characters Detected" + Environment.NewLine;
+                            newlineChars = "\r\n";
+                        }
+                        else if (nameAndDate.EndsWith("\n"))
+                        {
+                            returnText += "- Linux Newline Characters Detected" + Environment.NewLine;
+                            newlineChars = "\n";
+                        }
+                        else
+                        {
+                            Console.WriteLine("Unknown newline character :<");
+                            return "";
+                        }
+                        if (hostName != "")
+                        {
+                            returnText = returnText.Trim(newlineChars.ToCharArray());
+                            returnText += $"- Host: {hostName}" + Environment.NewLine;
+                        }
+                        if (nameAndDate != "")
+                        {
+                            nameAndDate = nameAndDate.Trim(newlineChars.ToCharArray());
+                            returnText += $"- Name: {nameAndDate}" + Environment.NewLine;
+                        }
 
                         // Now - Try to get some commands
                         /* 250-debian
@@ -46,35 +74,33 @@ namespace Reecon
                         250 - SMTPUTF8
                         250 CHUNKING
                             */
-                        byte[] ehloBytes = Encoding.ASCII.GetBytes(("EHLO " + ip + "\n").ToCharArray());
+                        byte[] ehloBytes = Encoding.ASCII.GetBytes(("EHLO " + ip + newlineChars).ToCharArray());
                         smtpSocket.Send(ehloBytes, ehloBytes.Length, 0);
                         bytes = smtpSocket.Receive(buffer, buffer.Length, 0);
                         string ehloResponse = Encoding.ASCII.GetString(buffer, 0, bytes);
+                        // Console.WriteLine("Response: " + ehloResponse);
                         bool isPipeliningEnabled = false;
                         if (ehloResponse.Length != 0)
                         {
                             // Bad EHLO Response
                             if (ehloResponse.Trim() == "550 Forged EHLO/HELO data")
                             {
-                                returnText += Environment.NewLine + "- EHLO requires the Domain Name - Additional checks may fail";
+                                returnText += "- EHLO requires the Domain Name - Additional checks may fail" + Environment.NewLine;
                             }
                             else if (ehloResponse.Trim().StartsWith("550 "))
                             {
-                                returnText += Environment.NewLine + "- Unable to EHLO: " + ehloResponse.Remove(0, 4);
+                                returnText += "- Unable to EHLO: " + ehloResponse.Remove(0, 4) + Environment.NewLine;
                             }
                             else
                             {
                                 // Good EHLO Response - Parse it
-                                List<string> ehloItems = ehloResponse.Split(Environment.NewLine.ToCharArray()).ToList();
+                                List<string> ehloItems = ehloResponse.Split(newlineChars.ToCharArray()).ToList();
                                 ehloItems.RemoveAll(string.IsNullOrEmpty);
+                                // Console.WriteLine(ehloItems.Count + " items");
                                 string commands = "";
                                 foreach (string item in ehloItems)
                                 {
-                                    string commandItem = item.Replace("250-", "");
-                                    // This took awhile to fix.
-                                    // The split can keep a \r if used on Linux for data from a Windows host
-                                    // \r sends the carriage to the start of the line and can subsequently overrides text
-                                    commandItem = commandItem.Replace("\r", "");
+                                    string commandItem = item.Replace("250-", "").Replace("250 ", "").Replace(newlineChars, "");
                                     if (commandItem == "PIPELINING")
                                     {
                                         isPipeliningEnabled = true;
@@ -82,68 +108,83 @@ namespace Reecon
                                     commands += commandItem + ",";
                                 }
                                 commands = commands.Trim(',');
-                                returnText += Environment.NewLine + "- SMTP Commands: " + commands;
+                                returnText += "- SMTP Commands: " + commands + Environment.NewLine;
                                 if (isPipeliningEnabled)
                                 {
-                                    returnText += Environment.NewLine + "- PIPELINING is enabled - Command Spam allowed!";
+                                    returnText += "- PIPELINING is enabled - Command Spam allowed!" + Environment.NewLine;
                                 }
                             }
                         }
 
-
                         // Check the MAIL FROM to see if we can phish
-                        byte[] mailFromBytes = Encoding.ASCII.GetBytes(("MAIL FROM:<test@test.com>\n").ToCharArray());
+                        byte[] mailFromBytes = Encoding.ASCII.GetBytes(("MAIL FROM:<test@test.com>" + newlineChars).ToCharArray());
                         smtpSocket.Send(mailFromBytes, mailFromBytes.Length, 0);
                         bytes = smtpSocket.Receive(buffer, buffer.Length, 0);
                         string mailFromResponse = Encoding.ASCII.GetString(buffer, 0, bytes).Trim();
                         // 550 HELO/EHLO not yet given -> Requires a valid EHLO First
                         // 250 2.1.0 Ok
                         // 550 Submission must be authenticated -> Requires Auth
-                        if (mailFromResponse.StartsWith("550 "))
+                        if (mailFromResponse.StartsWith("550 ") || mailFromResponse.StartsWith("550-"))
                         {
                             mailFromResponse = mailFromResponse.Remove(0, 4);
                             if (mailFromResponse == "Submission must be authenticated")
                             {
-                                returnText += Environment.NewLine + "- Unable to phish: Credentials are required for MAIL FROM";
+                                returnText += "- Unable to phish: Credentials are required for MAIL FROM" + Environment.NewLine; ;
                             }
                             else if (mailFromResponse == "HELO/EHLO not yet given")
                             {
-                                returnText += Environment.NewLine + "- Unable to phish: Requires a valid EHLO";
+                                returnText += "- Unable to phish: Requires a valid EHLO" + Environment.NewLine;
                             }
                             else
                             {
-                                returnText += Environment.NewLine + "- Unable to phish: " + mailFromResponse;
+                                returnText += "- Unable to phish: " + mailFromResponse + Environment.NewLine;
                             }
                         }
-                        else if (mailFromResponse.StartsWith("250 "))
+                        else if (mailFromResponse.StartsWith("250 ") || mailFromResponse.StartsWith("250-"))
                         {
-                            // Can Spoof the Mail From - Might as well suggest a phish
-                            returnText += Environment.NewLine + "- Maybe try phish?" + Environment.NewLine
-                                    + "-- MAIL FROM:<test@woof.com>" + Environment.NewLine
-                                    + "-- RCPT TO:<woof@woof.com>" + Environment.NewLine
-                                    + "-- DATA" + Environment.NewLine
-                                    + "-- Type Stuff here, put a . on its own line to queue the send";
+                            // Can Spoof the Mail From!
+                            returnText += "- " + "Valid unauth'd MAIL FROM! Maybe try phish?".Pastel(Color.Orange) + Environment.NewLine;
+                            
+                            // How about the RCPT TO?
+                            byte[] rcptToBytes = Encoding.ASCII.GetBytes(($"RCPT TO:<test@{ip}>" + newlineChars).ToCharArray());
+                            smtpSocket.Send(rcptToBytes, rcptToBytes.Length, 0);
+                            bytes = smtpSocket.Receive(buffer, buffer.Length, 0);
+                            string rcptToResponse = Encoding.ASCII.GetString(buffer, 0, bytes).Trim();
+                            if (rcptToResponse.StartsWith("250" ) || rcptToResponse.StartsWith("250-"))
+                            {
+                                returnText += "-- No RCPT Validation Enabled - Try with a URL?" + Environment.NewLine;
+                                returnText += $"-- swaks --to target@domain.com --from it@domain.com --server {ip} --port {port} --body body.txt" + Environment.NewLine;
+                            }
+                            else if (rcptToResponse.StartsWith("550"))
+                            {
+                                returnText += "-- " + "RCPT Validation Enabled - You can validate user accounts!".Pastel(Color.Orange) + Environment.NewLine;
+                                returnText += $"-- Phishing Command: swaks --to target@domain.com --from it@domain.com --server {ip} --port {port} --body phish.txt" + Environment.NewLine;
+                            }
+                            else
+                            {
+                                returnText += "-- Unknown rcptToResponse - Bug Reelix!" + Environment.NewLine;
+                            }
                         }
                         else if (mailFromResponse.Trim() == "")
                         {
-                            returnText += Environment.NewLine + "- No MAIL FROM response.";
+                            returnText += "- No MAIL FROM response." + Environment.NewLine;
                         }
                         else
                         {
-                            returnText += Environment.NewLine + "- Unknown MAIL FROM Response: " + mailFromResponse;
+                            returnText += "- Unknown MAIL FROM Response: " + mailFromResponse + Environment.NewLine;
                         }
                     }
                     else
                     {
-                        returnText = "- Non-SMTP Banner Detected: " + smtpBanner;
+                        returnText = "- Non-SMTP Banner Detected: " + smtpBanner + Environment.NewLine;
                     }
                 }
                 catch (Exception ex)
                 {
-                    returnText = "Error - Unable to connect: " + ex.Message;
+                    returnText = "Error - Unable to connect: " + ex.Message + Environment.NewLine;
                 }
             }
-            return returnText;
+            return returnText.Trim(Environment.NewLine.ToCharArray());
         }
     }
 }

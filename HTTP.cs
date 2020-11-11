@@ -8,17 +8,25 @@ namespace Reecon
         {
             try
             {
-                string url = $"http://{target}:{port}/";
+                string url = "";
+                if (port == 80)
+                {
+                    url = $"http://{target}/";
+                }
+                else
+                {
+                    url = $"http://{target}:{port}/";
+                }
                 var httpInfo = Web.GetHTTPInfo(url);
                 if (httpInfo.AdditionalInfo == "Timeout")
                 {
                     return "- Timeout";
                 }
-                else if (httpInfo == (0, null, null, null, null, null, null))
+                else if (httpInfo == (0, null, null, null, null, null, null, null))
                 {
                     return "";
                 }
-                string portData = Web.FormatHTTPInfo(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert);
+                string portData = Web.FormatHTTPInfo(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert, httpInfo.URL);
                 string commonFiles = Web.FindCommonFiles(url);
                 if (commonFiles != "")
                 {

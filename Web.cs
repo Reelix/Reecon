@@ -213,27 +213,45 @@ namespace Reecon
             // Wildcard test
             // WebClient throws an error on 403 (Forbidden) and 404 (Not Found) pages           
             int notFoundLength = -1;
+            string wildcardURL = url + "be0df04b-f5ff-4b4f-af99-00968cf08fed";
+            bool ignoreRedirect = false;
             try
             {
                 // Console.WriteLine("Testing Wildcard");
-                WebClient wc = new WebClient();
-                string wildcardURL = url + "be0df04b-f5ff-4b4f-af99-00968cf08fed";
-                string test = wc.DownloadString(wildcardURL);
+                var pageResult = Web.GetHTTPInfo(wildcardURL);
+                string test = pageResult.PageText;
                 notFoundLength = test.Length;
-                returnText += $"- Wildcard paths such as {wildcardURL} return - This may cause issues..." + Environment.NewLine;
+                if (pageResult.StatusCode == HttpStatusCode.OK)
+                {
+                    returnText += $"- Wildcard paths such as {wildcardURL} return - This may cause issues..." + Environment.NewLine;
+                }
+                else if (pageResult.StatusCode == HttpStatusCode.Redirect || pageResult.StatusCode == HttpStatusCode.Moved)
+                {
+                    ignoreRedirect = true;
+                    returnText += $"- Wildcard paths such as {wildcardURL} redirect - This may cause issues..." + Environment.NewLine;
+                }
             }
             catch { }
 
             bool skipPHP = false;
             // PHP wildcards can be differnt
+            string phpWildcardURL = url + "be0df04b-f5ff-4b4f-af99-00968cf08fed.php";
             try
             {
                 // Console.WriteLine("Testing php wildcard");
-                WebClient wc = new WebClient();
-                string test = wc.DownloadString(url + "be0df04b-f5ff-4b4f-af99-00968cf08fed.php");
+                var pageResult = Web.GetHTTPInfo(phpWildcardURL);
+                string test = pageResult.PageText;
                 notFoundLength = test.Length;
-                returnText += "- .php wildcard paths returns - Skipping PHP" + Environment.NewLine;
-                skipPHP = true;
+                if (pageResult.StatusCode == HttpStatusCode.OK)
+                {
+                    skipPHP = true;
+                    returnText += $"- .php wildcard paths such as {phpWildcardURL} return - This may cause issues..." + Environment.NewLine;
+                }
+                else if (pageResult.StatusCode == HttpStatusCode.Redirect || pageResult.StatusCode == HttpStatusCode.Moved)
+                {
+                    skipPHP = true;
+                    returnText += $"- .php wildcard paths such as {phpWildcardURL} redirect - This may cause issues..." + Environment.NewLine;
+                }
             }
             catch { }
 
@@ -408,10 +426,13 @@ namespace Reecon
                     }
                     else if (response.StatusCode == HttpStatusCode.Redirect || response.StatusCode == HttpStatusCode.Moved)
                     {
-                        returnText += $"- Common Path redirects: {url}{file}" + Environment.NewLine;
-                        if (response.Headers != null && response.Headers.Get("Location") != null)
+                        if (!ignoreRedirect)
                         {
-                            returnText += $"-- Redirection Location: {response.Headers.Get("Location")}" + Environment.NewLine;
+                            returnText += $"- Common Path redirects: {url}{file}" + Environment.NewLine;
+                            if (response.Headers != null && response.Headers.Get("Location") != null)
+                            {
+                                returnText += $"-- Redirection Location: {response.Headers.Get("Location")}" + Environment.NewLine;
+                            }
                         }
                     }
                     else if (response.StatusCode == HttpStatusCode.Unauthorized)
@@ -477,7 +498,7 @@ namespace Reecon
             return returnText.Trim(Environment.NewLine.ToArray());
         }
 
-        public static (HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert, string AdditionalInfo) GetHTTPInfo(string url)
+        public static (HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert, string URL, string AdditionalInfo) GetHTTPInfo(string url)
         {
             string pageTitle = "";
             string pageText = "";
@@ -525,7 +546,7 @@ namespace Reecon
                 {
                     if (ex.Status == WebExceptionStatus.Timeout)
                     {
-                        return (statusCode, null, null, null, null, null, "Timeout");
+                        return (statusCode, null, null, null, null, null, url, "Timeout");
                     }
                     else if (ex.Message != null)
                     {
@@ -551,14 +572,14 @@ namespace Reecon
                         }
                         else if (ex.Message == "The SSL connection could not be established, see inner exception.")
                         {
-                            return (statusCode, null, null, null, null, null, null);
+                            return (statusCode, null, null, null, null, null, null, null);
                         }
                         else
                         {
                             Console.WriteLine("GetHTTPInfo.Error: " + ex.Message);
                         }
                     }
-                    return (statusCode, null, null, null, null, null, null);
+                    return (statusCode, null, null, null, null, null, url, null);
                 }
                 HttpWebResponse response = (HttpWebResponse)ex.Response;
                 statusCode = response.StatusCode;
@@ -574,7 +595,7 @@ namespace Reecon
             {
                 // Something went really wrong...
                 Console.WriteLine("GetHTTPInfo - Fatal Woof :( - " + ex.Message);
-                return (statusCode, null, null, null, null, null, null);
+                return (statusCode, null, null, null, null, null, url, null);
             }
 
             if (pageText.Contains("<title>") && pageText.Contains("</title>"))
@@ -586,10 +607,10 @@ namespace Reecon
             {
                 cert = new X509Certificate2(request.ServicePoint.Certificate);
             }
-            return (statusCode, pageTitle, pageText, dns, headers, cert, null);
+            return (statusCode, pageTitle, pageText, dns, headers, cert, url, null);
         }
 
-        public static string FormatHTTPInfo(HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert)
+        public static string FormatHTTPInfo(HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert, string URL)
         {
             string responseText = "";
             List<string> headerList = new List<string>();
@@ -641,7 +662,60 @@ namespace Reecon
             }
             if (!string.IsNullOrEmpty(PageTitle))
             {
-                responseText += "- Page Title: " + PageTitle.Trim() + Environment.NewLine;
+                PageTitle = PageTitle.Trim();
+                responseText += "- Page Title: " + PageTitle + Environment.NewLine;
+                if (PageTitle.StartsWith("Apache Tomcat"))
+                {
+                    // Apache Tomcat Page
+                    NetworkCredential defaultTomcatCreds = new NetworkCredential("tomcat", "s3cret");
+
+                    // Check Manager App
+                    if (!url.EndsWith("/"))
+                    {
+                        url += "/";
+                    }
+                    string managerAppURL = URL + "manager/html";
+                    // Console.WriteLine("Testing: " + managerAppURL);
+                    var mangerAppInfo = Web.GetHTTPInfo(managerAppURL);
+                    if (mangerAppInfo.StatusCode == HttpStatusCode.Unauthorized)
+                    {
+                        responseText += "- Manager App Found - But it's Unauthorized" + Environment.NewLine;
+                        try
+                        {
+                            WebClient wc = new WebClient();
+                            wc.Credentials = defaultTomcatCreds;
+                            wc.DownloadString(managerAppURL);
+                            responseText += "-- " + "Creds Found: tomcat:s3cret".Pastel(Color.Orange) + Environment.NewLine;
+                        }
+                        catch
+                        {
+                            // Creds are still incorrect - Oh well
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("Manager App Status Code: " + mangerAppInfo.StatusCode);
+                    }
+
+                    // Check Host Manager
+                    string hostManagerURL = URL + "host-manager/html";
+                    var hostManagerInfo = Web.GetHTTPInfo(hostManagerURL);
+                    if (hostManagerInfo.StatusCode == HttpStatusCode.Unauthorized)
+                    {
+                        responseText += "- Host Manager Found - But it's Unauthorized" + Environment.NewLine;
+                        try
+                        {
+                            WebClient wc = new WebClient();
+                            wc.Credentials = defaultTomcatCreds;
+                            wc.DownloadString(hostManagerURL);
+                            responseText += "-- " + "Creds Found: tomcat:s3cret".Pastel(Color.Orange) + Environment.NewLine;
+                        }
+                        catch
+                        {
+                            // Creds are still incorrect - Oh well
+                        }
+                    }
+                }
             }
             if (PageText.Length > 0)
             {

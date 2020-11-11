@@ -426,6 +426,8 @@ namespace Reecon
                     postScanActions += $"- Port 445 - Linux (SMBClient) has better info on this: smbclient -L {target} --no-pass" + Environment.NewLine;
                 }
                 postScanActions += $"- Port 445 - I miss a lot: nmap -sC -sV -p445 {target}" + Environment.NewLine;
+                postScanActions += $"- Port 445 - Testing passwords: crackmapexec smb {target} -u users.txt -p passwords.txt" + Environment.NewLine;
+                postScanActions += $"- Port 445 - Authenticated SID Lookup: sudo lookupsid.py DOMAIN/Username:password@{target}" + Environment.NewLine;
             }
             else if (port == 2049)
             {

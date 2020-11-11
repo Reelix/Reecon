@@ -19,6 +19,7 @@ namespace Reecon
             if (SMB_MS17_010.IsVulnerable(target))
             {
                 toReturn += "----> VULNERABLE TO ETERNAL BLUE (MS10-017) <-----" + Environment.NewLine;
+                toReturn += "-----> Metasploit: use windows/smb/ms17_010_psexec" + Environment.NewLine;
             }
             if (General.GetOS() == General.OS.Linux)
             {
@@ -26,7 +27,7 @@ namespace Reecon
             }
             else
             {
-                toReturn += "- Reecon currently lacks SMB Support on Windows (Ironic, I know)";
+                toReturn += "- Reecon currently lacks advanced SMB Support on Windows (Ironic, I know)";
             }
             return toReturn.Trim(Environment.NewLine.ToCharArray());
         }
@@ -44,7 +45,12 @@ namespace Reecon
             var osData = Encoding.ASCII.GetString(nativeOsB).Split('\x00');
             if (osData[0] != "et by peer") // Invalid response that was cut off
             {
-                osDetails += "- OS Name: " + osData[0] + Environment.NewLine;
+                string osName = osData[0];
+                osDetails += "- OS Name: " + osName + Environment.NewLine;
+                if (osName == "Windows 5.1")
+                {
+                    osDetails += "-- Windows 5.1 == Windows XP SP3" + Environment.NewLine;
+                }
                 if (osData.Count() >= 3)
                 {
                     osDetails += "- OS Build: " + osData[1] + Environment.NewLine;
@@ -63,6 +69,10 @@ namespace Reecon
                 if (processResults.Count == 1 && processResults[0].Contains("NT_STATUS_ACCESS_DENIED"))
                 {
                     return "- No Anonymous Access";
+                }
+                else if (processResults.Count == 1 && processResults[0].Contains("NT_STATUS_CONNECTION_DISCONNECTED"))
+                {
+                    return "- It connected, but instantly disconnected you";
                 }
                 else if (processResults.Count == 2 && processResults[0] == "Anonymous login successful" && processResults[1] == "SMB1 disabled -- no workgroup available")
                 {

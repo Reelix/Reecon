@@ -291,6 +291,10 @@ namespace Reecon
                         {
                             rpcInfo = "- Cannot connect - It timed out :<" + Environment.NewLine;
                         }
+                        else if (firstItem == "Cannot connect to server.  Error was NT_STATUS_CONNECTION_DISCONNECTED")
+                        {
+                            rpcInfo = "- Cannot connect - It kicks you out instantly" + Environment.NewLine;
+                        }
                         else
                         {
                             Console.WriteLine("Unknown Path GetRPCInfo.Count1Unknown - Debug Info item: " + enumdomusersList[0].Trim());
@@ -321,7 +325,7 @@ namespace Reecon
                     }
                     if (anonAccess == true)
                     {
-                        rpcInfo += "- " + "Anonymous access permitted! -> rpcclient -U \"\"%\"\" {ip}".Pastel(Color.Orange) + Environment.NewLine;
+                        rpcInfo += "- " + $"Anonymous access permitted! -> rpcclient -U \"\"%\"\" {ip}".Pastel(Color.Orange) + Environment.NewLine;
                     }
                     else
                     {
