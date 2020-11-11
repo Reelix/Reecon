@@ -2,7 +2,7 @@
 
 Reelix's Recon - A small program for network recon. This program is still in early stages of development and should probably not be used by anyone.
 * Version: 0.24e
-* Build Status: <img src = "https://travis-ci.com/Reelix/Reecon.svg?branch=master" valign="middle" /> <--- This will probably say it's failing until .NET 5 is fully released.
+* Build Status: <img src = "https://travis-ci.com/Reelix/Reecon.svg?branch=master" valign="middle" />
 * Requirements: [NMap 7.80+](https://nmap.org/download.html), [.NET 5.0](https://dotnet.microsoft.com/download/dotnet/5.0)
 * Recommended:
   * HTTP/S Enumeration: [Gobuster](https://github.com/OJ/gobuster)
