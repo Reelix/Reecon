@@ -19,10 +19,12 @@ namespace Reecon
         {
             List<string> returnList = new List<string>();
             ConcurrentBag<string> resultCollection = new ConcurrentBag<string>();
-            List<string> toTest = new List<string>();
-            toTest.Add("");
-            toTest.Add("Woof\r\n\r\n");
-            toTest.Add("HEAD / HTTP/1.1\r\nHost: " + ip + "\r\n\r\n");
+            List<string> toTest = new List<string>
+            {
+                "",
+                "Woof\r\n\r\n",
+                "HEAD / HTTP/1.1\r\nHost: " + ip + "\r\n\r\n"
+            };
             Parallel.ForEach(toTest, theBanner => resultCollection.Add(BannerGrabThread(ip, port, theBanner, bufferSize = 512, timeout)));
             returnList.AddRange(resultCollection.ToList());
             if (returnList.Any(x => x == "Reecon - Connection reset")) // Something forced a reset

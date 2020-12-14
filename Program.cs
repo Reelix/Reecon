@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Diagnostics.CodeAnalysis; // For message supression
 
 namespace Reecon
 {
@@ -16,16 +16,15 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.24e ( https://github.com/Reelix/Reecon )");
+            Console.WriteLine("Reecon - Version 0.25 ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
                 Console.WriteLine("Usage");
                 Console.WriteLine("-----");
-                Console.WriteLine("Basic Scan:\tReecon IPHere (Optional: -noping to skip the ping - Not recommended!)");
+                Console.WriteLine("Basic Scan:\tReecon IPHere (Optional: -noping to skip the online check)");
                 Console.WriteLine("Display IP:\tReecon -ip");
-                Console.WriteLine("NMap:\t\tReecon -nmap IP FileName");
-                Console.WriteLine("NMap-Load Scan:\tReecon outfile.nmap (Requires a -nmap scan or -oG on regular nmap)");
+                Console.WriteLine("NMap-Load Scan:\tReecon outfile.nmap (Requires -oG on a regular nmap scan)");
                 Console.WriteLine("Binary Pwn:\tReecon -pwn FileName (Very buggy)");
                 Console.WriteLine("Searchsploit:\tReecon -searchsploit nameHere (Beta)");
                 Console.WriteLine("Shell Gen:\tReecon -shell");
@@ -86,12 +85,6 @@ namespace Reecon
                 Console.ResetColor();
                 return;
             }
-            else if (args.Contains("-nmap") || args.Contains("--nmap"))
-            {
-                Nmap.DefaultScan(args);
-                Console.ResetColor();
-                return;
-            }
             else if (args.Contains("-osint") || args.Contains("--osint"))
             {
                 OSINT.GetInfo(args);
@@ -128,14 +121,21 @@ namespace Reecon
                 string fileName = args[0];
                 var (Target, Ports) = Nmap.ParseFile(fileName, false);
                 target = Target;
-                portList.AddRange(Ports);
+                if (!Ports.Any())
+                {
+                    Console.WriteLine("Error: Empty file - Bug Reelix!");
+                }
+                else
+                {
+                    portList.AddRange(Ports);
+                }
             }
             else
             {
                 target = args[0];
             }
 
-            if (target.StartsWith("http://"))
+            if (target.StartsWith("http"))
             {
                 Console.WriteLine("Cannot do a standard scan on a URL - Try a -web scan");
                 Console.ResetColor();
@@ -152,7 +152,7 @@ namespace Reecon
                 }
                 catch
                 {
-                    Console.WriteLine(portArg + " is not a valid port list");
+                    // Not a list of ports - Probably a name
                 }
             }
 
@@ -176,6 +176,18 @@ namespace Reecon
                 }
             }
 
+            if (portList.Count == 0)
+            {
+                // Scan the target
+                string fileName = Nmap.DefaultScan(args, mustPing);
+                fileName += ".nmap";
+
+                // Parse the ports
+                var (Target, Ports) = Nmap.ParseFile(fileName, false);
+                target = Target;
+                portList.AddRange(Ports);
+            }
+
             // Everything parsed - Down to the scanning!
             PortInfo.LoadPortInfo();
 
@@ -192,41 +204,6 @@ namespace Reecon
                 ScanPorts(portList);
             }
             else
-            {
-                // No ports yet - Default scan
-                Console.WriteLine("Scanning: " + target);
-
-                // Cleanup from any previous broken runs
-                if (File.Exists("nmap-fast.txt"))
-                {
-                    File.Delete("nmap-fast.txt");
-                }
-                if (File.Exists("nmap-normal.txt"))
-                {
-                    File.Delete("nmap-normal.txt");
-                }
-
-                // After each list is parsed, the file gets deleted.
-                // Except for 3, which leaves a human-readable nmap-all.txt
-
-                // TODO: At the moment some ports are scanned 3 times - Need to fix that...
-                Nmap.CustomScan(1, target);
-                List<int> newPorts = Nmap.ParseFile("nmap-fast.txt").Ports;
-                portList.AddRange(newPorts);
-                ScanPorts(newPorts);
-
-                Nmap.CustomScan(2, target);
-                newPorts = Nmap.ParseFile("nmap-normal.txt").Ports;
-                portList.AddRange(newPorts);
-                ScanPorts(newPorts);
-
-                Nmap.CustomScan(3, target);
-                newPorts = Nmap.ParseFile("nmap-slow.txt").Ports;
-                portList.AddRange(newPorts);
-                ScanPorts(newPorts);
-            }
-
-            if (portList.Count == 0)
             {
                 // All parsing and scans done - But still no ports
                 Console.WriteLine("No open ports found to scan :<");
@@ -277,7 +254,7 @@ namespace Reecon
             threadList.Clear();
         }
 
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0042:Deconstruct variable declaration")]
+        [SuppressMessage("Style", "IDE0042:Deconstruct variable declaration")]
         static void ScanPort(int port)
         {
             string toDo = PortInfo.ScanPort(target, port);

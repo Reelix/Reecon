@@ -89,7 +89,7 @@ namespace Reecon
                     LdapCredential anonymousCredential = new LdapCredential();
                     ldapConnection.Bind(Native.LdapAuthType.Simple, anonymousCredential);
                 }
-                catch (Exception ex)
+                catch
                 {
                     return "- No anonymous authentication allowed" + Environment.NewLine;
                 }

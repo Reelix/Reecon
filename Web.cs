@@ -443,6 +443,12 @@ namespace Reecon
                             returnText += $"-- Page Text: {response.PageText}" + Environment.NewLine;
                         }
                     }
+                    else if (response.StatusCode == 0)
+                    {
+                        Console.WriteLine("The HTTP Host is timing out :<");
+                        returnText += $"- " + "Host timed out - Unable to enumerate".Pastel(Color.Red);
+                        break;
+                    }
                     else if (response.StatusCode != HttpStatusCode.NotFound)
                     {
                         Console.WriteLine($"Unknown response for {file} - {response.StatusCode}");
@@ -666,18 +672,24 @@ namespace Reecon
                 responseText += "- Page Title: " + PageTitle + Environment.NewLine;
                 if (PageTitle.StartsWith("Apache Tomcat"))
                 {
+                    // CVE's
+                    if (PageTitle == "Apache Tomcat/9.0.17")
+                    {
+                        responseText += "- " + "Apache Tomcat 9.0.17 Detected - Vulnerable to CVE-2019-0232!".Pastel(Color.Orange);
+                    }
                     // Apache Tomcat Page
                     NetworkCredential defaultTomcatCreds = new NetworkCredential("tomcat", "s3cret");
 
-                    // Check Manager App
+                    // Sanitize URL
                     if (!url.EndsWith("/"))
                     {
                         url += "/";
                     }
+
+                    // Check Manager App
                     string managerAppURL = URL + "manager/html";
-                    // Console.WriteLine("Testing: " + managerAppURL);
-                    var mangerAppInfo = Web.GetHTTPInfo(managerAppURL);
-                    if (mangerAppInfo.StatusCode == HttpStatusCode.Unauthorized)
+                    var managerAppInfo = Web.GetHTTPInfo(managerAppURL);
+                    if (managerAppInfo.StatusCode == HttpStatusCode.Unauthorized)
                     {
                         responseText += "- Manager App Found - But it's Unauthorized" + Environment.NewLine;
                         try
@@ -685,16 +697,20 @@ namespace Reecon
                             WebClient wc = new WebClient();
                             wc.Credentials = defaultTomcatCreds;
                             wc.DownloadString(managerAppURL);
-                            responseText += "-- " + "Creds Found: tomcat:s3cret".Pastel(Color.Orange) + Environment.NewLine;
+                            responseText += "-- " + "Creds Found: defaultTomcatCredstomcat:s3cret".Pastel(Color.Orange) + Environment.NewLine;
                         }
                         catch
                         {
                             // Creds are still incorrect - Oh well
                         }
                     }
-                    else
+                    else if (managerAppInfo.StatusCode == HttpStatusCode.Forbidden)
                     {
-                        Console.WriteLine("Manager App Status Code: " + mangerAppInfo.StatusCode);
+                        responseText += "- Manager App Found - But it's Forbidden" + Environment.NewLine;
+                    }
+                    else if (managerAppInfo.StatusCode != HttpStatusCode.NotFound)
+                    {
+                        responseText += "Unknown Manager App Status Code: " + managerAppInfo.StatusCode + Environment.NewLine;
                     }
 
                     // Check Host Manager
@@ -714,6 +730,14 @@ namespace Reecon
                         {
                             // Creds are still incorrect - Oh well
                         }
+                    }
+                    else if (hostManagerInfo.StatusCode == HttpStatusCode.Forbidden)
+                    {
+                        responseText += "- Host Manager Found - But it's Forbidden" + Environment.NewLine;
+                    }
+                    else if (hostManagerInfo.StatusCode != HttpStatusCode.NotFound)
+                    {
+                        responseText += "Unknown Host Manager Status Code: " + hostManagerInfo.StatusCode + Environment.NewLine;
                     }
                 }
             }
@@ -769,6 +793,10 @@ namespace Reecon
                         {
                             responseText += "--- Possible Vulnerable Version: https://github.com/rapid7/metasploit-framework/blob/master/modules/exploits/linux/http/webmin_backdoor.rb" + Environment.NewLine;
                         }
+                    }
+                    else if (serverText.StartsWith("Werkzeug/"))
+                    {
+                        responseText += "-- " + "Werkzeug Detected - Check out /console <-----".Pastel(Color.Orange) + Environment.NewLine;
                     }
                 }
                 // Useful info

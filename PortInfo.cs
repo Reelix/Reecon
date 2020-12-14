@@ -147,7 +147,8 @@ namespace Reecon
             else
             {
                 // The port is not in our list
-                Console.WriteLine($"Unknown Port: {port} - Info may not be reliable");
+                // If a single port has different, but similar matches for a sample banners, duplicate results may appear
+                Console.WriteLine($"Unknown Port: {port} - Info may be unreliable / duplicated");
                 // See if we can still figure out what it does based on the banner info
                 string portInfo = FindUnknownPortInfo(target, port);
                 toReturn = portInfo;
@@ -179,6 +180,7 @@ namespace Reecon
 
             foreach (string theBanner in bannerList)
             {
+                unknownPortResult = "";
                 // Console.WriteLine("Checking: " + theBanner);
                 // We now have a proper banner
                 if (theBanner.StartsWith("220") && theBanner.Contains("ESMTP"))

@@ -98,7 +98,7 @@ namespace Reecon
             }
             else
             {
-                return "- Cannot find smbclient :<";
+                return "- Error: Cannot find /usr/bin/smbclient - Please install it".Pastel(Color.Red);
             }
         }
 

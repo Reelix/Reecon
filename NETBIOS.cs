@@ -87,7 +87,8 @@ namespace Reecon
                             if (Host != strHost && num == 1 && strHost != "")
                             {
                                 Group = strHost;
-                                toReturn += "- Group: " + Group + Environment.NewLine;
+                                // This automagically has a newline after it by default. I don't know how or why and I can't get rid of it - So it stays...
+                                toReturn += "- Group: " + Group + "zz"; // + Environment.NewLine;
                                 num++;
                             }
                             else
@@ -97,14 +98,13 @@ namespace Reecon
                                     User = strHost;
                                     if (User != "__MSBROWSE__")
                                     {
-                                        toReturn += "- User: " + User + Environment.NewLine;
+                                        toReturn += "zz- User: " + User + Environment.NewLine;
                                         num++;
                                     }
                                 }
                             }
 
                         }
-
                         strHost = "";
                         strHex = "";
 
@@ -269,19 +269,23 @@ namespace Reecon
                             }
                         }
                     }
-                    else if (enumdomusersList.Any(x => x.Contains("NT_STATUS_ACCESS_DENIED")))
-                    {
-                        // Request was denied - We ignore it though
-                    }
-                    else if (enumdomusersList.Count == 1)
+                    else // Count > 0
                     {
                         string firstItem = enumdomusersList[0];
                         if (firstItem.Contains("user:") && firstItem.Contains("rid:"))
                         {
+                            // All is fine
+                            if (enumdomusersList.Count >= 3)
+                            {
+                                Console.WriteLine("Found a lot of useful RPC info - Output may take a few seconds longer than expected");
+                            }
                             rpcInfo = "- User Listing" + Environment.NewLine;
-                            rpcInfo += QueryEnumDomUser(ip, firstItem);
+                            foreach (string user in enumdomusersList)
+                            {
+                                rpcInfo += QueryEnumDomUser(ip, user);
+                            }
                             // 23 -> https://room362.com/post/2017/reset-ad-user-password-with-linux/
-                            rpcInfo += "- Might as well try a password reset: rpcclient -> setuserinfo2 usernameHere 23 'newPasswordHere'" + Environment.NewLine;
+                            rpcInfo += "--> rpcclient -> setuserinfo2 userNameHere 23 'newPasswordHere'" + Environment.NewLine;
                         }
                         else if (firstItem == "Cannot connect to server.  Error was NT_STATUS_RESOURCE_NAME_NOT_FOUND")
                         {
@@ -297,31 +301,12 @@ namespace Reecon
                         }
                         else
                         {
-                            Console.WriteLine("Unknown Path GetRPCInfo.Count1Unknown - Debug Info item: " + enumdomusersList[0].Trim());
+                            foreach (string item in enumdomusersList)
+                            {
+                                Console.WriteLine("Debug Info item: " + item);
+                            }
+                            rpcInfo = "- Unknown items in NETBIOS.GetRPCInfo - Bug Reelix (Check Debug Info Item output)" + Environment.NewLine;
                         }
-                    }
-                    else if (enumdomusersList.Count == 2 || enumdomusersList.Count == 3)
-                    {
-                        foreach (string item in enumdomusersList)
-                        {
-                            Console.WriteLine("Debug Info item: " + item);
-                        }
-                        rpcInfo = "- Unknown Path GetRPCInfo.smallReturnCount - Bug Reelix" + Environment.NewLine;
-                    }
-                    else if (enumdomusersList.Count > 3)
-                    {
-                        Console.WriteLine("Found a lot of useful RPC info - Output may take a few seconds longer than expected");
-                        rpcInfo = "- User Listing" + Environment.NewLine;
-                        foreach (string user in enumdomusersList)
-                        {
-                            rpcInfo += QueryEnumDomUser(ip, user);
-                        }
-                        // 23 -> https://room362.com/post/2017/reset-ad-user-password-with-linux/
-                        rpcInfo += "--> rpcclient -> setuserinfo2 userNameHere 23 'newPasswordHere'" + Environment.NewLine;
-                    }
-                    else
-                    {
-                        Console.WriteLine("GetRPCInfo.FatalError - How'd it even get here???");
                     }
                     if (anonAccess == true)
                     {
@@ -336,7 +321,7 @@ namespace Reecon
                 }
                 else
                 {
-                    rpcInfo = "- Cannot find /usr/bin/rpcclient - Please install it" + Environment.NewLine;
+                    rpcInfo = "- Error: Cannot find /usr/bin/rpcclient - Please install smbclient (Includes it)".Pastel(Color.Red) + Environment.NewLine;
                 }
             }
             else
