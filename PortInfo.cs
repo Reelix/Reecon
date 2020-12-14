@@ -316,6 +316,12 @@ namespace Reecon
                     unknownPortResult += "- Bug Reelix to fix this. Ref: Port 3690";
                     Console.WriteLine(unknownPortResult);
                 }
+                else if (theBanner.Length > 5 && theBanner[0] == 255 && theBanner[1] == 253 && theBanner[2] == 24)
+                {
+                    unknownPortResult += $"Port {port} - Telnet".Pastel(Color.Green) + Environment.NewLine;
+                    unknownPortResult += Telnet.GetInfo(target, port);
+                    Console.WriteLine(unknownPortResult);
+                }
             }
             // 47538/tcp open  socks-proxy Socks4A
             // -> [?? _ ??

@@ -1,6 +1,6 @@
 ﻿21|FTP|FTP
 22|SSH|SSH
-23|N/A|Telnet
+23|Telnet|Telnet
 25|SMTP|SMTP
 53|DNS|DNS
 80|HTTP|HTTP
