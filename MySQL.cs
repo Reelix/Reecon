@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using MySqlConnector;
+using Pastel;
 
 namespace Reecon
 {
@@ -43,9 +45,13 @@ namespace Reecon
                     {
                         return "- MariaDB Server (No External Authentication)";
                     }
+                    else if (ex.Message.Contains("is not allowed to connect to this MySQL server"))
+                    {
+                        return "- MySQL (No External Authentication)";
+                    }
                     else
                     {
-                        return "- Unknown MySQL Server - Bug Reelix";
+                        return "- Unknown SQL Server Type - Bug Reelix" + Environment.NewLine + "-- " + ex.Message;
                     }
                 }
                 else
@@ -111,7 +117,8 @@ namespace Reecon
                 "root:raspberry",
                 "root:openauditrootuserpassword",
                 "root:vagrant",
-                "root:123qweASD#"
+                "root:123qweASD#",
+                "root:password"
             };
             int tried = 0;
             foreach (string toTest in testDetails)
@@ -122,8 +129,9 @@ namespace Reecon
                 if (success == "true")
                 {
                     // Wow o_O
-                    string toReturn = "- Default Credentails Found: " + username + ":" + password + Environment.NewLine;
-                    toReturn += $"-- mysql -h {target} -u {username} -p {password}";
+                    string toReturn = $"- Default Credentials Found: {username}:{password}".Pastel(Color.Orange) + Environment.NewLine;
+                    toReturn += $"-- mysql -h {target} -u {username} -p" + Environment.NewLine;
+                    toReturn += GetCreds();
                     return toReturn;
                 }
                 else if (success == "break")
@@ -169,6 +177,27 @@ namespace Reecon
                 Console.WriteLine(ex);
                 return "break";
             }
+        }
+
+        private static string GetCreds()
+        {
+            string creds = "";
+            // It's open from when the creds were correct
+            if (connection.State == System.Data.ConnectionState.Open)
+            {
+                string command = "SELECT User, authentication_string from mysql.user;";
+                MySqlCommand cmd = new MySqlCommand(command, connection);
+                MySqlDataReader rdr = cmd.ExecuteReader();
+                // TODO: Test when the user doesn't have access to the mysql.user table
+                while (rdr.Read())
+                {
+                    string username = rdr[0].ToString();
+                    string password = rdr[1].ToString();
+                    creds += "--- " + $"{username}:{password}".Pastel(Color.Orange) + Environment.NewLine;
+                }
+                rdr.Close();
+            }
+            return creds;
         }
     }
 }

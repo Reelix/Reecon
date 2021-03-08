@@ -11,12 +11,12 @@ namespace Reecon
         static string target = "";
         static readonly List<int> portList = new List<int>();
         static readonly List<Thread> threadList = new List<Thread>();
-        static List<string> postScanList = new List<string>();
+        static readonly List<string> postScanList = new List<string>();
         static void Main(string[] args)
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.25a ( https://github.com/Reelix/Reecon )");
+            Console.WriteLine("Reecon - Version 0.25b ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
@@ -254,7 +254,6 @@ namespace Reecon
             threadList.Clear();
         }
 
-        [SuppressMessage("Style", "IDE0042:Deconstruct variable declaration")]
         static void ScanPort(int port)
         {
             string toDo = PortInfo.ScanPort(target, port);

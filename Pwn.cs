@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace Reecon
 {
@@ -39,17 +40,29 @@ namespace Reecon
 
                 // pwn cyclic 500
                 // aaaabaaacaaadaaaeaaafaaagaaahaaaiaaajaaakaaalaaamaaanaaaoaaapaaaqaaaraaasaaataaauaaavaaawaaaxaaayaaazaabbaabcaabdaabeaabfaabgaabhaabiaabjaabkaablaabmaabnaaboaabpaabqaabraabsaabtaabuaabvaabwaabxaabyaabzaacbaaccaacdaaceaacfaacgaachaaciaacjaackaaclaacmaacnaacoaacpaacqaacraacsaactaacuaacvaacwaacxaacyaaczaadbaadcaaddaadeaadfaadgaadhaadiaadjaadkaadlaadmaadnaadoaadpaadqaadraadsaadtaaduaadvaadwaadxaadyaadzaaebaaecaaedaaeeaaefaaegaaehaaeiaaejaaekaaelaaemaaenaaeoaaepaaeqaaeraaesaaetaaeuaaevaaewaaexaaeyaae
-                General.RunProcess("/bin/bash", " -c \"echo 'aaaabaaacaaadaaaeaaafaaagaaahaaaiaaajaaakaaalaaamaaanaaaoaaapaaaqaaaraaasaaataaauaaavaaawaaaxaaayaaazaabbaabcaabdaabeaabfaabgaabhaabiaabjaabkaablaabmaabnaaboaabpaabqaabraabsaabtaabuaabvaabwaabxaabyaabzaacbaaccaacdaaceaacfaacgaachaaciaacjaackaaclaacmaacnaacoaacpaacqaacraacsaactaacuaacvaacwaacxaacyaaczaadbaadcaaddaadeaadfaadgaadhaadiaadjaadkaadlaadmaadnaadoaadpaadqaadraadsaadtaaduaadvaadwaadxaadyaadzaaebaaecaaedaaeeaaefaaegaaehaaeiaaejaaekaaelaaemaaenaaeoaaepaaeqaaeraaesaaetaaeuaaevaaewaaexaaeyaae' | " + fileName + "\"", 5);
-                List<string> dmesgOutput = General.GetProcessOutput("dmesg", "");
-                foreach (string item in dmesgOutput)
+                if (General.IsInstalledOnLinux("pwn"))
                 {
-                    //  segfault at 6161616c ip 000000006161616c x
-                    if (item.Contains(fileName.TrimStart("./".ToCharArray())) && item.Contains("segfault at "))
+                    General.RunProcess("/bin/bash", " -c \"echo 'aaaabaaacaaadaaaeaaafaaagaaahaaaiaaajaaakaaalaaamaaanaaaoaaapaaaqaaaraaasaaataaauaaavaaawaaaxaaayaaazaabbaabcaabdaabeaabfaabgaabhaabiaabjaabkaablaabmaabnaaboaabpaabqaabraabsaabtaabuaabvaabwaabxaabyaabzaacbaaccaacdaaceaacfaacgaachaaciaacjaackaaclaacmaacnaacoaacpaacqaacraacsaactaacuaacvaacwaacxaacyaaczaadbaadcaaddaadeaadfaadgaadhaadiaadjaadkaadlaadmaadnaadoaadpaadqaadraadsaadtaaduaadvaadwaadxaadyaadzaaebaaecaaedaaeeaaefaaegaaehaaeiaaejaaekaaelaaemaaenaaeoaaepaaeqaaeraaesaaetaaeuaaevaaewaaexaaeyaae' | " + fileName + "\"", 5);
+                    List<string> dmesgOutput = General.GetProcessOutput("dmesg", "");
+                    foreach (string item in dmesgOutput)
                     {
-                        Console.WriteLine("- Cyclic Segfault: " + item.Remove(0, item.IndexOf("segfault at ") + 12).Substring(0, 9));
+                        //  segfault at 6161616c ip 000000006161616c x
+                        if (item.Contains(fileName.TrimStart("./".ToCharArray())) && item.Contains("segfault at "))
+                        {
+                            // Console.WriteLine("-- Item: " + item);
+                            string segfaultHex = item.Remove(0, item.IndexOf("segfault at ") + 12).Substring(0, 9).Trim();
+                            // Console.WriteLine("-- segfaultHex: " + segfaultHex);
+                            string pwntoolsSearch = (new string(HEX2ASCII(segfaultHex).Reverse().ToArray()));
+                            // Console.WriteLine("-- pwntoolsSearch: " + segfaultHex);
+                            string pwnPos = General.GetProcessOutput("pwn", "cyclic -l " + pwntoolsSearch).First();
+                            Console.WriteLine("- Cyclic Segfault Overflow Position: " + pwnPos);
+                        }
                     }
                 }
-
+                else
+                {
+                    Console.WriteLine("- pwntools is not installed - Skipping auto segfault");
+                }
             }
             else if (architecture == Architecture.x64)
             {
@@ -275,6 +288,20 @@ namespace Reecon
                 Console.WriteLine("Unknown File Type Identifier");
                 return Architecture.Unknown;
             }
+        }
+
+        private static string HEX2ASCII(string hex)
+        {
+            string res = String.Empty;
+
+            for (int a = 0; a < hex.Length; a += 2)
+            {
+                string Char2Convert = hex.Substring(a, 2);
+                int n = Convert.ToInt32(Char2Convert, 16);
+                char c = (char)n;
+                res += c.ToString();
+            }
+            return res;
         }
     }
 }

@@ -7,7 +7,7 @@ using System.Text;
 
 namespace Reecon
 {
-    class SSH
+    class SSH // Commonly Port 22 or 2222
     {
         public static string GetInfo(string ip, int port)
         {
@@ -23,26 +23,24 @@ namespace Reecon
             try
             {
                 Byte[] buffer = new Byte[512];
-                using (Socket sshSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+                using Socket sshSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                sshSocket.Connect(ip, port);
+                int bytes = sshSocket.Receive(buffer, buffer.Length, 0);
+                string versionMessage = Encoding.ASCII.GetString(buffer, 0, bytes);
+                versionMessage = versionMessage.Trim().Replace(Environment.NewLine, "");
+                // SSH-2.0-OpenSSH_6.6.1p1
+                // SSH-2.0-dropbear_0.45
+                if (versionMessage.StartsWith("SSH-2.0-"))
                 {
-                    sshSocket.Connect(ip, port);
-                    int bytes = sshSocket.Receive(buffer, buffer.Length, 0);
-                    string versionMessage = Encoding.ASCII.GetString(buffer, 0, bytes);
-                    versionMessage = versionMessage.Trim().Replace(Environment.NewLine, "");
-                    // SSH-2.0-OpenSSH_6.6.1p1
-                    // SSH-2.0-dropbear_0.45
-                    if (versionMessage.StartsWith("SSH-2.0-"))
-                    {
-                        versionMessage = versionMessage.Remove(0, 8);
-                        versionMessage = versionMessage.Replace("_", "");
-                        versionMessage += " (protocol 2.0)"; // Nmap's format
-                    }
-                    if (versionMessage.Trim() == "")
-                    {
-                        versionMessage = "Port is open, but no version info";
-                    }
-                    return versionMessage;
+                    versionMessage = versionMessage.Remove(0, 8);
+                    versionMessage = versionMessage.Replace("_", "");
+                    versionMessage += " (protocol 2.0)"; // Nmap's format
                 }
+                if (versionMessage.Trim() == "")
+                {
+                    versionMessage = "Port is open, but no version info";
+                }
+                return versionMessage;
             }
             catch (SocketException se)
             {

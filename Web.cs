@@ -269,6 +269,7 @@ namespace Reecon
                 // Common Index files
                 "index.php",
                 "index.html",
+                "index.jsp",
                 // Common images folder
                 "images/",
                 // Hidden mail server
@@ -276,6 +277,7 @@ namespace Reecon
                 // Admin stuff
                 "admin.php",
                 "admin/",
+                "manager/",
                 // Git repo
                 ".git/HEAD",
                 // SSH
@@ -319,7 +321,7 @@ namespace Reecon
                             string pageText = response.PageText;
                             if (pageText.Length != notFoundLength)
                             {
-                                returnText += "- " + $"Common Path is readable: {url}{file}".Pastel(Color.Orange) + Environment.NewLine;
+                                returnText += "- " + $"Common Path is readable: {url}{file} (Len: {pageText.Length})".Pastel(Color.Orange) + Environment.NewLine;
                                 // Specific case for robots.txt since it's common and extra useful
                                 if (file == "robots.txt")
                                 {
@@ -438,6 +440,11 @@ namespace Reecon
                     else if (response.StatusCode == HttpStatusCode.Unauthorized)
                     {
                         returnText += $"- Common path requires authentication: {url}{file}" + Environment.NewLine;
+                        var headers = response.Headers;
+                        if (headers.AllKeys.Any() && headers.Get("WWW-Authenticate") != null)
+                        {
+                            returnText += $"-- WWW-Authenticate: {headers.Get("WWW-Authenticate")}" + Environment.NewLine;
+                        }
                         if (response.PageText != "")
                         {
                             returnText += $"-- Page Text: {response.PageText}" + Environment.NewLine;
@@ -448,6 +455,10 @@ namespace Reecon
                         Console.WriteLine("The HTTP Host is timing out :<");
                         returnText += $"- " + "Host timed out - Unable to enumerate".Pastel(Color.Red);
                         break;
+                    }
+                    else if (response.StatusCode == HttpStatusCode.InternalServerError)
+                    {
+                        returnText += $"- Common path throws an Internal Server Error: {url}{file}" + Environment.NewLine;
                     }
                     else if (response.StatusCode != HttpStatusCode.NotFound)
                     {
@@ -691,13 +702,13 @@ namespace Reecon
                     var managerAppInfo = Web.GetHTTPInfo(managerAppURL);
                     if (managerAppInfo.StatusCode == HttpStatusCode.Unauthorized)
                     {
-                        responseText += "- Manager App Found - But it's Unauthorized" + Environment.NewLine;
+                        responseText += "- Manager App Found - But it requires credentials --> " + managerAppURL + Environment.NewLine;
                         try
                         {
                             WebClient wc = new WebClient();
                             wc.Credentials = defaultTomcatCreds;
                             wc.DownloadString(managerAppURL);
-                            responseText += "-- " + "Creds Found: defaultTomcatCredstomcat:s3cret".Pastel(Color.Orange) + Environment.NewLine;
+                            responseText += "-- " + "Creds Found: tomcat:s3cret".Pastel(Color.Orange) + Environment.NewLine;
                         }
                         catch
                         {
@@ -718,7 +729,7 @@ namespace Reecon
                     var hostManagerInfo = Web.GetHTTPInfo(hostManagerURL);
                     if (hostManagerInfo.StatusCode == HttpStatusCode.Unauthorized)
                     {
-                        responseText += "- Host Manager Found - But it's Unauthorized" + Environment.NewLine;
+                        responseText += "- Host Manager Found - But it requires credentials --> " + hostManagerURL + Environment.NewLine;
                         try
                         {
                             WebClient wc = new WebClient();
@@ -750,9 +761,10 @@ namespace Reecon
                 if (PageText.Contains("/wp-content/themes/") && PageText.Contains("/wp-includes/"))
                 {
                     responseText += "- Wordpress detected!" + Environment.NewLine;
+                    // Basic User Enumeration
                     try
                     {
-                        string jsonData = wc.DownloadString("http://" + DNS + "/wp-json/wp/v2/users");
+                        string jsonData = wc.DownloadString($"http://{DNS}/wp-json/wp/v2/users");
                         var document = JsonDocument.Parse(jsonData);
                         foreach (JsonElement element in document.RootElement.EnumerateArray())
                         {
@@ -764,12 +776,26 @@ namespace Reecon
                     {
                         // Thrown on 404's and such - Ignore it
                     }
-                    responseText += "-- wpscan --url http://" + DNS + "/ --enumerate u1-5" + Environment.NewLine;
+                    // Checking for xmlrpc.php
+                    try
+                    {
+                        var pageData = GetHTTPInfo($"http://{DNS}/xmlrpc.php");
+                        if (pageData.PageText == "XML-RPC server accepts POST requests only.")
+                        {
+                            responseText += "-- xmlrpc.php found - Great for Brute Forcing!" + Environment.NewLine;
+                        }
+                    }
+                    catch (WebException)
+                    {
+                        // Ignore
+                    }
+                    responseText += $"-- wpscan --url http://{DNS}/ --enumerate u1-5" + Environment.NewLine;
                     responseText += "-- hydra -L users.txt -P passwords.txt site.com http-post-form \"/blog/wp-login.php:log=^USER^&pwd=^PASS^&wp-submit=Log In&testcookie=1:S=Location\" -I -t 50" + Environment.NewLine;
                 }
                 else if (PageText.Trim() == "<b>The source you requested could not be found.</b>")
                 {
                     responseText += "-- Possible Icecast Server detected" + Environment.NewLine; // Thanks nmap!
+                    responseText += "-- Try: run Metasploit windows/http/icecast_header" + Environment.NewLine;
                 }
             }
             if (!string.IsNullOrEmpty(DNS))

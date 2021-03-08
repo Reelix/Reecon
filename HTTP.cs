@@ -2,20 +2,40 @@
 
 namespace Reecon
 {
-    class HTTP //80 / 8080 / 8000
+    class HTTP //80 / 8080 / 8000 (Also used for 443, HTTPS)
     {
         public static string GetInfo(string target, int port)
+        {
+            string result = GetInfoMain(target, port, false);
+            return result;
+        }
+
+        public static string GetInfoMain(string target, int port, bool isHTTPS)
         {
             try
             {
                 string url = "";
-                if (port == 80)
+                if (isHTTPS)
                 {
-                    url = $"http://{target}/";
+                    if (port == 443)
+                    {
+                        url = $"https://{target}/";
+                    }
+                    else
+                    {
+                        url = $"https://{target}:{port}/";
+                    }
                 }
                 else
                 {
-                    url = $"http://{target}:{port}/";
+                    if (port == 80)
+                    {
+                        url = $"http://{target}/";
+                    }
+                    else
+                    {
+                        url = $"http://{target}:{port}/";
+                    }
                 }
                 var httpInfo = Web.GetHTTPInfo(url);
                 if (httpInfo.AdditionalInfo == "Timeout")
@@ -27,10 +47,18 @@ namespace Reecon
                     return "";
                 }
                 string portData = Web.FormatHTTPInfo(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert, httpInfo.URL);
-                string commonFiles = Web.FindCommonFiles(url);
-                if (commonFiles != "")
+
+                if (httpInfo.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                 {
-                    portData += Environment.NewLine + commonFiles;
+                    portData += "- Skipping file enumeration due to unauthorized result";
+                }
+                else
+                {
+                    string commonFiles = Web.FindCommonFiles(url);
+                    if (commonFiles != "")
+                    {
+                        portData += Environment.NewLine + commonFiles;
+                    }
                 }
                 string baseLFI = Web.TestBaseLFI(target, port);
                 if (baseLFI != "")

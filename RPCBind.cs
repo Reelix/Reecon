@@ -2,9 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Reecon
 {
@@ -12,6 +9,7 @@ namespace Reecon
     {
         public static string GetInfo(string target, int port)
         {
+            // rpcinfo has no Port parameter - Weird...
             string toReturn = "";
             if (!General.IsInstalledOnLinux("rpcinfo"))
             {

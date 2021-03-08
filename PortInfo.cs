@@ -18,7 +18,7 @@ namespace Reecon
 
     public class PortInfo
     {
-        private static List<Port> PortInfoList = new List<Port>();
+        private static readonly List<Port> PortInfoList = new List<Port>();
 
         // Parse Ports.txt into useful information
         public static void LoadPortInfo()
@@ -33,42 +33,40 @@ namespace Reecon
             string resource = assembly.GetManifestResourceNames().Single(str => str.EndsWith("Ports.txt"));
             if (!string.IsNullOrEmpty(resource))
             {
-                using (Stream stream = assembly.GetManifestResourceStream(resource))
-                using (StreamReader reader = new StreamReader(stream))
+                using Stream stream = assembly.GetManifestResourceStream(resource);
+                using StreamReader reader = new StreamReader(stream);
+                string portData = reader.ReadToEnd();
+                List<string> portItems = portData.Replace("\r\n", "\n").Split('\n').ToList(); // OS Friendly File Split
+                foreach (string port in portItems)
                 {
-                    string portData = reader.ReadToEnd();
-                    List<string> portItems = portData.Replace("\r\n", "\n").Split('\n').ToList(); // OS Friendly File Split
-                    foreach (string port in portItems)
+                    int splitItems = port.Split('|').Length;
+                    string portNumber = port.Split('|')[0];
+                    string portFileName = port.Split('|')[1];
+                    string portFriendlyName = port.Split('|')[2];
+                    if (portNumber.Contains("-"))
                     {
-                        int splitItems = port.Split('|').Length;
-                        string portNumber = port.Split('|')[0];
-                        string portFileName = port.Split('|')[1];
-                        string portFriendlyName = port.Split('|')[2];
-                        if (portNumber.Contains("-"))
-                        {
-                            int lowPort = int.Parse(portNumber.Split('-')[0]);
-                            int highPort = int.Parse(portNumber.Split('-')[1]);
-                            for (int j = lowPort; j <= highPort; j++)
-                            {
-                                Port thePort = new Port()
-                                {
-                                    Number = j,
-                                    FileName = portFileName,
-                                    FriendlyName = portFriendlyName
-                                };
-                                PortInfoList.Add(thePort);
-                            }
-                        }
-                        else
+                        int lowPort = int.Parse(portNumber.Split('-')[0]);
+                        int highPort = int.Parse(portNumber.Split('-')[1]);
+                        for (int j = lowPort; j <= highPort; j++)
                         {
                             Port thePort = new Port()
                             {
-                                Number = int.Parse(portNumber),
+                                Number = j,
                                 FileName = portFileName,
                                 FriendlyName = portFriendlyName
                             };
                             PortInfoList.Add(thePort);
                         }
+                    }
+                    else
+                    {
+                        Port thePort = new Port()
+                        {
+                            Number = int.Parse(portNumber),
+                            FileName = portFileName,
+                            FriendlyName = portFriendlyName
+                        };
+                        PortInfoList.Add(thePort);
                     }
                 }
             }
@@ -263,7 +261,7 @@ namespace Reecon
                 else if (theBanner == "+OK Dovecot ready.")
                 {
                     unknownPortResult += $"Port {port} - pop3 (Dovecot)".Pastel(Color.Green) + Environment.NewLine;
-                    unknownPortResult += POP3.GetInfo(target);
+                    unknownPortResult += POP3.GetInfo(target, port);
                     Console.WriteLine(unknownPortResult);
                 }
                 else if (theBanner == "ncacn_http/1.0")
@@ -552,6 +550,8 @@ namespace Reecon
 
                     // PFL Successful - Add pjl to the post scan actions
                     postScanActions += portData + Environment.NewLine + $"- Printer: pret.py {target} pjl ( https://github.com/RUB-NDS/PRET )" + Environment.NewLine;
+                    // If I need to do more PRET stuff, I can refer to this video
+                    postScanActions += "- Ref: https://www.youtube.com/watch?v=vD3jSJlc0ro" + Environment.NewLine;
                 }
                 else
                 {

@@ -21,76 +21,130 @@ namespace Reecon
             Console.OutputEncoding = System.Text.Encoding.UTF8;
 
             string username = args[1];
-            Instagram(username);
-            Twitter(username);
-            YouTube(username);
+            Console.WriteLine("Searching for " + username + "...");
+            GetInstagramInfo(username);
+            GetRedditInfo(username);
+            // GetTwitterInfo(username); - Broken
+            GetYouTubeInfo(username);
         }
 
-        private static void Instagram(string username)
+        private static void GetInstagramInfo(string username)
         {
-            // Instagram usernames don't have spaces
-            username = username.Replace(" ", "");
-            var httpInfo = Web.GetHTTPInfo("https://www.instagram.com/" + username + "/?__a=1");
-            if (httpInfo.StatusCode == HttpStatusCode.NotFound)
+            WebClient wc = new WebClient();
+            string pageText = wc.DownloadString("https://www.instagram.com/web/search/topsearch/?query=" + username);
+            Instagram.Rootobject theObject = JsonSerializer.Deserialize<Instagram.Rootobject>(pageText);
+            foreach (Instagram.User user in theObject.users)
             {
-                Console.WriteLine("- Instagram: Not Found");
-            }
-            else if (httpInfo.StatusCode == HttpStatusCode.OK)
-            {
-                string pageText = httpInfo.PageText;
-                Console.WriteLine("- Instagram: " + "Found".Pastel(Color.Green));
-                Console.WriteLine("-- Link: https://www.instagram.com/" + username + "/");
-                var document = JsonDocument.Parse(pageText);
-                // Oh gawd
-                foreach (var item in document.RootElement.EnumerateObject())
+                string userUsername = user.user.username;
+                if (userUsername == username || userUsername == username.ToLower())
                 {
-                    if (item.Name == "graphql")
-                    {
-                        foreach (var graphitem in item.Value.EnumerateObject())
-                        {
-                            if (graphitem.Name == "user")
-                            {
-                                foreach (var userItem in graphitem.Value.EnumerateObject())
-                                {
-                                    if (userItem.Name == "biography")
-                                    {
-                                        string biography = userItem.Value.GetString().Replace("\n", " -- ");
-                                        if (biography.Trim() != "")
-                                        {
-                                            Console.WriteLine("-- Biography: " + userItem.Value.GetString().Replace("\n", " -- "));
-                                        }
-                                    }
-                                    if (userItem.Name == "full_name")
-                                    {
-                                        if (userItem.Value.ToString().Trim() != "")
-                                        {
-                                            Console.WriteLine("-- Full Name: " + userItem.Value);
-                                        }
-                                    }
-                                    if (userItem.Name == "edge_owner_to_timeline_media")
-                                    {
-                                        foreach (var posts in userItem.Value.EnumerateObject())
-                                        {
-                                            if (posts.Name == "count")
-                                            {
-                                                Console.WriteLine("-- Posts: " + posts.Value);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    Console.WriteLine("User ID: " + user.user.pk);
+                    Console.WriteLine("Full Name: " + user.user.full_name);
+                    Console.WriteLine("Username: " + user.user.username);
                 }
+            }
+        }
 
+        // Pasted as JSON from https://www.instagram.com/web/search/topsearch/?query=Reelix
+        public static class Instagram
+        {
+#pragma warning disable IDE1006 // Naming Styles
+            public class Rootobject
+            {
+                public User[] users { get; set; }
+                public Place[] places { get; set; }
+                public Hashtag[] hashtags { get; set; }
+                public bool has_more { get; set; }
+                public string rank_token { get; set; }
+                public object clear_client_cache { get; set; }
+                public string status { get; set; }
+            }
+
+            public class User
+            {
+                public int position { get; set; }
+                public User1 user { get; set; }
+            }
+
+            public class User1
+            {
+                public string pk { get; set; }
+                public string username { get; set; }
+                public string full_name { get; set; }
+                public bool is_private { get; set; }
+                public string profile_pic_url { get; set; }
+                public string profile_pic_id { get; set; }
+                public bool is_verified { get; set; }
+                public bool has_anonymous_profile_picture { get; set; }
+                public int mutual_followers_count { get; set; }
+                public object[] account_badges { get; set; }
+                public int latest_reel_media { get; set; }
+            }
+
+            public class Place
+            {
+                public Place1 place { get; set; }
+                public int position { get; set; }
+            }
+
+            public class Place1
+            {
+                public Location location { get; set; }
+                public string title { get; set; }
+                public string subtitle { get; set; }
+                public object[] media_bundles { get; set; }
+                public string slug { get; set; }
+            }
+
+            public class Location
+            {
+                public string pk { get; set; }
+                public string short_name { get; set; }
+                public long facebook_places_id { get; set; }
+                public string external_source { get; set; }
+                public string name { get; set; }
+                public string address { get; set; }
+                public string city { get; set; }
+                public float lng { get; set; }
+                public float lat { get; set; }
+            }
+
+            public class Hashtag
+            {
+                public int position { get; set; }
+                public Hashtag1 hashtag { get; set; }
+            }
+
+            public class Hashtag1
+            {
+                public string name { get; set; }
+                public long id { get; set; }
+                public int media_count { get; set; }
+                public bool use_default_avatar { get; set; }
+                public string profile_pic_url { get; set; }
+                public string search_result_subtitle { get; set; }
+            }
+#pragma warning restore IDE1006 // Naming Styles
+        }
+
+        private static void GetRedditInfo(string username)
+        {
+            var redditInfo = OSINT_Reddit.GetInfo(username);
+            if (redditInfo.Exists)
+            {
+                Console.WriteLine("- Reddit: " + "Found".Pastel(Color.Green));
+                foreach (var comment in redditInfo.CommentList)
+                {
+                    Console.WriteLine("-- Comment: " + comment.body);
+                }
             }
             else
             {
-                Console.WriteLine("- Instagram: Error - Bug Reelix");
+                Console.WriteLine("- Reddit: Not Found");
             }
         }
 
-        private static void Twitter(string username)
+        private static void GetTwitterInfo(string username)
         {
             // Twitter usernames don't have spaces
             username = username.Replace(" ", "");
@@ -146,13 +200,12 @@ namespace Reecon
             }
         }
 
-        private static void YouTube(string username)
+        private static void GetYouTubeInfo(string username)
         {
             // YouTube usernames CAN have spaces - Oh gawd
             var httpInfo = Web.GetHTTPInfo("https://www.youtube.com/" + username);
             if (httpInfo.StatusCode == HttpStatusCode.OK)
             {
-
                 string youtubeUsername = httpInfo.PageTitle.Replace(" - YouTube", "");
                 Console.WriteLine("- YouTube: " + "Found".Pastel(Color.Green));
                 Console.WriteLine("-- Link: https://www.youtube.com/" + username);

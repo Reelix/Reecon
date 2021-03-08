@@ -4,9 +4,9 @@ using System.Text;
 
 namespace Reecon
 {
-    class POP3
+    class POP3 // Port 110 by default
     {
-        public static string GetInfo(string ip)
+        public static string GetInfo(string ip, int port)
         {
             string returnText = "";
             Byte[] buffer = new Byte[500];
@@ -17,7 +17,7 @@ namespace Reecon
                 popSocket.SendTimeout = 5000;
                 try
                 {
-                    popSocket.Connect(ip, 110);
+                    popSocket.Connect(ip, port);
                     int bytes = popSocket.Receive(buffer, buffer.Length, 0);
                     string bannerText = Encoding.ASCII.GetString(buffer, 0, bytes);
                     bannerText = bannerText.Trim();

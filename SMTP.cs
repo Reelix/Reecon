@@ -37,12 +37,12 @@ namespace Reecon
                         string newlineChars = "";
                         if (nameAndDate.EndsWith("\r\n"))
                         {
-                            returnText += "- Windows Newline Characters Detected" + Environment.NewLine;
+                            //returnText += "- Windows Newline Characters Detected" + Environment.NewLine;
                             newlineChars = "\r\n";
                         }
                         else if (nameAndDate.EndsWith("\n"))
                         {
-                            returnText += "- Linux Newline Characters Detected" + Environment.NewLine;
+                            //returnText += "- Linux Newline Characters Detected" + Environment.NewLine;
                             newlineChars = "\n";
                         }
                         else
@@ -160,11 +160,26 @@ namespace Reecon
                                 returnText += "-- " + "RCPT Validation Enabled - You can validate user accounts!".Pastel(Color.Orange) + Environment.NewLine;
                                 returnText += $"-- Phishing Command: swaks --to target@domain.com --from it@domain.com --server {ip} --port {port} --body phish.txt" + Environment.NewLine;
                             }
-                            else
+                            else if (rcptToResponse.StartsWith("501")) // 501 5.1.3 Bad recipient address syntax
                             {
-                                returnText += "-- Unknown rcptToResponse - Bug Reelix!" + Environment.NewLine;
+                                // Can't RCPT to mails - How about names?
+                                // https://github.com/rapid7/metasploit-framework/blob/master//modules/auxiliary/scanner/smtp/smtp_enum.rb
+                                returnText += "-- Unable to RCPT TO addresses - Checking name test..." + Environment.NewLine;
+                                rcptToBytes = Encoding.ASCII.GetBytes(($"RCPT TO:asdniasudnaisud" + newlineChars).ToCharArray());
+                                smtpSocket.Send(rcptToBytes, rcptToBytes.Length, 0);
+                                bytes = smtpSocket.Receive(buffer, buffer.Length, 0);
+                                rcptToResponse = Encoding.ASCII.GetString(buffer, 0, bytes).Trim();
+                                if (rcptToResponse.StartsWith("550") && rcptToResponse.Contains("User unknown in local recipient table"))
+                                {
+                                    returnText += "-- " + "Name test verified! Use Metasploit: auxiliary/scanner/smtp/smtp_enum".Pastel(Color.Orange) + Environment.NewLine;
+                                }
+                                else
+                                {
+                                    returnText += "-- Unknown rcptToResponse response: " + rcptToResponse + Environment.NewLine;
+                                }
                             }
                         }
+                        // https://github.com/rapid7/metasploit-framework/blob/master//modules/auxiliary/scanner/smtp/smtp_enum.rb
                         else if (mailFromResponse.Trim() == "")
                         {
                             returnText += "- No MAIL FROM response." + Environment.NewLine;

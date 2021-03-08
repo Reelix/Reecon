@@ -87,8 +87,9 @@ namespace Reecon
                             if (Host != strHost && num == 1 && strHost != "")
                             {
                                 Group = strHost;
-                                // This automagically has a newline after it by default. I don't know how or why and I can't get rid of it - So it stays...
-                                toReturn += "- Group: " + Group + "zz"; // + Environment.NewLine;
+                                // This character is invisible and completely breaks layouts on Linux - And I have no idea why
+                                Group = Group.Replace(Convert.ToChar(132).ToString(), "");
+                                toReturn += "- Group: " + Group + Environment.NewLine;
                                 num++;
                             }
                             else
@@ -98,7 +99,7 @@ namespace Reecon
                                     User = strHost;
                                     if (User != "__MSBROWSE__")
                                     {
-                                        toReturn += "zz- User: " + User + Environment.NewLine;
+                                        toReturn += "- User: " + User + Environment.NewLine;
                                         num++;
                                     }
                                 }
@@ -298,6 +299,10 @@ namespace Reecon
                         else if (firstItem == "Cannot connect to server.  Error was NT_STATUS_CONNECTION_DISCONNECTED")
                         {
                             rpcInfo = "- Cannot connect - It kicks you out instantly" + Environment.NewLine;
+                        }
+                        else if (firstItem.Contains("was NT_STATUS_ACCESS_DENIED"))
+                        {
+                            rpcInfo = "- enumdomusers is denied - Weird!";
                         }
                         else
                         {

@@ -40,15 +40,26 @@ namespace Reecon
             }
             else if (General.GetOS() == General.OS.Linux)
             {
-                if (General.IsInstalledOnLinux("showmount", "/sbin/showmount") == true)
+                if (General.IsInstalledOnLinux("showmount")) // "/sbin/showmount" OR "/usr/sbin/showmount"
                 {
                     List<string> showmountOutput = General.GetProcessOutput("showmount", "-e " + target);
                     foreach (string line in showmountOutput)
                     {
-                        if (line.Contains(" (everyone)"))
+                        // https://github.com/TheRealPoloMints/Blog/blob/master/Security%20Challenge%20Walkthroughs/Networks%202/bash
+
+                        // NFS V1
+                        if (line.Trim().EndsWith("*"))
                         {
                             fileList += "- " + line.Pastel(Color.Orange) + Environment.NewLine;
-                            fileList += "-- " + $"mount -t nfs -o vers=2 {target}:/mountNameHere /mnt".Pastel(Color.Orange) + Environment.NewLine;
+                            fileList += "-- NFSV1 -> " + $"mount -t nfs {target}:/mountNameHere /tmp/mount/ -nolock".Pastel(Color.Orange) + Environment.NewLine;
+                            fileList += "--- Try copy over a version of bash onto the share, +s +x it, then ./bash -p".Pastel(Color.Orange) + Environment.NewLine;
+                        }
+                        // NFS V2
+                        else if (line.Contains(" (everyone)"))
+                        {
+                            fileList += "- " + line.Pastel(Color.Orange) + Environment.NewLine;
+                            fileList += "-- NFSV2 -> " + $"mount -t nfs -o vers=2 {target}:/mountNameHere /mnt".Pastel(Color.Orange) + Environment.NewLine;
+                            fileList += "--- Try copy over a version of bash onto the share, +s +x it, then ./bash -p".Pastel(Color.Orange) + Environment.NewLine;
                         }
                         else
                         {
@@ -87,6 +98,10 @@ namespace Reecon
                         Console.WriteLine("Installed: " + featureName + " -> " + installState);
                     }
                     */
+                }
+                else
+                {
+                    return "- Error - showmount is not installed - Unable to enumerate! Run: sudo apt install nfs-common".Pastel(Color.Red);
                 }
             }
             else
