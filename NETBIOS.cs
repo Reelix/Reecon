@@ -302,7 +302,7 @@ namespace Reecon
                         }
                         else if (firstItem.Contains("was NT_STATUS_ACCESS_DENIED"))
                         {
-                            rpcInfo = "- enumdomusers is denied - Weird!";
+                            rpcInfo = "- enumdomusers is denied - Weird!" +Environment.NewLine;
                         }
                         else
                         {

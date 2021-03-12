@@ -258,9 +258,16 @@ namespace Reecon
                     string portData = Redis.GetInfo(target, port);
                     Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
                 }
+                // Both POP3
                 else if (theBanner == "+OK Dovecot ready.")
                 {
-                    unknownPortResult += $"Port {port} - pop3 (Dovecot)".Pastel(Color.Green) + Environment.NewLine;
+                    unknownPortResult += $"Port {port} - POP3 (Dovecot)".Pastel(Color.Green) + Environment.NewLine;
+                    unknownPortResult += POP3.GetInfo(target, port);
+                    Console.WriteLine(unknownPortResult);
+                }
+                else if (theBanner.StartsWith("+OK ") && theBanner.Contains("POP3"))
+                {
+                    unknownPortResult += $"Port {port} - POP3".Pastel(Color.Green) + Environment.NewLine;
                     unknownPortResult += POP3.GetInfo(target, port);
                     Console.WriteLine(unknownPortResult);
                 }
@@ -564,7 +571,11 @@ namespace Reecon
             {
                 postScanActions += "- 11211 - Memcache" + Environment.NewLine;
                 postScanActions += "-- Verify: stats (Dumps \"STAT\")" + Environment.NewLine;
-                postScanActions += "-- Dump key names: lru_crawler metadump all" + Environment.NewLine;
+                // if 'version' is above 1.4.31
+                postScanActions += "-- Dump key names (1.4.31+): lru_crawler metadump all" + Environment.NewLine;
+                // else
+                postScanActions += "-- Dump key names (Below 1.4.31): stats items" + Environment.NewLine;
+                // stats cachedump 1 0, stats cachedump 2 0, stats cachedump 3 0 etc
                 postScanActions += "-- Read key: get keyname" + Environment.NewLine;
             }
             else if (port == 27017)

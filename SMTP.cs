@@ -27,13 +27,28 @@ namespace Reecon
                     // Wait for info
                     int bytes = smtpSocket.Receive(buffer, buffer.Length, 0);
                     smtpBanner = Encoding.ASCII.GetString(buffer, 0, bytes);
-                    if (smtpBanner.StartsWith("220") && smtpBanner.Contains("ESMTP"))
+                    if (smtpBanner.StartsWith("220") && smtpBanner.Contains("SMTP")) // ESMTP contains SMTP
                     {
                         // We got a valid response! Let's do some parsing!
                         // 220 ESMTP MAIL Service ready (EXCHANGE.HTB.LOCAL)
+                        // 220 ubuntu GoldentEye SMTP Electronic-Mail agent
+
+                        // Remove the number
                         smtpBanner = smtpBanner.Remove(0, 4);
-                        string hostName = smtpBanner.Substring(0, smtpBanner.IndexOf("ESMTP"));
-                        string nameAndDate = smtpBanner.Remove(0, smtpBanner.IndexOf("ESMTP ") + 6);
+
+                        string hostName = "";
+                        string nameAndDate = "";
+                        // SMTP OR ESMTP
+                        if (smtpBanner.IndexOf("ESMTP") != -1)
+                        {
+                            hostName = smtpBanner.Substring(0, smtpBanner.IndexOf("ESMTP"));
+                            nameAndDate = smtpBanner.Remove(0, smtpBanner.IndexOf("ESMTP ") + 6);
+                        }
+                        else if (smtpBanner.IndexOf("SMTP") != -1)
+                        {
+                            hostName = smtpBanner.Substring(0, smtpBanner.IndexOf("SMTP"));
+                            nameAndDate = smtpBanner.Remove(0, smtpBanner.IndexOf("SMTP ") + 5);
+                        }
                         string newlineChars = "";
                         if (nameAndDate.EndsWith("\r\n"))
                         {
