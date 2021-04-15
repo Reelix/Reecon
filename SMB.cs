@@ -90,7 +90,7 @@ namespace Reecon
                         List<string> subProcessResults = General.GetProcessOutput("smbclient", $"//{target}/{itemName} --no-pass -c \"ls\"");
                         if (subProcessResults.Count > 1)
                         {
-                            smbClientItems += "-- " + $"{itemName} has ls perms! -> smbclient //{target}/{itemName} --no-pass".Pastel(Color.Orange) + Environment.NewLine;
+                            smbClientItems += "-- " + $"{itemName} has ls perms - {subProcessResults.Count} items found! -> smbclient //{target}/{itemName} --no-pass".Pastel(Color.Orange) + Environment.NewLine;
                         }
                     }
                 }

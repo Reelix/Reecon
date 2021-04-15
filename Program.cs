@@ -16,7 +16,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.25c ( https://github.com/Reelix/Reecon )");
+            Console.WriteLine("Reecon - Version 0.25d ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
@@ -39,7 +39,7 @@ namespace Reecon
             // Check if it's anything custom
             if (args.Contains("-ip") || args.Contains("--ip"))
             {
-                General.GetIP();
+                General.PrintIPList();
                 Console.ResetColor();
                 return;
             }

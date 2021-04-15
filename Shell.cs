@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace Reecon
@@ -11,16 +13,18 @@ namespace Reecon
             {
                 Console.WriteLine("Shell Usage: reecon --shell shellType [IP Port]");
                 Console.WriteLine("Types: bash, jsp, nc, nodejs, php, python, war");
-                General.GetIP();
+                General.PrintIPList();
                 return;
             }
             string shellType = args[1];
-            string ip = "10.0.0.1";
+            // If we have a tun0 IP, use that instead as the default
+            List<General.IP> ipList = General.GetIPList();
+            string ip = ipList.Count(x => x.Name == "tun0") != 0 ? ipList.FirstOrDefault(x => x.Name == "tun0").Address.ToString() : "10.0.0.1";
             string port = "9001";
             if (args.Length == 2)
             {
                 Console.WriteLine("Don't forget to change the IP / Port!");
-                General.GetIP();
+                General.PrintIPList();
             }
             if (args.Length == 3)
             {

@@ -175,17 +175,46 @@ namespace Reecon
                         rpcInfo += "- " + domainNameList[0] + Environment.NewLine;
                     }
 
+                    // Server info
+                    List<string> srvinfoList = General.GetProcessOutput("rpcclient", $"-U \"\"%\"\" {ip} -c \"srvinfo\"");
+                    if (srvinfoList.Count != 0 && !srvinfoList[0].Contains("NT_STATUS_ACCESS_DENIED"))
+                    {
+                        anonAccess = true;
+                        /*
+                            MOTUNUI        Wk Sv PrQ Unx NT SNT motunui server (Samba, Ubuntu)
+                            platform_id     :       500
+                            os version      :       6.1
+                            server type     :       0x809a03
+                        */
+                        rpcInfo += "- srvinfo: " + srvinfoList[0] + Environment.NewLine;
+                        // https://en.wikipedia.org/wiki/List_of_Microsoft_Windows_versions
+                        if (srvinfoList.Count == 4)
+                        {
+                            if (srvinfoList[2].Trim().StartsWith("os version"))
+                            {
+                                string osVersion = srvinfoList[2];
+                                osVersion = osVersion.Split(':')[1];
+                                osVersion = osVersion.Trim();
+                                if (osVersion == "6.1")
+                                {
+                                    rpcInfo += "- srvinfo (OS): Windows 7 OR Windows Server 2008 (One of the two)" + Environment.NewLine;
+                                }
+                                else
+                                {
+                                    rpcInfo += "- srvinfo (OS): Unknown - ID: " + osVersion + " - Bug Reelix!" + Environment.NewLine;
+                                }
+                            }
+                            else
+                            {
+                                rpcInfo += "- Weird srvinfo return - Bug Reelix!";
+                            }
+                        }
+                    }
+
                     // Find basic users
                     List<string> enumdomusersList = General.GetProcessOutput("rpcclient", $"-U \"\"%\"\" {ip} -c \"enumdomusers\"");
                     if (enumdomusersList.Count == 0)
-                    {
-                        List<string> srvinfoList = General.GetProcessOutput("rpcclient", $"-U \"\"%\"\" {ip} -c \"srvinfo\"");
-                        if (srvinfoList.Count != 0)
-                        {
-                            anonAccess = true;
-                            rpcInfo += "- srvinfo: " + srvinfoList[0] + Environment.NewLine;
-                        }
-
+                    { 
                         // Find public SIDs with lsaenumsid
                         List<string> sidList = General.GetProcessOutput("rpcclient", $"-U \"\"%\"\" {ip} -c \"lsaenumsid\"");
                         if (sidList.Count != 0)
@@ -232,6 +261,7 @@ namespace Reecon
                                 }
                             }
 
+                            // Needs the base SID to enumerate
                             if (sneakySIDBaseList.Count != 0)
                             {
                                 List<string> sneakySIDList = new List<string>();
@@ -262,7 +292,7 @@ namespace Reecon
                                             // A bit hacky, but it works
                                             if (!int.TryParse(name, out int toIgnore))
                                             {
-                                                rpcInfo += "-- Sneaky Name Found: " + name + Environment.NewLine;
+                                                rpcInfo += "-- Sneaky Username Found: " + name + Environment.NewLine;
                                             }
                                         }
                                     }
@@ -302,7 +332,7 @@ namespace Reecon
                         }
                         else if (firstItem.Contains("was NT_STATUS_ACCESS_DENIED"))
                         {
-                            rpcInfo = "- enumdomusers is denied - Weird!" +Environment.NewLine;
+                            rpcInfo = "- enumdomusers is denied - Probably can't get anything useful" +Environment.NewLine;
                         }
                         else
                         {

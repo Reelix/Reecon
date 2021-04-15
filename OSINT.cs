@@ -19,29 +19,37 @@ namespace Reecon
             }
             // Support the weird chars people use on Social Media
             Console.OutputEncoding = System.Text.Encoding.UTF8;
-
+            Console.WriteLine("Warning: The OSINT Module is still in early development and will probably break / give incorrect information".Pastel(Color.Red));
             string username = args[1];
             Console.WriteLine("Searching for " + username + "...");
             GetInstagramInfo(username);
             GetRedditInfo(username);
-            // GetTwitterInfo(username); - Broken
+            GetTwitterInfo(username);
             GetYouTubeInfo(username);
+            GetGithubInfo(username);
         }
 
         private static void GetInstagramInfo(string username)
         {
             WebClient wc = new WebClient();
             string pageText = wc.DownloadString("https://www.instagram.com/web/search/topsearch/?query=" + username);
-            Instagram.Rootobject theObject = JsonSerializer.Deserialize<Instagram.Rootobject>(pageText);
-            foreach (Instagram.User user in theObject.users)
+            try
             {
-                string userUsername = user.user.username;
-                if (userUsername == username || userUsername == username.ToLower())
+                Instagram.Rootobject theObject = JsonSerializer.Deserialize<Instagram.Rootobject>(pageText);
+                foreach (Instagram.User user in theObject.users)
                 {
-                    Console.WriteLine("User ID: " + user.user.pk);
-                    Console.WriteLine("Full Name: " + user.user.full_name);
-                    Console.WriteLine("Username: " + user.user.username);
+                    string userUsername = user.user.username;
+                    if (userUsername == username || userUsername == username.ToLower())
+                    {
+                        Console.WriteLine("User ID: " + user.user.pk);
+                        Console.WriteLine("Full Name: " + user.user.full_name);
+                        Console.WriteLine("Username: " + user.user.username);
+                    }
                 }
+            }
+            catch (JsonException jex)
+            {
+                Console.WriteLine("Instagram OSINT is currently broken - " + jex.Message + " - Bug Reelix!");
             }
         }
 
@@ -133,9 +141,31 @@ namespace Reecon
             if (redditInfo.Exists)
             {
                 Console.WriteLine("- Reddit: " + "Found".Pastel(Color.Green));
-                foreach (var comment in redditInfo.CommentList)
+                // Get Comments
+                if (redditInfo.CommentList.Count == 0)
                 {
-                    Console.WriteLine("-- Comment: " + comment.body);
+                    Console.WriteLine("-- 0 Comments Made");
+                }
+                // User has comments - List them
+                else
+                {
+                    foreach (var comment in redditInfo.CommentList)
+                    {
+                        Console.WriteLine("-- Comment: " + comment.body);
+                    }
+                }
+
+                // Get submissions
+                if (redditInfo.SubmissionList.Count == 0)
+                {
+                    Console.WriteLine("-- 0 Submissions Made");
+                }
+                else
+                {
+                    foreach (var submission in redditInfo.SubmissionList)
+                    {
+                        Console.WriteLine("-- Submission: " + submission.title);
+                    }
                 }
             }
             else
@@ -159,33 +189,40 @@ namespace Reecon
                 Console.WriteLine("-- Link: https://www.twitter.com/" + username);
 
                 // Profile name
-                Console.WriteLine("-- Name: " + httpInfo.PageTitle.Replace(" on Twitter", ""));
-
-                // Split into segments
-                string pageText = httpInfo.PageText;
-                List<string> tableList = new List<string>();
-                tableList.AddRange(pageText.Split("<table", StringSplitOptions.RemoveEmptyEntries));
-
-                // Find Bio
-                string profileInfo = tableList.First(x => x.Trim().StartsWith("class=\"profile-details\">"));
-                string bio = profileInfo.Remove(0, profileInfo.IndexOf("<div class=\"bio\">") + 58);
-                bio = bio.Substring(0, bio.IndexOf("</div>")).Trim();
-                if (bio.Trim() != "")
+                try
                 {
-                    Console.WriteLine("-- Bio: " + bio);
+                    Console.WriteLine("-- Name: " + httpInfo.PageTitle.Replace(" on Twitter", ""));
+
+                    // Split into segments
+                    string pageText = httpInfo.PageText;
+                    List<string> tableList = new List<string>();
+                    tableList.AddRange(pageText.Split("<table", StringSplitOptions.RemoveEmptyEntries));
+
+                    // Find Bio
+                    string profileInfo = tableList.First(x => x.Trim().StartsWith("class=\"profile-details\">"));
+                    string bio = profileInfo.Remove(0, profileInfo.IndexOf("<div class=\"bio\">") + 58);
+                    bio = bio.Substring(0, bio.IndexOf("</div>")).Trim();
+                    if (bio.Trim() != "")
+                    {
+                        Console.WriteLine("-- Bio: " + bio);
+                    }
+
+                    // Find Stats
+                    string profileStats = tableList.First(x => x.Trim().StartsWith("class=\"profile-stats\">"));
+                    List<string> statList = profileStats.Split("<td", StringSplitOptions.RemoveEmptyEntries).ToList();
+                    // 0 = N/A, 1 = Tweets, 2 = Following, 3 = Followers
+                    string tweetCount = statList[1].Remove(0, statList[1].IndexOf("statnum") + 9);
+                    tweetCount = tweetCount.Substring(0, tweetCount.IndexOf("<"));
+                    Console.WriteLine("-- Tweets: " + tweetCount);
+
+                    // Tweets - To do
+                    // List<string> tweetCount = tableList.Count(x => x.Trim().StartsWith("class=\"tweet  \"")).ToList();
+                    // Console.WriteLine("-- Tweets: " + tweetCount + (tweetCount == 20 ? "+" : ""));
                 }
-
-                // Find Stats
-                string profileStats = tableList.First(x => x.Trim().StartsWith("class=\"profile-stats\">"));
-                List<string> statList = profileStats.Split("<td", StringSplitOptions.RemoveEmptyEntries).ToList();
-                // 0 = N/A, 1 = Tweets, 2 = Following, 3 = Followers
-                string tweetCount = statList[1].Remove(0, statList[1].IndexOf("statnum") + 9);
-                tweetCount = tweetCount.Substring(0, tweetCount.IndexOf("<"));
-                Console.WriteLine("-- Tweets: " + tweetCount);
-
-                // Tweets - To do
-                // List<string> tweetCount = tableList.Count(x => x.Trim().StartsWith("class=\"tweet  \"")).ToList();
-                // Console.WriteLine("-- Tweets: " + tweetCount + (tweetCount == 20 ? "+" : ""));
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Twitter OSINT is currently broken - " + ex.Message + " - Bug Reelix!");
+                }
             }
             else if (httpInfo.StatusCode == HttpStatusCode.TemporaryRedirect)
             {
@@ -248,6 +285,30 @@ namespace Reecon
             else
             {
                 Console.WriteLine("- YouTube: Error - Bug Reelix: " + httpInfo.StatusCode);
+            }
+        }
+
+        private static void GetGithubInfo(string username)
+        {
+            var httpInfo = Web.GetHTTPInfo($"https://api.github.com/users/{username}", "Reecon");
+            if (httpInfo.StatusCode == HttpStatusCode.NotFound)
+            {
+                Console.WriteLine("- Github: Not Found");
+            }
+            else
+            {
+                Console.WriteLine("- Github: " + "Found".Pastel(Color.Green));
+                var githubInfo = JsonDocument.Parse(httpInfo.PageText);
+
+                JsonElement login = githubInfo.RootElement.GetProperty("login");
+                Console.WriteLine("-- Login: " + login);
+                JsonElement htmlLink = githubInfo.RootElement.GetProperty("html_url");
+                Console.WriteLine($"-- Link: {htmlLink}");
+                JsonElement name = githubInfo.RootElement.GetProperty("name");
+                Console.WriteLine("-- Name: " + name);
+                // TODO: Parse Repos + Commits
+                // Repos: https://api.github.com/users/sakurasnowangelaiko/repos
+                // Commits (And everything else): https://api.github.com/users/sakurasnowangelaiko/events (
             }
         }
     }

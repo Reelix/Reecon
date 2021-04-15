@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Reecon
 {
-    class DNS
+    class DNS // Port 53
     {
         public static string GetInfo(string ip, int port)
         {

@@ -139,16 +139,21 @@ namespace Reecon
                         // 550 HELO/EHLO not yet given -> Requires a valid EHLO First
                         // 250 2.1.0 Ok
                         // 550 Submission must be authenticated -> Requires Auth
-                        if (mailFromResponse.StartsWith("550 ") || mailFromResponse.StartsWith("550-"))
+                        // 530 5.7.1 Authentication required
+                        if (mailFromResponse.StartsWith("550 ") || mailFromResponse.StartsWith("550-") || mailFromResponse.StartsWith("530 "))
                         {
                             mailFromResponse = mailFromResponse.Remove(0, 4);
                             if (mailFromResponse == "Submission must be authenticated")
                             {
-                                returnText += "- Unable to phish: Credentials are required for MAIL FROM" + Environment.NewLine; ;
+                                returnText += "- Unable to phish: Credentials are required for MAIL FROM" + Environment.NewLine;
                             }
                             else if (mailFromResponse == "HELO/EHLO not yet given")
                             {
                                 returnText += "- Unable to phish: Requires a valid EHLO" + Environment.NewLine;
+                            }
+                            else if (mailFromResponse.Contains("Authentication required"))
+                            {
+                                returnText += "- Unable to phish: Credentials are required for MAIL FROM" + Environment.NewLine;
                             }
                             else
                             {

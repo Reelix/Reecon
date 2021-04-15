@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
@@ -422,8 +423,9 @@ namespace Reecon
             return returnList;
         }
 
-        public static void GetIP()
+        public static List<IP> GetIPList()
         {
+            List<IP> ipList = new List<IP>();
             NetworkInterface[] networkInterfaces = NetworkInterface.GetAllNetworkInterfaces();
             foreach (NetworkInterface ni in networkInterfaces)
             {
@@ -435,11 +437,29 @@ namespace Reecon
                     {
                         if (ip.Address.AddressFamily == AddressFamily.InterNetwork)
                         {
-                            Console.WriteLine($"{name}: {ip.Address}");
+                            IP returnIP = new IP();
+                            returnIP.Name = name;
+                            returnIP.Address = ip.Address;
+                            ipList.Add(returnIP);
                         }
                     }
                 }
             }
+            return ipList;
+        }
+        public static void PrintIPList()
+        {
+            List<IP> ipList = GetIPList();
+            foreach (IP ip in ipList)
+            {
+                Console.WriteLine($"{ip.Name}: {ip.Address}");
+            }
+        }
+
+        public class IP
+        {
+            public string Name;
+            public IPAddress Address;
         }
     }
 }

@@ -28,35 +28,53 @@ namespace Reecon
                         // Back and forth handshakes for some reason - I have no idea...
                         // Receive 1 - And Parrot
                         int bytes = telnetSocket.Receive(buffer, buffer.Length, 0);
-                        if (buffer[0] == 255 && buffer[1] == 253 && buffer[2] == 24)
+                        // https://users.cs.cf.ac.uk/Dave.Marshall/Internet/node141.html
+                        // https://www.iana.org/assignments/telnet-options/telnet-options.xhtml
+                        // IAC,<type of operation>,<option>
+                        // IAC: 255
+                        // Type: ??
+                        if (buffer[0] == 255 && buffer[1] == 253)
                         {
-                            telnetSocket.Send(buffer, bytes, 0);
-                            // Receive 2 - And Parrot
-                            bytes = telnetSocket.Receive(buffer, buffer.Length, 0);
-                            telnetSocket.Send(buffer, bytes, 0);
-                            // Receive 3 - And Parrot
-                            bytes = telnetSocket.Receive(buffer, buffer.Length, 0);
-                            telnetSocket.Send(buffer, bytes, 0);
-                            // Receive 4 - And Parrot
-                            bytes = telnetSocket.Receive(buffer, buffer.Length, 0);
-                            telnetSocket.Send(buffer, bytes, 0);
-                            // Receive 5 - And Parrot
-                            bytes = telnetSocket.Receive(buffer, buffer.Length, 0);
-                            telnetSocket.Send(buffer, bytes, 0);
-                            // Receive 6 - And this is the one we want
-                            bytes = telnetSocket.Receive(buffer, buffer.Length, 0);
-                            string response = Encoding.UTF8.GetString(buffer, 0, bytes);
-                            if (response.Length > 5)
+                            // Option: 24 = Terminal Type - RFC1091
+                            if (buffer[2] == 24)
                             {
-                                return "- - - - - - - - - - - - - - - -" + Environment.NewLine + response + Environment.NewLine + "- - - - - - - - - - - - - - - -";
+                                telnetSocket.Send(buffer, bytes, 0);
+                                // Receive 2 - And Parrot
+                                bytes = telnetSocket.Receive(buffer, buffer.Length, 0);
+                                telnetSocket.Send(buffer, bytes, 0);
+                                // Receive 3 - And Parrot
+                                bytes = telnetSocket.Receive(buffer, buffer.Length, 0);
+                                telnetSocket.Send(buffer, bytes, 0);
+                                // Receive 4 - And Parrot
+                                bytes = telnetSocket.Receive(buffer, buffer.Length, 0);
+                                telnetSocket.Send(buffer, bytes, 0);
+                                // Receive 5 - And Parrot
+                                bytes = telnetSocket.Receive(buffer, buffer.Length, 0);
+                                telnetSocket.Send(buffer, bytes, 0);
+                                // Receive 6 - And this is the one we want
+                                bytes = telnetSocket.Receive(buffer, buffer.Length, 0);
+                                string response = Encoding.UTF8.GetString(buffer, 0, bytes);
+                                if (response.Length > 5)
+                                {
+                                    return "- - - - - - - - - - - - - - - -" + Environment.NewLine + response + Environment.NewLine + "- - - - - - - - - - - - - - - -";
+                                }
+                                else if (response.Length > 0)
+                                {
+                                    return "- Weird response length: " + response;
+                                }
+                                else
+                                {
+                                    return "- No Response :<";
+                                }
                             }
-                            else if (response.Length > 0)
+                            // 37 = Authentication Option - RFC2941
+                            else if (buffer[2] == 37)
                             {
-                                return "- Weird response length: " + response;
+                                return "- Authentication required";
                             }
                             else
                             {
-                                return "- No Response :<";
+                                return "- Unhandled Telnet Response Code " + (int)buffer[2] + " - Bug Reelix!";
                             }
                         }
                         else
