@@ -20,7 +20,7 @@ Reelix's Recon - A small program for network recon. This program is still in ear
 6.) Optional: You can remove the `Reecon` folder if you want - The binary is standalone
 
 ### Windows  
-1.) Clone the repo: `git clone https://github.com/Reelix/Reecon.git`
+1.) Clone the repo: `git clone https://github.com/Reelix/Reecon.git`  
 2.) Run the setip file: `.\Reecon\build.bat`  
 3.) Run `.\Reecon\build\Reecon.exe`  
 4.) Optional: Move the `Reecon.exe` file to wherever you want  
