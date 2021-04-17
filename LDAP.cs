@@ -15,6 +15,7 @@ namespace Reecon
             return returnInfo.Trim(Environment.NewLine.ToCharArray());
         }
 
+#pragma warning disable CS0612 // Type or member is obsolete
         public static string GetDefaultNamingContext(string ip, bool raw = false)
         {
             string ldapInfo = string.Empty;
@@ -43,6 +44,7 @@ namespace Reecon
 
                 if (searchEntries.Count == 1)
                 {
+
                     if (searchEntries[0].Attributes.ContainsKey("defaultNamingContext"))
                     {
                         string defaultNamingContext = searchEntries[0].Attributes["defaultNamingContext"][0].ToString();
@@ -147,5 +149,6 @@ namespace Reecon
             }
             return ldapInfo.Trim(Environment.NewLine.ToCharArray());
         }
+#pragma warning restore CS0612 // Type or member is obsolete
     }
 }
