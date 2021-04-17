@@ -14,14 +14,14 @@ Reelix's Recon - A small program for network recon. This program is still in ear
 ### Linux
 1.) Install the .NET 5 SDK if you don't have it: `sudo apt install dotnet-sdk-5.0`  
 2.) Clone the repo: `git clone https://github.com/Reelix/Reecon.git`  
-3.) Run the setup file: `chmod +x ./Reecon/build && ./Reecon/build`  
+3.) Run the build file: `chmod +x ./Reecon/build && ./Reecon/build`  
 4.) Run: `./reecon`  
 5.) Optional: Copy `./reecon` into `/bin/reecon` to be able to run `reecon` from anywhere  
 6.) Optional: You can remove the `Reecon` folder if you want - The binary is standalone
 
 ### Windows  
 1.) Clone the repo: `git clone https://github.com/Reelix/Reecon.git`  
-2.) Run the setip file: `.\Reecon\build.bat`  
+2.) Run the build file: `.\Reecon\build.bat`  
 3.) Run `.\Reecon\build\Reecon.exe`  
 4.) Optional: Move the `Reecon.exe` file to wherever you want  
 5.) Optional: You can remove the `Reecon` folder if you want - The binary is standalone
