@@ -16,28 +16,23 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.25d ( https://github.com/Reelix/Reecon )");
+            Console.WriteLine("Reecon - Version 0.26 ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
-                Console.WriteLine("Usage");
-                Console.WriteLine("-----");
-                Console.WriteLine("Basic Scan:\tReecon IPHere (Optional: -noping to skip the online check)");
-                Console.WriteLine("Display IP:\tReecon -ip");
-                Console.WriteLine("NMap-Load Scan:\tReecon outfile.nmap (Requires -oG on a regular nmap scan)");
-                Console.WriteLine("Binary Pwn:\tReecon -pwn FileName (Very buggy)");
-                Console.WriteLine("Searchsploit:\tReecon -searchsploit nameHere (Beta)");
-                Console.WriteLine("Shell Gen:\tReecon -shell");
-                Console.WriteLine("SMB Brute:\tReecon -smb-brute (Linux Only)");
-                Console.WriteLine("WinRM Brute:\tReecon -winrm-brute IP UserList PassList");
-                Console.WriteLine("LFI Test:\tReecon -lfi (Very buggy)");
-                Console.WriteLine("Web Info:\tReecon -web url (Very buggy)");
+                ShowHelp();
                 Console.ResetColor();
                 return;
             }
 
             // Check if it's anything custom
-            if (args.Contains("-ip") || args.Contains("--ip"))
+            if (args.Contains("-h") || args.Contains("--help")) // One contains the other, but it's just for clarity
+            {
+                ShowHelp();
+                Console.ResetColor();
+                return;
+            }
+            else if (args.Contains("-ip") || args.Contains("--ip"))
             {
                 General.PrintIPList();
                 Console.ResetColor();
@@ -232,6 +227,22 @@ namespace Reecon
             TimeSpan t = endDate - startDate;
             Console.WriteLine("Done in " + string.Format("{0:0.00}s", t.TotalSeconds) + " - Have fun :)");
             Console.ResetColor();
+        }
+
+        static void ShowHelp()
+        {
+            Console.WriteLine("Usage");
+            Console.WriteLine("-----");
+            Console.WriteLine("Basic Scan:\tReecon IPHere (Optional: -noping to skip the online check)");
+            Console.WriteLine("Display IP:\tReecon -ip");
+            Console.WriteLine("NMap-Load Scan:\tReecon outfile.nmap (Requires -oG on a regular nmap scan)");
+            Console.WriteLine("Binary Pwn:\tReecon -pwn FileName (Very buggy)");
+            Console.WriteLine("Searchsploit:\tReecon -searchsploit nameHere (Beta)");
+            Console.WriteLine("Shell Gen:\tReecon -shell");
+            Console.WriteLine("SMB Brute:\tReecon -smb-brute (Linux Only)");
+            Console.WriteLine("WinRM Brute:\tReecon -winrm-brute IP UserList PassList");
+            Console.WriteLine("LFI Test:\tReecon -lfi (Very buggy)");
+            Console.WriteLine("Web Info:\tReecon -web url (Very buggy)");
         }
 
         static void ScanPorts(List<int> portList)

@@ -1,0 +1,2 @@
+#!/bin/sh
+dotnet publish Reecon -r linux-x64 --self-contained false -o ./Reecon/bin/ && mv ./Reecon/bin/Reecon ./reecon

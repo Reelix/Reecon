@@ -284,7 +284,7 @@ namespace Reecon
                 else
                 {
                     Console.WriteLine(ex.Message);
-                    System.Threading.Thread.Sleep(2500);
+                    Thread.Sleep(2500);
                     return false;
                 }
             }
@@ -387,6 +387,7 @@ namespace Reecon
             }
             else
             {
+                // I can get others, but they're not really supported yet
                 return OS.Unknown;
             }
         }

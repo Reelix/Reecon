@@ -33,6 +33,7 @@ namespace Reecon
             Console.WriteLine("Searching for common files...");
 
             // Used elsewhere so it can't just have its own output
+
             string commonFiles = FindCommonFiles(url);
             if (commonFiles.Trim() != "")
             {
@@ -43,22 +44,15 @@ namespace Reecon
 
         private static void ScanPage(string url)
         {
-            string pageText;
-            try
-            {
-                Console.WriteLine("Scanning...");
-                pageText = wc.DownloadString(url);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Error: " + ex.Message);
-                return;
-            }
+            Console.WriteLine("Scanning...");
+            var httpInfo = Web.GetHTTPInfo(url);
+            string pageText = Web.GetHTTPInfo(url).PageText;
             string pageInfo = FindInfo(pageText);
             if (pageInfo.Trim() != "")
             {
                 Console.WriteLine(pageInfo);
             }
+            Console.WriteLine(FormatHTTPInfo(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert, httpInfo.URL));
         }
 
         public static string FindInfo(string pageText, bool doubleDash = false)
@@ -210,61 +204,68 @@ namespace Reecon
             }
 
             // Wildcard test
-            // WebClient throws an error on 403 (Forbidden) and 404 (Not Found) pages           
             int notFoundLength = -1;
+            int ignoreFolderLength = -1;
             string wildcardURL = url + "be0df04b-f5ff-4b4f-af99-00968cf08fed";
             bool ignoreRedirect = false;
             bool ignoreForbidden = false;
             bool ignoreBadRequest = false;
-            try
-            {
-                // Console.WriteLine("Testing Wildcard");
-                var pageResult = Web.GetHTTPInfo(wildcardURL);
-                string test = pageResult.PageText;
-                notFoundLength = test.Length;
-                if (pageResult.StatusCode == HttpStatusCode.OK)
-                {
-                    returnText += $"- Wildcard paths such as {wildcardURL} return - This may cause issues..." + Environment.NewLine;
-                }
-                else if (pageResult.StatusCode == HttpStatusCode.Redirect || pageResult.StatusCode == HttpStatusCode.Moved)
-                {
-                    ignoreRedirect = true;
-                    returnText += $"- Wildcard paths such as {wildcardURL} redirect (HTTP Response 302) - This may cause issues..." + Environment.NewLine;
-                }
-                else if (pageResult.StatusCode == HttpStatusCode.Forbidden)
-                {
-                    ignoreForbidden = true;
-                    returnText += $"- Wildcard paths such as {wildcardURL} are forbidden (HTTP Response 403) - This may cause issues..." + Environment.NewLine;
-                }
-                else if (pageResult.StatusCode == HttpStatusCode.BadRequest)
-                {
-                    ignoreBadRequest = true;
-                    returnText += $"- Wildcard paths such as {wildcardURL} return a bad request (HTTP Response 400) - This may cause issues..." + Environment.NewLine;
-                }
-            }
-            catch { }
 
-            bool skipPHP = false;
-            // PHP wildcards can be differnt
-            string phpWildcardURL = url + "be0df04b-f5ff-4b4f-af99-00968cf08fed.php";
-            try
+            // Testing Wildcards
+            var pageResult = Web.GetHTTPInfo(wildcardURL);
+            string pageResultText = pageResult.PageText;
+            if (pageResult.StatusCode == HttpStatusCode.OK)
             {
-                // Console.WriteLine("Testing php wildcard");
-                var pageResult = Web.GetHTTPInfo(phpWildcardURL);
-                string test = pageResult.PageText;
-                notFoundLength = test.Length;
-                if (pageResult.StatusCode == HttpStatusCode.OK)
-                {
-                    skipPHP = true;
-                    returnText += $"- .php wildcard paths such as {phpWildcardURL} return - This may cause issues..." + Environment.NewLine;
-                }
-                else if (pageResult.StatusCode == HttpStatusCode.Redirect || pageResult.StatusCode == HttpStatusCode.Moved)
-                {
-                    skipPHP = true;
-                    returnText += $"- .php wildcard paths such as {phpWildcardURL} redirect - This may cause issues..." + Environment.NewLine;
-                }
+                notFoundLength = pageResultText.Length;
+                returnText += $"- Wildcard paths such as {wildcardURL} return - This may cause issues..." + Environment.NewLine;
             }
-            catch { }
+            else if (pageResult.StatusCode == HttpStatusCode.Redirect || pageResult.StatusCode == HttpStatusCode.Moved)
+            {
+                ignoreRedirect = true;
+                returnText += $"- Wildcard paths such as {wildcardURL} redirect - This may cause issues..." + Environment.NewLine;
+            }
+            else if (pageResult.StatusCode == HttpStatusCode.Forbidden)
+            {
+                ignoreForbidden = true;
+                returnText += $"- Wildcard paths such as {wildcardURL} are forbidden - This may cause issues..." + Environment.NewLine;
+            }
+            else if (pageResult.StatusCode == HttpStatusCode.BadRequest)
+            {
+                ignoreBadRequest = true;
+                returnText += $"- Wildcard paths such as {wildcardURL} return a bad request - This may cause issues..." + Environment.NewLine;
+            }
+            else if (pageResult.StatusCode == HttpStatusCode.NotFound)
+            {
+                notFoundLength = pageResultText.Length;
+            }
+
+            // PHP wildcards can be differnt
+            bool ignorePHP = false;
+            bool ignorePHPRedirect = false;
+            string phpWildcardURL = url + "be0df04b-f5ff-4b4f-af99-00968cf08fed.php";
+            pageResult = Web.GetHTTPInfo(phpWildcardURL);
+            pageResultText = pageResult.PageText;
+            if (pageResult.StatusCode == HttpStatusCode.OK)
+            {
+                ignorePHP = true;
+                returnText += $"- .php wildcard paths such as {phpWildcardURL} return - This may cause issues..." + Environment.NewLine;
+            }
+            else if (pageResult.StatusCode == HttpStatusCode.Redirect || pageResult.StatusCode == HttpStatusCode.Moved)
+            {
+                ignorePHPRedirect = true;
+                returnText += $"- .php wildcard paths such as {phpWildcardURL} redirect - This may cause issues..." + Environment.NewLine;
+            }
+            else if (pageResult.StatusCode == HttpStatusCode.NotFound)
+            {
+                notFoundLength = pageResultText.Length;
+            }
+
+            // Folder wildcards can also be different
+            var folderWildcard = Web.GetHTTPInfo(url + "be0df04b-f5ff-4b4f-af99-00968cf08fed/");
+            if (folderWildcard.StatusCode == HttpStatusCode.OK)
+            {
+                ignoreFolderLength = folderWildcard.PageText.Length;
+            }
 
             // Mini gobuster :p
             List<string> commonFiles = new List<string>
@@ -320,7 +321,7 @@ namespace Reecon
                 "version"
             };
 
-            if (skipPHP)
+            if (ignorePHP)
             {
                 commonFiles.RemoveAll(x => x.EndsWith(".php"));
             }
@@ -337,7 +338,7 @@ namespace Reecon
                         try
                         {
                             string pageText = response.PageText;
-                            if (pageText.Length != notFoundLength)
+                            if (pageText.Length != notFoundLength && (file.EndsWith("/") ? (pageText.Length != ignoreFolderLength ? true : false) : true))
                             {
                                 returnText += "- " + $"Common Path is readable: {url}{file} (Len: {pageText.Length})".Pastel(Color.Orange) + Environment.NewLine;
                                 // Specific case for robots.txt since it's common and extra useful
@@ -464,13 +465,18 @@ namespace Reecon
                     }
                     else if (response.StatusCode == HttpStatusCode.Redirect || response.StatusCode == HttpStatusCode.Moved)
                     {
-                        if (!ignoreRedirect)
+                        if (ignoreRedirect)
                         {
-                            returnText += $"- Common Path redirects: {url}{file}" + Environment.NewLine;
-                            if (response.Headers != null && response.Headers.Get("Location") != null)
-                            {
-                                returnText += $"-- Redirection Location: {response.Headers.Get("Location")}" + Environment.NewLine;
-                            }
+                            continue;
+                        }
+                        if (file.EndsWith(".php") && ignorePHPRedirect)
+                        {
+                            continue;
+                        }
+                        returnText += $"- Common Path redirects: {url}{file}" + Environment.NewLine;
+                        if (response.Headers != null && response.Headers.Get("Location") != null)
+                        {
+                            returnText += $"-- Redirection Location: {response.Headers.Get("Location")}" + Environment.NewLine;
                         }
                     }
                     else if (response.StatusCode == HttpStatusCode.Unauthorized)
@@ -840,37 +846,46 @@ namespace Reecon
                 // Wordpress
                 if (PageText.Contains("/wp-content/themes/") && PageText.Contains("/wp-includes/"))
                 {
-                    responseText += "- Wordpress detected!" + Environment.NewLine;
+                    responseText += "- Wordpress detected!".Pastel(Color.Orange) + Environment.NewLine;
                     // Basic User Enumeration
-                    try
+                    var wpUserTestOne = Web.GetHTTPInfo($"http://{DNS}/wp-json/wp/v2/users");
+                    if (wpUserTestOne.StatusCode == HttpStatusCode.OK)
                     {
-                        string jsonData = wc.DownloadString($"http://{DNS}/wp-json/wp/v2/users");
-                        var document = JsonDocument.Parse(jsonData);
+                        var document = JsonDocument.Parse(wpUserTestOne.PageText);
                         foreach (JsonElement element in document.RootElement.EnumerateArray())
                         {
                             string wpUser = element.GetProperty("name").GetString();
                             responseText += ("-- Wordpress User Found: " + wpUser).Pastel(Color.Orange) + Environment.NewLine;
                         }
                     }
-                    catch (WebException)
+                    var wpUserTestTwo = Web.GetHTTPInfo($"http://{DNS}/index.php/wp-json/wp/v2/users");
+                    if (wpUserTestTwo.StatusCode == HttpStatusCode.OK)
                     {
-                        // Thrown on 404's and such - Ignore it
-                    }
-                    // Checking for xmlrpc.php
-                    try
-                    {
-                        var pageData = GetHTTPInfo($"http://{DNS}/xmlrpc.php");
-                        if (pageData.PageText == "XML-RPC server accepts POST requests only.")
+                        var document = JsonDocument.Parse(wpUserTestTwo.PageText);
+                        foreach (JsonElement element in document.RootElement.EnumerateArray())
                         {
-                            responseText += "-- xmlrpc.php found - Great for Brute Forcing!" + Environment.NewLine;
+                            string wpUser = element.GetProperty("name").GetString();
+                            responseText += ("-- Wordpress User Found: " + wpUser).Pastel(Color.Orange) + Environment.NewLine;
                         }
                     }
-                    catch (WebException)
+
+                    // 
+                    var xmlrpc = GetHTTPInfo($"http://{DNS}/xmlrpc.php");
+                    if (xmlrpc.PageText == "XML-RPC server accepts POST requests only.")
                     {
-                        // Ignore
+                        responseText += "-- xmlrpc.php found - Great for Brute Forcing!" + Environment.NewLine;
                     }
+
                     responseText += $"-- wpscan --url http://{DNS}/ --enumerate u1-5" + Environment.NewLine;
-                    responseText += "-- hydra -L users.txt -P passwords.txt site.com http-post-form \"/blog/wp-login.php:log=^USER^&pwd=^PASS^&wp-submit=Log In&testcookie=1:S=Location\" -I -t 50" + Environment.NewLine;
+                    
+                    // Checking for wp-login.php
+                    var wplogin = GetHTTPInfo($"http://{DNS}/wp-login.php");
+                    string wpLoginPath = "/blog/wp-login.php";
+                    if (wplogin.StatusCode == HttpStatusCode.OK && wplogin.PageText.Contains("action=lostpassword"))
+                    {
+                        wpLoginPath = "/wp-login.php";
+                    }
+                    responseText += $"-- hydra -L users.txt -P passwords.txt {DNS} http-post-form \"{wpLoginPath}:log=^USER^&pwd=^PASS^&wp-submit=Log In&testcookie=1:The password you entered for the username\" -I -t 50" + Environment.NewLine;
                 }
 
                 // Joomla!
