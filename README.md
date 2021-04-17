@@ -10,6 +10,17 @@ Reelix's Recon - A small program for network recon. This program is still in ear
   * Kerberos Enumeration: [Kerbrute](https://github.com/ropnop/kerbrute), [GetNPUsers](https://github.com/SecureAuthCorp/impacket/blob/master/examples/GetNPUsers.py), [secretsdump](https://github.com/SecureAuthCorp/impacket/blob/master/examples/secretsdump.py)
   * Printer Enumeration: [PRET](https://github.com/RUB-NDS/PRET)
 
-## Clone + Build
-Linux: `git clone https://github.com/Reelix/Reecon.git && chmod +x ./Reecon/build && ./Reecon/build`  
-Windows: `git clone https://github.com/Reelix/Reecon.git && .\Reecon\build.bat`
+## Installation Instructions
+### Linux
+1.) Install the .NET 5 SDK if you don't have it: `sudo apt install dotnet-sdk-5.0`  
+2.) Clone the repo: `git clone https://github.com/Reelix/Reecon.git`  
+3.) Run the setup file: `chmod +x ./Reecon/build && ./Reecon/build`  
+4.) Run: `./reecon`  
+5.) Optional: Copy `./reecon` into `/bin/reecon` to be able to run `reecon` from anywhere  
+6.) Optional: You can remove the `Reecon` folder if you want - The binary is standalone
+
+### Windows  
+1.) Clone the repo: `git clone https://github.com/Reelix/Reecon.git && .\Reecon\build.bat`  
+2.) Run `Reecon\build\Reecon.exe`  
+3.) Optional: Move the `Reecon.exe` file to wherever you want  
+4.) Optional: You can remove the `Reecon` folder if you want - The binary is standalone
