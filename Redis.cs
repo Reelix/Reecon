@@ -30,103 +30,111 @@ namespace Reecon
                     // Get basic info
                     int bytes = redisSocket.Receive(buffer, buffer.Length, 0);
                     string redisText = Encoding.ASCII.GetString(buffer, 0, bytes);
-                    redisText = redisText.Trim();
-                    List<string> redisLines = redisText.Split(new[] { Environment.NewLine }, StringSplitOptions.None).ToList();
-                    string redisVersion = redisLines.First(x => x.StartsWith("redis_version:"));
-                    returnText += "- " + redisVersion;
-                    string os = redisLines.First(x => x.StartsWith("os:"));
-                    returnText += Environment.NewLine + "- " + os;
-                    string osBits = redisLines.First(x => x.StartsWith("arch_bits:"));
-                    returnText += Environment.NewLine + "- " + osBits;
-                    string exeLocation = redisLines.First(x => x.StartsWith("executable:"));
-                    returnText += Environment.NewLine + "- " + exeLocation;
-                    string configLocation = redisLines.First(x => x.StartsWith("config_file:"));
-                    returnText += Environment.NewLine + "- " + configLocation;
-                    string connectedClients = redisLines.First(x => x.StartsWith("connected_clients:"));
-                    returnText += Environment.NewLine + "- " + connectedClients;
-
-                    // Get dbfilenme
-                    cmdBytes = Encoding.ASCII.GetBytes(("CONFIG GET dbfilename" + Environment.NewLine).ToCharArray());
-                    redisSocket.Send(cmdBytes, cmdBytes.Length, 0);
-                    bytes = redisSocket.Receive(buffer, buffer.Length, 0);
-                    redisText = Encoding.ASCII.GetString(buffer, 0, bytes);
-                    redisLines = redisText.Split(new[] { Environment.NewLine }, StringSplitOptions.None).ToList();
-                    string dbFilename = "";
-                    if (redisLines.Count == 6)
+                    if (redisText.StartsWith("-NOAUTH Authentication"))
                     {
-                        dbFilename = redisLines[4];
-                        returnText += Environment.NewLine + "-- CONFIG GET dbfilename: " + dbFilename;
+                        returnText = "- Redis Authentication required";
+
                     }
                     else
                     {
-                        Console.WriteLine("Error: Cannot get dbfilename - Count is: " + redisLines.Count);
-                    }
+                        redisText = redisText.Trim();
+                        List<string> redisLines = redisText.Split(new[] { Environment.NewLine }, StringSplitOptions.None).ToList();
+                        string redisVersion = redisLines.First(x => x.StartsWith("redis_version:"));
+                        returnText += "- " + redisVersion;
+                        string os = redisLines.First(x => x.StartsWith("os:"));
+                        returnText += Environment.NewLine + "- " + os;
+                        string osBits = redisLines.First(x => x.StartsWith("arch_bits:"));
+                        returnText += Environment.NewLine + "- " + osBits;
+                        string exeLocation = redisLines.First(x => x.StartsWith("executable:"));
+                        returnText += Environment.NewLine + "- " + exeLocation;
+                        string configLocation = redisLines.First(x => x.StartsWith("config_file:"));
+                        returnText += Environment.NewLine + "- " + configLocation;
+                        string connectedClients = redisLines.First(x => x.StartsWith("connected_clients:"));
+                        returnText += Environment.NewLine + "- " + connectedClients;
 
-                    // Can we set dbfilename
-                    if (dbFilename != "")
-                    {
-                        cmdBytes = Encoding.ASCII.GetBytes(("CONFIG SET dbfilename woof" + Environment.NewLine).ToCharArray());
+                        // Get dbfilenme
+                        cmdBytes = Encoding.ASCII.GetBytes(("CONFIG GET dbfilename" + Environment.NewLine).ToCharArray());
                         redisSocket.Send(cmdBytes, cmdBytes.Length, 0);
                         bytes = redisSocket.Receive(buffer, buffer.Length, 0);
                         redisText = Encoding.ASCII.GetString(buffer, 0, bytes);
                         redisLines = redisText.Split(new[] { Environment.NewLine }, StringSplitOptions.None).ToList();
-                        if (redisLines.Count == 2 && redisLines[0].Contains("+OK"))
+                        string dbFilename = "";
+                        if (redisLines.Count == 6)
                         {
-                            canSetDB = true;
-                            returnText += Environment.NewLine + "--- " + "Able to CONFIG SET dbfilename value!".Pastel(Color.Orange);
+                            dbFilename = redisLines[4];
+                            returnText += Environment.NewLine + "-- CONFIG GET dbfilename: " + dbFilename;
                         }
-                        // Reset it back to what it was
-                        cmdBytes = Encoding.ASCII.GetBytes(("CONFIG SET dbfilename " + dbFilename + Environment.NewLine).ToCharArray());
-                        redisSocket.Send(cmdBytes, cmdBytes.Length, 0);
-                        bytes = redisSocket.Receive(buffer, buffer.Length, 0);
-                    }
+                        else
+                        {
+                            Console.WriteLine("Error: Cannot get dbfilename - Count is: " + redisLines.Count);
+                        }
 
-                    // Get dir
-                    cmdBytes = Encoding.ASCII.GetBytes(("CONFIG GET dir" + Environment.NewLine).ToCharArray());
-                    redisSocket.Send(cmdBytes, cmdBytes.Length, 0);
-                    bytes = redisSocket.Receive(buffer, buffer.Length, 0);
-                    redisText = Encoding.ASCII.GetString(buffer, 0, bytes);
-                    redisLines = redisText.Split(new[] { Environment.NewLine }, StringSplitOptions.None).ToList();
-                    string dirPath = "";
-                    if (redisLines.Count == 6)
-                    {
-                        dirPath = redisLines[4];
-                        returnText += Environment.NewLine + "-- CONFIG GET dir: " + redisLines[4];
-                    }
-                    else
-                    {
-                        Console.WriteLine("Error: Cannot get dir - Count is: " + redisLines.Count);
-                    }
+                        // Can we set dbfilename
+                        if (dbFilename != "")
+                        {
+                            cmdBytes = Encoding.ASCII.GetBytes(("CONFIG SET dbfilename woof" + Environment.NewLine).ToCharArray());
+                            redisSocket.Send(cmdBytes, cmdBytes.Length, 0);
+                            bytes = redisSocket.Receive(buffer, buffer.Length, 0);
+                            redisText = Encoding.ASCII.GetString(buffer, 0, bytes);
+                            redisLines = redisText.Split(new[] { Environment.NewLine }, StringSplitOptions.None).ToList();
+                            if (redisLines.Count == 2 && redisLines[0].Contains("+OK"))
+                            {
+                                canSetDB = true;
+                                returnText += Environment.NewLine + "--- " + "Able to CONFIG SET dbfilename value!".Pastel(Color.Orange);
+                            }
+                            // Reset it back to what it was
+                            cmdBytes = Encoding.ASCII.GetBytes(("CONFIG SET dbfilename " + dbFilename + Environment.NewLine).ToCharArray());
+                            redisSocket.Send(cmdBytes, cmdBytes.Length, 0);
+                            bytes = redisSocket.Receive(buffer, buffer.Length, 0);
+                        }
 
-                    // Can we set dir
-                    if (dirPath != "")
-                    {
-                        cmdBytes = Encoding.ASCII.GetBytes(("CONFIG SET dir /var/" + Environment.NewLine).ToCharArray());
+                        // Get dir
+                        cmdBytes = Encoding.ASCII.GetBytes(("CONFIG GET dir" + Environment.NewLine).ToCharArray());
                         redisSocket.Send(cmdBytes, cmdBytes.Length, 0);
                         bytes = redisSocket.Receive(buffer, buffer.Length, 0);
                         redisText = Encoding.ASCII.GetString(buffer, 0, bytes);
                         redisLines = redisText.Split(new[] { Environment.NewLine }, StringSplitOptions.None).ToList();
-                        if (redisLines.Count == 2 && redisLines[0].Contains("+OK"))
+                        string dirPath = "";
+                        if (redisLines.Count == 6)
                         {
-                            canSetPath = true;
-                            returnText += Environment.NewLine + "--- " + "Able to CONFIG SET dir value!".Pastel(Color.Orange);
+                            dirPath = redisLines[4];
+                            returnText += Environment.NewLine + "-- CONFIG GET dir: " + redisLines[4];
                         }
-                        // Reset it back to what it was
-                        cmdBytes = Encoding.ASCII.GetBytes(("CONFIG SET dir " + dirPath + Environment.NewLine).ToCharArray());
-                        redisSocket.Send(cmdBytes, cmdBytes.Length, 0);
-                        bytes = redisSocket.Receive(buffer, buffer.Length, 0);
-                    }
+                        else
+                        {
+                            Console.WriteLine("Error: Cannot get dir - Count is: " + redisLines.Count);
+                        }
 
-                    if (canSetDB && canSetPath)
-                    {
-                        returnText += Environment.NewLine + "--- " + "Exploit Possible".Pastel(Color.Orange);
-                        returnText += Environment.NewLine + "--- " + "----------------".Pastel(Color.Orange);
-                        returnText += Environment.NewLine + "--- " + "1.) Connect with redis-cli".Pastel(Color.Orange);
-                        returnText += Environment.NewLine + "--- " + "2.) CONFIG SET dbfilename PathOfFileYouCanView.php".Pastel(Color.Orange);
-                        returnText += Environment.NewLine + "--- " + "3.) CONFIG SET dir /var/www/html/shell.php".Pastel(Color.Orange);
-                        returnText += Environment.NewLine + "--- " + "4.) SET test \"SomeValueYouWant\"".Pastel(Color.Orange);
-                        returnText += Environment.NewLine + "--- " + "5.) Save".Pastel(Color.Orange);
-                        returnText += Environment.NewLine + "--- " + "6.) Browse to file location on server to see your custom value".Pastel(Color.Orange);
+                        // Can we set dir
+                        if (dirPath != "")
+                        {
+                            cmdBytes = Encoding.ASCII.GetBytes(("CONFIG SET dir /var/" + Environment.NewLine).ToCharArray());
+                            redisSocket.Send(cmdBytes, cmdBytes.Length, 0);
+                            bytes = redisSocket.Receive(buffer, buffer.Length, 0);
+                            redisText = Encoding.ASCII.GetString(buffer, 0, bytes);
+                            redisLines = redisText.Split(new[] { Environment.NewLine }, StringSplitOptions.None).ToList();
+                            if (redisLines.Count == 2 && redisLines[0].Contains("+OK"))
+                            {
+                                canSetPath = true;
+                                returnText += Environment.NewLine + "--- " + "Able to CONFIG SET dir value!".Pastel(Color.Orange);
+                            }
+                            // Reset it back to what it was
+                            cmdBytes = Encoding.ASCII.GetBytes(("CONFIG SET dir " + dirPath + Environment.NewLine).ToCharArray());
+                            redisSocket.Send(cmdBytes, cmdBytes.Length, 0);
+                            bytes = redisSocket.Receive(buffer, buffer.Length, 0);
+                        }
+
+                        if (canSetDB && canSetPath)
+                        {
+                            returnText += Environment.NewLine + "--- " + "Exploit Possible".Pastel(Color.Orange);
+                            returnText += Environment.NewLine + "--- " + "----------------".Pastel(Color.Orange);
+                            returnText += Environment.NewLine + "--- " + "1.) Connect with redis-cli".Pastel(Color.Orange);
+                            returnText += Environment.NewLine + "--- " + "2.) CONFIG SET dbfilename PathOfFileYouCanView.php".Pastel(Color.Orange);
+                            returnText += Environment.NewLine + "--- " + "3.) CONFIG SET dir /var/www/html/shell.php".Pastel(Color.Orange);
+                            returnText += Environment.NewLine + "--- " + "4.) SET test \"SomeValueYouWant\"".Pastel(Color.Orange);
+                            returnText += Environment.NewLine + "--- " + "5.) Save".Pastel(Color.Orange);
+                            returnText += Environment.NewLine + "--- " + "6.) Browse to file location on server to see your custom value".Pastel(Color.Orange);
+                        }
                     }
 
                 }
