@@ -595,7 +595,7 @@ namespace Reecon
             return returnText.Trim(Environment.NewLine.ToArray());
         }
 
-        public static (HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert, string URL, string AdditionalInfo) GetHTTPInfo(string url, string userAgent = null)
+        public static (HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert, string URL, string AdditionalInfo) GetHTTPInfo(string url, string userAgent = null, int timeoutMS = 30000)
         {
             string pageTitle = "";
             string pageText = "";
@@ -606,6 +606,7 @@ namespace Reecon
             // X509Certificate2 customCert = new CustomSSLCert();
 
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+            request.Timeout = timeoutMS;
             if (userAgent != null)
             {
                 request.UserAgent = userAgent;

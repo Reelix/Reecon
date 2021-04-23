@@ -196,7 +196,7 @@ namespace Reecon
             // If it must contain a word
             // php://filter/read=convert.base64-encode/wordhere/resource=flag
 
-            // ../ bypass: %2F%2E%2E%2F%2E%2E%2F%2E%2E%2Fetc%2Fpasswd - Default?
+            // ../ bypass: %2E%2E%2F%2E%2E%2F%2E%2E%2F%2E%2E%2Fetc%2Fpasswd - Default?
             // More: https://book.hacktricks.xyz/pentesting-web/file-inclusion
 
             bool hasResult = false;
@@ -207,9 +207,10 @@ namespace Reecon
                 string toCheck = initialPart + check;
                 try
                 {
-                    int resultLength = wc.DownloadString(toCheck).Length;
+                    string result = Web.GetHTTPInfo(toCheck, null, 5000).PageText;
+                    int resultLength = result.Length;
                     // - 6 = Length of the NotFound Search = Reelix
-                    if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length - 6))
+                    if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length - 6) && !result.Contains("failed to open stream"))
                     {
                         Console.WriteLine(resultLength + " -- " + toCheck);
                         // Don't need to try more if it's already true
@@ -227,10 +228,11 @@ namespace Reecon
                     toCheck = initialPart + "/../../../../.." + check;
                     try
                     {
-                        int resultLength = wc.DownloadString(toCheck).Length;
+                        string result = Web.GetHTTPInfo(toCheck, null, 5000).PageText;
+                        int resultLength = result.Length;
                         // - 6 = Length of the NotFound Search = Reelix
                         // + 15 = Length of the bypass
-                        if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length - 6 + 15))
+                        if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length - 6 + 15) && !result.Contains("failed to open stream"))
                         {
                             Console.WriteLine(resultLength + " -- " + toCheck);
                             hasResult = true;

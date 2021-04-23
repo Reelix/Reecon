@@ -12,7 +12,6 @@ namespace Reecon
     {
         public static string GetInfo(string ip, int port)
         {
-            // This has only been tested on a non-passworded Redis 4 / 6 Server, so will probably break anywhere else
             bool canSetDB = false;
             bool canSetPath = false;
             string returnText = "";
@@ -33,7 +32,6 @@ namespace Reecon
                     if (redisText.StartsWith("-NOAUTH Authentication"))
                     {
                         returnText = "- Redis Authentication required";
-
                     }
                     else
                     {
