@@ -16,7 +16,7 @@ namespace Reecon
 
             string returnInfo = "";
 
-            WebClient wc = new WebClient();
+            WebClient wc = new();
             wc.Headers.Add("Content-Type", "application/soap+xml;charset=UTF-8");
             // 47001 - No Response?
             // Test: CSL Potato

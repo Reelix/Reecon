@@ -14,7 +14,6 @@ namespace Reecon
 {
     class Web
     {
-        static readonly WebClient wc = new WebClient();
         static string url = "";
         public static void GetInfo(string[] args)
         {
@@ -133,7 +132,7 @@ namespace Reecon
             string returnInfo = "";
 
             // Do not change this Regex
-            Regex emailRegex = new Regex(@"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", RegexOptions.IgnoreCase);
+            Regex emailRegex = new(@"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", RegexOptions.IgnoreCase);
             MatchCollection emailMatches = emailRegex.Matches(text);
             List<string> matchList = General.MatchCollectionToList(emailMatches);
             foreach (string match in matchList)
@@ -268,7 +267,7 @@ namespace Reecon
             }
 
             // Mini gobuster :p
-            List<string> commonFiles = new List<string>
+            List<string> commonFiles = new()
             {
                 // robots.txt - Of course
                 "robots.txt",
@@ -338,7 +337,7 @@ namespace Reecon
                         try
                         {
                             string pageText = response.PageText;
-                            if (pageText.Length != notFoundLength && (file.EndsWith("/") ? (pageText.Length != ignoreFolderLength ? true : false) : true))
+                            if (pageText.Length != notFoundLength && (!file.EndsWith("/") || (pageText.Length != ignoreFolderLength)))
                             {
                                 returnText += "- " + $"Common Path is readable: {url}{file} (Len: {pageText.Length})".Pastel(Color.Orange) + Environment.NewLine;
                                 // Specific case for robots.txt since it's common and extra useful
@@ -371,7 +370,7 @@ namespace Reecon
                                     returnText += "-- Git repo found!" + Environment.NewLine;
 
                                     // https://github.com/arthaud/git-dumper/issues/9
-                                    WebClient wc = new WebClient();
+                                    WebClient wc = new();
                                     try
                                     {
                                         if (wc.DownloadString($"{url}.git/").Contains("../"))
@@ -399,7 +398,7 @@ namespace Reecon
                                     returnText += "-- Kibana!" + Environment.NewLine;
                                     try
                                     {
-                                        WebClient wc = new WebClient();
+                                        WebClient wc = new();
                                         string toCheck = $"{url}{file}";
                                         string pageData = wc.DownloadString($"{url}{file}");
                                         if (pageData.IndexOf("&quot;version&quot;:&quot;") != -1)
@@ -507,7 +506,7 @@ namespace Reecon
                         returnText += "-- Docker Detected - API Version: " + dockerVersion + Environment.NewLine;
                         if (dockerVersion == "registry/2.0")
                         {
-                            WebClient wc = new WebClient();
+                            WebClient wc = new();
                             string repoText = wc.DownloadString($"{url}v2/_catalog");
                             if (repoText.Contains("repositories"))
                             {
@@ -595,18 +594,18 @@ namespace Reecon
             return returnText.Trim(Environment.NewLine.ToArray());
         }
 
-        public static (HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert, string URL, string AdditionalInfo) GetHTTPInfo(string url, string userAgent = null, int timeoutMS = 30000)
+        public static (HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert, string URL, string AdditionalInfo) GetHTTPInfo(string url, string userAgent = null)
         {
             string pageTitle = "";
             string pageText = "";
             string dns = "";
-            HttpStatusCode statusCode = new HttpStatusCode();
+            HttpStatusCode statusCode = new();
             WebHeaderCollection headers = null;
             X509Certificate2 cert = null;
             // X509Certificate2 customCert = new CustomSSLCert();
 
+            // Note: HttpClient is specifically not used due to the untested way it deals with unexpected error messages
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-            request.Timeout = timeoutMS;
             if (userAgent != null)
             {
                 request.UserAgent = userAgent;
@@ -626,17 +625,15 @@ namespace Reecon
 
                 // Can crash here due to a WebException on 401 Unauthorized / 403 Forbidden errors, so have to do some things twice
                 request.Timeout = 5000;
-                using (var response = request.GetResponse() as HttpWebResponse)
+                using var response = request.GetResponse() as HttpWebResponse;
+                statusCode = response.StatusCode;
+                dns = response.ResponseUri.DnsSafeHost;
+                headers = response.Headers;
+                using (StreamReader readStream = new(response.GetResponseStream()))
                 {
-                    statusCode = response.StatusCode;
-                    dns = response.ResponseUri.DnsSafeHost;
-                    headers = response.Headers;
-                    using (StreamReader readStream = new StreamReader(response.GetResponseStream()))
-                    {
-                        pageText = readStream.ReadToEnd();
-                    }
-                    response.Close();
+                    pageText = readStream.ReadToEnd();
                 }
+                response.Close();
             }
             catch (TimeoutException ex)
             {
@@ -687,7 +684,7 @@ namespace Reecon
                 statusCode = response.StatusCode;
                 dns = response.ResponseUri.DnsSafeHost;
                 headers = response.Headers;
-                using (StreamReader readStream = new StreamReader(response.GetResponseStream()))
+                using (StreamReader readStream = new(response.GetResponseStream()))
                 {
                     pageText = readStream.ReadToEnd();
                 }
@@ -714,8 +711,9 @@ namespace Reecon
 
         public static string FormatHTTPInfo(HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert, string URL)
         {
+            string urlPrefix = url.StartsWith("https") ? "https" : "http";
             string responseText = "";
-            List<string> headerList = new List<string>();
+            List<string> headerList = new();
             if (Headers != null)
             {
                 headerList = Headers.AllKeys.ToList();
@@ -768,36 +766,68 @@ namespace Reecon
                 responseText += "- Page Title: " + PageTitle + Environment.NewLine;
                 if (PageTitle.StartsWith("Apache Tomcat"))
                 {
-                    // CVE's
-                    if (PageTitle == "Apache Tomcat/9.0.17")
-                    {
-                        responseText += "- " + "Apache Tomcat 9.0.17 Detected - Vulnerable to CVE-2019-0232!".Pastel(Color.Orange);
-                    }
-                    // Apache Tomcat Page
-                    NetworkCredential defaultTomcatCreds = new NetworkCredential("tomcat", "s3cret");
-
                     // Sanitize URL
                     if (!url.EndsWith("/"))
                     {
                         url += "/";
                     }
 
-                    // Check Manager App
-                    string managerAppURL = URL + "manager/html";
-                    var managerAppInfo = Web.GetHTTPInfo(managerAppURL);
+                    // CVE's
+                    if (PageTitle == "Apache Tomcat/9.0.17")
+                    {
+                        responseText += "- " + "Apache Tomcat 9.0.17 Detected - Vulnerable to CVE-2019-0232!".Pastel(Color.Orange);
+                    }
+
+                    // Apache Tomcat Page
+                    NetworkCredential defaultTomcatCreds = new("tomcat", "s3cret");
+
+                    // Check Manager (HTML)
+                    string managerAppHTMLURL = URL + "manager/html";
+                    var managerAppInfo = Web.GetHTTPInfo(managerAppHTMLURL);
                     if (managerAppInfo.StatusCode == HttpStatusCode.Unauthorized)
                     {
-                        responseText += "- Manager App Found - But it requires credentials --> " + managerAppURL + Environment.NewLine;
+                        responseText += "- Manager App (HTML) Found - But it requires credentials --> " + managerAppHTMLURL + Environment.NewLine;
                         try
                         {
-                            WebClient wc = new WebClient();
-                            wc.Credentials = defaultTomcatCreds;
-                            wc.DownloadString(managerAppURL);
+                            WebClient wc = new()
+                            {
+                                Credentials = defaultTomcatCreds
+                            };
+                            wc.DownloadString(managerAppHTMLURL);
                             responseText += "-- " + "Creds Found: tomcat:s3cret".Pastel(Color.Orange) + Environment.NewLine;
                         }
                         catch
                         {
-                            // Creds are still incorrect - Oh well
+                            responseText += "-- Default creds - tomcat:s3cret - don't work" + Environment.NewLine;
+                        }
+                    }
+                    else if (managerAppInfo.StatusCode == HttpStatusCode.Forbidden)
+                    {
+                        responseText += "- Manager App Found - But it's Forbidden" + Environment.NewLine;
+                    }
+                    else if (managerAppInfo.StatusCode != HttpStatusCode.NotFound)
+                    {
+                        responseText += "Unknown Manager App Status Code: " + managerAppInfo.StatusCode + Environment.NewLine;
+                    }
+
+                    // Check Manager (Text)
+                    string managerAppTextURL = URL + "manager/text";
+                    managerAppInfo = Web.GetHTTPInfo(managerAppTextURL);
+                    if (managerAppInfo.StatusCode == HttpStatusCode.Unauthorized)
+                    {
+                        responseText += "- Manager App (Text) Found - But it requires credentials --> " + managerAppTextURL + Environment.NewLine;
+                        try
+                        {
+                            WebClient wc = new()
+                            {
+                                Credentials = defaultTomcatCreds
+                            };
+                            wc.DownloadString(managerAppTextURL);
+                            responseText += "-- " + "Creds Found: tomcat:s3cret".Pastel(Color.Orange) + Environment.NewLine;
+                        }
+                        catch
+                        {
+                            responseText += "-- Default creds - tomcat:s3cret - don't work" + Environment.NewLine;
                         }
                     }
                     else if (managerAppInfo.StatusCode == HttpStatusCode.Forbidden)
@@ -817,14 +847,16 @@ namespace Reecon
                         responseText += "- Host Manager Found - But it requires credentials --> " + hostManagerURL + Environment.NewLine;
                         try
                         {
-                            WebClient wc = new WebClient();
-                            wc.Credentials = defaultTomcatCreds;
+                            WebClient wc = new()
+                            {
+                                Credentials = defaultTomcatCreds
+                            };
                             wc.DownloadString(hostManagerURL);
                             responseText += "-- " + "Creds Found: tomcat:s3cret".Pastel(Color.Orange) + Environment.NewLine;
                         }
                         catch
                         {
-                            // Creds are still incorrect - Oh well
+                            responseText += "-- Default creds - tomcat:s3cret - don't work" + Environment.NewLine;
                         }
                     }
                     else if (hostManagerInfo.StatusCode == HttpStatusCode.Forbidden)
@@ -849,38 +881,46 @@ namespace Reecon
                 {
                     responseText += "- Wordpress detected!".Pastel(Color.Orange) + Environment.NewLine;
                     // Basic User Enumeration
-                    var wpUserTestOne = Web.GetHTTPInfo($"http://{DNS}/wp-json/wp/v2/users");
+                    List<string> wpUsers = new();
+                    var wpUserTestOne = Web.GetHTTPInfo($"{urlPrefix}://{DNS}/wp-json/wp/v2/users");
                     if (wpUserTestOne.StatusCode == HttpStatusCode.OK)
                     {
                         var document = JsonDocument.Parse(wpUserTestOne.PageText);
                         foreach (JsonElement element in document.RootElement.EnumerateArray())
                         {
                             string wpUser = element.GetProperty("name").GetString();
-                            responseText += ("-- Wordpress User Found: " + wpUser).Pastel(Color.Orange) + Environment.NewLine;
+                            if (!wpUsers.Contains(wpUser))
+                            {
+                                wpUsers.Add(wpUser);
+                                responseText += ("-- Wordpress User Found: " + wpUser).Pastel(Color.Orange) + Environment.NewLine;
+                            }
                         }
                     }
-                    var wpUserTestTwo = Web.GetHTTPInfo($"http://{DNS}/index.php/wp-json/wp/v2/users");
+                    var wpUserTestTwo = Web.GetHTTPInfo($"{urlPrefix}://{DNS}/index.php/wp-json/wp/v2/users");
                     if (wpUserTestTwo.StatusCode == HttpStatusCode.OK)
                     {
                         var document = JsonDocument.Parse(wpUserTestTwo.PageText);
                         foreach (JsonElement element in document.RootElement.EnumerateArray())
                         {
                             string wpUser = element.GetProperty("name").GetString();
-                            responseText += ("-- Wordpress User Found: " + wpUser).Pastel(Color.Orange) + Environment.NewLine;
+                            if (!wpUsers.Contains(wpUser))
+                            {
+                                wpUsers.Add(wpUser);
+                                responseText += ("-- Wordpress User Found: " + wpUser).Pastel(Color.Orange) + Environment.NewLine;
+                            }
                         }
                     }
 
-                    // 
-                    var xmlrpc = GetHTTPInfo($"http://{DNS}/xmlrpc.php");
-                    if (xmlrpc.PageText == "XML-RPC server accepts POST requests only.")
+                    // Basic vulnerable addons
+                    if (PageText.Contains("/wp-with-spritz/"))
                     {
-                        responseText += "-- xmlrpc.php found - Great for Brute Forcing!" + Environment.NewLine;
+                        responseText += "-- Vulnerable Plugin Detected".Pastel(Color.Orange) + $" - {urlPrefix}://{DNS}/wp-content/plugins/wp-with-spritz/wp.spritz.content.filter.php?url=/etc/passwd" + Environment.NewLine;
                     }
 
                     responseText += $"-- wpscan --url http://{DNS}/ --enumerate u1-5" + Environment.NewLine;
                     
                     // Checking for wp-login.php
-                    var wplogin = GetHTTPInfo($"http://{DNS}/wp-login.php");
+                    var wplogin = GetHTTPInfo($"{urlPrefix}://{DNS}/wp-login.php");
                     string wpLoginPath = "/blog/wp-login.php";
                     if (wplogin.StatusCode == HttpStatusCode.OK && wplogin.PageText.Contains("action=lostpassword"))
                     {
@@ -893,7 +933,7 @@ namespace Reecon
                 else if (PageText.Contains("com_content") && PageText.Contains("com_users"))
                 {
                     responseText += "-- Joomla! Detected".Pastel(Color.Orange) + Environment.NewLine;
-                    var adminXML = GetHTTPInfo($"http://{DNS}/administrator/manifests/files/joomla.xml");
+                    var adminXML = GetHTTPInfo($"{urlPrefix}://{DNS}/administrator/manifests/files/joomla.xml");
                     if (adminXML.StatusCode == HttpStatusCode.OK)
                     {
                         if (adminXML.PageText.Contains("<version>") && adminXML.PageText.Contains("</version>"))
@@ -905,7 +945,7 @@ namespace Reecon
                     }
                     else
                     {
-                        var tinyXML = GetHTTPInfo($"http://{DNS}/plugins/editors/tinymce/tinymce.xml");
+                        var tinyXML = GetHTTPInfo($"{urlPrefix}://{DNS}/plugins/editors/tinymce/tinymce.xml");
                         if (tinyXML.StatusCode == HttpStatusCode.OK)
                         {
                             // https://joomla.stackexchange.com/questions/7148/how-to-get-joomla-version-by-http
@@ -946,7 +986,24 @@ namespace Reecon
                     }
                     else if (serverText.StartsWith("Werkzeug/"))
                     {
-                        responseText += "-- " + "Werkzeug Detected - Check out /console <-----".Pastel(Color.Orange) + Environment.NewLine;
+                        responseText += "-- " + "Werkzeug Detected" + Environment.NewLine;
+                        var consolePage = GetHTTPInfo($"{ urlPrefix}://{DNS}/console");
+                        if (consolePage.StatusCode != HttpStatusCode.NotFound)
+                        {
+                            if (consolePage.PageText.Contains("The console is locked and needs to be unlocked by entering the PIN."))
+                            {
+                                responseText += "--- /console exists - But it needs a PIN" + Environment.NewLine;
+                                responseText += "--- If you get LFI - https://book.hacktricks.xyz/pentesting/pentesting-web/werkzeug" + Environment.NewLine;
+                            }
+                            else
+                            {
+                                responseText += "--- /console exists - With no PIN!".Pastel(Color.Orange) + Environment.NewLine; ;
+                            }
+                        }
+                        else
+                        {
+                            responseText += "--- No /console :(" + Environment.NewLine;
+                        }
                     }
                 }
                 // Useful info
@@ -992,7 +1049,7 @@ namespace Reecon
                     responseText += "- Set-Cookie: " + setCookie + Environment.NewLine;
                     if (setCookie.StartsWith("CUTENEWS_SESSION"))
                     {
-                        responseText += "-- " + $"CuteNews Found - Browse to http://{DNS}/CuteNews/index.php".Pastel(Color.Orange) + Environment.NewLine;
+                        responseText += "-- " + $"CuteNews Found - Browse to {urlPrefix}://{DNS}/CuteNews/index.php".Pastel(Color.Orange) + Environment.NewLine;
                     }
                 }
                 // Fun content types
@@ -1037,7 +1094,7 @@ namespace Reecon
                         if (friendlyName.Contains("Subject Alternative Name"))
                         {
 
-                            AsnEncodedData asndata = new AsnEncodedData(extension.Oid, extension.RawData);
+                            AsnEncodedData asndata = new(extension.Oid, extension.RawData);
                             List<string> formattedValues = asndata.Format(true).Split(new[] { Environment.NewLine }, StringSplitOptions.None).ToList();
                             string itemList = "";
                             foreach (string item in formattedValues)

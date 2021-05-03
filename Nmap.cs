@@ -80,10 +80,10 @@ namespace Reecon
                 Environment.Exit(0);
             }
             string returnTarget;
-            List<int> allPorts = new List<int>();
-            List<int> returnPorts = new List<int>();
+            List<int> allPorts = new();
+            List<int> returnPorts = new();
 
-            StreamReader sr1 = new StreamReader(fileName);
+            StreamReader sr1 = new(fileName);
             string[] fileLines = sr1.ReadToEnd().Replace("\r", "").Split(new[] { "\n" }, StringSplitOptions.None);
             sr1.Close();
             if (deleteFile)

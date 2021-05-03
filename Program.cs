@@ -9,14 +9,14 @@ namespace Reecon
     class Program
     {
         static string target = "";
-        static readonly List<int> portList = new List<int>();
-        static readonly List<Thread> threadList = new List<Thread>();
-        static readonly List<string> postScanList = new List<string>();
+        static readonly List<int> portList = new();
+        static readonly List<Thread> threadList = new();
+        static readonly List<string> postScanList = new();
         static void Main(string[] args)
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.26a ( https://github.com/Reelix/Reecon )");
+            Console.WriteLine("Reecon - Version 0.26b ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
@@ -250,7 +250,7 @@ namespace Reecon
             // Multi-threaded scan
             foreach (int port in portList)
             {
-                Thread myThread = new Thread(() => ScanPort(port));
+                Thread myThread = new(() => ScanPort(port));
                 threadList.Add(myThread);
                 myThread.Start();
             }

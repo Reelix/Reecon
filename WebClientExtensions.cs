@@ -113,7 +113,7 @@ namespace ReeCode
                 }
                 if (((HttpWebResponse)wex.Response).StatusCode == HttpStatusCode.NotFound || ((HttpWebResponse)wex.Response).StatusCode == HttpStatusCode.Unauthorized)
                 {
-                    StreamReader sr1 = new StreamReader(wex.Response.GetResponseStream());
+                    StreamReader sr1 = new(wex.Response.GetResponseStream());
                     string theLine = sr1.ReadToEnd();
                     return theLine;
                 }

@@ -16,7 +16,7 @@ namespace Reecon
         {
             string returnData = "";
             
-            MySqlConnection connection = new MySqlConnection($"Server={target};Port={port};Database=;Uid=reelixuser123;Pwd=;");
+            MySqlConnection connection = new($"Server={target};Port={port};Database=;Uid=reelixuser123;Pwd=;");
 
             try
             {
@@ -93,7 +93,7 @@ namespace Reecon
         // Currently requires the GIGANTIC MySQL.dll as well as a dozen other refs >_<
         public static string TestDefaults(string target, int port)
         {
-            List<string> testDetails = new List<string>()
+            List<string> testDetails = new()
             {
                 "root:mysql",
                 "root:root",
@@ -186,7 +186,7 @@ namespace Reecon
             if (connection.State == System.Data.ConnectionState.Open)
             {
                 string command = "SELECT User, authentication_string from mysql.user;";
-                MySqlCommand cmd = new MySqlCommand(command, connection);
+                MySqlCommand cmd = new(command, connection);
                 MySqlDataReader rdr = cmd.ExecuteReader();
                 // TODO: Test when the user doesn't have access to the mysql.user table
                 while (rdr.Read())

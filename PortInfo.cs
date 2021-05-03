@@ -18,7 +18,7 @@ namespace Reecon
 
     public class PortInfo
     {
-        private static readonly List<Port> PortInfoList = new List<Port>();
+        private static readonly List<Port> PortInfoList = new();
 
         // Parse Ports.txt into useful information
         public static void LoadPortInfo()
@@ -34,7 +34,7 @@ namespace Reecon
             if (!string.IsNullOrEmpty(resource))
             {
                 using Stream stream = assembly.GetManifestResourceStream(resource);
-                using StreamReader reader = new StreamReader(stream);
+                using StreamReader reader = new(stream);
                 string portData = reader.ReadToEnd();
                 List<string> portItems = portData.Replace("\r\n", "\n").Split('\n').ToList(); // OS Friendly File Split
                 foreach (string port in portItems)
@@ -49,7 +49,7 @@ namespace Reecon
                         int highPort = int.Parse(portNumber.Split('-')[1]);
                         for (int j = lowPort; j <= highPort; j++)
                         {
-                            Port thePort = new Port()
+                            Port thePort = new()
                             {
                                 Number = j,
                                 FileName = portFileName,
@@ -60,7 +60,7 @@ namespace Reecon
                     }
                     else
                     {
-                        Port thePort = new Port()
+                        Port thePort = new()
                         {
                             Number = int.Parse(portNumber),
                             FileName = portFileName,

@@ -49,7 +49,7 @@ namespace Pastel
         private static readonly string _formatStringFull = $"{_formatStringStart}{_formatStringColor}{_formatStringContent}{_formatStringEnd}";
 
 
-        private static readonly Dictionary<ColorPlane, string> _planeFormatModifiers = new Dictionary<ColorPlane, string>
+        private static readonly Dictionary<ColorPlane, string> _planeFormatModifiers = new()
         {
             [ColorPlane.Foreground] = "38",
             [ColorPlane.Background] = "48"
@@ -57,10 +57,10 @@ namespace Pastel
 
 
 
-        private static readonly Regex _closeNestedPastelStringRegex1 = new Regex($"({_formatStringEnd.Replace("[", @"\[")})+");
-        private static readonly Regex _closeNestedPastelStringRegex2 = new Regex($"(?<!^)(?<!{_formatStringEnd.Replace("[", @"\[")})(?<!{string.Format($"{_formatStringStart.Replace("[", @"\[")}{_formatStringColor}", new[] { $"(?:{_planeFormatModifiers[ColorPlane.Foreground]}|{_planeFormatModifiers[ColorPlane.Background]})" }.Concat(Enumerable.Repeat(@"\d{1,3}", 3)).Cast<object>().ToArray())})({string.Format(_formatStringStart.Replace("[", @"\["), $"(?:{_planeFormatModifiers[ColorPlane.Foreground]}|{_planeFormatModifiers[ColorPlane.Background]})")})");
+        private static readonly Regex _closeNestedPastelStringRegex1 = new($"({_formatStringEnd.Replace("[", @"\[")})+");
+        private static readonly Regex _closeNestedPastelStringRegex2 = new($"(?<!^)(?<!{_formatStringEnd.Replace("[", @"\[")})(?<!{string.Format($"{_formatStringStart.Replace("[", @"\[")}{_formatStringColor}", new[] { $"(?:{_planeFormatModifiers[ColorPlane.Foreground]}|{_planeFormatModifiers[ColorPlane.Background]})" }.Concat(Enumerable.Repeat(@"\d{1,3}", 3)).Cast<object>().ToArray())})({string.Format(_formatStringStart.Replace("[", @"\["), $"(?:{_planeFormatModifiers[ColorPlane.Foreground]}|{_planeFormatModifiers[ColorPlane.Background]})")})");
 
-        private static readonly Dictionary<ColorPlane, Regex> _closeNestedPastelStringRegex3 = new Dictionary<ColorPlane, Regex>
+        private static readonly Dictionary<ColorPlane, Regex> _closeNestedPastelStringRegex3 = new()
         {
             [ColorPlane.Foreground] = new Regex($"({_formatStringEnd.Replace("[", @"\[")})(?!{string.Format(_formatStringStart.Replace("[", @"\["), _planeFormatModifiers[ColorPlane.Foreground])})(?!$)"),
             [ColorPlane.Background] = new Regex($"({_formatStringEnd.Replace("[", @"\[")})(?!{string.Format(_formatStringStart.Replace("[", @"\["), _planeFormatModifiers[ColorPlane.Background])})(?!$)")
@@ -85,7 +85,7 @@ namespace Pastel
 
 
 
-        private static readonly Dictionary<bool, Dictionary<ColorPlane, ColorFormat>> _colorFormatFuncs = new Dictionary<bool, Dictionary<ColorPlane, ColorFormat>>
+        private static readonly Dictionary<bool, Dictionary<ColorPlane, ColorFormat>> _colorFormatFuncs = new()
         {
             [false] = new Dictionary<ColorPlane, ColorFormat>
             {
@@ -98,7 +98,7 @@ namespace Pastel
                 [ColorPlane.Background] = _backgroundColorFormat
             }
         };
-        private static readonly Dictionary<bool, Dictionary<ColorPlane, HexColorFormat>> _hexColorFormatFuncs = new Dictionary<bool, Dictionary<ColorPlane, HexColorFormat>>
+        private static readonly Dictionary<bool, Dictionary<ColorPlane, HexColorFormat>> _hexColorFormatFuncs = new()
         {
             [false] = new Dictionary<ColorPlane, HexColorFormat>
             {

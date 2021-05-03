@@ -12,7 +12,7 @@ namespace Reecon
     {
         public static RedditInfo GetInfo(string name)
         {
-            RedditInfo redditInfo = new RedditInfo { Exists = false };
+            RedditInfo redditInfo = new() { Exists = false };
             var aboutPage = Web.GetHTTPInfo($"https://www.reddit.com/user/{name}/about.json");
             if (aboutPage.StatusCode == HttpStatusCode.OK)
             {
@@ -52,8 +52,8 @@ namespace Reecon
         public bool Exists = false;
         public DateTime CreationDate;
         public int CommentKarma;
-        public List<OSINT_Reddit_Comments.Data1> CommentList = new List<OSINT_Reddit_Comments.Data1>();
-        public List<OSINT_Reddit_Submitted.Data1> SubmissionList = new List<OSINT_Reddit_Submitted.Data1>();
+        public List<OSINT_Reddit_Comments.Data1> CommentList = new();
+        public List<OSINT_Reddit_Submitted.Data1> SubmissionList = new();
     }
 
 #pragma warning disable IDE1006 // Naming Styles

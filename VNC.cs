@@ -13,7 +13,7 @@ namespace Reecon
         {
             string returnText = "";
             Byte[] buffer = new Byte[500];
-            using (Socket vncSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+            using (Socket vncSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
                 vncSocket.ReceiveTimeout = 5000;
                 vncSocket.SendTimeout = 5000;

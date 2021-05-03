@@ -7,6 +7,7 @@ namespace Reecon
 {
     class LDAP // Port 389
     {
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "Port is always required")]
         public static string GetInfo(string ip, int port)
         {
             string returnInfo = "";
@@ -15,14 +16,14 @@ namespace Reecon
             return returnInfo.Trim(Environment.NewLine.ToCharArray());
         }
 
-#pragma warning disable CS0612 // Type or member is obsolete
+        #pragma warning disable CS0612 // Type or member is obsolete
         public static string GetDefaultNamingContext(string ip, bool raw = false)
         {
             string ldapInfo = string.Empty;
-            using (LdapConnection ldapConnection = new LdapConnection())
+            using (LdapConnection ldapConnection = new())
             {
                 ldapConnection.Connect(ip, 389);
-                LdapCredential anonymousCredential = new LdapCredential();
+                LdapCredential anonymousCredential = new();
                 try
                 {
                     ldapConnection.Bind(Native.LdapAuthType.Simple, anonymousCredential);
@@ -83,12 +84,12 @@ namespace Reecon
         {
             string ldapInfo = string.Empty;
 
-            using (LdapConnection ldapConnection = new LdapConnection())
+            using (LdapConnection ldapConnection = new())
             {
                 try
                 {
                     ldapConnection.Connect(ip);
-                    LdapCredential anonymousCredential = new LdapCredential();
+                    LdapCredential anonymousCredential = new();
                     ldapConnection.Bind(Native.LdapAuthType.Simple, anonymousCredential);
                 }
                 catch

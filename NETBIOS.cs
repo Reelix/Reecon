@@ -35,12 +35,12 @@ namespace Reecon
 
             try
             {
-                IPEndPoint senderTest = new IPEndPoint(IPAddress.Any, 137);
+                IPEndPoint senderTest = new(IPAddress.Any, 137);
                 EndPoint Remote = (EndPoint)senderTest;
 
-                IPEndPoint ipep = new IPEndPoint(IPAddress.Parse(ip), 137);
+                IPEndPoint ipep = new(IPAddress.Parse(ip), 137);
 
-                Socket server = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+                Socket server = new(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
 
                 // server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveTimeout,);
                 server.SendTo(bs, bs.Length, SocketFlags.None, ipep);
@@ -246,7 +246,7 @@ namespace Reecon
                         if (sneakyNameLookup.Count != 0)
                         {
                             anonAccess = true;
-                            List<string> sneakySIDBaseList = new List<string>();
+                            List<string> sneakySIDBaseList = new();
                             foreach (string name in sneakyNameLookup)
                             {
                                 string sneakySID = name.Split(' ')[1];
@@ -264,7 +264,7 @@ namespace Reecon
                             // Needs the base SID to enumerate
                             if (sneakySIDBaseList.Count != 0)
                             {
-                                List<string> sneakySIDList = new List<string>();
+                                List<string> sneakySIDList = new();
                                 foreach (string sneakyBase in sneakySIDBaseList)
                                 {
                                     // Low ones are just system names - Can ignore them - Proper ones start from 1000

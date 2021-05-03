@@ -15,7 +15,7 @@ namespace Reecon
             int timeout = 5000; // ms
             string bannerText = "";
             Byte[] buffer = new Byte[512];
-            using (Socket telnetSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+            using (Socket telnetSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
                 telnetSocket.ReceiveTimeout = timeout;
                 telnetSocket.SendTimeout = timeout;

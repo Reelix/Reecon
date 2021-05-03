@@ -13,7 +13,7 @@ namespace Reecon
         public static string GetInfo(string target, int port)
         {
             string ftpUsername = "";
-            string ftpLoginInfo = "";
+            string ftpLoginInfo;
             try
             {
                 ftpLoginInfo = FTP.FtpLogin(target, ftpUsername);
@@ -170,8 +170,10 @@ namespace Reecon
                 {
                     target = "ftp://" + target;
                 }
-                FtpClient client = new FtpClient(target, "reelixwoof", "reelixwoof");
-                client.EncryptionMode = FtpEncryptionMode.Explicit; // Port 990 for Implicit
+                FtpClient client = new(target, "reelixwoof", "reelixwoof")
+                {
+                    EncryptionMode = FtpEncryptionMode.Explicit // Port 990 for Implicit
+                };
                 client.ValidateCertificate += new FtpSslValidation(OnValidateCertificate);
                 client.Connect();
 
@@ -203,7 +205,7 @@ namespace Reecon
         public static string TryListFiles(string ftpServer, int port, bool usePassive, string username = "", string password = "")
         {
             string toReturn = "";
-            FtpClient client = new FtpClient(ftpServer, port, username, password);
+            FtpClient client = new(ftpServer, port, username, password);
             client.Connect();
             /*
             Console.WriteLine("Test Type: " + client.ServerType.ToString());
@@ -212,7 +214,7 @@ namespace Reecon
             */
             toReturn += "-- OS Type: " + client.ServerOS + Environment.NewLine;
             FtpListItem[] itemList = client.GetListing("/", FtpListOption.AllFiles);
-            if (itemList.Count() == 0)
+            if (itemList.Length == 0)
             {
                 toReturn += "-- No Files Or Folders Found" + Environment.NewLine;
             }
@@ -234,14 +236,12 @@ namespace Reecon
                 toReturn += "-- " + item.Name + fileType + Environment.NewLine;
                 if (item.Type == FtpFileSystemObjectType.File && item.Name.EndsWith(".txt"))
                 {
-                    using (Stream stream = client.OpenRead(item.FullName))
-                    using (StreamReader reader = new StreamReader(stream))
+                    using Stream stream = client.OpenRead(item.FullName);
+                    using StreamReader reader = new(stream);
+                    while (!reader.EndOfStream)
                     {
-                        while (!reader.EndOfStream)
-                        {
-                            string line = reader.ReadLine();
-                            toReturn += "--- Text: " + line + Environment.NewLine;
-                        }
+                        string line = reader.ReadLine();
+                        toReturn += "--- Text: " + line + Environment.NewLine;
                     }
                 }
             }

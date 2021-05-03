@@ -11,10 +11,9 @@ namespace Reecon
     {
         public static string GetInfo(string ip, int port)
         {
-            string returnInfo = "";
             string sshVersion = "- SSH Version: " + SSH.GetVersion(ip, port);
             string authMethods = "- Authentication Methods: " + SSH.GetAuthMethods(ip, port);
-            returnInfo = sshVersion + Environment.NewLine + authMethods;
+            string returnInfo = sshVersion + Environment.NewLine + authMethods;
             return returnInfo;
         }
         // Get version
@@ -23,7 +22,7 @@ namespace Reecon
             try
             {
                 Byte[] buffer = new Byte[512];
-                using Socket sshSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                using Socket sshSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                 sshSocket.Connect(ip, port);
                 int bytes = sshSocket.Receive(buffer, buffer.Length, 0);
                 string versionMessage = Encoding.ASCII.GetString(buffer, 0, bytes);
@@ -82,12 +81,19 @@ namespace Reecon
             }
             if (!outputLines.Any(x => x.Contains("Permission denied")))
             {
-                Console.WriteLine("Error in ssh.GetAuthMethods - No Permission denied found");
-                foreach (string line in outputLines)
+                if (outputLines.Count == 1 && outputLines[0].Contains("Connection timed out"))
                 {
-                    Console.WriteLine($"Debug: --> {line}");
+                    return "- Timed out :(";
                 }
-                return "";
+                else
+                {
+                    Console.WriteLine("Error in ssh.GetAuthMethods - No Permission denied found");
+                    foreach (string line in outputLines)
+                    {
+                        Console.WriteLine($"Debug: --> {line}");
+                    }
+                    return "";
+                }
             }
             returnString = outputLines.First(x => x.Contains("Permission denied"));
             returnString = returnString.Remove(0, returnString.IndexOf("("));

@@ -16,7 +16,7 @@ namespace Reecon
             string returnText = "";
             string smtpBanner = "";
             Byte[] buffer = new Byte[5000];
-            using (Socket smtpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+            using (Socket smtpSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
                 // They're like.... REALLY SLOW!
                 smtpSocket.ReceiveTimeout = 15000;

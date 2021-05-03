@@ -8,6 +8,7 @@ namespace Reecon
 {
     class NFS // Port 2049
     {
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "Port is always required")]
         public static string GetInfo(string target, int port)
         {
             // TODO: https://svn.nmap.org/nmap/scripts/nfs-ls.nse

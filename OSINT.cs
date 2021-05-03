@@ -31,7 +31,7 @@ namespace Reecon
 
         private static void GetInstagramInfo(string username)
         {
-            WebClient wc = new WebClient();
+            WebClient wc = new();
             string pageText = wc.DownloadString("https://www.instagram.com/web/search/topsearch/?query=" + username);
             try
             {
@@ -195,7 +195,7 @@ namespace Reecon
 
                     // Split into segments
                     string pageText = httpInfo.PageText;
-                    List<string> tableList = new List<string>();
+                    List<string> tableList = new();
                     tableList.AddRange(pageText.Split("<table", StringSplitOptions.RemoveEmptyEntries));
 
                     // Find Bio

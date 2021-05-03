@@ -13,7 +13,7 @@ namespace Reecon
         {
             string returnText = "";
             Byte[] buffer = new Byte[5000];
-            using (Socket rsyncSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+            using (Socket rsyncSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
                 // It's SLOW!
                 rsyncSocket.ReceiveTimeout = 15000;

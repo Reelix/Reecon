@@ -10,7 +10,7 @@ namespace Reecon
         {
             string returnText = "";
             Byte[] buffer = new Byte[500];
-            using (Socket popSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+            using (Socket popSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
                 // Doing multiple requests with lots of data, so give it some time  
                 popSocket.ReceiveTimeout = 5000;

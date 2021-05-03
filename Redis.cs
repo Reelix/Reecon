@@ -16,7 +16,7 @@ namespace Reecon
             bool canSetPath = false;
             string returnText = "";
             Byte[] buffer = new Byte[5000];
-            using (Socket redisSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+            using (Socket redisSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
                 // Doing multiple requests with lots of data, so give it some time  
                 redisSocket.ReceiveTimeout = 10000;

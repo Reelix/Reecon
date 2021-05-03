@@ -18,9 +18,9 @@ namespace Reecon
     {
         public static List<string> MultiBannerGrab(string ip, int port, int bufferSize = 512, int timeout = 5000)
         {
-            List<string> returnList = new List<string>();
-            ConcurrentBag<string> resultCollection = new ConcurrentBag<string>();
-            List<string> toTest = new List<string>
+            List<string> returnList = new();
+            ConcurrentBag<string> resultCollection = new();
+            List<string> toTest = new()
             {
                 "",
                 "Woof\r\n\r\n",
@@ -43,7 +43,7 @@ namespace Reecon
         {
             string bannerText = "";
             Byte[] buffer = new Byte[bufferSize];
-            using (Socket bannerGrabSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+            using (Socket bannerGrabSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
                 bannerGrabSocket.ReceiveTimeout = timeout;
                 bannerGrabSocket.SendTimeout = timeout;
@@ -132,7 +132,7 @@ namespace Reecon
         {
             string bannerText = "";
             Byte[] buffer = new Byte[bufferSize];
-            using (Socket bannerGrabSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+            using (Socket bannerGrabSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
                 bannerGrabSocket.ReceiveTimeout = timeout;
                 bannerGrabSocket.SendTimeout = timeout;
@@ -211,48 +211,46 @@ namespace Reecon
         {
             byte[] returBuffer = Array.Empty<byte>();
             byte[] buffer = new byte[bufferSize];
-            using (Socket bannerGrabSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+            using Socket bannerGrabSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            bannerGrabSocket.ReceiveTimeout = 10000;
+            bannerGrabSocket.SendTimeout = 10000;
+            try
             {
-                bannerGrabSocket.ReceiveTimeout = 10000;
-                bannerGrabSocket.SendTimeout = 10000;
-                try
+                var result = bannerGrabSocket.BeginConnect(ip, port, null, null); // Error if an invalid IP
+                bool success = result.AsyncWaitHandle.WaitOne(10000, true);
+                if (success)
                 {
-                    var result = bannerGrabSocket.BeginConnect(ip, port, null, null); // Error if an invalid IP
-                    bool success = result.AsyncWaitHandle.WaitOne(10000, true);
-                    if (success)
-                    {
-                        if (!bannerGrabSocket.Connected)
-                        {
-                            bannerGrabSocket.Close();
-                            return Encoding.ASCII.GetBytes("Reecon - Closed");
-                        }
-                        foreach (byte[] cmdBytes in bytesToSend)
-                        {
-                            bannerGrabSocket.Send(cmdBytes);
-                            int receivedBytes = bannerGrabSocket.Receive(buffer);
-                            returBuffer = buffer.Take(receivedBytes).ToArray();
-                        }
-                        return returBuffer;
-                    }
-                    else
+                    if (!bannerGrabSocket.Connected)
                     {
                         bannerGrabSocket.Close();
                         return Encoding.ASCII.GetBytes("Reecon - Closed");
                     }
+                    foreach (byte[] cmdBytes in bytesToSend)
+                    {
+                        bannerGrabSocket.Send(cmdBytes);
+                        int receivedBytes = bannerGrabSocket.Receive(buffer);
+                        returBuffer = buffer.Take(receivedBytes).ToArray();
+                    }
+                    return returBuffer;
                 }
-                catch (SocketException ex)
+                else
                 {
-                    return Encoding.ASCII.GetBytes("General.BannerGrabBytes Error: " + ex.Message);
+                    bannerGrabSocket.Close();
+                    return Encoding.ASCII.GetBytes("Reecon - Closed");
                 }
+            }
+            catch (SocketException ex)
+            {
+                return Encoding.ASCII.GetBytes("General.BannerGrabBytes Error: " + ex.Message);
             }
         }
 
         public static bool? IsUp(string ip)
         {
-            using Ping myPing = new Ping();
+            using Ping myPing = new();
             try
             {
-                PingOptions myOptions = new PingOptions();
+                PingOptions myOptions = new();
                 try
                 {
                     PingReply reply = myPing.Send(ip, 1000);
@@ -307,7 +305,7 @@ namespace Reecon
         public static void RunProcessWithOutput(string processName, string arguments)
         {
             // Console.WriteLine("Running Process " + processName + " with args: " + arguments);
-            Process p = new Process();
+            Process p = new();
             p.StartInfo.UseShellExecute = true;
             p.StartInfo.FileName = processName;
             p.StartInfo.Arguments = arguments;
@@ -324,7 +322,7 @@ namespace Reecon
         public static void RunProcess(string processName, string arguments, int waitForExitSeconds = 500)
         {
             // Console.WriteLine("Running Process " + processName + " with args: " + arguments);
-            Process p = new Process();
+            Process p = new();
             p.StartInfo.UseShellExecute = false;
             p.StartInfo.RedirectStandardOutput = true;
             p.StartInfo.RedirectStandardError = true;
@@ -345,8 +343,8 @@ namespace Reecon
         public static List<string> GetProcessOutput(string processName, string arguments)
         {
             // Console.WriteLine("Running Process " + processName + " with args: " + arguments);
-            List<string> outputLines = new List<string>();
-            Process p = new Process();
+            List<string> outputLines = new();
+            Process p = new();
             p.StartInfo.UseShellExecute = false;
             p.StartInfo.RedirectStandardOutput = true;
             p.StartInfo.RedirectStandardError = true;
@@ -413,7 +411,7 @@ namespace Reecon
 
         public static List<string> MatchCollectionToList(MatchCollection matchCollection)
         {
-            List<string> returnList = new List<string>();
+            List<string> returnList = new();
             foreach (Match item in matchCollection)
             {
                 if (!returnList.Contains(item.Value))
@@ -426,7 +424,7 @@ namespace Reecon
 
         public static List<IP> GetIPList()
         {
-            List<IP> ipList = new List<IP>();
+            List<IP> ipList = new();
             NetworkInterface[] networkInterfaces = NetworkInterface.GetAllNetworkInterfaces();
             foreach (NetworkInterface ni in networkInterfaces)
             {
@@ -438,9 +436,11 @@ namespace Reecon
                     {
                         if (ip.Address.AddressFamily == AddressFamily.InterNetwork)
                         {
-                            IP returnIP = new IP();
-                            returnIP.Name = name;
-                            returnIP.Address = ip.Address;
+                            IP returnIP = new()
+                            {
+                                Name = name,
+                                Address = ip.Address
+                            };
                             ipList.Add(returnIP);
                         }
                     }

@@ -38,7 +38,7 @@ namespace Reecon
             string osDetails = "";
             byte[] negotiateBytes = negotiateProtoRequest();
             byte[] sessionBytes = sessionSetupAndxRequest();
-            List<byte[]> bytesToSend = new List<byte[]>() { negotiateBytes, sessionBytes };
+            List<byte[]> bytesToSend = new() { negotiateBytes, sessionBytes };
             byte[] byteResult = General.BannerGrabBytes(target, 445, bytesToSend);
             var sessionSetupAndxResponse = byteResult.Skip(36).ToArray();
             var nativeOsB = sessionSetupAndxResponse.Skip(9).ToArray();

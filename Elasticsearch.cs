@@ -12,7 +12,7 @@ namespace Reecon
         public static string GetInfo(string ip, int port)
         {
             string returnString = "";
-            WebClient wc = new WebClient();
+            WebClient wc = new();
             // Get basic data
             string pageData = wc.DownloadString($"http://{ip}:{port}/");
             ElasticSearchObject theObject = JsonSerializer.Deserialize<ElasticSearchObject>(pageData);
