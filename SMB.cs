@@ -36,28 +36,35 @@ namespace Reecon
         private static string GetOSDetails(string target)
         {
             string osDetails = "";
-            byte[] negotiateBytes = negotiateProtoRequest();
-            byte[] sessionBytes = sessionSetupAndxRequest();
-            List<byte[]> bytesToSend = new() { negotiateBytes, sessionBytes };
-            byte[] byteResult = General.BannerGrabBytes(target, 445, bytesToSend);
-            var sessionSetupAndxResponse = byteResult.Skip(36).ToArray();
-            var nativeOsB = sessionSetupAndxResponse.Skip(9).ToArray();
-            var osData = Encoding.ASCII.GetString(nativeOsB).Split('\x00');
-            if (osData[0] != "et by peer") // Invalid response that was cut off
+            try
             {
-                string osName = osData[0];
-                osDetails += "- OS Name: " + osName + Environment.NewLine;
-                if (osName == "Windows 5.1")
+                byte[] negotiateBytes = negotiateProtoRequest();
+                byte[] sessionBytes = sessionSetupAndxRequest();
+                List<byte[]> bytesToSend = new() { negotiateBytes, sessionBytes };
+                byte[] byteResult = General.BannerGrabBytes(target, 445, bytesToSend);
+                var sessionSetupAndxResponse = byteResult.Skip(36).ToArray();
+                var nativeOsB = sessionSetupAndxResponse.Skip(9).ToArray();
+                var osData = Encoding.ASCII.GetString(nativeOsB).Split('\x00');
+                if (osData[0] != "et by peer") // Invalid response that was cut off
                 {
-                    osDetails += "-- Windows 5.1 == Windows XP SP3" + Environment.NewLine;
+                    string osName = osData[0];
+                    osDetails += "- OS Name: " + osName + Environment.NewLine;
+                    if (osName == "Windows 5.1")
+                    {
+                        osDetails += "-- Windows 5.1 == Windows XP SP3" + Environment.NewLine;
+                    }
+                    if (osData.Count() >= 3)
+                    {
+                        osDetails += "- OS Build: " + osData[1] + Environment.NewLine;
+                        osDetails += "- OS Workgroup: " + osData[2] + Environment.NewLine;
+                    }
                 }
-                if (osData.Count() >= 3)
-                {
-                    osDetails += "- OS Build: " + osData[1] + Environment.NewLine;
-                    osDetails += "- OS Workgroup: " + osData[2] + Environment.NewLine;
-                }
+                return osDetails;
             }
-            return osDetails;
+            catch (Exception ex)
+            {
+                return $"- Cannot find OS Details: {ex.Message} - Bug Reelix!" + Environment.NewLine;
+            }
         }
 
         private static string TestAnonymousAccess_Linux(string target)
@@ -81,16 +88,23 @@ namespace Reecon
                 foreach (string item in processResults)
                 {
                     // type|name|comment
-                    if (!item.StartsWith("SMB1 disabled"))
+                    if (item.Trim() != "SMB1 disabled -- no workgroup available" && item.Trim() != "Anonymous login successful")
                     {
-                        string itemType = item.Split('|')[0];
-                        string itemName = item.Split('|')[1];
-                        string itemComment = item.Split('|')[2];
-                        smbClientItems += "- " + itemType + ": " + itemName + " " + (itemComment == "" ? "" : "(" + itemComment.Trim() + ")") + Environment.NewLine;
-                        List<string> subProcessResults = General.GetProcessOutput("smbclient", $"//{target}/{itemName} --no-pass -c \"ls\"");
-                        if (subProcessResults.Count > 1)
+                        try
                         {
-                            smbClientItems += "-- " + $"{itemName} has ls perms - {subProcessResults.Count} items found! -> smbclient //{target}/{itemName} --no-pass".Pastel(Color.Orange) + Environment.NewLine;
+                            string itemType = item.Split('|')[0];
+                            string itemName = item.Split('|')[1];
+                            string itemComment = item.Split('|')[2];
+                            smbClientItems += "- " + itemType + ": " + itemName + " " + (itemComment == "" ? "" : "(" + itemComment.Trim() + ")") + Environment.NewLine;
+                            List<string> subProcessResults = General.GetProcessOutput("smbclient", $"//{target}/{itemName} --no-pass -c \"ls\"");
+                            if (subProcessResults.Count > 1 && !subProcessResults.Any(x => x.Contains("tree connect failed: NT_STATUS_ACCESS_DENIED")))
+                            {
+                                smbClientItems += "-- " + $"{itemName} has ls perms - {subProcessResults.Count} items found! -> smbclient //{target}/{itemName} --no-pass".Pastel(Color.Orange) + Environment.NewLine;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"TestAnonymousAccess_Linux - Error: {ex.Message} - Invalid item: {item} - Bug Reelix!");
                         }
                     }
                 }

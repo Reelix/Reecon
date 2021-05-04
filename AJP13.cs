@@ -48,17 +48,17 @@ namespace Reecon
                 return true;
             }
             // Below 7.0.100
-            if (theVersion.Major == 7 && theVersion <= System.Version.Parse("7.0.99"))
+            if (theVersion.Major == 7 && theVersion < System.Version.Parse("7.0.100"))
             {
                 return true;
             }
             // Below 8.5.51
-            else if (theVersion.Major == 8 && theVersion <= System.Version.Parse("8.5.50"))
+            else if (theVersion.Major == 8 && theVersion < System.Version.Parse("8.5.51"))
             {
                 return true;
             }
-            // Below 9.0.30
-            else if (theVersion.Major == 9 && theVersion <= System.Version.Parse("9.0.30"))
+            // Below 9.0.31
+            else if (theVersion.Major == 9 && theVersion < System.Version.Parse("9.0.31"))
             {
                 return true;
             }

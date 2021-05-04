@@ -214,7 +214,7 @@ namespace Reecon
                     Console.WriteLine(unknownPortResult);
                 }
                 // HTTPS
-                if (theBanner == "Reecon - HTTPS")
+                else if (theBanner == "Reecon - HTTPS")
                 {
                     string httpsData = HTTPS.GetInfo(target, port);
                     if (httpsData != "")
@@ -281,7 +281,7 @@ namespace Reecon
                     Console.WriteLine(unknownPortResult);
                 }
                 // SMTP
-                if (theBanner.StartsWith("220") && theBanner.Contains("ESMTP"))
+                else if (theBanner.StartsWith("220") && theBanner.Contains("ESMTP"))
                 {
                     unknownPortResult += $"Port {port} - SMTP".Pastel(Color.Green);
                     string smtpInfo = SMTP.GetInfo(target, port); // Can't just parse the banner directly since there could be other useful stuff
@@ -437,13 +437,14 @@ namespace Reecon
                 defaultNamingContext = defaultNamingContext.Replace("DC=", "").Replace(",", ".");
 
                 // Username enum
-                postScanActions += $"- Kerberos Username Enum: kerbrute userenum --dc {defaultNamingContext}/ -d {target} users.txt" + Environment.NewLine;
+                postScanActions += $"- Kerberos Username Enum: kerbrute userenum --dc {target} -d {defaultNamingContext} users.txt" + Environment.NewLine;
 
                 // Requests TGT (Ticket Granting Tickets) for users
                 postScanActions += $"- Kerberos TGT Request: sudo GetNPUsers.py {defaultNamingContext}/ -dc-ip {target} -request" + Environment.NewLine;
 
                 // Test for users with 'Do not require Kerberos preauthentication'
-                postScanActions += $"- Kerberos non-preauth: sudo GetNPUsers.py {defaultNamingContext}/ -usersfile sampleUsersHere.txt -dc-ip {target}" + Environment.NewLine;
+                // The / at the end of defaultNamingContext is not a typo and is required
+                postScanActions += $"- Kerberos non-preauth: sudo GetNPUsers.py {defaultNamingContext}/ -usersfile users.txt -dc-ip {target}" + Environment.NewLine;
 
                 // Post exploitation
                 postScanActions += $"- If you get details: python3 secretsdump.py usernameHere:\"passwordHere\"@{target} | grep :" + Environment.NewLine;

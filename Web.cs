@@ -151,7 +151,7 @@ namespace Reecon
 
         private static string FindLinks(string pageText, bool doubleDash)
         {
-            string returnInfo = "";
+            List<string> linkList = new List<string>();
             // Find all matches
             MatchCollection m1 = Regex.Matches(pageText, @"(<a.*?>.*?</a>)", RegexOptions.Singleline);
 
@@ -182,13 +182,27 @@ namespace Reecon
                 {
                     if (doubleDash)
                     {
-                        returnInfo += "-- " + text + ": " + href + Environment.NewLine;
+                        string info = "-- " + text + ": " + href;
+                        if (!linkList.Contains(info))
+                        {
+                            linkList.Add(info);
+                        }
                     }
                     else
                     {
-                        returnInfo += "- " + text + ": " + href + Environment.NewLine;
+                        string info = "- " + text + ": " + href;
+                        if (!linkList.Contains(info))
+                        {
+                            linkList.Add(info);
+                        }
                     }
                 }
+            }
+            // Convert to a nice string to return
+            string returnInfo = "";
+            foreach (string item in linkList)
+            {
+                returnInfo += item + Environment.NewLine;
             }
             return returnInfo.Trim(Environment.NewLine.ToCharArray());
         }
