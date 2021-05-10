@@ -464,6 +464,10 @@ namespace Reecon
                 postScanActions += $"- Port 445 - Testing passwords: crackmapexec smb {target} -u users.txt -p passwords.txt" + Environment.NewLine;
                 postScanActions += $"- Port 445 - Authenticated SID Lookup: sudo lookupsid.py DOMAIN/Username:password@{target}" + Environment.NewLine;
             }
+            else if (port == 1433)
+            {
+                postScanActions += $"- MSSQL - Nmap has more: sudo nmap {target} -p 1433 --script ms-sql-info" + Environment.NewLine;
+            }
             else if (port == 2049)
             {
                 postScanActions += "- NFS: rpcinfo -p " + target + Environment.NewLine;

@@ -20,6 +20,7 @@
 873|Rsync|Rsync (Remote Sync)
 993|N/A|IMAPS (IMAP over SSL)
 995|N/A|pop3s (pop3 over SSL)
+1433|N/A|MSSQL (MSSQL)
 2049|NFS|NFS (Network File System)
 3128|Squid|Squid
 3268|N/A|LDAP (Global Catalog)

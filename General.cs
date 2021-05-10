@@ -16,6 +16,23 @@ namespace Reecon
 {
     class General
     {
+        public static void ShowHelp()
+        {
+            Console.WriteLine("Usage");
+            Console.WriteLine("-----");
+            Console.WriteLine("Basic Scan:\tReecon IPHere (Optional: -noping to skip the online check)");
+            Console.WriteLine("Display IP:\tReecon -ip");
+            Console.WriteLine("NMap-Load Scan:\tReecon outfile.nmap (Requires -oG on a regular nmap scan)");
+            Console.WriteLine("Binary Pwn:\tReecon -pwn FileName (Very buggy)");
+            Console.WriteLine("LDAP Auth Enum:\tReecon -ldap IP validUsername validPassword");
+            Console.WriteLine("Searchsploit:\tReecon -searchsploit nameHere (Beta)");
+            Console.WriteLine("Shell Gen:\tReecon -shell");
+            Console.WriteLine("SMB Brute:\tReecon -smb-brute (Linux Only)");
+            Console.WriteLine("WinRM Brute:\tReecon -winrm-brute IP UserList PassList");
+            Console.WriteLine("LFI Test:\tReecon -lfi (Very buggy)");
+            Console.WriteLine("Web Info:\tReecon -web url (Very buggy)");
+        }
+
         public static List<string> MultiBannerGrab(string ip, int port, int bufferSize = 512, int timeout = 5000)
         {
             List<string> returnList = new();
@@ -123,7 +140,7 @@ namespace Reecon
             {
                 // Nothing on the default - Try some HTTP
                 // Can't use Environment.NewLine since Linux interprets it as \n which is invalid for IIS
-                bannerText = BannerGrab(ip, port, "HEAD / HTTP/1.1\r\nHost: " + ip + "\r\n\r\n");
+                bannerText = BannerGrab(ip, port, $"HEAD / HTTP/1.1\r\nHost: {ip}\r\n\r\n");
             }
             return bannerText;
         }
@@ -241,7 +258,7 @@ namespace Reecon
             }
             catch (SocketException ex)
             {
-                return Encoding.ASCII.GetBytes("General.BannerGrabBytes Error: " + ex.Message);
+                return Encoding.ASCII.GetBytes($"General.BannerGrabBytes Error: {ex.Message}");
             }
         }
 

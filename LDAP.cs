@@ -7,26 +7,27 @@ namespace Reecon
 {
     class LDAP // Port 389
     {
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "Port is always required")]
+        static LdapCredential ldapCreds = new LdapCredential();
+
+        static int ldapPort = 0;
         public static string GetInfo(string ip, int port)
         {
             string returnInfo = "";
+            ldapPort = port;
             returnInfo += LDAP.GetDefaultNamingContext(ip);
             returnInfo += LDAP.GetAccountInfo(ip);
             return returnInfo.Trim(Environment.NewLine.ToCharArray());
         }
 
-        #pragma warning disable CS0612 // Type or member is obsolete
         public static string GetDefaultNamingContext(string ip, bool raw = false)
         {
             string ldapInfo = string.Empty;
-            using (LdapConnection ldapConnection = new())
+            using (LdapConnection ldapConnection = new LdapConnection())
             {
                 ldapConnection.Connect(ip, 389);
-                LdapCredential anonymousCredential = new();
                 try
                 {
-                    ldapConnection.Bind(Native.LdapAuthType.Simple, anonymousCredential);
+                    ldapConnection.Bind(Native.LdapAuthType.Simple, ldapCreds);
                 }
                 catch (LdapException le)
                 {
@@ -45,10 +46,9 @@ namespace Reecon
 
                 if (searchEntries.Count == 1)
                 {
-
-                    if (searchEntries[0].Attributes.ContainsKey("defaultNamingContext"))
+                    if (searchEntries[0].DirectoryAttributes.Contains("defaultNamingContext"))
                     {
-                        string defaultNamingContext = searchEntries[0].Attributes["defaultNamingContext"][0].ToString();
+                        string defaultNamingContext = searchEntries[0].DirectoryAttributes["defaultNamingContext"].GetValue<string>();
                         if (raw)
                         {
                             ldapInfo = defaultNamingContext;
@@ -58,17 +58,17 @@ namespace Reecon
                             ldapInfo = $"- defaultNamingContext: {defaultNamingContext}" + Environment.NewLine;
                         }
                     }
-                    else if (searchEntries[0].Attributes.ContainsKey("objectClass"))
+                    else if (searchEntries[0].DirectoryAttributes.Contains("objectClass"))
                     {
-                        string objectClass = searchEntries[0].Attributes["objectClass"][0].ToString();
+                        string objectClass = searchEntries[0].DirectoryAttributes["objectClass"].GetValue<string>();
                         ldapInfo = "- No defaultNamingContext, but we have an objectClass: " + objectClass + Environment.NewLine;
                     }
                     else
                     {
-                        ldapInfo = "- Error: No defaultNamingContext! Keys: " + searchEntries[0].Attributes.Count + Environment.NewLine;
-                        foreach (var item in searchEntries[0].Attributes)
+                        ldapInfo = "- Error: No defaultNamingContext! Keys: " + searchEntries[0].DirectoryAttributes.Count + Environment.NewLine;
+                        foreach (var item in searchEntries[0].DirectoryAttributes)
                         {
-                            ldapInfo += "- Found Key: " + item.Key + " with value " + item.Value + Environment.NewLine;
+                            ldapInfo += "- Found Key: " + item.Name + " with value " + item.GetValue<string>() + Environment.NewLine;
                         }
                     }
                 }
@@ -80,58 +80,96 @@ namespace Reecon
             return ldapInfo;
         }
 
-        public static string GetAccountInfo(string ip)
+        public static string GetAccountInfo(string ip, string username = null, string password = null)
         {
             string ldapInfo = string.Empty;
 
-            using (LdapConnection ldapConnection = new())
+            using (LdapConnection ldapConnection = new LdapConnection())
             {
                 try
                 {
-                    ldapConnection.Connect(ip);
-                    LdapCredential anonymousCredential = new();
-                    ldapConnection.Bind(Native.LdapAuthType.Simple, anonymousCredential);
+                    ldapConnection.Connect(ip, ldapPort);
+                    if (username != null && password != null)
+                    {
+                        ldapCreds.UserName = username;
+                        ldapCreds.Password = password;
+                        // May work to fix issue 65 - May not...
+                        ldapConnection.SetOption(Native.LdapOption.LDAP_OPT_REFERRALS, IntPtr.Zero);
+                        ldapConnection.Bind(Native.LdapAuthType.Negotiate, ldapCreds);
+                    }
+                    else
+                    {
+                        ldapConnection.Bind(Native.LdapAuthType.Simple, ldapCreds);
+                    }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    return "- No anonymous authentication allowed" + Environment.NewLine;
+                    if (ex.Message.Contains("SASL(-4)"))
+                    {
+                        // https://github.com/flamencist/ldap4net/issues/65
+                        return "This unfortunately doesn't work on Linux in some cases";
+                    }
+                    else if (ex.Message.Contains("Invalid Credentials."))
+                    {
+                        if (username != null && password != null)
+                        {
+                            return "- Incorrect Credentails";
+                        }
+                        else
+                        {
+                            return "- No anonymous authentication allowed" + Environment.NewLine;
+                        }
+                    }
+                    else
+                    {
+                        return "- Fatal Woof: " + ex.Message;
+                    }
                 }
                 var rootDse = ldapConnection.GetRootDse();
                 IList<LdapEntry> searchEntries;
                 try
                 {
-                    if (!rootDse.Attributes.ContainsKey("defaultNamingContext"))
+                    if (rootDse.DirectoryAttributes.Contains("defaultNamingContext"))
                     {
-                        return "- rootDse has no defaultNamingContext. Keys: " + rootDse.Attributes.Count;
+                        string baseDn = rootDse.DirectoryAttributes["defaultNamingContext"].GetValue<string>();
+                        searchEntries = ldapConnection.Search(baseDn, "(objectclass=user)", scope: Native.LdapSearchScope.LDAP_SCOPE_SUB);
                     }
-                    searchEntries = ldapConnection.Search(rootDse.Attributes["defaultNamingContext"][0], "(objectclass=user)", scope: Native.LdapSearchScope.LDAP_SCOPE_SUB);
+                    else if (rootDse.DirectoryAttributes.Contains("namingContexts"))
+                    {
+                        string baseDn = rootDse.DirectoryAttributes["namingContexts"].GetValue<string>();
+                        searchEntries = ldapConnection.Search(baseDn, "(objectclass=user)", scope: Native.LdapSearchScope.LDAP_SCOPE_SUB);
+                    }
+                    else
+                    {
+                        return "- rootDse has no defaultNamingContext / namingContexts. Keys: " + rootDse.DirectoryAttributes.Count;
+                    }
                 }
                 catch (LdapException)
                 {
                     return "- No Anonymous Access Allowed";
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    return ":<";
+                    return $"Fatal Woof - Error in LDAP.GetAccountInfo - {ex.Message} - Bug Reelix!";
                 }
                 foreach (var result in searchEntries)
                 {
-                    string accountName = result.Attributes["sAMAccountName"].Count > 0 ? result.Attributes["sAMAccountName"][0].ToString() : string.Empty;
+                    string accountName = result.DirectoryAttributes.Contains("sAMAccountName") ? result.DirectoryAttributes["sAMAccountName"].GetValue<string>() : string.Empty;
                     if (accountName.Trim() == "System.Byte[]")
                     {
                         Console.WriteLine("Woof - Contact Reelix - Something broke in the LDAP Migration!!!");
                         //accountName = Encoding.UTF8.GetString((byte[])result.Attributes["samaccountname"][0]);
                     }
                     ldapInfo += " - Account Name: " + accountName + Environment.NewLine;
-                    string commonName = result.Attributes["cn"].Count > 0 ? (string)result.Attributes["cn"][0] : string.Empty;
+                    string commonName = result.DirectoryAttributes.Contains("cn") ? result.DirectoryAttributes["cn"].GetValue<string>() : string.Empty;
                     ldapInfo += " -- Common Name: " + commonName + Environment.NewLine;
-                    if (result.Attributes.ContainsKey("userPrincipalName"))
+                    if (result.DirectoryAttributes.Contains("userPrincipalName"))
                     {
-                        ldapInfo += " -- userPrincipalName: " + result.Attributes["userPrincipalName"][0] + Environment.NewLine;
+                        ldapInfo += " -- userPrincipalName: " + result.DirectoryAttributes["userPrincipalName"].GetValue<string>() + Environment.NewLine;
                     }
-                    if (result.Attributes["lastLogon"].Count == 1)
+                    if (result.DirectoryAttributes.Contains("lastLogon"))
                     {
-                        string lastLoggedIn = result.Attributes["lastLogon"][0];
+                        string lastLoggedIn = result.DirectoryAttributes["lastLogon"].GetValue<string>();
                         if (lastLoggedIn != "0")
                         {
                             ldapInfo += " -- lastLogon: " + DateTime.FromFileTime(long.Parse(lastLoggedIn)) + Environment.NewLine;
@@ -139,17 +177,16 @@ namespace Reecon
                     }
                     else
                     {
-                        Console.WriteLine("Something broke with lastLogon :<");
+                        Console.WriteLine("Something broke with LDAP.GetAccountInfo.lastLogon :<");
                     }
-                    if (result.Attributes.ContainsKey("description"))
+                    if (result.DirectoryAttributes.Contains("description"))
                     {
-                        string description = (string)result.Attributes["description"][0];
-                        ldapInfo += " -- Description: " + result.Attributes["description"][0] + Environment.NewLine;
+                        string description = result.DirectoryAttributes["description"].GetValue<string>();
+                        ldapInfo += " -- Description: " + description + Environment.NewLine;
                     }
                 }
             }
             return ldapInfo.Trim(Environment.NewLine.ToCharArray());
         }
-#pragma warning restore CS0612 // Type or member is obsolete
     }
 }
