@@ -1,7 +1,7 @@
 # Reecon
 
 Reelix's Recon - A small program for network recon. This program is still in early stages of development and should probably not be used by anyone.
-* Version: 0.26c
+* Version: 0.26d
 * Build Status: <img src = "https://travis-ci.com/Reelix/Reecon.svg?branch=master" valign="middle" />
 * Requirements: [NMap 7.80+](https://nmap.org/download.html), [.NET 5.0](https://dotnet.microsoft.com/download/dotnet/5.0)
 * Recommended:
@@ -16,7 +16,7 @@ Reelix's Recon - A small program for network recon. This program is still in ear
 2.) Clone the repo: `git clone https://github.com/Reelix/Reecon.git`  
 3.) Run the build file: `chmod +x ./Reecon/build && ./Reecon/build`  
 4.) Run: `./reecon`  
-5.) Optional: Copy `./reecon` into `/bin/reecon` to be able to run `reecon` from anywhere  
+5.) Optional: Move `./reecon` into `/usr/local/bin/reecon` to be able to run `reecon` from anywhere  
 6.) Optional: You can remove the `Reecon` folder if you want - The binary is standalone
 
 ### Windows  

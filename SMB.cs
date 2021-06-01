@@ -14,6 +14,9 @@ namespace Reecon
     {
         public static string GetInfo(string target, int port)
         {
+            // if smb2
+            // if 2008
+            // if 2008 before r2 -- CVE-2009-3103
             string toReturn = "";
             toReturn += GetOSDetails(target);
             if (SMB_MS17_010.IsVulnerable(target))
@@ -97,14 +100,21 @@ namespace Reecon
                             string itemComment = item.Split('|')[2];
                             smbClientItems += "- " + itemType + ": " + itemName + " " + (itemComment == "" ? "" : "(" + itemComment.Trim() + ")") + Environment.NewLine;
                             List<string> subProcessResults = General.GetProcessOutput("smbclient", $"//{target}/{itemName} --no-pass -c \"ls\"");
-                            if (subProcessResults.Count > 1 && !subProcessResults.Any(x => x.Contains("tree connect failed: NT_STATUS_ACCESS_DENIED")))
+                            if (subProcessResults.Count > 1 && !subProcessResults.Any(x => x.Contains("NT_STATUS_ACCESS_DENIED") || x.Contains("NT_STATUS_OBJECT_NAME_NOT_FOUND")))
                             {
                                 smbClientItems += "-- " + $"{itemName} has ls perms - {subProcessResults.Count} items found! -> smbclient //{target}/{itemName} --no-pass".Pastel(Color.Orange) + Environment.NewLine;
                             }
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"TestAnonymousAccess_Linux - Error: {ex.Message} - Invalid item: {item} - Bug Reelix!");
+                            if (ex.Message.Contains("NT_STATUS_IO_TIMEOUT"))
+                            {
+                                smbClientItems = "-- Timeout - Try later :(" + Environment.NewLine;
+                            }
+                            else
+                            {
+                                Console.WriteLine($"TestAnonymousAccess_Linux - Error: {ex.Message} - Invalid item: {item} - Bug Reelix!");
+                            }
                         }
                     }
                 }

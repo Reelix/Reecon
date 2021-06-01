@@ -462,6 +462,8 @@ namespace Reecon
                 }
                 postScanActions += $"- Port 445 - I miss a lot: nmap -sC -sV -p445 {target}" + Environment.NewLine;
                 postScanActions += $"- Port 445 - Testing passwords: crackmapexec smb {target} -u users.txt -p passwords.txt" + Environment.NewLine;
+                postScanActions += $"- Port 445 - List Shares: smbclient -L //{target} -U validusername%validpass" + Environment.NewLine;
+                postScanActions += $"- Port 445 - Connect Share: smbclient -U validusername%validpass //{target}/shareName" + Environment.NewLine;
                 postScanActions += $"- Port 445 - Authenticated SID Lookup: sudo lookupsid.py DOMAIN/Username:password@{target}" + Environment.NewLine;
             }
             else if (port == 1433)

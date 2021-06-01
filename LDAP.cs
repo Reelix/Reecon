@@ -8,6 +8,7 @@ namespace Reecon
     class LDAP // Port 389
     {
         static LdapCredential ldapCreds = new LdapCredential();
+        static string rootDseString = "";
 
         static int ldapPort = 0;
         public static string GetInfo(string ip, int port)
@@ -49,6 +50,7 @@ namespace Reecon
                     if (searchEntries[0].DirectoryAttributes.Contains("defaultNamingContext"))
                     {
                         string defaultNamingContext = searchEntries[0].DirectoryAttributes["defaultNamingContext"].GetValue<string>();
+                        rootDseString = defaultNamingContext;
                         if (raw)
                         {
                             ldapInfo = defaultNamingContext;
@@ -125,11 +127,19 @@ namespace Reecon
                         return "- Fatal Woof: " + ex.Message;
                     }
                 }
-                var rootDse = ldapConnection.GetRootDse();
+                LdapEntry rootDse = new LdapEntry();
+                if (rootDseString == "")
+                {
+                    rootDse = ldapConnection.GetRootDse();
+                }
                 IList<LdapEntry> searchEntries;
                 try
                 {
-                    if (rootDse.DirectoryAttributes.Contains("defaultNamingContext"))
+                    if (rootDseString != "")
+                    {
+                        searchEntries = ldapConnection.Search(rootDseString, "(objectclass=user)", scope: Native.LdapSearchScope.LDAP_SCOPE_SUB);
+                    }
+                    else if (rootDse.DirectoryAttributes.Contains("defaultNamingContext"))
                     {
                         string baseDn = rootDse.DirectoryAttributes["defaultNamingContext"].GetValue<string>();
                         searchEntries = ldapConnection.Search(baseDn, "(objectclass=user)", scope: Native.LdapSearchScope.LDAP_SCOPE_SUB);
@@ -144,8 +154,9 @@ namespace Reecon
                         return "- rootDse has no defaultNamingContext / namingContexts. Keys: " + rootDse.DirectoryAttributes.Count;
                     }
                 }
-                catch (LdapException)
+                catch (LdapException lex)
                 {
+                    Console.WriteLine("LDAP.GetAccountInfo LEX Error: " + lex + " - Bug Reelix!");
                     return "- No Anonymous Access Allowed";
                 }
                 catch (Exception ex)

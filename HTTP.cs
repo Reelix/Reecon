@@ -48,9 +48,11 @@ namespace Reecon
                 }
                 string portData = Web.FormatHTTPInfo(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert, httpInfo.URL);
 
+                // The final Environment.NewLine is stripped from portData, so we need to re-add it
                 if (httpInfo.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                 {
-                    portData += "- Skipping file enumeration due to unauthorized result";
+                    portData += Environment.NewLine + "- Skipping file enumeration due to unauthorized result" + Environment.NewLine;
+                    portData += $"-- hydra -L users.txt -P passwords.txt -s {port} -f {target} http-get /" + Environment.NewLine;
                 }
                 else
                 {
@@ -69,7 +71,7 @@ namespace Reecon
                 {
                     portData = "- No Info Found";
                 }
-                return portData;
+                return portData.TrimEnd(Environment.NewLine.ToCharArray());
             }
             catch (Exception ex)
             {

@@ -30,6 +30,9 @@ namespace Reecon
                     conf_backups    EncFS-encrypted configuration backups
                     @RSYNCD: EXIT
                     */
+
+                    // Upload: rsync -a authfolder rsync://rsync-connect@10.10.95.224/files/sys-internal/.ssh/
+
                     // Get Version Header
                     int bytes = rsyncSocket.Receive(buffer, buffer.Length, 0);
                     string versionText = Encoding.ASCII.GetString(buffer, 0, bytes);

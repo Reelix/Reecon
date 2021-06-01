@@ -52,14 +52,14 @@ namespace Reecon
                         if (line.Trim().EndsWith("*"))
                         {
                             fileList += "- " + line.Pastel(Color.Orange) + Environment.NewLine;
-                            fileList += "-- NFSV1 -> " + $"mount -t nfs {target}:/mountNameHere /tmp/mount/ -nolock".Pastel(Color.Orange) + Environment.NewLine;
+                            fileList += "-- NFSV1 -> " + "sudo mount -t nfs {target}:/mountNameHere /tmp/mount/ -nolock".Pastel(Color.Orange) + Environment.NewLine;
                             fileList += "--- Try copy over a version of bash onto the share, +s +x it, then ./bash -p".Pastel(Color.Orange) + Environment.NewLine;
                         }
                         // NFS V2
                         else if (line.Contains(" (everyone)"))
                         {
                             fileList += "- " + line.Pastel(Color.Orange) + Environment.NewLine;
-                            fileList += "-- NFSV2 -> " + $"mount -t nfs -o vers=2 {target}:/mountNameHere /mnt".Pastel(Color.Orange) + Environment.NewLine;
+                            fileList += "-- NFSV2 -> " + $"sudo mount -t nfs -o vers=2 {target}:/mountNameHere /mnt".Pastel(Color.Orange) + Environment.NewLine;
                             fileList += "--- Try copy over a version of bash onto the share, +s +x it, then ./bash -p".Pastel(Color.Orange) + Environment.NewLine;
                         }
                         else

