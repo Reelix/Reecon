@@ -243,12 +243,15 @@ namespace Reecon
                         postScanActions += $"- gobuster dir -u=http://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-" + port + "-medium.txt -x.php,.txt" + Environment.NewLine;
                         postScanActions += $"- gobuster dir -u=http://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-" + port + "-common.txt -x.php,.txt" + Environment.NewLine;
                     }
-                    string httpsData = HTTPS.GetInfo(target, port);
-                    if (httpsData != "")
+                    if (Web.BasicHTTPSTest(target, port))
                     {
-                        Console.WriteLine(unknownPortResult += $"Port {port} - HTTPS".Pastel(Color.Green) + Environment.NewLine + httpsData + Environment.NewLine);
-                        postScanActions += $"- gobuster dir -u=https://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-{port}-medium.txt -x.php,.txt" + Environment.NewLine;
-                        postScanActions += $"- gobuster dir -u=https://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-{port}-common.txt -x.php,.txt" + Environment.NewLine;
+                        string httpsData = HTTPS.GetInfo(target, port);
+                        if (httpsData != "")
+                        {
+                            Console.WriteLine(unknownPortResult += $"Port {port} - HTTPS".Pastel(Color.Green) + Environment.NewLine + httpsData + Environment.NewLine);
+                            postScanActions += $"- gobuster dir -u=https://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-{port}-medium.txt -x.php,.txt" + Environment.NewLine;
+                            postScanActions += $"- gobuster dir -u=https://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-{port}-common.txt -x.php,.txt" + Environment.NewLine;
+                        }
                     }
                     break;
                 }
@@ -289,7 +292,10 @@ namespace Reecon
 
                 }
                 // SSH
-                else if (theBanner.Contains("SSH-2.0-OpenSSH") || theBanner == "SSH-2.0-Go")
+                // SSH-2.0-OpenSSH
+                // SSH-2.0-Go
+                // SSH-2.0-SSH
+                else if (theBanner.StartsWith("SSH-2.0-"))
                 {
                     unknownPortResult += $"Port {port} - SSH".Pastel(Color.Green) + Environment.NewLine;
                     if (theBanner.Contains("\r\nProtocol mismatch."))

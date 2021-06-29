@@ -226,7 +226,7 @@ namespace Reecon
             }
             else if (httpInfo.StatusCode == HttpStatusCode.TemporaryRedirect)
             {
-                if (httpInfo.Headers["Location"] != null && httpInfo.Headers["Location"] == "/account/suspended")
+                if (httpInfo.Headers.Location != null && httpInfo.Headers.Location.ToString() == "/account/suspended")
                 {
                     Console.WriteLine("- Twitter: Account Suspended :<");
                 }
@@ -266,9 +266,9 @@ namespace Reecon
             }
             else if (httpInfo.StatusCode == HttpStatusCode.Moved)
             {
-                if (httpInfo.Headers["Location"] != null)
+                if (httpInfo.Headers.Location != null)
                 {
-                    string location = httpInfo.Headers["Location"];
+                    string location = httpInfo.Headers.Location.ToString();
                     if (location.Contains("/user/"))
                     {
                         var userInfo = Web.GetHTTPInfo(location);
@@ -278,7 +278,7 @@ namespace Reecon
                     }
                     else
                     {
-                        Console.WriteLine("- YouTube: Unknown Moved to " + httpInfo.Headers["Location"]);
+                        Console.WriteLine("- YouTube: Unknown Moved to " + httpInfo.Headers.Location.ToString());
                     }
                 }
             }

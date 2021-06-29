@@ -247,7 +247,7 @@ namespace Reecon
                         // Find public SIDs with lsaenumsid
                         // Console.WriteLine("RPC - lsaenumid");
                         List<string> sidList = rpcclient.GetLsaenumsidOutput(ip, signing);
-                        if (sidList.Count != 0)
+                        if (sidList.Count != 0 && !sidList[0].Contains("NT_STATUS_ACCESS_DENIED"))
                         {
                             anonAccess = true;
                             rpcInfo += "- Found SIDs" + Environment.NewLine;

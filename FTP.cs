@@ -34,10 +34,6 @@ namespace Reecon
                 {
                     fileListInfo = FTP.TryListFiles(target, port, false, ftpUsername, "");
                 }
-                if (!fileListInfo.StartsWith(Environment.NewLine))
-                {
-                    fileListInfo = Environment.NewLine + fileListInfo;
-                }
                 ftpLoginInfo += fileListInfo;
             }
             string SSLCertInfo = FindFTPSSLCert(target);
@@ -71,42 +67,29 @@ namespace Reecon
             {
                 FtpWebResponse response = (FtpWebResponse)request.GetResponse();
                 // If it gets here - It's connected!
-                string bannerMessage = response.BannerMessage.Trim();
-                if (bannerMessage.StartsWith("220 "))
-                {
-                    bannerMessage = bannerMessage.Remove(0, 4);
-                    if (bannerMessage.StartsWith("(") && bannerMessage.EndsWith(")"))
-                    {
-                        bannerMessage = bannerMessage.Remove(0, 1);
-                        bannerMessage = bannerMessage.Remove(bannerMessage.Length - 1, 1);
-                    }
-                }
-
-                if (!string.IsNullOrEmpty(bannerMessage))
-                {
-                    ftpLoginResult += Environment.NewLine + "- Version: " + bannerMessage;
-                }
+                string bannerMessage = ParseBannerMessageResponse(response.BannerMessage);
+                ftpLoginResult += bannerMessage + Environment.NewLine;
                 if (response.WelcomeMessage.Trim() != "230 Login successful.")
                 {
-                    ftpLoginResult += Environment.NewLine + "- Welcome Message: " + response.WelcomeMessage.Trim();
+                    ftpLoginResult += "- Welcome Message: " + response.WelcomeMessage.Trim() + Environment.NewLine;
                 }
                 if (response.SupportsHeaders)
                 {
                     WebHeaderCollection headers = response.Headers;
                     if (headers != null && headers.Count != 0)
                     {
-                        ftpLoginResult += Environment.NewLine + "- Headers (Contact Reelix): " + string.Join(",", headers.AllKeys);
+                        ftpLoginResult += "- Headers (Contact Reelix): " + string.Join(",", headers.AllKeys) + Environment.NewLine;
                     }
                 }
                 if (string.IsNullOrEmpty(username) || username == "anonymous")
                 {
-                    ftpLoginResult += Environment.NewLine + "- " + "Anonymous login allowed (Username: anonymous Password: *Leave Blank*)".Pastel(Color.Orange);
+                    ftpLoginResult += "- " + "Anonymous login allowed (Username: anonymous Password: *Leave Blank*)".Pastel(Color.Orange) + Environment.NewLine;
                 }
                 else
                 {
                     Console.WriteLine("Woof!");
                 }
-                return ftpLoginResult;
+                return ftpLoginResult.Trim(Environment.NewLine.ToCharArray());
             }
             catch (WebException ex)
             {
@@ -122,8 +105,9 @@ namespace Reecon
                     {
                         if (response.BannerMessage != null && response.StatusDescription != null)
                         {
-                            ftpLoginResult += Environment.NewLine + "- Banner: " + response.BannerMessage.Trim();
-                            ftpLoginResult += Environment.NewLine + "- Status: " + response.StatusDescription.Trim();
+                            string bannerMessage = ParseBannerMessageResponse(response.BannerMessage.Trim());
+                            ftpLoginResult += bannerMessage + Environment.NewLine;
+                            ftpLoginResult += "- Status: " + response.StatusDescription.Trim() + Environment.NewLine;
                         }
                         else
                         {
@@ -150,7 +134,7 @@ namespace Reecon
                             ftpLoginResult += "- Unable to get any banner response: " + iex.Message;
                         }
                     }
-                    return ftpLoginResult;
+                    return ftpLoginResult.Trim(Environment.NewLine.ToCharArray());
                 }
                 else
                 {
@@ -158,7 +142,30 @@ namespace Reecon
                     return ftpLoginResult;
                 }
             }
+        }
 
+        private static string ParseBannerMessageResponse(string bannerMessage)
+        {
+            string toReturn = "";
+            if (!string.IsNullOrEmpty(bannerMessage))
+            {
+                bannerMessage = bannerMessage.Trim();
+                if (bannerMessage.StartsWith("220 "))
+                {
+                    bannerMessage = bannerMessage.Remove(0, 4);
+                    if (bannerMessage.StartsWith("(") && bannerMessage.EndsWith(")"))
+                    {
+                        bannerMessage = bannerMessage.Remove(0, 1);
+                        bannerMessage = bannerMessage.Remove(bannerMessage.Length - 1, 1);
+                    }
+                }
+                toReturn += "- Version: " + bannerMessage + Environment.NewLine;
+                if (bannerMessage.Contains("ProFTPD 1.3.5"))
+                {
+                    toReturn += "-- " + "Vulnerable ProFTPD Version Detected (Potential RCE) - CVE-2015-3306".Pastel(Color.Orange) + Environment.NewLine;
+                }
+            }
+            return toReturn.Trim(Environment.NewLine.ToCharArray());
         }
 
         public static string FindFTPSSLCert(string target)

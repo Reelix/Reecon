@@ -12,6 +12,8 @@ namespace Reecon
 
         /*
         
+        // Mass Dump: {__schema{types{name,fields{name description}}}}
+
          Query Entire Schema: {__schema{types{name description}}}
         --> Shows name + description - Eg: "Ping"
 
