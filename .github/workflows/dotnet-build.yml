@@ -23,7 +23,7 @@ jobs:
               dotnet publish -r win-x64 --self-contained false -o bin/
               dotnet publish -r linux-x64 --self-contained false -o bin/
               mv bin/Reecon bin/reecon-linux
-              mv bin/Reecon.exe /bin/Reecon-windows.exe
+              mv bin/Reecon.exe bin/Reecon-windows.exe
       - name: Automatic Releases
         uses: marvinpinto/action-automatic-releases@latest
         with:
