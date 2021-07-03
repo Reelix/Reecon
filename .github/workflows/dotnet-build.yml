@@ -19,7 +19,9 @@ jobs:
       - name: Install dependencies
         run: dotnet restore
       - name: Build
-        run: dotnet publish -r win-x64 --self-contained false -o bin/ | dotnet publish -r linux-x64 --self-contained false -o bin/
+        run:  |
+              dotnet publish -r win-x64 --self-contained false -o bin/
+              dotnet publish -r linux-x64 --self-contained false -o bin/
       - name: Automatic Releases
         uses: marvinpinto/action-automatic-releases@latest
         with:
@@ -27,4 +29,6 @@ jobs:
           automatic_release_tag: "latest"
           prerelease: true
           title: "Development Build"
-          files: bin/Reecon.exe | bin/Reecon
+          files: |
+                bin/Reecon.exe
+                bin/Reecon
