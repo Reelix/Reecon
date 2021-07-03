@@ -1,0 +1,8 @@
+# Validator: https://dependabot.com/docs/config-file-beta/validator/
+version: 2
+updates:
+  # node packages
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "daily"
