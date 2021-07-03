@@ -13,6 +13,7 @@ namespace Reecon
         private static string initialPart = "";
         private static int notFoundLength = 0;
         private static int notFoundLength2 = 0;
+
         public static void Scan(string[] args)
         {
             if (args.Length != 2)
@@ -22,7 +23,8 @@ namespace Reecon
             }
             ScanPath(args[1]);
         }
-        private static void ScanPath(string path)
+
+        public static void ScanPath(string path)
         {
             if (!path.StartsWith("http"))
             {
@@ -152,16 +154,18 @@ namespace Reecon
 
             initialPart = path.Substring(0, path.IndexOf("=") + 1);
             // NFL1
-            string result = wc.Get(initialPart + "Reelix", null);
-            notFoundLength = result.Length - 6; // Reelix is 6 characters - Don't need to include that
+            string result = Web.GetHTTPInfo(initialPart + "Reelix").PageText;
+            notFoundLength = result.Length; // Check for cases where the page text contains the URL?
             // Some not-found pages can be blank
             if (notFoundLength < 0)
             {
                 notFoundLength = 0;
             }
+            Console.WriteLine("NFL1: " + notFoundLength);
+
             // NFL2
-            result = wc.Get(initialPart + "Ree..lix", null);
-            notFoundLength2 = result.Length - 8;
+            result = Web.GetHTTPInfo(initialPart + "Ree..lix").PageText;
+            notFoundLength2 = result.Length;
             if (notFoundLength2 < 0)
             {
                 notFoundLength2 = 0;
@@ -229,6 +233,7 @@ namespace Reecon
             // ../ bypass: %2E%2E%2F%2E%2E%2F%2E%2E%2F%2E%2E%2Fetc%2Fpasswd
             // More: https://book.hacktricks.xyz/pentesting-web/file-inclusion
 
+
             bool hasResult = false;
             foreach (string check in lfiChecks)
             {
@@ -237,7 +242,13 @@ namespace Reecon
                 string toCheck = initialPart + check;
                 try
                 {
-                    string result = Web.GetHTTPInfo(toCheck).PageText;
+                    var requestResult = Web.GetHTTPInfo(toCheck, null);
+                    if (requestResult.AdditionalInfo == "Timeout")
+                    {
+                        Console.WriteLine("- " + toCheck + " -- Timeout :(");
+                        continue;
+                    }
+                    string result = requestResult.PageText;
                     int resultLength = result.Length;
                     if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length)
                         && resultLength != notFoundLength2 && resultLength != (notFoundLength2 + check.Length)
@@ -250,8 +261,9 @@ namespace Reecon
                         hasResult = true;
                     }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Console.WriteLine("LFI Bug - Bug Reelix: " + ex.Message);
                     // Nope!
                 }
                 // Check with ../'s if nothing has been found for this specific result
@@ -260,7 +272,13 @@ namespace Reecon
                     toCheck = initialPart + "/../../../../.." + check;
                     try
                     {
-                        string result = Web.GetHTTPInfo(toCheck, null).PageText;
+                        var requestResult = Web.GetHTTPInfo(toCheck, null);
+                        if (requestResult.AdditionalInfo == "Timeout")
+                        {
+                            Console.WriteLine("- " + toCheck + " -- Timeout :(");
+                            continue;
+                        }
+                        string result = requestResult.PageText;
                         int resultLength = result.Length;
                         // + 15 = Length of the bypass
                         if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length + 15)
@@ -272,8 +290,9 @@ namespace Reecon
                             hasResult = true;
                         }
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
+                        Console.WriteLine("LFI Bug - Bug Reelix: " + ex.Message);
                         // Nope!
                     }
                 }

@@ -1,9 +1,9 @@
 # Reecon
 
 Reelix's Recon - A small program for network recon. This program is still in early stages of development and should probably not be used by anyone.
-* Version: 0.27
+* Version: 0.27a
 * Build Status: <img src = "https://travis-ci.com/Reelix/Reecon.svg?branch=master" valign="middle" />
-* Requirements: [NMap 7.80+](https://nmap.org/download.html), [.NET 5.0](https://dotnet.microsoft.com/download/dotnet/5.0)
+* Requirements: [NMap 7.91+](https://nmap.org/download.html), [.NET 5.0](https://dotnet.microsoft.com/download/dotnet/5.0)
 * Recommended:
   * HTTP/S Enumeration: [Gobuster](https://github.com/OJ/gobuster)
   * SMB Enumeration: [smbclient](https://github.com/SecureAuthCorp/impacket/blob/master/examples/smbclient.py)
@@ -11,7 +11,7 @@ Reelix's Recon - A small program for network recon. This program is still in ear
   * Printer Enumeration: [PRET](https://github.com/RUB-NDS/PRET)
 
 ## Installation Instructions
-### Linux
+### Linux (Ubuntu)
 1.) Install the .NET 5 SDK if you don't have it: `sudo apt install dotnet-sdk-5.0`  
 2.) Clone the repo: `git clone https://github.com/Reelix/Reecon.git`  
 3.) Run the build file: `chmod +x ./Reecon/build && ./Reecon/build`  

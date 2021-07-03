@@ -115,6 +115,7 @@ namespace Reecon
                             pwnItem = pwnItem.Replace(": pop rdi; ret;", "");
                             if (pwnItem.Length == 18)
                             {
+                                // TODO: p64 is only for x64 processes - Check first and implement x86 variant
                                 pwnItem += " -- payload += p64(0x" + pwnItem.Substring(pwnItem.Length - 6, 6) + ")";
                                 // 0x16 - x64 address
                                 Console.WriteLine("- pop rdi; ret; (Can set values) --> " + pwnItem);
@@ -140,6 +141,7 @@ namespace Reecon
                         pwnItem = pwnItem.Replace("/bin/sh", "").Trim(); ;
                         if (pwnItem.Length == 10)
                         {
+                            // TODO: p64 is only for x64 processes - Check first and implement x86 variant
                             pwnItem += " -- payload += p64(0x" + pwnItem.Substring(pwnItem.Length - 6, 6) + ")";
                             // 0x16 - x64 address
                         }
@@ -226,7 +228,7 @@ namespace Reecon
                 }
                 else if (rabin2Output.FirstOrDefault(x => x.Trim().StartsWith("nx")).Contains("true"))
                 {
-                    Console.WriteLine("nx enabled - No custom shellcode for you!");
+                    Console.WriteLine("- nx enabled - No custom shellcode for you!");
                 }
             }
             else
@@ -236,6 +238,7 @@ namespace Reecon
 
             if (General.IsInstalledOnLinux("objdump"))
             {
+                bool hasMain = false;
                 List<string> objdumpOutput = General.GetProcessOutput("objdump", $"-D {fileName}");
                 foreach (string item in objdumpOutput)
                 {
@@ -250,6 +253,24 @@ namespace Reecon
                     if (item.Contains("puts@GLIBC"))
                     {
                         Console.WriteLine("- puts@GLIBC (got_puts) --> " + item);
+                    }
+                    if (item.Trim().EndsWith(" <main>:"))
+                    {
+                        hasMain = true;
+                        Console.WriteLine("- <main> Address: " + item.Substring(0, item.IndexOf(" ")));
+                    }
+                }
+
+                if (!hasMain)
+                {
+                    objdumpOutput = General.GetProcessOutput("objdump", $"-f {fileName}");
+                    foreach (string item in objdumpOutput)
+                    {
+                        if (item.Trim().StartsWith("start address "))
+                        {
+                            Console.WriteLine("- " + item);
+                            break;
+                        }
                     }
                 }
 

@@ -11,6 +11,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace Reecon
 {
@@ -380,6 +381,7 @@ namespace Reecon
                             // Docker Engine
                             else if (file == "version" && pageText.Contains("Docker Engine - Community"))
                             {
+                                // Port 2375
                                 returnText += "-- Docker Engine Found!".Pastel(Color.Orange) + Environment.NewLine;
                                 string dockerURL = url.Replace("https://", "tcp://").Replace("http://", "tcp://").Trim('/');
                                 returnText += $"--- List running Dockers: docker -H {dockerURL} ps" + Environment.NewLine;
@@ -522,6 +524,20 @@ namespace Reecon
                 {
                     returnText += $"- Common path throws an Internal Server Error: {url}{file}" + Environment.NewLine;
                 }
+                else if (response.StatusCode == HttpStatusCode.TemporaryRedirect)
+                {
+                    // Normally just http -> https
+                    var headers = response.Headers;
+                    if (url.StartsWith("http") && headers.Contains("Location") && (headers.Location.ToString().StartsWith("https")))
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        // If it's not - Display it
+                        Console.WriteLine($"-- Weird TemporaryRedirect: {url}{file}" + Environment.NewLine);
+                    }
+                }
                 else if (response.StatusCode == HttpStatusCode.NotFound && response.Headers.Contains("Docker-Distribution-Api-Version"))
                 {
                     string dockerVersion = response.Headers.GetValues("Docker-Distribution-Api-Version").First();
@@ -561,21 +577,8 @@ namespace Reecon
                         returnText += "-- Unknown Docker API Version - Bug Reelix!";
                     }
                 }
-                else if (response.StatusCode == HttpStatusCode.TemporaryRedirect)
-                {
-                    // Normally just http -> https
-                    var headers = response.Headers;
-                    if (url.StartsWith("http") && headers.Contains("Location") && (headers.Location.ToString().StartsWith("https")))
-                    {
-                        continue;
-                    }
-                    else
-                    {
-                        // If it's not - Display it
-                        Console.WriteLine($"-- Weird TemporaryRedirect: {url}{file}" + Environment.NewLine);
-                    }
-                }
-                else if (response.StatusCode != HttpStatusCode.NotFound)
+                // We ignore basic 404's and 503's since they're not useful
+                else if (response.StatusCode != HttpStatusCode.NotFound && response.StatusCode != HttpStatusCode.ServiceUnavailable)
                 {
                     Console.WriteLine($"Unknown response for {file} - {response.StatusCode}");
                 }
@@ -627,12 +630,21 @@ namespace Reecon
             {
                 Console.WriteLine("HttpClient Timeout Error: " + ex.Message);
             }
+            catch (WebException wex)
+            {
+                Console.WriteLine("Here: " + wex.Message);
+            }
             catch (Exception ex)
             {
                 if (ex.Message.StartsWith("The SSL connection could not be established, see inner exception"))
                 {
                     // Not valid
                     return (statusCode, null, null, null, null, null, null, null);
+                }
+                else if (ex.Message.StartsWith("The request was canceled due to the configured HttpClient.Timeout of "))
+                {
+                    // Why is this not caught in the TimeoutException...
+                    return (statusCode, null, null, null, null, null, url, "Timeout");
                 }
                 else
                 {
@@ -684,7 +696,7 @@ namespace Reecon
                     }
                     catch
                     {
-                        responseText += "- Unknown Status Code: " + " " + StatusCode + Environment.NewLine;
+                        responseText += "- Fatally Unknown Status Code: " + " " + StatusCode + Environment.NewLine;
                     }
                     if (Headers != null && Headers.Location != null)
                     {
@@ -815,7 +827,7 @@ namespace Reecon
                 // Wordpress
                 if (PageText.Contains("/wp-content/themes/") && PageText.Contains("/wp-includes/"))
                 {
-                    responseText += "- Wordpress detected!".Pastel(Color.Orange) + Environment.NewLine;
+                    responseText += "- " + "Wordpress detected!".Pastel(Color.Orange) + Environment.NewLine;
                     // Basic User Enumeration - Need to combine these two...
                     List<string> wpUsers = new();
                     var wpUserTestOne = Web.GetHTTPInfo($"{urlPrefix}://{DNS}/wp-json/wp/v2/users");
@@ -829,7 +841,7 @@ namespace Reecon
                             if (!wpUsers.Contains(wpUserName))
                             {
                                 wpUsers.Add(wpUserSlug);
-                                responseText += ("-- Wordpress User Found: " + wpUserName + " (Username: " + wpUserSlug + ")").Pastel(Color.Orange) + Environment.NewLine;
+                                responseText += "-- " + $"Wordpress User Found: {wpUserName} (Username: {wpUserSlug})".Pastel(Color.Orange) + Environment.NewLine;
                             }
                         }
                     }
@@ -844,7 +856,7 @@ namespace Reecon
                             if (!wpUsers.Contains(wpUserName))
                             {
                                 wpUsers.Add(wpUserSlug);
-                                responseText += ("-- Wordpress User Found: " + wpUserName + " (Username: " + wpUserSlug + ")").Pastel(Color.Orange) + Environment.NewLine;
+                                responseText += "-- " + $"Wordpress User Found: {wpUserName} (Username: {wpUserSlug})".Pastel(Color.Orange) + Environment.NewLine;
                             }
                         }
                     }
@@ -877,20 +889,20 @@ namespace Reecon
                 // Joomla!
                 else if (PageText.Contains("com_content") && PageText.Contains("com_users"))
                 {
-                    responseText += "-- Joomla! Detected".Pastel(Color.Orange) + Environment.NewLine;
-                    var adminXML = GetHTTPInfo($"{urlPrefix}://{DNS}/administrator/manifests/files/joomla.xml");
+                    responseText += "- " + "Joomla! Detected".Pastel(Color.Orange) + Environment.NewLine;
+                    var adminXML = GetHTTPInfo($"{URL}administrator/manifests/files/joomla.xml");
                     if (adminXML.StatusCode == HttpStatusCode.OK)
                     {
                         if (adminXML.PageText.Contains("<version>") && adminXML.PageText.Contains("</version>"))
                         {
                             string versionText = adminXML.PageText.Remove(0, adminXML.PageText.IndexOf("<version>") + "<version>".Length);
                             versionText = versionText.Substring(0, versionText.IndexOf("</version"));
-                            responseText += $"--- Joomla Version: {versionText}".Pastel(Color.Orange) + Environment.NewLine;
+                            responseText += $"-- Joomla! Version: {versionText}".Pastel(Color.Orange) + Environment.NewLine;
                         }
                     }
                     else
                     {
-                        var tinyXML = GetHTTPInfo($"{urlPrefix}://{DNS}/plugins/editors/tinymce/tinymce.xml");
+                        var tinyXML = GetHTTPInfo($"{URL}plugins/editors/tinymce/tinymce.xml");
                         if (tinyXML.StatusCode == HttpStatusCode.OK)
                         {
                             // https://joomla.stackexchange.com/questions/7148/how-to-get-joomla-version-by-http
@@ -898,6 +910,27 @@ namespace Reecon
                         }
                     }
                 }
+
+                // Gitea
+                // Cookie Title Added: i_like_gitea
+                else if (PageText.Contains("Powered by Gitea"))
+                {
+                    responseText += "- " + "Gitea detected!".Pastel(Color.Orange) + Environment.NewLine;
+                    if (PageText.Contains("AppVer: '") && PageText.Contains("AppSubUrl:"))
+                    {
+                        string giteaVersion = PageText.Remove(0, PageText.IndexOf("AppVer: '") + 9);
+                        giteaVersion = giteaVersion.Substring(0, giteaVersion.IndexOf("'"));
+                        System.Version theVersion = System.Version.Parse(giteaVersion);
+                        // Version: >= 1.1.0 to <= 1.12.5
+                        if (theVersion.Major == 1 && theVersion.Minor <=12)
+                        {
+                            responseText += "-- " + $"Vulnerable Gitea Version Detected {giteaVersion} -> https://www.exploit-db.com/raw/49571".Pastel(Color.Orange) + Environment.NewLine;
+                        }
+                        responseText += "-- Non Vulnerable Version Detected: " + giteaVersion + Environment.NewLine;
+                        responseText += "-- If you gain access, see if you can alter gitea.db (User table)" + Environment.NewLine;
+                    }
+                }
+
                 // Icecast
                 else if (PageText.Trim() == "<b>The source you requested could not be found.</b>")
                 {
@@ -918,6 +951,7 @@ namespace Reecon
                 // Useful info
                 if (Headers.Any(x => x.Key == "Server"))
                 {
+                    // Note: {URL} ends with a /
                     string serverText = Headers.Server.ToString();
                     Headers.Remove("Server");
                     responseText += "- Server: " + serverText + Environment.NewLine;
@@ -934,7 +968,7 @@ namespace Reecon
                     else if (serverText.StartsWith("Werkzeug/"))
                     {
                         responseText += "-- " + "Werkzeug Detected" + Environment.NewLine;
-                        var consolePage = GetHTTPInfo($"{ urlPrefix}://{DNS}/console");
+                        var consolePage = GetHTTPInfo($"{URL}console");
                         if (consolePage.StatusCode != HttpStatusCode.NotFound)
                         {
                             if (consolePage.PageText.Contains("The console is locked and needs to be unlocked by entering the PIN."))
@@ -950,6 +984,32 @@ namespace Reecon
                         else
                         {
                             responseText += "--- No /console :(" + Environment.NewLine;
+                        }
+                    }
+                    else if (serverText.StartsWith("HFS"))
+                    {
+                        responseText += "-- HTTP File Server (HFS) Detected!" + Environment.NewLine;
+                        if (serverText.Contains("HFS 2.3"))
+                        {
+                            responseText += "--- " + "Version likely vulnerable to CVE-2014-6287 - https://www.exploit-db.com/raw/49584".Pastel(Color.Orange) + Environment.NewLine;
+                        }
+                    }
+                    else if (serverText.StartsWith("CouchDB/"))
+                    {
+                        responseText += "-- CouchDB Detected!" + Environment.NewLine;
+                        var utilsPage = GetHTTPInfo($"{URL}_utils/");
+                        if (utilsPage.StatusCode == HttpStatusCode.OK || utilsPage.StatusCode == HttpStatusCode.NotModified)
+                        {
+                            responseText += "--- " + $"Web Admin Tool Found: {utilsPage.URL}".Pastel(Color.Orange) + Environment.NewLine;
+                        }
+                        var allDBsPage = GetHTTPInfo($"{URL}_all_dbs");
+                        if (allDBsPage.StatusCode == HttpStatusCode.OK)
+                        {
+                            string allDBsPageText = allDBsPage.PageText.Trim(Environment.NewLine.ToCharArray());
+                            responseText += "--- " + $"All DBs Found ( {allDBsPage.URL} ) : {allDBsPageText}".Pastel(Color.Orange) + Environment.NewLine;
+                            responseText += $"--- Enumeration: {URL}dbNameHere/_all_docs" + Environment.NewLine;
+                            // ID or Key Name? They both seem to be the same in test scnearios...
+                            responseText += $"--- Enumeration: {URL}dbNameHere/idHere" + Environment.NewLine;
                         }
                     }
                 }
