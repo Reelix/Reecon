@@ -1,6 +1,6 @@
-name: build check
+name: "build check"
 
-on: [pull-request]
+on: [pull_request]
 
 jobs:
   build:
