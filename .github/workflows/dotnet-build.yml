@@ -1,4 +1,4 @@
-name: "build check"
+name: "Make Sure Pull Request Builds"
 
 on: [pull_request]
 
