@@ -35,5 +35,5 @@ jobs:
           title: "Latest Development Build"
           files: |
                 bin/Reecon-windows.exe
-                bin/Reecon-linux-x64
-                bin/Reecon-linux-musl-x64
+                bin/reecon-linux-x64
+                bin/reecon-linux-musl-x64
