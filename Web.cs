@@ -406,6 +406,7 @@ namespace Reecon
                                         returnText += $"--- Download the repo: wget -q -r -np -nH {url}.git/" + Environment.NewLine;
                                         returnText += "--- Get the logs: git log --pretty=format:\"%h - %an (%ae): %s %b\"" + Environment.NewLine;
                                         // git log --pretty=format:"%h - %an (%ae): %s %b"
+                                        // db.sqlite3
                                         returnText += "--- Show a specific commit: git show 2eb93ac (Press q to close)" + Environment.NewLine;
                                         continue;
                                     }
@@ -727,6 +728,35 @@ namespace Reecon
                     // Apache Tomcat Page
                     NetworkCredential defaultTomcatCreds = new("tomcat", "s3cret");
 
+                    // Check Manager (Status)
+                    string managerStatusURL = URL + "manager/status";
+                    var managerStatusInfo = Web.GetHTTPInfo(managerStatusURL);
+                    if (managerStatusInfo.StatusCode == HttpStatusCode.Unauthorized)
+                    {
+                        responseText += "- Manager (Status) Found - But it requires credentials --> " + managerStatusURL + Environment.NewLine;
+                        try
+                        {
+                            WebClient wc = new()
+                            {
+                                Credentials = defaultTomcatCreds
+                            };
+                            wc.DownloadString(managerStatusURL);
+                            responseText += "-- " + "Creds Found: tomcat:s3cret".Pastel(Color.Orange) + Environment.NewLine;
+                        }
+                        catch
+                        {
+                            responseText += "-- Default creds - tomcat:s3cret - don't work" + Environment.NewLine;
+                        }
+                    }
+                    else if (managerStatusInfo.StatusCode == HttpStatusCode.Forbidden)
+                    {
+                        responseText += "- Manager (Status) Found - But it's Forbidden" + Environment.NewLine;
+                    }
+                    else if (managerStatusInfo.StatusCode != HttpStatusCode.NotFound)
+                    {
+                        responseText += "Unknown Manager (Status) Code: " + managerStatusInfo.StatusCode + Environment.NewLine;
+                    }
+
                     // Check Manager (HTML)
                     string managerAppHTMLURL = URL + "manager/html";
                     var managerAppInfo = Web.GetHTTPInfo(managerAppHTMLURL);
@@ -822,6 +852,21 @@ namespace Reecon
                 if (PageText.Length < 250)
                 {
                     responseText += "- Page Text: " + PageText.Trim() + Environment.NewLine;
+                }
+
+                // concrete5
+                if (PageText.Contains("<meta name=\"generator\" content=\"concrete5 - "))
+                {
+                    responseText += "- " + "concrete5 CMS detected!".Pastel(Color.Orange) + Environment.NewLine;
+                    // <meta name="generator" content="concrete5 - 8.5.2"/>
+                    string versionInfo = PageText.Remove(0, PageText.IndexOf("<meta name=\"generator\" content=\"concrete5 - ") );
+                    versionInfo = versionInfo.Remove(0, versionInfo.IndexOf("concrete5 - ") + 12);
+                    versionInfo = versionInfo.Substring(0, versionInfo.IndexOf("\""));
+                    responseText += "-- Version: " + versionInfo + Environment.NewLine;
+                    if (versionInfo == "8.5.2")
+                    {
+                        responseText += "---" + " Vulnerable version detected - Vulnerable to CVE-2020-24986 - https://hackerone.com/reports/768322".Pastel(Color.Orange) + Environment.NewLine;
+                    }
                 }
 
                 // Wordpress
@@ -922,7 +967,7 @@ namespace Reecon
                         giteaVersion = giteaVersion.Substring(0, giteaVersion.IndexOf("'"));
                         System.Version theVersion = System.Version.Parse(giteaVersion);
                         // Version: >= 1.1.0 to <= 1.12.5
-                        if (theVersion.Major == 1 && theVersion.Minor <=12)
+                        if (theVersion.Major == 1 && theVersion.Minor <= 12)
                         {
                             responseText += "-- " + $"Vulnerable Gitea Version Detected {giteaVersion} -> https://www.exploit-db.com/raw/49571".Pastel(Color.Orange) + Environment.NewLine;
                         }

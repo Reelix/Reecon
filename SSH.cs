@@ -1,6 +1,8 @@
-﻿using System;
+﻿using Pastel;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
@@ -19,35 +21,54 @@ namespace Reecon
         // Get version
         public static string GetVersion(string ip, int port)
         {
-            try
+            int timeout = 10000;
+            Byte[] buffer = new Byte[512];
+            using (Socket sshSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
-                Byte[] buffer = new Byte[512];
-                using Socket sshSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                sshSocket.Connect(ip, port);
-                int bytes = sshSocket.Receive(buffer, buffer.Length, 0);
-                string versionMessage = Encoding.ASCII.GetString(buffer, 0, bytes);
-                versionMessage = versionMessage.Trim().Replace(Environment.NewLine, "");
-                // SSH-2.0-OpenSSH_6.6.1p1
-                // SSH-2.0-dropbear_0.45
-                if (versionMessage.StartsWith("SSH-2.0-"))
+                sshSocket.ReceiveTimeout = timeout; // ms
+                sshSocket.SendTimeout = timeout; // ms
+                try
                 {
-                    versionMessage = versionMessage.Remove(0, 8);
-                    versionMessage = versionMessage.Replace("_", "");
-                    versionMessage += " (protocol 2.0)"; // Nmap's format
+                    var result = sshSocket.BeginConnect(ip, port, null, null); // Error if an invalid IP
+                    bool success = result.AsyncWaitHandle.WaitOne(timeout, true);
+                    if (success)
+                    {
+                        int bytes = sshSocket.Receive(buffer, buffer.Length, 0);
+                        string versionMessage = Encoding.ASCII.GetString(buffer, 0, bytes);
+                        versionMessage = versionMessage.Trim().Replace(Environment.NewLine, "");
+                        // SSH-2.0-OpenSSH_6.6.1p1
+                        // SSH-2.0-dropbear_0.45
+                        if (versionMessage.StartsWith("SSH-2.0-"))
+                        {
+                            versionMessage = versionMessage.Remove(0, 8);
+                            versionMessage = versionMessage.Replace("_", "");
+                            versionMessage += " (protocol 2.0)"; // Nmap's format
+                        }
+                        if (versionMessage.Trim() == "")
+                        {
+                            versionMessage = "Port is open, but no version info";
+                        }
+                        return versionMessage;
+                    }
+                    else
+                    {
+                        sshSocket.Close();
+                        return "Closed";
+                    }
                 }
-                if (versionMessage.Trim() == "")
+                catch (SocketException se)
                 {
-                    versionMessage = "Port is open, but no version info";
+                    if (se.Message.StartsWith("No connection could be made because the target machine actively refused it"))
+                    {
+                        return "Port is closed";
+                    }
+                    return "SSG.GetVersion - Fatal Woof: " + se.Message;
                 }
-                return versionMessage;
-            }
-            catch (SocketException se)
-            {
-                if (se.Message.StartsWith("No connection could be made because the target machine actively refused it"))
+                catch (Exception ex)
                 {
-                    return "Port is closed";
+                    Console.WriteLine("SSH.GetVersion - Something broke: " + ex.Message);
+                    return "SSH.GetVersion - Borked - Bug Reelix";
                 }
-                return "SSG.GetVersion - Fatal Woof: " + se.Message;
             }
         }
 

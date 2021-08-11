@@ -36,6 +36,10 @@ namespace Reecon
             try
             {
                 Instagram.Rootobject theObject = JsonSerializer.Deserialize<Instagram.Rootobject>(pageText);
+                if (theObject.users == null || theObject.users.Length == 0)
+                {
+                    Console.WriteLine("- Instagram: Not Found");
+                }
                 foreach (Instagram.User user in theObject.users)
                 {
                     string userUsername = user.user.username;
@@ -135,12 +139,13 @@ namespace Reecon
 #pragma warning restore IDE1006 // Naming Styles
         }
 
-        private static void GetRedditInfo(string username)
+        public static void GetRedditInfo(string username)
         {
             var redditInfo = OSINT_Reddit.GetInfo(username);
             if (redditInfo.Exists)
             {
                 Console.WriteLine("- Reddit: " + "Found".Pastel(Color.Green));
+                Console.WriteLine($"-- Link: https://www.reddit.com/user/{username}");
                 // Get Comments
                 if (redditInfo.CommentList.Count == 0)
                 {
@@ -165,6 +170,8 @@ namespace Reecon
                     foreach (var submission in redditInfo.SubmissionList)
                     {
                         Console.WriteLine("-- Submission: " + submission.title);
+                        Console.WriteLine("--- Link: " + submission.url);
+                        Console.WriteLine("--- Blurb: " + submission.selftext);
                     }
                 }
             }

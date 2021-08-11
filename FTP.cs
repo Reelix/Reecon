@@ -16,7 +16,7 @@ namespace Reecon
             string ftpLoginInfo;
             try
             {
-                ftpLoginInfo = FTP.FtpLogin(target, ftpUsername);
+                ftpLoginInfo = FTP.FtpLogin(target, port, ftpUsername) + Environment.NewLine;
             }
             catch (Exception ex)
             {
@@ -25,7 +25,7 @@ namespace Reecon
             if (ftpLoginInfo.Contains("Unable to login: This FTP server is anonymous only.") || ftpLoginInfo.Contains("Unable to login: USER: command requires a parameter") || ftpLoginInfo.Contains("Unable to login: Login with USER first.") || ftpLoginInfo.Contains("530 This FTP server is anonymous only."))
             {
                 ftpUsername = "anonymous";
-                ftpLoginInfo = FTP.FtpLogin(target, ftpUsername, "");
+                ftpLoginInfo = FTP.FtpLogin(target, port, ftpUsername, "");
             }
             if (ftpLoginInfo.Contains("Anonymous login allowed"))
             {
@@ -44,13 +44,13 @@ namespace Reecon
             return ftpLoginInfo.Trim(Environment.NewLine.ToCharArray());
         }
 
-        public static string FtpLogin(string target, string username = "", string password = "")
+        public static string FtpLogin(string target, int port, string username = "", string password = "")
         {
             string ftpLoginResult = "";
             string ftpServer = target;
             if (!ftpServer.StartsWith("ftp://"))
             {
-                ftpServer = "ftp://" + ftpServer;
+                ftpServer = $"ftp://{ftpServer}:{port}";
             }
 
             FtpWebRequest request = (FtpWebRequest)WebRequest.Create(ftpServer);
@@ -95,7 +95,7 @@ namespace Reecon
             {
                 if (ex.Message == "Unable to connect to the remote server")
                 {
-                    return Environment.NewLine + "- Unable to connect :<";
+                    return "- Unable to connect :<";
                 }
 
                 if (ex.Response != null)
@@ -114,7 +114,7 @@ namespace Reecon
                             ftpLoginResult += "- Unable to get any FTP response: " + ex.Message + Environment.NewLine;
                             try
                             {
-                                ftpLoginResult += "- Banner: " + General.BannerGrab(target, 21);
+                                ftpLoginResult += "- Banner: " + General.BannerGrab(target, port);
                             }
                             catch (Exception iex)
                             {
@@ -127,7 +127,7 @@ namespace Reecon
                         ftpLoginResult += "- Unable to get FTP response: " + ex.Message + Environment.NewLine;
                         try
                         {
-                            ftpLoginResult += "- Banner: " + General.BannerGrab(target, 21);
+                            ftpLoginResult += "- Banner: " + General.BannerGrab(target, port);
                         }
                         catch (Exception iex)
                         {

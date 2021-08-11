@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Reecon
 {
@@ -31,8 +30,6 @@ namespace Reecon
                     @RSYNCD: EXIT
                     */
 
-                    // Upload: rsync -a authfolder rsync://rsync-connect@10.10.95.224/files/sys-internal/.ssh/
-
                     // Get Version Header
                     int bytes = rsyncSocket.Receive(buffer, buffer.Length, 0);
                     string versionText = Encoding.ASCII.GetString(buffer, 0, bytes);
@@ -55,7 +52,15 @@ namespace Reecon
                     List<string> listLines = listText.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries).ToList();
                     foreach (string item in listLines)
                     {
-                        returnText += "-- File: " + item;
+                        returnText += "-- Item: " + item;
+                    }
+                    
+                    // Can't List programatically due to the sporadic output of list (Comments, spaces in names, etc)
+                    if (listLines.Any())
+                    {
+                        returnText += $"--- List: rsync -rd rsync://{ip}/ItemHere" + Environment.NewLine;
+                        returnText += $"--- Download: rsync -a rsync://{ip}/Path/To/File LocalPath" + Environment.NewLine;
+                        returnText += $"--- Upload: rsync -a LocalPath rsync://{ip}/Path/To/File";
                     }
                 }
                 catch (Exception ex)

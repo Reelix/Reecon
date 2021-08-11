@@ -13,7 +13,7 @@ namespace Reecon
         public static RedditInfo GetInfo(string name)
         {
             RedditInfo redditInfo = new() { Exists = false };
-            var aboutPage = Web.GetHTTPInfo($"https://www.reddit.com/user/{name}/about.json");
+            var aboutPage = Web.GetHTTPInfo($"https://www.reddit.com/user/{name}/about.json", "Reecon");
             if (aboutPage.StatusCode == HttpStatusCode.OK)
             {
                 redditInfo.Exists = true;
@@ -33,14 +33,21 @@ namespace Reecon
                 }
 
                 // Get Submissions
-                var submissionsPage = Web.GetHTTPInfo($"https://www.reddit.com/user/{name}/comments.json");
-                if (submissionsPage.StatusCode == HttpStatusCode.OK)
+                try
                 {
-                    OSINT_Reddit_Submitted.Rootobject submissionInfo = JsonSerializer.Deserialize<OSINT_Reddit_Submitted.Rootobject>(submissionsPage.PageText);
-                    foreach (var submission in submissionInfo.data.children)
+                    var submissionsPage = Web.GetHTTPInfo($"https://www.reddit.com/user/{name}/submitted.json");
+                    if (submissionsPage.StatusCode == HttpStatusCode.OK)
                     {
-                        redditInfo.SubmissionList.Add(submission.data);
+                        OSINT_Reddit_Submitted.Rootobject submissionInfo = JsonSerializer.Deserialize<OSINT_Reddit_Submitted.Rootobject>(submissionsPage.PageText);
+                        foreach (var submission in submissionInfo.data.children)
+                        {
+                            redditInfo.SubmissionList.Add(submission.data);
+                        }
                     }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Error - Reddit Submitted Format Changed - Bug Reelix - " + ex.Message);
                 }
             }
             return redditInfo;
@@ -244,7 +251,6 @@ namespace Reecon
 
     public class OSINT_Reddit_Submitted
     {
-
         public class Rootobject
         {
             public string kind { get; set; }
@@ -253,10 +259,11 @@ namespace Reecon
 
         public class Data
         {
-            public string modhash { get; set; }
-            public int dist { get; set; }
-            public Child[] children { get; set; }
             public string after { get; set; }
+            public int dist { get; set; }
+            public string modhash { get; set; }
+            public string geo_filter { get; set; }
+            public Child[] children { get; set; }
             public object before { get; set; }
         }
 
@@ -291,7 +298,6 @@ namespace Reecon
             public string link_flair_text_color { get; set; }
             public float upvote_ratio { get; set; }
             public string author_flair_background_color { get; set; }
-            public string subreddit_type { get; set; }
             public int ups { get; set; }
             public int total_awards_received { get; set; }
             public Media_Embed media_embed { get; set; }
@@ -308,15 +314,17 @@ namespace Reecon
             public bool can_mod_post { get; set; }
             public int score { get; set; }
             public object approved_by { get; set; }
+            public bool is_created_from_ads_ui { get; set; }
             public bool author_premium { get; set; }
             public string thumbnail { get; set; }
             public object edited { get; set; }
             public string author_flair_css_class { get; set; }
             public Author_Flair_Richtext[] author_flair_richtext { get; set; }
             public Gildings gildings { get; set; }
+            public string post_hint { get; set; }
             public object content_categories { get; set; }
             public bool is_self { get; set; }
-            public object mod_note { get; set; }
+            public string subreddit_type { get; set; }
             public float created { get; set; }
             public string link_flair_type { get; set; }
             public int? wls { get; set; }
@@ -326,7 +334,7 @@ namespace Reecon
             public string domain { get; set; }
             public bool allow_live_comments { get; set; }
             public string selftext_html { get; set; }
-            public bool likes { get; set; }
+            public bool? likes { get; set; }
             public string suggested_sort { get; set; }
             public object banned_at_utc { get; set; }
             public object view_count { get; set; }
@@ -335,6 +343,7 @@ namespace Reecon
             public bool is_crosspostable { get; set; }
             public bool pinned { get; set; }
             public bool over_18 { get; set; }
+            public Preview preview { get; set; }
             public All_Awardings[] all_awardings { get; set; }
             public object[] awarders { get; set; }
             public bool media_only { get; set; }
@@ -347,10 +356,12 @@ namespace Reecon
             public string rte_mode { get; set; }
             public bool visited { get; set; }
             public object removed_by { get; set; }
-            public object num_reports { get; set; }
+            public object mod_note { get; set; }
             public object distinguished { get; set; }
             public string subreddit_id { get; set; }
+            public bool author_is_blocked { get; set; }
             public object mod_reason_by { get; set; }
+            public object num_reports { get; set; }
             public object removal_reason { get; set; }
             public string link_flair_background_color { get; set; }
             public string id { get; set; }
@@ -374,9 +385,7 @@ namespace Reecon
             public int num_crossposts { get; set; }
             public Media media { get; set; }
             public bool is_video { get; set; }
-            public string post_hint { get; set; }
             public string url_overridden_by_dest { get; set; }
-            public Preview preview { get; set; }
             public Crosspost_Parent_List[] crosspost_parent_list { get; set; }
             public string crosspost_parent { get; set; }
         }
@@ -411,7 +420,6 @@ namespace Reecon
             public string thumbnail_url { get; set; }
             public int thumbnail_height { get; set; }
             public string author_url { get; set; }
-            public string description { get; set; }
         }
 
         public class Reddit_Video
@@ -439,45 +447,6 @@ namespace Reecon
         public class Gildings
         {
             public int gid_1 { get; set; }
-            public int gid_2 { get; set; }
-        }
-
-        public class Media
-        {
-            public string type { get; set; }
-            public Oembed1 oembed { get; set; }
-            public Reddit_Video1 reddit_video { get; set; }
-        }
-
-        public class Oembed1
-        {
-            public string provider_url { get; set; }
-            public string version { get; set; }
-            public string title { get; set; }
-            public string type { get; set; }
-            public int thumbnail_width { get; set; }
-            public int height { get; set; }
-            public int width { get; set; }
-            public string html { get; set; }
-            public string author_name { get; set; }
-            public string provider_name { get; set; }
-            public string thumbnail_url { get; set; }
-            public int thumbnail_height { get; set; }
-            public string author_url { get; set; }
-            public string description { get; set; }
-        }
-
-        public class Reddit_Video1
-        {
-            public string fallback_url { get; set; }
-            public int height { get; set; }
-            public int width { get; set; }
-            public string scrubber_media_url { get; set; }
-            public string dash_url { get; set; }
-            public int duration { get; set; }
-            public string hls_url { get; set; }
-            public bool is_gif { get; set; }
-            public string transcoding_status { get; set; }
         }
 
         public class Preview
@@ -510,6 +479,43 @@ namespace Reecon
             public string url { get; set; }
             public int width { get; set; }
             public int height { get; set; }
+        }
+
+        public class Media
+        {
+            public string type { get; set; }
+            public Oembed1 oembed { get; set; }
+            public Reddit_Video1 reddit_video { get; set; }
+        }
+
+        public class Oembed1
+        {
+            public string provider_url { get; set; }
+            public string version { get; set; }
+            public string title { get; set; }
+            public string type { get; set; }
+            public int thumbnail_width { get; set; }
+            public int height { get; set; }
+            public int width { get; set; }
+            public string html { get; set; }
+            public string author_name { get; set; }
+            public string provider_name { get; set; }
+            public string thumbnail_url { get; set; }
+            public int thumbnail_height { get; set; }
+            public string author_url { get; set; }
+        }
+
+        public class Reddit_Video1
+        {
+            public string fallback_url { get; set; }
+            public int height { get; set; }
+            public int width { get; set; }
+            public string scrubber_media_url { get; set; }
+            public string dash_url { get; set; }
+            public int duration { get; set; }
+            public string hls_url { get; set; }
+            public bool is_gif { get; set; }
+            public string transcoding_status { get; set; }
         }
 
         public class Link_Flair_Richtext
@@ -555,7 +561,7 @@ namespace Reecon
             public int static_icon_height { get; set; }
             public string name { get; set; }
             public Resized_Static_Icons[] resized_static_icons { get; set; }
-            public object icon_format { get; set; }
+            public string icon_format { get; set; }
             public int icon_height { get; set; }
             public object penny_price { get; set; }
             public string award_type { get; set; }
@@ -618,6 +624,7 @@ namespace Reecon
             public bool can_mod_post { get; set; }
             public int score { get; set; }
             public object approved_by { get; set; }
+            public bool is_created_from_ads_ui { get; set; }
             public bool author_premium { get; set; }
             public string thumbnail { get; set; }
             public bool edited { get; set; }
@@ -661,6 +668,7 @@ namespace Reecon
             public object num_reports { get; set; }
             public object distinguished { get; set; }
             public string subreddit_id { get; set; }
+            public bool author_is_blocked { get; set; }
             public object mod_reason_by { get; set; }
             public object removal_reason { get; set; }
             public string link_flair_background_color { get; set; }

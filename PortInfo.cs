@@ -211,7 +211,7 @@ namespace Reecon
                 {
                     unknownPortResult += $"Port {port} - FTP".Pastel(Color.Green) + Environment.NewLine;
                     unknownPortResult += FTP.GetInfo(target, port);
-                    Console.WriteLine(unknownPortResult);
+                    Console.WriteLine(unknownPortResult + Environment.NewLine);
                 }
                 // HTTPS
                 else if (theBanner == "Reecon - HTTPS")

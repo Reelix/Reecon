@@ -1,7 +1,7 @@
 # Reecon
 
 Reelix's Recon - A small program for network recon. This program is still in early stages of development and should probably not be used by anyone.
-* Version: 0.27a
+* Version: 0.27b
 * Build Status: <img src = "https://travis-ci.com/Reelix/Reecon.svg?branch=master" valign="middle" />
 * Requirements: [NMap 7.91+](https://nmap.org/download.html), [.NET 5.0](https://dotnet.microsoft.com/download/dotnet/5.0)
 * Recommended:
@@ -10,7 +10,15 @@ Reelix's Recon - A small program for network recon. This program is still in ear
   * Kerberos Enumeration: [Kerbrute](https://github.com/ropnop/kerbrute), [GetNPUsers](https://github.com/SecureAuthCorp/impacket/blob/master/examples/GetNPUsers.py), [secretsdump](https://github.com/SecureAuthCorp/impacket/blob/master/examples/secretsdump.py)
   * Printer Enumeration: [PRET](https://github.com/RUB-NDS/PRET)
 
-## Installation Instructions
+## Installation Instructions (No Building)
+### Linux (x64)
+- Download + Run https://github.com/Reelix/Reecon/releases/download/latest/reecon-linux-x64
+### Windows (x64)
+- Download + Run https://github.com/Reelix/Reecon/releases/download/latest/Reecon-windows.exe
+### Linux (musl - x64 - Probably Alpine)
+- Download + Run https://github.com/Reelix/Reecon/releases/download/latest/reecon-linux-musl-x64
+
+## Build Instructions
 ### Linux (Ubuntu)
 1.) Install the .NET 5 SDK if you don't have it: `sudo apt install dotnet-sdk-5.0`  
 2.) Clone the repo: `git clone https://github.com/Reelix/Reecon.git`  

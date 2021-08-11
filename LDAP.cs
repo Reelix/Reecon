@@ -158,6 +158,7 @@ namespace Reecon
                 {
                     // Non Auth
                     // Console.WriteLine("LDAP.GetAccountInfo LEX Error: " + lex + " - Bug Reelix!");
+                    Console.WriteLine("LDAP.GetAccountInfo - Bug Reelix to fix this: " + lex.Message);
                     return "- No Anonymous Access Allowed";
                 }
                 catch (Exception ex)
