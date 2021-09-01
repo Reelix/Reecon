@@ -192,6 +192,7 @@ namespace Reecon
                                 if (rcptToResponse.StartsWith("550") && rcptToResponse.Contains("User unknown in local recipient table"))
                                 {
                                     returnText += "-- " + "Name test verified! Use Metasploit: auxiliary/scanner/smtp/smtp_enum".Pastel(Color.Orange) + Environment.NewLine;
+                                    returnText += $"-- Phishing Command: swaks --from it@domain.com --to user,user2,user3 --server {ip} --port {port} --body @phish.txt" + Environment.NewLine;
                                 }
                                 else
                                 {

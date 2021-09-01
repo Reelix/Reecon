@@ -46,11 +46,11 @@ namespace Reecon
         public string name { get; set; }
         public string cluster_name { get; set; }
         public string cluster_uuid { get; set; }
-        public Version version { get; set; }
+        public ElasticSearchObjectVersion version { get; set; }
         public string tagline { get; set; }
     }
 
-    public class Version
+    public class ElasticSearchObjectVersion
     {
         public string number { get; set; }
         public string build_flavor { get; set; }

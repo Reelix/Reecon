@@ -383,7 +383,11 @@ namespace Reecon
                         }
                         else if (firstItem.Contains("was NT_STATUS_ACCESS_DENIED"))
                         {
-                            rpcInfo += "- enumdomusers is denied - Probably can't get anything useful" + Environment.NewLine;
+                            rpcInfo = "- enumdomusers is denied - Probably can't get anything useful" + Environment.NewLine;
+                        }
+                        else if (firstItem.Contains("was NT_STATUS_LOGON_FAILURE"))
+                        {
+                            rpcInfo = "- Unable to log on at all - Possibly a timeout :(" + Environment.NewLine;
                         }
                         else
                         {

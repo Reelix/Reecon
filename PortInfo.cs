@@ -206,6 +206,18 @@ namespace Reecon
                         Console.WriteLine($"Port {port} - AMQP".Pastel(Color.Green) + Environment.NewLine + "- Unknown AMQP Version: " + (int)theBannerBytes[4] + (int)theBannerBytes[5] + (int)theBannerBytes[6] + (int)theBannerBytes[7] + Environment.NewLine);
                     }
                 }
+                // Asterisk Call Manager
+                else if (theBanner.StartsWith("Asterisk Call Manager"))
+                {
+                    unknownPortResult += $"Port {port} - Asterisk Call Manager".Pastel(Color.Green) + Environment.NewLine;
+                    if (theBanner.Contains('/'))
+                    {
+                        unknownPortResult += "- Version: " + theBanner.Remove(0, theBanner.IndexOf('/') + 1) + Environment.NewLine;
+                    }
+                    unknownPortResult += "- Metasploit can verify passwords -> use auxiliary/voip/asterisk_login (It's slow)" + Environment.NewLine;
+                    unknownPortResult += "- To Read: https://www.hackingarticles.in/penetration-testing-on-voip-asterisk-server-part-2/";
+                    Console.WriteLine(unknownPortResult + Environment.NewLine);
+                }
                 // FTP
                 else if (theBanner.StartsWith("220 ") && theBanner.Contains("FTP"))
                 {

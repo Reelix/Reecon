@@ -46,6 +46,7 @@ namespace Reecon
                         }
                         if (versionMessage.Trim() == "")
                         {
+                            // Can also get here on closed ports - What the?
                             versionMessage = "Port is open, but no version info";
                         }
                         return versionMessage;

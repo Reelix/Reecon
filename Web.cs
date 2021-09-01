@@ -296,6 +296,7 @@ namespace Reecon
                 "secret/",
                 "backup/",
                 "backups/",
+                "dev/",
                 // Common Index files
                 "index.php",
                 "index.html",
@@ -859,7 +860,7 @@ namespace Reecon
                 {
                     responseText += "- " + "concrete5 CMS detected!".Pastel(Color.Orange) + Environment.NewLine;
                     // <meta name="generator" content="concrete5 - 8.5.2"/>
-                    string versionInfo = PageText.Remove(0, PageText.IndexOf("<meta name=\"generator\" content=\"concrete5 - ") );
+                    string versionInfo = PageText.Remove(0, PageText.IndexOf("<meta name=\"generator\" content=\"concrete5 - "));
                     versionInfo = versionInfo.Remove(0, versionInfo.IndexOf("concrete5 - ") + 12);
                     versionInfo = versionInfo.Substring(0, versionInfo.IndexOf("\""));
                     responseText += "-- Version: " + versionInfo + Environment.NewLine;
@@ -993,7 +994,7 @@ namespace Reecon
             // Headers!
             if (Headers.Any())
             {
-                // Useful info
+                // Server info
                 if (Headers.Any(x => x.Key == "Server"))
                 {
                     // Note: {URL} ends with a /
@@ -1003,8 +1004,14 @@ namespace Reecon
                     if (serverText.StartsWith("MiniServ/"))
                     {
                         responseText += "-- " + "Webmin Server Detected".Pastel(Color.Orange) + Environment.NewLine;
+                        if (serverText == "MiniServ/1.580")
+                        {
+                            responseText += "--- " + "Version Likely vulnerable to CVE-2012-2982!!".Pastel(Color.Orange) + Environment.NewLine;
+                            responseText += "---- https://www.exploit-db.com/exploits/21851 (Metasploit)" + Environment.NewLine;
+                            responseText += "---- OR https://raw.githubusercontent.com/cd6629/CVE-2012-2982-Python-PoC/master/web.py" + Environment.NewLine;
+                        }
                         // 1.890, 1.900-1.920 - http://www.webmin.com/changes.html
-                        if (serverText.StartsWith("MiniServ/1.890") || serverText.StartsWith("MiniServ/1.900") || serverText.StartsWith("MiniServ/1.910") || serverText.StartsWith("MiniServ/1.920"))
+                        else if (serverText.StartsWith("MiniServ/1.890") || serverText.StartsWith("MiniServ/1.900") || serverText.StartsWith("MiniServ/1.910") || serverText.StartsWith("MiniServ/1.920"))
                         {
                             responseText += "--- " + "Version Likely vulnerable to CVE-2019-15107!!".Pastel(Color.Orange) + Environment.NewLine;
                             responseText += "---- git clone https://github.com/MuirlandOracle/CVE-2019-15107 OR https://github.com/rapid7/metasploit-framework/blob/master/modules/exploits/linux/http/webmin_backdoor.rb" + Environment.NewLine;
@@ -1058,22 +1065,78 @@ namespace Reecon
                         }
                     }
                 }
-                // Useful info
+                // All the X's
                 if (Headers.Any(x => x.Key == "X-Powered-By"))
                 {
                     string poweredBy = Headers.GetValues("X-Powered-By").First();
                     Headers.Remove("X-Powered-By");
+
+                    // JBoss
                     responseText += "- X-Powered-By: " + poweredBy + Environment.NewLine;
                     if (poweredBy.Contains("JBoss"))
                     {
                         responseText += "-- " + "JBoss Detected - Run jexboss - https://github.com/joaomatosf/jexboss <-----".Pastel(Color.Orange) + Environment.NewLine;
                     }
+                    // Strapi
+                    else if (poweredBy == "Strapi <strapi.io>")
+                    {
+                        responseText += "-- " + "Strapi detected".Pastel(Color.Orange) + Environment.NewLine;
+                        var versionCheck = Web.GetHTTPInfo($"{URL.Trim('/')}/admin/init");
+                        if (versionCheck.StatusCode == HttpStatusCode.OK)
+                        {
+                            string versionJson = versionCheck.PageText;
+                            try
+                            {
+                                var versionData = JsonDocument.Parse(versionJson);
+                                string versionText = versionData.RootElement.GetProperty("data").GetProperty("strapiVersion").GetString();
+                                responseText += "--- Version: " + versionText + Environment.NewLine;
+                                if (versionText == "3.0.0-beta.17.4")
+                                {
+                                    // CVE-2019-18818, CVE-2019-19609
+                                    responseText += "---- " + "Vulnerable Version Detected (Unauthenticated RCE!) - Run https://www.exploit-db.com/exploits/50239".Pastel(Color.Orange) + Environment.NewLine;
+                                }
+                                else if (versionText == "3.0.0-beta.17.7")
+                                {
+                                    // CVE-2019-19609 (Auth'd)
+                                    responseText += "----" + "Vulnerable Version Detected (Authenticated RCE) - https://www.exploit-db.com/exploits/50238".Pastel(Color.Orange) + Environment.NewLine;
+                                }
+                                else
+                                {
+                                    responseText += "---- Vulnerable if before 3.0.0-beta.17.8 - Bug Reelix!" + Environment.NewLine;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                responseText += "--- Error - Version isn't formatted correctly: " + ex.Message + Environment.NewLine;
+                            }
+                        }
+                    }
                 }
-                if (Headers.Any(x => x.Key == "X-Generator"))
+                if (Headers.Any(x => x.Key.StartsWith("X -Influxdb-Version")))
                 {
-                    string generator = Headers.GetValues("X-Powered-By").First();
-                    Headers.Remove("X-Generator");
-                    responseText += "- X-Generator: " + generator + Environment.NewLine;
+                    string influxDBVersion = Headers.GetValues("X-Influxdb-Version").First();
+                    Headers.Remove("X-Influxdb-Version");
+                    responseText += "- InfluxDB Detected - Version: " + influxDBVersion + Environment.NewLine;
+                    Version theVersion = new Version(influxDBVersion);
+                    if (theVersion <= new Version("1.3.0"))
+                    {
+                        responseText += "-- " + "Possible Vulnerable Version Detected - https://www.komodosec.com/post/when-all-else-fails-find-a-0-day <-----".Pastel(Color.Orange) + Environment.NewLine;
+                    }
+                }
+                // All the rest
+                if (Headers.Any(x => x.Key.StartsWith("X-")))
+                {
+                    while (Headers.Any(x => x.Key.StartsWith("X-")))
+                    {
+                        var theHeader = Headers.First(x => x.Key.StartsWith("X-"));
+                        string headerName = theHeader.Key;
+                        if (headerName != "X-Content-Type-Options") // Not really useful
+                        {
+                            string headerValues = string.Join(",", Headers.GetValues(headerName));
+                            responseText += $"- {headerName}: {headerValues}{Environment.NewLine}";
+                        }
+                        Headers.Remove(theHeader.Key);
+                    }
                 }
                 // Requires a login
                 if (Headers.Any(x => x.Key == "WWW-Authenticate"))

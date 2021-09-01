@@ -88,6 +88,10 @@ namespace Reecon
                 {
                     return "- Anonymous Access Allowed - But No Shares Found";
                 }
+                else if (processResults.Count >= 1 && processResults[0].Contains("NT_STATUS_IO_TIMEOUT"))
+                {
+                    return "- Timed out :(";
+                }
                 foreach (string item in processResults)
                 {
                     // type|name|comment
