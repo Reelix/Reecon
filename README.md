@@ -11,7 +11,7 @@ Reelix's Recon - A small program for network recon. This program is still in ear
   * Printer Enumeration: [PRET](https://github.com/RUB-NDS/PRET)
 
 ## Installation Instructions (No Building)
-### Linux (x64)
+### Linux (x64 - Requires the .NET 6 Runtime)
 - Download + Run https://github.com/Reelix/Reecon/releases/download/latest/reecon-linux-x64
 ### Windows (x64)
 - Download + Run https://github.com/Reelix/Reecon/releases/download/latest/Reecon-windows.exe
@@ -20,7 +20,7 @@ Reelix's Recon - A small program for network recon. This program is still in ear
 
 ## Build Instructions
 ### Linux (Ubuntu)
-1.) Install the .NET 6 SDK if you don't have it: `sudo apt install dotnet-sdk-6.0`  
+1.) Install the .NET 6 Runtime if you don't have it: `curl https://raw.githubusercontent.com/Reelix/Reecon/master/setup-dotnet.sh | bash`  
 2.) Clone the repo: `git clone https://github.com/Reelix/Reecon.git`  
 3.) Run the build file: `chmod +x ./Reecon/build && ./Reecon/build`  
 4.) Run: `./reecon`  
