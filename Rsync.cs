@@ -35,7 +35,7 @@ namespace Reecon
                     string versionText = Encoding.ASCII.GetString(buffer, 0, bytes);
                     if (!versionText.StartsWith("@RSYNCD"))
                     {
-                        return "- Invalid RSync Header: " + versionText;
+                        return "- Invalid RSync Header: " + versionText + Environment.NewLine;
                     }
                     else
                     {
@@ -52,9 +52,8 @@ namespace Reecon
                     List<string> listLines = listText.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries).ToList();
                     foreach (string item in listLines)
                     {
-                        returnText += "-- Item: " + item;
-                    }
-                    
+                        returnText += "-- File: " + item + Environment.NewLine;
+                    }   
                     // Can't List programatically due to the sporadic output of list (Comments, spaces in names, etc)
                     if (listLines.Any())
                     {
@@ -65,10 +64,10 @@ namespace Reecon
                 }
                 catch (Exception ex)
                 {
-                    returnText += Environment.NewLine + "- Error - Cannot pull Rsync Text: " + ex.Message;
+                    returnText += "- Error - Cannot pull Rsync Text: " + ex.Message + Environment.NewLine;
                 }
             }
-            return returnText;
+            return returnText.Trim(Environment.NewLine.ToCharArray());
         }
     }
 }

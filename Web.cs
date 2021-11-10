@@ -512,6 +512,9 @@ namespace Reecon
                     {
                         returnText += $"-- WWW-Authenticate: {headers.GetValues("WWW-Authenticate").First()}" + Environment.NewLine;
                     }
+                }
+                else if (response.StatusCode != HttpStatusCode.NotFound && response.StatusCode != HttpStatusCode.TooManyRequests)
+                {
                     if (response.PageText != "")
                     {
                         returnText += $"-- Page Text: {response.PageText}" + Environment.NewLine;
@@ -1000,6 +1003,8 @@ namespace Reecon
                     // Note: {URL} ends with a /
                     string serverText = Headers.Server.ToString();
                     Headers.Remove("Server");
+                    // Eg: Apache/2.4.46, (Win64), OpenSSL/1.1.1j, PHP/7.3.27
+                    // Heartbleed - OpenSSL 1.0.1 through 1.0.1f (inclusive) are vulnerable
                     responseText += "- Server: " + serverText + Environment.NewLine;
                     if (serverText.StartsWith("MiniServ/"))
                     {

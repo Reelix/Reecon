@@ -12,6 +12,15 @@ namespace Reecon
     {
         public static string GetInfo(string ip, int port)
         {
+            /* Redis Command Primer!
+             * 1.) Find the DB -> info (Look at "Keyspace") - Eg: db0:keys=5,expires=0,avg_ttl=0 <--- db0
+             * 2.) SELECT 0
+             * 3.) KEYS *
+             * 4.) GET "keyName"
+             * --> WRONGTYPE Operation against a key holding the wrong kind of value
+             * 4.a) LRANGE "keyName" 0 500
+             */
+
             bool canSetDB = false;
             bool canSetPath = false;
             string returnText = "";
@@ -31,10 +40,12 @@ namespace Reecon
                     string redisText = Encoding.ASCII.GetString(buffer, 0, bytes);
                     if (redisText.StartsWith("-NOAUTH Authentication"))
                     {
-                        returnText = "- Redis Authentication required";
+                        returnText = "- Redis Authentication required" + Environment.NewLine;
+                        returnText += $"-- If you get creds: redis-cli -h {ip} -a passHere" + Environment.NewLine;
                     }
                     else
                     {
+                        // We have access!
                         redisText = redisText.Trim();
                         List<string> redisLines = redisText.Split(new[] { Environment.NewLine }, StringSplitOptions.None).ToList();
                         string redisVersion = redisLines.First(x => x.StartsWith("redis_version:"));

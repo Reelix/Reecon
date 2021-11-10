@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Security;
 using System.Text;
 
 namespace Reecon
@@ -18,12 +19,22 @@ namespace Reecon
 
             WebClient wc = new();
             wc.Headers.Add("Content-Type", "application/soap+xml;charset=UTF-8");
-            // 47001 - No Response?
+            // Fix for invalid SSL Certs
+            ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(
+                delegate { return true; }
+            );
             // Test: CSL Potato
             Byte[] byteData = Encoding.ASCII.GetBytes("dsadsasa");
             try
             {
-                wc.UploadData("http://" + ip + ":" + port + "/wsman", byteData);
+                if (port == 5986)
+                {
+                    wc.UploadData("https://" + ip + ":" + port + "/wsman", byteData);
+                }
+                else
+                {
+                    wc.UploadData("http://" + ip + ":" + port + "/wsman", byteData);
+                }
                 returnInfo = "- wsman upload returned no error - Bug Reelix";
             }
             catch (WebException wex)
