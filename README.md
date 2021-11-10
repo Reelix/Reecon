@@ -20,7 +20,7 @@ Reelix's Recon - A small program for network recon. This program is still in ear
 
 ## Build Instructions
 ### Linux (Ubuntu)
-1.) Install the .NET 5 SDK if you don't have it: `sudo apt install dotnet-sdk-6.0`
+1.) Install the .NET 6 SDK if you don't have it: `sudo apt install dotnet-sdk-6.0`  
 2.) Clone the repo: `git clone https://github.com/Reelix/Reecon.git`  
 3.) Run the build file: `chmod +x ./Reecon/build && ./Reecon/build`  
 4.) Run: `./reecon`  
