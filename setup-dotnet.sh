@@ -4,3 +4,4 @@ export DOTNET_ROOT=~/dotnet
 mkdir -p "$DOTNET_ROOT" && tar zxf "$DOTNET_SETUP_FILE" -C "$DOTNET_ROOT"
 export PATH=$PATH:$DOTNET_ROOT
 rm "$DOTNET_SETUP_FILE"
+export PATH=~/dotnet/:$PATH
