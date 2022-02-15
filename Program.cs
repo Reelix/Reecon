@@ -14,9 +14,12 @@ namespace Reecon
         static readonly List<string> postScanList = new();
         static void Main(string[] args)
         {
+            //Web.ScanPage("https://atsserver.acute.local/");
+            //Console.WriteLine("Done!");
+            //Console.ReadLine();
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.28 ( https://github.com/Reelix/Reecon )");
+            Console.WriteLine("Reecon - Version 0.28a ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {

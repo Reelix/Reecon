@@ -164,7 +164,7 @@ namespace Reecon
             {
                 foreach (string pass in passList)
                 {
-                    List<string> outputResult = General.GetProcessOutput("smbclient", @"-L \\\\" + ip + " -U" + user + "%" + pass);
+                    List<string> outputResult = General.GetProcessOutput("smbclient", @"-L \\\\" + ip + " -U" + user + "%" + pass); // Bug if pass contains a space?
                     outputResult.RemoveAll(x => x.Equals("Unable to initialize messaging context"));
                     string resultItem = outputResult[0];
                     if (resultItem.Contains("NT_STATUS_HOST_UNREACHABLE"))

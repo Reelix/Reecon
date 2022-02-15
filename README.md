@@ -1,7 +1,7 @@
 # Reecon
 
 Reelix's Recon - A small program for network recon. This program is still in early stages of development and should probably not be used by anyone.
-* Version: 0.28
+* Version: 0.28a
 * Build Status: <img src = "https://travis-ci.com/Reelix/Reecon.svg?branch=master" valign="middle" />
 * Requirements: [NMap 7.92+](https://nmap.org/download.html), [.NET 6.0](https://dotnet.microsoft.com/download/dotnet/6.0)
 * Recommended:
@@ -20,7 +20,17 @@ Reelix's Recon - A small program for network recon. This program is still in ear
 
 ## Build Instructions
 ### Linux (Ubuntu)
-1.) Install the .NET 6 Runtime if you don't have it: `curl https://raw.githubusercontent.com/Reelix/Reecon/master/setup-dotnet.sh | bash`  
+
+# Install repository configuration
+curl -sSL https://packages.microsoft.com/config/ubuntu/20.04/prod.list | sudo tee /etc/apt/sources.list.d/microsoft-prod.list
+
+# Install Microsoft GPG public key
+curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc
+
+# Update package index files
+sudo apt-get update
+
+1.) Install the .NET 6 Runtime if you don't have it: sudo apt install dotnet-runtime-6.0  
 2.) Clone the repo: `git clone https://github.com/Reelix/Reecon.git`  
 3.) Run the build file: `chmod +x ./Reecon/build && ./Reecon/build`  
 4.) Run: `./reecon`  

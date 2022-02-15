@@ -1,11 +1,11 @@
 ﻿21|FTP|FTP
 22|SSH|SSH
 23|Telnet|Telnet
-25|SMTP|SMTP
+25|SMTP|SMTP (Simple Mail Transfer Protocol)
 53|DNS|DNS
 80|HTTP|HTTP
 88|N/A|Microsoft Windows Kerberos
-110|POP3|POP3
+110|POP3|POP3 (Post Office Protocol)
 111|RPCBind|rpcbind
 135|N/A|Microsoft Windows RPC
 139|NETBIOS|NETBIOS Session Service (netbios-ssn)
@@ -14,12 +14,14 @@
 443|HTTPS|HTTPS
 445|SMB|Microsoft SMB
 464|N/A|Kerberos (kpasswd)
+465|N/A|SMTPS - Secure Transport
+587|N/A|SMTP - Insecure Transport (New Port 25)
 593|N/A|Microsoft Windows RPC over HTTP
 631|HTTP|IPP (Internet Printing Protocol)
 636|N/A|LDAPSSL (LDAP over SSL)
 873|Rsync|Rsync (Remote Sync)
 993|N/A|IMAPS (IMAP over SSL)
-995|N/A|pop3s (pop3 over SSL)
+995|N/A|POP3s (POP3 over SSL)
 1433|N/A|MSSQL (MSSQL)
 2049|NFS|NFS (Network File System)
 3128|Squid|Squid

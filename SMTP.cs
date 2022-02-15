@@ -27,7 +27,7 @@ namespace Reecon
                     // Wait for info
                     int bytes = smtpSocket.Receive(buffer, buffer.Length, 0);
                     smtpBanner = Encoding.ASCII.GetString(buffer, 0, bytes);
-                    if (smtpBanner.StartsWith("220") && smtpBanner.Contains("SMTP")) // ESMTP contains SMTP
+                    if (smtpBanner.StartsWith("220") && smtpBanner.ToUpper().Contains("SMTP")) // ESMTP contains SMTP
                     {
                         // We got a valid response! Let's do some parsing!
                         // 220 ESMTP MAIL Service ready (EXCHANGE.HTB.LOCAL)
@@ -39,15 +39,17 @@ namespace Reecon
                         string hostName = "";
                         string nameAndDate = "";
                         // SMTP OR ESMTP
-                        if (smtpBanner.IndexOf("ESMTP") != -1)
+                        if (smtpBanner.ToUpper().IndexOf("ESMTP") != -1)
                         {
-                            hostName = smtpBanner.Substring(0, smtpBanner.IndexOf("ESMTP"));
-                            nameAndDate = smtpBanner.Remove(0, smtpBanner.IndexOf("ESMTP ") + 6);
+                            int esmtpIndex = smtpBanner.ToUpper().IndexOf("ESMTP");
+                            hostName = smtpBanner.Substring(0, esmtpIndex);
+                            nameAndDate = smtpBanner.Remove(0, esmtpIndex + 6);
                         }
-                        else if (smtpBanner.IndexOf("SMTP") != -1)
+                        else if (smtpBanner.ToUpper().IndexOf("SMTP") != -1)
                         {
-                            hostName = smtpBanner.Substring(0, smtpBanner.IndexOf("SMTP"));
-                            nameAndDate = smtpBanner.Remove(0, smtpBanner.IndexOf("SMTP ") + 5);
+                            int smtpIndex = smtpBanner.ToUpper().IndexOf("SMTP");
+                            hostName = smtpBanner.Substring(0, smtpIndex);
+                            nameAndDate = smtpBanner.Remove(0, smtpIndex + 5);
                         }
                         string newlineChars = "";
                         if (nameAndDate.EndsWith("\r\n"))
@@ -182,6 +184,7 @@ namespace Reecon
                             }
                             else if (rcptToResponse.StartsWith("501")) // 501 5.1.3 Bad recipient address syntax
                             {
+                                Console.WriteLine("DEBUG: " + rcptToResponse);
                                 // Can't RCPT to mails - How about names?
                                 // https://github.com/rapid7/metasploit-framework/blob/master//modules/auxiliary/scanner/smtp/smtp_enum.rb
                                 returnText += "-- Unable to RCPT TO addresses - Checking name test..." + Environment.NewLine;
@@ -198,6 +201,14 @@ namespace Reecon
                                 {
                                     returnText += "-- Unknown rcptToResponse response: " + rcptToResponse + Environment.NewLine;
                                 }
+                            }
+                            else if (rcptToResponse.StartsWith("554")) // 554 5.7.1 <test@smtp.domainhere.com>: Recipient address rejected: Access denied
+                            {
+                                returnText += "-- Rejected recipient address - Manual exploitation attempt required :(" + Environment.NewLine;
+                            }
+                            else
+                            {
+                                returnText += "-- Unknown rcptToResponse - Bug Reelix - DEBUG: " + rcptToResponse + Environment.NewLine;
                             }
                         }
                         // https://github.com/rapid7/metasploit-framework/blob/master//modules/auxiliary/scanner/smtp/smtp_enum.rb

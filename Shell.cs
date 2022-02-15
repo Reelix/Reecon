@@ -35,6 +35,11 @@ namespace Reecon
                 ip = args[2];
                 port = args[3];
             }
+            if (!Int32.TryParse(port, out int ignored))
+            {
+                Console.WriteLine("Port is not an integer - Possibly swapped it with IP?");
+                Environment.Exit(0);
+            }
             if (shellType == "bash")
             {
                 Console.WriteLine("Bash Shell");

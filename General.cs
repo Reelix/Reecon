@@ -387,7 +387,7 @@ namespace Reecon
             p.Start();
             p.BeginOutputReadLine();
             p.BeginErrorReadLine();
-            p.WaitForExit();    
+            p.WaitForExit();
             p.Close();
             outputLines.RemoveAll(string.IsNullOrEmpty); // Useful?
             return outputLines;
@@ -424,6 +424,10 @@ namespace Reecon
 
         public static bool IsInstalledOnLinux(string app, string path = "")
         {
+            if (GetOS() != OS.Linux)
+            {
+                throw new Exception("Error: General.IsInstallOnLinux called on a non-Linux environment - Bug Reelix!");
+            }
             List<string> processOutput = GetProcessOutput("which", app);
             if (processOutput.Count == 0)
             {
