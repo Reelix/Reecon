@@ -21,13 +21,15 @@ Reelix's Recon - A small program for network recon. This program is still in ear
 ## Build Instructions
 ### Linux (Ubuntu 22.04)
 
+#### Install repository configuration
+curl -sSL https://packages.microsoft.com/config/ubuntu/20.04/prod.list | sudo tee /etc/apt/sources.list.d/microsoft-prod.list
 # Install repository configuration
 curl -sSL https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/microsoft-prod.list
 
-# Install Microsoft GPG public key
+#### Install Microsoft GPG public key
 curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc
 
-# Update package index files
+#### Update package index files
 sudo apt-get update
 
 1.) Install the .NET 6 Runtime if you don't have it: sudo apt install dotnet-runtime-6.0  
