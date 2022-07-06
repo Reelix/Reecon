@@ -23,8 +23,6 @@ Reelix's Recon - A small program for network recon. This program is still in ear
 
 #### Install repository configuration
 curl -sSL https://packages.microsoft.com/config/ubuntu/20.04/prod.list | sudo tee /etc/apt/sources.list.d/microsoft-prod.list
-# Install repository configuration
-curl -sSL https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/microsoft-prod.list
 
 #### Install Microsoft GPG public key
 curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc
