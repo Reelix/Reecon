@@ -2,8 +2,10 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
@@ -16,6 +18,7 @@ namespace Reecon
 {
     class General
     {
+        static HttpClient httpClient = new HttpClient();
         public static void ShowHelp()
         {
             Console.WriteLine("Usage");
@@ -320,6 +323,7 @@ namespace Reecon
             }
         }
 
+        // Used for a better UI
         public static void ClearPreviousConsoleLine()
         {
             Console.SetCursorPosition(0, Console.CursorTop - 1);
@@ -497,6 +501,38 @@ namespace Reecon
         {
             public string Name;
             public IPAddress Address;
+        }
+
+        public static string DownloadString(string path)
+        {
+            string toReturn = "";
+            HttpRequestMessage theRequest = new HttpRequestMessage(HttpMethod.Get, path);
+            using (HttpResponseMessage response = httpClient.Send(theRequest))
+            {
+                using (StreamReader readStream = new(response.Content.ReadAsStream()))
+                {
+                    toReturn = readStream.ReadToEnd();
+                }
+            }
+            return toReturn;
+        }
+
+        public static async void DownloadFile(string uri, string outputPath)
+        {
+            Uri uriResult;
+
+            if (!Uri.TryCreate(uri, UriKind.Absolute, out uriResult))
+            {
+                throw new InvalidOperationException("URI is invalid.");
+            }
+
+            if (!File.Exists(outputPath))
+            {
+                throw new FileNotFoundException("File not found.", nameof(outputPath));
+            }
+
+            byte[] fileBytes = await httpClient.GetByteArrayAsync(uri);
+            File.WriteAllBytes(outputPath, fileBytes);
         }
     }
 }

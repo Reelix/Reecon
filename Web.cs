@@ -338,7 +338,9 @@ namespace Reecon
                             // Well-Known
                 ".well-known/", // https://www.google.com/.well-known/security.txt
                 // Docker
-                "version"
+                "version",
+                // PHP stuff
+                "vendor/"
             };
 
             if (ignorePHP)
@@ -396,10 +398,9 @@ namespace Reecon
                                 returnText += "-- Git repo found!" + Environment.NewLine;
 
                                 // https://github.com/arthaud/git-dumper/issues/9
-                                WebClient wc = new();
                                 try
                                 {
-                                    if (wc.DownloadString($"{url}.git/").Contains("../"))
+                                    if (General.DownloadString($"{url}.git/").Contains("../"))
                                     {
                                         // -q: Quiet (So the console doesn't get spammed)
                                         // -r: Download everything
@@ -425,9 +426,8 @@ namespace Reecon
                                 returnText += "-- Kibana!" + Environment.NewLine;
                                 try
                                 {
-                                    WebClient wc = new();
                                     string toCheck = $"{url}{file}";
-                                    string pageData = wc.DownloadString($"{url}{file}");
+                                    string pageData = General.DownloadString($"{url}{file}");
                                     if (pageData.IndexOf("&quot;version&quot;:&quot;") != -1)
                                     {
                                         string versionText = pageData.Remove(0, pageData.IndexOf("&quot;version&quot;:&quot;") + 26);
@@ -1281,7 +1281,14 @@ namespace Reecon
                 // Need to format this better...
 
             }
-            result = General.BannerGrab(ip, port, "GET /../../../../../../windows/win.ini HTTP/1.1" + Environment.NewLine + "Host: " + ip + Environment.NewLine + Environment.NewLine, 2500);
+            // Windows 1 (Windows app running on Windows)
+            result = General.BannerGrab(ip, port, "GET /../../../../../../windows/win.ini HTTP/1.1\r\nHost: " + ip + "\r\n\r\n", 2500);
+            if (result.Contains("for 16-bit app support"))
+            {
+                return "- /windows/win.ini File Found VIA Base LFI! --> GET /../../../../../../windows/win.ini" + Environment.NewLine + result;
+            }
+            // Windows 2 (Linux app running on Windows)
+            result = General.BannerGrab(ip, port, "GET /../../../../../../windows/win.ini HTTP/1.1\nHost: " + ip + "\n\n", 2500);
             if (result.Contains("for 16-bit app support"))
             {
                 return "- /windows/win.ini File Found VIA Base LFI! --> GET /../../../../../../windows/win.ini" + Environment.NewLine + result;

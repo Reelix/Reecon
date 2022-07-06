@@ -17,7 +17,10 @@ namespace Reecon
             }
             else
             {
-                processOutput = General.GetProcessOutput("rpcclient", $"-S off -U \"anonymous\"%\"\" {ip} -c \"{command}\"");
+                // Xenial = -S
+                // processOutput = General.GetProcessOutput("rpcclient", $"-S off -U \"anonymous\"%\"\" {ip} -c \"{command}\"");
+                // Jammy = --option=clientsigning=off
+                processOutput = General.GetProcessOutput("rpcclient", $"--option=clientsigning=off -U \"anonymous\"%\"\" {ip} -c \"{command}\"");
             }
             return processOutput;
         }

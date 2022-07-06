@@ -1,7 +1,7 @@
 # Reecon
 
 Reelix's Recon - A small program for network recon. This program is still in early stages of development and should probably not be used by anyone.
-* Version: 0.28a
+* Version: 0.28b
 * Build Status: <img src = "https://travis-ci.com/Reelix/Reecon.svg?branch=master" valign="middle" />
 * Requirements: [NMap 7.92+](https://nmap.org/download.html), [.NET 6.0](https://dotnet.microsoft.com/download/dotnet/6.0)
 * Recommended:
@@ -19,10 +19,10 @@ Reelix's Recon - A small program for network recon. This program is still in ear
 - Download + Run https://github.com/Reelix/Reecon/releases/download/latest/reecon-linux-musl-x64
 
 ## Build Instructions
-### Linux (Ubuntu)
+### Linux (Ubuntu 22.04)
 
 # Install repository configuration
-curl -sSL https://packages.microsoft.com/config/ubuntu/20.04/prod.list | sudo tee /etc/apt/sources.list.d/microsoft-prod.list
+curl -sSL https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/microsoft-prod.list
 
 # Install Microsoft GPG public key
 curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc

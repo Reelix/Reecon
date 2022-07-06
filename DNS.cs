@@ -20,9 +20,35 @@ namespace Reecon
             }
             else
             {
+                bool hasServer = false;
                 foreach (string line in outputLines)
                 {
-                    dnsInfo += $"- {line}" + Environment.NewLine;
+                    if (line.StartsWith("Server:"))
+                    {
+                        dnsInfo += $"- {line}" + Environment.NewLine;
+                        hasServer = true;
+                    }
+                    else if (line.StartsWith("Address:"))
+                    {
+                        dnsInfo += $"- {line}" + Environment.NewLine;
+                    }
+                    else if (
+                        // Terrible formatting, I know
+                        !(line.Trim().Equals("DNS request timed out."))
+                        && !(line.Trim().Contains("timeout was") && line.Trim().Contains("seconds"))
+                        && !(line.StartsWith("*** Request to") && line.Trim().EndsWith("timed-out"))
+                        )
+                    {
+                        dnsInfo += $"- {line}" + Environment.NewLine;
+                    }
+                }
+                if (hasServer)
+                {
+                    dnsInfo += $"- Try the following" + Environment.NewLine
+                        + "-- nslookup" + Environment.NewLine
+                        + "-- server 1.2.3.4 (Address from above)" + Environment.NewLine
+                        + "-- set type=any" + Environment.NewLine
+                        + "-- ls -d bla.com (Domain from above)" + Environment.NewLine;
                 }
             }
             dnsInfo = dnsInfo.Trim(Environment.NewLine.ToCharArray());

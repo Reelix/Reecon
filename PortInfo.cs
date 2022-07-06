@@ -452,7 +452,8 @@ namespace Reecon
             {
                 // Post Scan
                 string defaultNamingContext = LDAP.GetDefaultNamingContext(target, true);
-                defaultNamingContext = defaultNamingContext.Replace("DC=", "").Replace(",", ".");
+                Console.WriteLine("Original defaultNamingContext: " + defaultNamingContext);
+                defaultNamingContext = defaultNamingContext.Replace("DC=", "").Replace("dc=", "").Replace(",", ".");
 
                 // Username enum
                 postScanActions += $"- Kerberos Username Enum: kerbrute userenum --dc {target} -d {defaultNamingContext} users.txt" + Environment.NewLine;

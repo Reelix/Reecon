@@ -48,7 +48,7 @@ namespace Reecon
                 var sessionSetupAndxResponse = byteResult.Skip(36).ToArray();
                 var nativeOsB = sessionSetupAndxResponse.Skip(9).ToArray();
                 var osData = Encoding.ASCII.GetString(nativeOsB).Split('\x00');
-                if (osData[0] != "et by peer") // Invalid response that was cut off
+                if (osData[0] != "et by peer" && !osData[0].EndsWith("closed by the remote host.")) // Invalid responses
                 {
                     string osName = osData[0];
                     osDetails += "- OS Name: " + osName + Environment.NewLine;
@@ -62,6 +62,7 @@ namespace Reecon
                         osDetails += "- OS Workgroup: " + osData[2] + Environment.NewLine;
                     }
                 }
+                osDetails = "- Unable to get basic OS info :(" + Environment.NewLine;
                 return osDetails;
             }
             catch (Exception ex)

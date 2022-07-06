@@ -31,8 +31,7 @@ namespace Reecon
 
         private static void GetInstagramInfo(string username)
         {
-            WebClient wc = new();
-            string pageText = wc.DownloadString("https://www.instagram.com/web/search/topsearch/?query=" + username);
+            string pageText = General.DownloadString("https://www.instagram.com/web/search/topsearch/?query=" + username);
             try
             {
                 Instagram.Rootobject theObject = JsonSerializer.Deserialize<Instagram.Rootobject>(pageText);
