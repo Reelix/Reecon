@@ -31,13 +31,23 @@ namespace Reecon
                 Console.WriteLine("Invalid URL - Must start with http");
                 return;
             }
-            ScanPage(scanURL);
+
+            Console.WriteLine("Scanning...");
+
+            var httpInfo = Web.GetHTTPInfo(scanURL);
+            string pageText = httpInfo.PageText;
+            string pageInfo = FindInfo(pageText);
+            if (pageInfo.Trim() != "")
+            {
+                Console.WriteLine(pageInfo);
+            }
+            Console.WriteLine(FormatHTTPInfo(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert, httpInfo.URL));
+
+            // Then find common files
             Console.WriteLine("Searching for common files...");
 
-            // Used elsewhere so it can't just have its own output
-
             string commonFiles = FindCommonFiles(scanURL);
-            if (commonFiles.Trim() != "")
+            if (commonFiles.Trim() != String.Empty)
             {
                 Console.WriteLine(commonFiles);
             }
@@ -46,15 +56,7 @@ namespace Reecon
 
         public static void ScanPage(string url)
         {
-            Console.WriteLine("Scanning...");
-            var httpInfo = Web.GetHTTPInfo(url);
-            string pageText = Web.GetHTTPInfo(url).PageText;
-            string pageInfo = FindInfo(pageText);
-            if (pageInfo.Trim() != "")
-            {
-                Console.WriteLine(pageInfo);
-            }
-            Console.WriteLine(FormatHTTPInfo(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert, httpInfo.URL));
+            
         }
 
         public static string FindInfo(string pageText, bool doubleDash = false)
@@ -411,6 +413,9 @@ namespace Reecon
                                         // git log --pretty=format:"%h - %an (%ae): %s %b"
                                         // db.sqlite3
                                         returnText += "--- Show a specific commit: git show 2eb93ac (Press q to close)" + Environment.NewLine;
+                                        // https://stackoverflow.com/questions/34751837/git-can-we-recover-deleted-commits
+                                        returnText += "--- Find deleted commits: git reflog" + Environment.NewLine;
+
                                         continue;
                                     }
                                 }
@@ -850,6 +855,7 @@ namespace Reecon
                     }
                 }
             }
+
             // Page Text
             if (PageText.Length > 0)
             {
@@ -1001,11 +1007,13 @@ namespace Reecon
                     responseText += "-- Try: run Metasploit windows/http/icecast_header" + Environment.NewLine;
                 }
             }
+
             // DNS
             if (!string.IsNullOrEmpty(DNS))
             {
                 responseText += "- DNS: " + DNS + Environment.NewLine;
             }
+
             // Headers!
             if (Headers.Any())
             {
@@ -1138,7 +1146,24 @@ namespace Reecon
                         }
                     }
                 }
-                if (Headers.Any(x => x.Key.StartsWith("X -Influxdb-Version")))
+                // Kubernetes
+                if (Headers.Any(x => x.Key.StartsWith("X-Kubernetes-")))
+                {
+                    responseText += "-- Kubernetes Detected".Pastel(Color.Orange) + Environment.NewLine;
+                    var versionCheck = GetHTTPInfo($"{URL}version");
+                    if (versionCheck.StatusCode == HttpStatusCode.OK)
+                    {
+                        var versionData = JsonDocument.Parse(versionCheck.PageText);
+                        string major = versionData.RootElement.GetProperty("major").GetString();
+                        string minor = versionData.RootElement.GetProperty("minor").GetString();
+                        responseText += $"--" + "Version: {major}.{minor} (In /version)".Pastel(Color.Orange) + Environment.NewLine;
+                    }
+                    responseText += "---" + "Try get /run/secrets/kubernetes.io/serviceaccount/token" + Environment.NewLine;
+                    responseText += "--- " + "If you do, read: https://www.cyberark.com/resources/threat-research-blog/kubernetes-pentest-methodology-part-3" + Environment.NewLine;
+
+                }
+                // Influxdb
+                if (Headers.Any(x => x.Key.StartsWith("X-Influxdb-Version")))
                 {
                     string influxDBVersion = Headers.GetValues("X-Influxdb-Version").First();
                     Headers.Remove("X-Influxdb-Version");

@@ -7,6 +7,11 @@ namespace Reecon
         public static string GetInfo(string target, int port)
         {
             string result = GetInfoMain(target, port, false);
+            if (result.Contains("Page Text: Client sent an HTTP request to an HTTPS server."))
+            {
+                // Whoops - HTTPS Server!
+                Console.WriteLine("-- Possible HTTP Server - Bug Reelix to fix this!");
+            }
             return result;
         }
 

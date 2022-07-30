@@ -435,11 +435,22 @@ namespace Reecon
             List<string> processOutput = GetProcessOutput("which", app);
             if (processOutput.Count == 0)
             {
+                Console.WriteLine("Debugging weird nmap bug - 1/2");
+                Console.WriteLine("If you actually do have nmap installed, send this to Reelix");
                 return false;
             }
             if (path == "" || processOutput[0].Trim() == path)
             {
                 return true;
+            }
+            if (app == "nmap")
+            {
+                Console.WriteLine("Debugging weird nmap bug - 2/2");
+                Console.WriteLine("If you actually do have nmap installed, send this to Reelix");
+                foreach (string item in processOutput)
+                {
+                    Console.WriteLine("-- " + item);
+                }
             }
             return false;
         }
@@ -503,10 +514,14 @@ namespace Reecon
             public IPAddress Address;
         }
 
-        public static string DownloadString(string path)
+        public static string DownloadString(string path, string cookie="")
         {
             string toReturn = "";
             HttpRequestMessage theRequest = new HttpRequestMessage(HttpMethod.Get, path);
+            if (cookie != "")
+            {
+                theRequest.Headers.Add("Cookie", cookie);
+            }
             using (HttpResponseMessage response = httpClient.Send(theRequest))
             {
                 using (StreamReader readStream = new(response.Content.ReadAsStream()))

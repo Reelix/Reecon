@@ -23,7 +23,15 @@ namespace Reecon
             string username = args[1];
             Console.WriteLine("Searching for " + username + "...");
             GetInstagramInfo(username);
-            GetRedditInfo(username);
+            try
+            {
+                GetRedditInfo(username); //- Borked on felmoltor
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Reddit OSINT is Broken - Bug Reelix: " + ex.Message);
+            }
+            GetSteamInfo(username);
             GetTwitterInfo(username);
             GetYouTubeInfo(username);
             GetGithubInfo(username);
@@ -39,14 +47,18 @@ namespace Reecon
                 {
                     Console.WriteLine("- Instagram: Not Found");
                 }
+                else
+                {
+                    Console.WriteLine("- Instagram: " + "Found".Pastel(Color.Green));
+                }
                 foreach (Instagram.User user in theObject.users)
                 {
                     string userUsername = user.user.username;
                     if (userUsername == username || userUsername == username.ToLower())
                     {
-                        Console.WriteLine("User ID: " + user.user.pk);
-                        Console.WriteLine("Full Name: " + user.user.full_name);
-                        Console.WriteLine("Username: " + user.user.username);
+                        Console.WriteLine("-- User ID: " + user.user.pk);
+                        Console.WriteLine("-- Full Name: " + user.user.full_name);
+                        Console.WriteLine("-- Username: " + user.user.username);
                     }
                 }
             }
@@ -180,6 +192,20 @@ namespace Reecon
             }
         }
 
+        public static void GetSteamInfo(string username)
+        {
+            string result = OSINT_Steam.GetInfo(username);
+            if (result == "")
+            {
+                Console.WriteLine("- Steam: Not Found");
+            }
+            else
+            {
+                Console.WriteLine("- Steam: " + "Found".Pastel(Color.Green));
+                Console.WriteLine(result);
+            }
+        }
+
         private static void GetTwitterInfo(string username)
         {
             // Twitter usernames don't have spaces
@@ -294,7 +320,7 @@ namespace Reecon
             }
         }
 
-        private static void GetGithubInfo(string username)
+        public static void GetGithubInfo(string username)
         {
             var httpInfo = Web.GetHTTPInfo($"https://api.github.com/users/{username}", "Reecon");
             if (httpInfo.StatusCode == HttpStatusCode.NotFound)

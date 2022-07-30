@@ -8,7 +8,7 @@ namespace Reecon
 {
     class SVN // 3690
     {
-        public static string GetInfo(string ip)
+        public static string GetInfo(string ip, int port)
         {
             string toReturn = "";
             if (General.GetOS() == General.OS.Linux)
@@ -48,7 +48,7 @@ namespace Reecon
                 }
                 else
                 {
-                    Console.WriteLine("svn is not installed - Skipping enumeration (You probably want to 'svn install subversion')");
+                    Console.WriteLine("svn is not installed - Skipping enumeration (You probably want to 'sudo apt install subversion')");
                 }
             }
             else
