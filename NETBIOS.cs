@@ -178,7 +178,7 @@ namespace Reecon
                         anonAccess = true;
                         rpcInfo += "- " + domainNameList[0] + Environment.NewLine;
                     }
-
+                    
                     // Server info
                     // Console.WriteLine("RPC - srvinfo");
                     List<string> srvinfoList = rpcclient.GetSrvinfoOutput(ip);
@@ -191,7 +191,7 @@ namespace Reecon
                         srvinfoList = rpcclient.GetSrvinfoOutput(ip, false);
                         setNoSigning = true;
                     }
-                    if (srvinfoList.Count != 0 && !srvinfoList[0].Contains("NT_STATUS_ACCESS_DENIED") && !srvinfoList[0].Contains("NT_STATUS_LOGON_FAILURE"))
+                    if (srvinfoList.Count != 0 && !srvinfoList.Any(x => x.Contains("NT_STATUS_ACCESS_DENIED")) && !srvinfoList[0].Contains("NT_STATUS_LOGON_FAILURE"))
                     {
                         // If it only worked with the no-signing backup - Yay!
                         if (setNoSigning)

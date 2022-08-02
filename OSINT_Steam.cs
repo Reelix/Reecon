@@ -11,6 +11,7 @@ namespace Reecon
     {
         public static string GetInfo(string name)
         {
+            // TODO: Fix layout bug - ChuckLephuck
             // Direct profile
             string profileName = GetProfileName(name);
 
@@ -43,7 +44,7 @@ namespace Reecon
             string sessionValue = pageText.Remove(0, pageText.IndexOf("g_sessionID = \"") + 15);
             sessionValue = sessionValue.Substring(0, sessionValue.IndexOf("\""));
 
-            pageText = General.DownloadString($"https://steamcommunity.com/search/SearchCommunityAjax?text={name}&filter=users&sessionid={sessionValue}", $"sessionid={sessionValue}");
+            pageText = General.DownloadString($"https://steamcommunity.com/search/SearchCommunityAjax?text={name}&filter=users&sessionid={sessionValue}", Cookie: $"sessionid={sessionValue}");
             OSINT_Steam_Search searchResults = JsonSerializer.Deserialize<OSINT_Steam_Search>(pageText);
             string htmlResult = searchResults.html;
             htmlResult = htmlResult.Remove(0, htmlResult.IndexOf("<a class=\"searchPersonaName\""));
@@ -67,6 +68,11 @@ namespace Reecon
                     return "";
                 }
                 string steamLink = profileLink.Substring(0, profileLink.IndexOf("\""));
+                if (steamLink == $"https://steamcommunity.com/id/{name}")
+                {
+                    // Match of the first - Ignore it
+                    continue;
+                }
                 string steamName = profileLink.Remove(0, profileLink.IndexOf(">") + 1);
                 steamName = steamName.Substring(0, steamName.IndexOf("<")); // Hope we don't have anyone with a > in their name
                 toReturn += $"-- Possible Match: {steamName} -> {steamLink}";
@@ -74,16 +80,6 @@ namespace Reecon
             return toReturn;
         }
     }
-
-    /*
-    public class SteamInfo
-    {
-        public bool Exists = false;
-        public DateTime CreationDate;
-        public int CommentKarma;
-        public List<OSINT_Reddit_Comments.Data1> CommentList = new();
-        public List<OSINT_Reddit_Submitted.Data1> SubmissionList = new();
-    }*/
 
     public class OSINT_Steam_Search
     {

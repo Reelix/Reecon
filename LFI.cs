@@ -2,14 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using ReeCode;
 
 namespace Reecon
 {
     class LFI
     {
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0044:Add readonly modifier")]
-        private static WebClient wc = new();
+        // private static WebClient wc = new();
         private static string baseURL = "";
         private static string baseLocation = "";
         private static int notFoundLength = 0;
@@ -152,7 +151,7 @@ namespace Reecon
             Console.WriteLine("Scanning: " + path);
 
             // First, check to make sure that the initial version works
-            HttpStatusCode statusCode = wc.GetResponseCode(path);
+            HttpStatusCode statusCode = General.GetResponseCode(path);
             if (statusCode != HttpStatusCode.OK)
             {
                 Console.WriteLine(path + " is not an OK page :(");

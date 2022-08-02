@@ -18,7 +18,6 @@ namespace Reecon
 {
     class General
     {
-        static HttpClient httpClient = new HttpClient();
         public static void ShowHelp()
         {
             Console.WriteLine("Usage");
@@ -394,6 +393,10 @@ namespace Reecon
             p.WaitForExit();
             p.Close();
             outputLines.RemoveAll(string.IsNullOrEmpty); // Useful?
+            if (processName == "nmap" && outputLines.Count == 0)
+            {
+                Console.WriteLine("Debug Args: " + arguments);
+            }
             return outputLines;
         }
 
@@ -514,15 +517,42 @@ namespace Reecon
             public IPAddress Address;
         }
 
-        public static string DownloadString(string path, string cookie="")
+        // Maybe move these to Web or another class?
+        public static HttpStatusCode GetResponseCode(string url)
         {
-            string toReturn = "";
-            HttpRequestMessage theRequest = new HttpRequestMessage(HttpMethod.Get, path);
-            if (cookie != "")
+            HttpClient httpClient = new HttpClient();
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, url);
+            using (HttpResponseMessage response = httpClient.Send(request))
             {
-                theRequest.Headers.Add("Cookie", cookie);
+                return response.StatusCode;
             }
-            using (HttpResponseMessage response = httpClient.Send(theRequest))
+        }
+
+        public static string DownloadString(string url, string Cookie = "", NetworkCredential Creds = null, string UserAgent = "")
+        {
+            // Note: This cannot go at the top due to the various custom values being set for it
+            HttpClient httpClient = new HttpClient();
+            string toReturn = "";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, url);
+            // Cookie
+            if (Cookie != "")
+            {
+                request.Headers.Add("Cookie", Cookie);
+            }
+
+            // Creds
+            if (Creds != null)
+            {
+                string auth = "Basic " + Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(Creds.UserName + ":" + Creds.Password));
+                request.Headers.Add("Authorization", auth);
+            }
+
+            // UserAgent
+            if (UserAgent != "")
+            {
+                request.Headers.Add("User-Agent", UserAgent);
+            }
+            using (HttpResponseMessage response = httpClient.Send(request))
             {
                 using (StreamReader readStream = new(response.Content.ReadAsStream()))
                 {
@@ -534,6 +564,7 @@ namespace Reecon
 
         public static async void DownloadFile(string uri, string outputPath)
         {
+            HttpClient httpClient = new HttpClient();
             Uri uriResult;
 
             if (!Uri.TryCreate(uri, UriKind.Absolute, out uriResult))

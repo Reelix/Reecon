@@ -20,7 +20,15 @@ namespace Reecon
                 // Xenial = -S
                 // processOutput = General.GetProcessOutput("rpcclient", $"-S off -U \"anonymous\"%\"\" {ip} -c \"{command}\"");
                 // Jammy = --option=clientsigning=off
+                
+                // Both will probably run each time if the first is bad - Really need to set it
                 processOutput = General.GetProcessOutput("rpcclient", $"--option=clientsigning=off -U \"anonymous\"%\"\" {ip} -c \"{command}\"");
+
+                // Happens if smb2-security-mode: -> Message signing enabled and required
+                if (processOutput.Any(x => x.Contains("Bad SMB2 (sign_algo_id=2) signature for message")))
+                {
+                    processOutput = General.GetProcessOutput("rpcclient", $"--option=clientsigning=off -U \"\"%\"\" {ip} -c \"{command}\"");
+                }
             }
             return processOutput;
         }

@@ -82,11 +82,11 @@ namespace Reecon
                 {
                     Port thePort = PortInfoList.First(x => x.Number == port);
                     string portHeader = $"Port {thePort.Number} - {thePort.FriendlyName}";
+                    
+                    // No Custom File for it
                     if (thePort.FileName == "N/A")
                     {
                         Console.WriteLine(portHeader.Pastel(Color.Green) + Environment.NewLine + $"- Reecon currently lacks {thePort.FriendlyName} support" + Environment.NewLine);
-                        string additionalPortInfo = GetAdditionalPortInfo(target, port);
-                        return additionalPortInfo;
                     }
                     else
                     {
@@ -106,9 +106,6 @@ namespace Reecon
                                     string portData = result.ToString();
                                     // Display it
                                     Console.WriteLine(portHeader.Pastel(Color.Green) + Environment.NewLine + portData + Environment.NewLine);
-                                    // Find anything else that may be useful for the "Some things you probably want to do" list
-                                    string additionalPortInfo = GetAdditionalPortInfo(target, port);
-                                    return additionalPortInfo;
                                 }
                                 catch (Exception ex)
                                 {
@@ -136,10 +133,21 @@ namespace Reecon
                             Console.WriteLine($"Missing Class: {thePort.FileName}");
                         }
                     }
+
+                    // Get additional info for post-scan running
+                    try
+                    {
+                        string additionalPortInfo = GetAdditionalPortInfo(target, port);
+                        return additionalPortInfo;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Fatal Error retreiving additional Info for port {port} - {ex.Message}- Bug Reelix ASAP!".Pastel(Color.Red));
+                    }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error: {ex.Message}");
+                    Console.WriteLine($"Ultra Fatal Error in ScanPort - Bug Reelix: {ex.Message}");
                 }
             }
             else
@@ -451,8 +459,15 @@ namespace Reecon
             else if (port == 88)
             {
                 // Post Scan
-                string defaultNamingContext = LDAP.GetDefaultNamingContext(target, true);
-                Console.WriteLine("Original defaultNamingContext: " + defaultNamingContext);
+                string defaultNamingContext = "Unknown";
+                try
+                {
+                    defaultNamingContext = LDAP.GetDefaultNamingContext(target, true);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("- Error: Unable to retrieve DefaultNamingContext: " + ex.Message + Environment.NewLine);
+                }
                 defaultNamingContext = defaultNamingContext.Replace("DC=", "").Replace("dc=", "").Replace(",", ".");
 
                 // Username enum
