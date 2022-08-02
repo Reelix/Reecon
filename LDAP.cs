@@ -1,13 +1,14 @@
-﻿using LdapForNet;
-using LdapForNet.Native;
-using System;
-using System.Collections.Generic;
+﻿using System;
+using System.DirectoryServices.Protocols;
+using System.Net;
+using System.Text;
 
 namespace Reecon
 {
     class LDAP // Port 389
     {
-        static LdapCredential ldapCreds = new LdapCredential();
+        // Linux requires: https://packages.ubuntu.com/focal-updates/amd64/libldap-2.4-2/download
+        // https://github.com/dotnet/runtime/issues/69456
         static string rootDseString = "";
 
         static int ldapPort = 0;
@@ -15,77 +16,153 @@ namespace Reecon
         {
             string returnInfo = "";
             ldapPort = port;
-            returnInfo += LDAP.GetDefaultNamingContext(ip);
-            returnInfo += LDAP.GetAccountInfo(ip);
+            returnInfo = LDAP.GetDefaultNamingContext(ip);
+            //returnInfo += LDAPNew.GetDefaultNamingContext(ip);
+            // returnInfo += LDAP.GetAccountInfo(ip);
             return returnInfo.Trim(Environment.NewLine.ToCharArray());
         }
 
         public static string GetDefaultNamingContext(string ip, bool raw = false)
         {
             string ldapInfo = string.Empty;
-            using (LdapConnection ldapConnection = new LdapConnection())
+            LdapDirectoryIdentifier identifier = new LdapDirectoryIdentifier(ip);
+            NetworkCredential creds = new NetworkCredential();
+            //creds.UserName = "support\\ldap";
+            creds.UserName = null;
+            creds.Password = null;
+            //creds.Password = original;
+            LdapConnection connection = new LdapConnection(identifier, null)
             {
-                ldapConnection.Connect(ip, 389);
-                try
+                AuthType = AuthType.Anonymous,
+                SessionOptions =
                 {
-                    ldapConnection.Bind(Native.LdapAuthType.Simple, ldapCreds);
+                    ProtocolVersion = 3
                 }
-                catch (LdapException le)
+            };
+            SearchRequest searchRequest = new SearchRequest(null, "(objectclass=*)", SearchScope.Base);
+            var response = connection.SendRequest(searchRequest) as SearchResponse;
+            var searchEntries = response.Entries;
+            if (searchEntries[0].Attributes.Contains("defaultNamingContext"))
+            {
+                DirectoryAttribute coll = searchEntries[0].Attributes["defaultNamingContext"];
+                string defaultNamingContext = "";
+                if (General.GetOS() == General.OS.Windows)
                 {
-                    return "- Connection Error: " + le.Message + Environment.NewLine;
-                }
-                catch (Exception ex)
-                {
-                    return "- Unknown Error: " + ex.Message + Environment.NewLine;
-                }
-                // ldapConnection.AuthType = AuthType.Anonymous;
-
-                var searchEntries = ldapConnection.Search(null, "(objectclass=*)", scope: Native.LdapSearchScope.LDAP_SCOPE_BASE);
-                // SearchRequest request = new SearchRequest(null, "(objectclass=*)", System.DirectoryServices.Protocols.SearchScope.Base, "defaultNamingContext");
-
-                // SearchResponse result = (SearchResponse)ldapConnection.SendRequest(request);
-
-                if (searchEntries.Count == 1)
-                {
-                    if (searchEntries[0].DirectoryAttributes.Contains("defaultNamingContext"))
-                    {
-                        string defaultNamingContext = searchEntries[0].DirectoryAttributes["defaultNamingContext"].GetValue<string>();
-                        rootDseString = defaultNamingContext;
-                        if (raw)
-                        {
-                            ldapInfo = defaultNamingContext;
-                        }
-                        else
-                        {
-                            ldapInfo = $"- defaultNamingContext: {defaultNamingContext}" + Environment.NewLine;
-                        }
-                    }
-                    else if (searchEntries[0].DirectoryAttributes.Contains("objectClass"))
-                    {
-                        string objectClass = searchEntries[0].DirectoryAttributes["objectClass"].GetValue<string>();
-                        ldapInfo = "- No defaultNamingContext, but we have an objectClass: " + objectClass + Environment.NewLine;
-                    }
-                    else
-                    {
-                        ldapInfo = "- Error: No defaultNamingContext! Keys: " + searchEntries[0].DirectoryAttributes.Count + Environment.NewLine;
-                        foreach (var item in searchEntries[0].DirectoryAttributes)
-                        {
-                            ldapInfo += "- Found Key: " + item.Name + " with value " + item.GetValue<string>() + Environment.NewLine;
-                        }
-                    }
+                    byte[] byteList = (byte[])coll[0];
+                    defaultNamingContext = Encoding.UTF8.GetString(byteList);
                 }
                 else
                 {
-                    ldapInfo = "- Multiple items found! Bug Reelix!" + Environment.NewLine;
+                    defaultNamingContext = coll[0].ToString();
+                }
+                
+                if (raw)
+                {
+                    ldapInfo = defaultNamingContext;
+                }
+                else
+                {
+                    ldapInfo = $"- defaultNamingContext: {defaultNamingContext}" + Environment.NewLine;
                 }
             }
+            else if (searchEntries[0].Attributes.Contains("objectClass"))
+            {
+                string objectClass = searchEntries[0].Attributes["objectClass"].ToString();
+                ldapInfo = "- No defaultNamingContext, but we have an objectClass - Bug Reelix To Fix: " + objectClass + Environment.NewLine;
+            }
+            else
+            {
+                ldapInfo = "- Error: No defaultNamingContext! Keys: " + searchEntries[0].Attributes.Count + Environment.NewLine;
+                foreach (var item in searchEntries[0].Attributes)
+                {
+                    Console.WriteLine("Bug Reelix To Fix");
+                    //ldapInfo += "- Found Key: " + item.Name + " with value " + item.GetValue<string>() + Environment.NewLine;
+                }
+            }
+            // var searchEntries = ldapConnection.Search(null, "(objectclass=*)", scope: Native.LdapSearchScope.LDAP_SCOPE_BASE);
             return ldapInfo;
+        }
+
+        public static string GetInfo2(string ip)
+        {
+            string ldapInfo = string.Empty;
+            LdapDirectoryIdentifier identifier = new LdapDirectoryIdentifier(ip);
+            NetworkCredential creds = new NetworkCredential();
+            //creds.UserName = "support\\ldap";
+            creds.UserName = "support\\ldap";
+            creds.Password = "Invalid"; // getPassword();
+            //creds.Password = original;
+            LdapConnection connection = new LdapConnection(identifier, creds)
+            {
+                AuthType = AuthType.Basic,
+                SessionOptions =
+                {
+                    ProtocolVersion = 3
+                }
+            };
+            try
+            {
+                connection.Bind();
+                Console.WriteLine("Correct Creds");
+            }
+            catch (Exception ex)
+            {
+                if (ex.Message == "The supplied credential is invalid.")
+                {
+                    Console.WriteLine("Invalid Creds");
+                }
+                else
+                {
+                    Console.WriteLine("Unknown Error in LdapNew.GetInfo2 - Bug Reelix: " + ex.Message);
+                }
+            }
+            return "";
+            /*
+            SearchRequest searchRequest = new SearchRequest(null, "(objectclass=*)", SearchScope.Base);
+            var response = connection.SendRequest(searchRequest) as SearchResponse;
+            var searchEntries = response.Entries;
+            return "Woof";
+            */
         }
 
         public static string GetAccountInfo(string ip, string username = null, string password = null)
         {
             string ldapInfo = string.Empty;
-
+            LdapDirectoryIdentifier identifier = new LdapDirectoryIdentifier(ip);
+            NetworkCredential creds = new NetworkCredential();
+            //creds.UserName = "support\\ldap";
+            creds.UserName = username;
+            creds.Password = password;
+            if (username == null && password == null)
+            {
+                creds = null;
+            }
+            LdapConnection connection = new LdapConnection(identifier, creds)
+            {
+                AuthType = AuthType.Basic,
+                SessionOptions =
+                {
+                    ProtocolVersion = 3
+                }
+            };
+            try
+            {
+                connection.Bind();
+                Console.WriteLine("Correct Creds");
+            }
+            catch (Exception ex)
+            {
+                if (ex.Message == "The supplied credential is invalid.")
+                {
+                    Console.WriteLine("Invalid Creds");
+                }
+                else
+                {
+                    Console.WriteLine("Unknown Error in LdapNew.GetInfo2 - Bug Reelix: " + ex.Message);
+                }
+            }
+            return "Woof";
+            /*
             using (LdapConnection ldapConnection = new LdapConnection())
             {
                 try
@@ -200,6 +277,7 @@ namespace Reecon
                 }
             }
             return ldapInfo.Trim(Environment.NewLine.ToCharArray());
+            */
         }
     }
 }

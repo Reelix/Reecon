@@ -26,7 +26,6 @@ namespace Reecon
 
         private static void Search(string searchCommand)
         {
-            WebClient wc = new();
             if (searchCommand.Contains("-update"))
             {
                 Console.WriteLine("Updating...");
@@ -35,7 +34,7 @@ namespace Reecon
                     Console.WriteLine("Existing exploit database found - Removing");
                 }
                 Console.WriteLine("Downloading update...");
-                wc.DownloadFile("https://github.com/offensive-security/exploitdb/raw/master/files_exploits.csv", "files_exploits.csv");
+                General.DownloadFile("https://github.com/offensive-security/exploitdb/raw/master/files_exploits.csv", "files_exploits.csv");
                 Console.WriteLine("Update complete!");
                 return;
             }
@@ -59,8 +58,7 @@ namespace Reecon
                         Console.WriteLine("Exploit " + theItem.ID + ": " + theItem.Title);
                         string URL = "https://www.exploit-db.com/download/" + theItem.ID;
                         Console.WriteLine(URL);
-                        wc.Headers[HttpRequestHeader.UserAgent] = "curl/7.55.1"; // Download restriction bypass
-                        string downloadData = wc.DownloadString(URL);
+                        string downloadData = General.DownloadString(URL, UserAgent: "curl/7.55.1"); // Download restriction bypass
                         Console.WriteLine(downloadData);
                     }
                     else

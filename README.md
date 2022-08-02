@@ -1,9 +1,10 @@
 # Reecon
 
 Reelix's Recon - A small program for network recon. This program is still in early stages of development and should probably not be used by anyone.
-* Version: 0.28c
+* Version: 0.29
 * Build Status: <img src = "https://travis-ci.com/Reelix/Reecon.svg?branch=master" valign="middle" />
 * Requirements: [NMap 7.92+](https://nmap.org/download.html), [.NET 6.0](https://dotnet.microsoft.com/download/dotnet/6.0)
+  * LDAP Enumeration on Ubuntu 22.04: dpkg -i [this](https://packages.ubuntu.com/focal-updates/amd64/libldap-2.4-2/download)
 * Recommended:
   * HTTP/S Enumeration: [Gobuster](https://github.com/OJ/gobuster)
   * SMB Enumeration: [smbclient](https://github.com/SecureAuthCorp/impacket/blob/master/examples/smbclient.py)
@@ -22,7 +23,7 @@ Reelix's Recon - A small program for network recon. This program is still in ear
 ### Linux (Ubuntu 22.04)
 
 #### Install repository configuration
-curl -sSL https://packages.microsoft.com/config/ubuntu/20.04/prod.list | sudo tee /etc/apt/sources.list.d/microsoft-prod.list
+curl -sSL https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/microsoft-prod.list
 
 #### Install Microsoft GPG public key
 curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc

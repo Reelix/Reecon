@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using System.Diagnostics.CodeAnalysis; // For message supression
 
 namespace Reecon
 {
@@ -16,7 +15,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.28c ( https://github.com/Reelix/Reecon )");
+            Console.WriteLine("Reecon - Version 0.29 ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
