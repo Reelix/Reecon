@@ -14,7 +14,7 @@
   <ItemGroup>
     <PackageReference Include="FluentFTP" Version="37.1.2" />
     <PackageReference Include="MySqlConnector" Version="2.1.11" />
-    <PackageReference Include="Npgsql" Version="6.0.5" />
+    <PackageReference Include="Npgsql" Version="6.0.6" />
     <PackageReference Include="System.DirectoryServices.Protocols" Version="6.0.1" />
 	<EmbeddedResource Include="Ports.txt" />
   </ItemGroup>
