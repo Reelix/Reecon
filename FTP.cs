@@ -228,11 +228,11 @@ namespace Reecon
             foreach (FtpListItem item in client.GetListing("/", FtpListOption.AllFiles))
             {
                 string fileType = "";
-                if (item.Type == FtpFileSystemObjectType.Directory)
+                if (item.Type == FtpObjectType.Directory)
                 {
                     fileType = " (Directory - Might want to look into this)";
                 }
-                else if (item.Type == FtpFileSystemObjectType.File)
+                else if (item.Type == FtpObjectType.File)
                 {
                     fileType = " (File)";
                 }
@@ -241,7 +241,7 @@ namespace Reecon
                     fileType = " (Fix Me!)";
                 }
                 toReturn += "-- " + item.Name + fileType + Environment.NewLine;
-                if (item.Type == FtpFileSystemObjectType.File && item.Name.EndsWith(".txt"))
+                if (item.Type == FtpObjectType.File && item.Name.EndsWith(".txt"))
                 {
                     using Stream stream = client.OpenRead(item.FullName);
                     using StreamReader reader = new(stream);

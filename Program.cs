@@ -14,7 +14,7 @@ namespace Reecon
         static void Main(string[] args)
         {
             DateTime startDate = DateTime.Now;
-            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.ForegroundColor = ConsoleColor.Yellow; // .Pastel has a weirder yellow to the one I want
             Console.WriteLine("Reecon - Version 0.29 ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
@@ -25,7 +25,7 @@ namespace Reecon
             }
 
             // Check if it's anything custom
-            if (args.Contains("-h") || args.Contains("--help")) // One contains the other, but it's just for clarity
+            if (args.Contains("-h") || args.Contains("--help"))
             {
                 General.ShowHelp();
                 Console.ResetColor();
@@ -49,6 +49,12 @@ namespace Reecon
             else if (args.Contains("-lfi") || args.Contains("--lfi"))
             {
                 LFI.Scan(args);
+                Console.ResetColor();
+                return;
+            }
+            else if (args.Contains("-osint") || args.Contains("--osint"))
+            {
+                OSINT.GetInfo(args);
                 Console.ResetColor();
                 return;
             }
@@ -88,24 +94,18 @@ namespace Reecon
                 Console.ResetColor();
                 return;
             }
-            else if (args.Contains("-osint") || args.Contains("--osint"))
-            {
-                OSINT.GetInfo(args);
-                Console.ResetColor();
-                return;
-            }
 
             // Check if you should check if the target is up
             bool mustPing = true;
             if (args.Contains("-noping") || args.Contains("--noping"))
             {
                 mustPing = false;
-                args = args.Where(x => !x.Contains("noping")).ToArray();
+                args = args.Where(x => !x.Contains("-noping")).ToArray();
             }
             // A common typo
             if (args.Contains("-nopign"))
             {
-                Console.WriteLine("You typo'd noping");
+                Console.WriteLine("You probably typo'd -noping");
                 Console.ResetColor();
                 return;
             }

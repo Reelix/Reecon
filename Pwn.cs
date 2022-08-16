@@ -11,13 +11,14 @@ namespace Reecon
         {
             if (args.Length != 2)
             {
-                Console.WriteLine("rop Usage: reecon -rop fileNameHere");
+                Console.WriteLine("pwn Usage: reecon -pwn fileNameHere");
                 return;
             }
             string fileName = args[1];
             if (!File.Exists(fileName))
             {
                 Console.WriteLine(fileName + " does not exist.");
+                return;
             }
             ScanFile(fileName);
         }
@@ -382,7 +383,14 @@ namespace Reecon
             }
             else
             {
-                Console.WriteLine("Unknown File Type Identifier");
+                if (BitConverter.ToString(headerBytes) == "66-72-6F-6D-20") // f r o m {space}
+                {
+                    Console.WriteLine("Error - Cannot find Architecture - That's probably a Python file...");
+                }
+                else
+                {
+                    Console.WriteLine("Error - Unknown File Type - First 5 Hex Bytes: " + BitConverter.ToString(headerBytes));
+                }
                 return Architecture.Unknown;
             }
         }

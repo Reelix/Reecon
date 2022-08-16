@@ -13,12 +13,12 @@ namespace Reecon
         {
             string returnString = "";
             // Get basic data
-            string pageData = General.DownloadString($"http://{ip}:{port}/");
+            string pageData = Web.DownloadString($"http://{ip}:{port}/");
             ElasticSearchObject theObject = JsonSerializer.Deserialize<ElasticSearchObject>(pageData);
             // Simialr formatting to nmap
             returnString += $"- Version: {theObject.version.number} (name: {theObject.name}; cluster: {theObject.cluster_name}; Lucene: {theObject.version.lucene_version}){Environment.NewLine}";
             // Get indices
-            string indexData = General.DownloadString($"http://{ip}:{port}/_cat/indices"); // ?v for non-ordered data
+            string indexData = Web.DownloadString($"http://{ip}:{port}/_cat/indices"); // ?v for non-ordered data
             List<string> indexList = indexData.Split(Environment.NewLine.ToCharArray()).ToList();
             // Remove any empty indices
             indexList = indexList.Where(x => x.Length != 0).ToList();

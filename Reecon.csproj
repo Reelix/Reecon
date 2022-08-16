@@ -7,15 +7,23 @@
 	<RuntimeIdentifier>win-x64</RuntimeIdentifier>
 	<PlatformTarget>x64</PlatformTarget>
 	<StartupObject>Reecon.Program</StartupObject>
-	<SignAssembly>false</SignAssembly>
+	<SignAssembly>true</SignAssembly>
 	<SelfContained>false</SelfContained>
+	<Platforms>x64</Platforms>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FluentFTP" Version="37.1.2" />
+	<!-- FTP - To find hidden folders (Named .) and to read strings on files -->
+	<PackageReference Include="FluentFTP" Version="39.2.1" />
+	<!-- MySQL - To interact with MySQL servers -->
     <PackageReference Include="MySqlConnector" Version="2.1.11" />
-    <PackageReference Include="Npgsql" Version="6.0.5" />
+	<!-- To access PostgreSQL servers -->
+    <PackageReference Include="Npgsql" Version="6.0.6" />
+	<!-- Better Console color output -->
+    <PackageReference Include="Pastel" Version="3.0.1" />
+	<!-- LDAP -->
     <PackageReference Include="System.DirectoryServices.Protocols" Version="6.0.1" />
+	<!-- A list of ports and their descriptions -->
 	<EmbeddedResource Include="Ports.txt" />
   </ItemGroup>
 

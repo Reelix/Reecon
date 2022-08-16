@@ -483,6 +483,10 @@ namespace Reecon
                 // Post exploitation
                 postScanActions += $"- If you get details: python3 secretsdump.py usernameHere:\"passwordHere\"@{target} | grep :" + Environment.NewLine;
             }
+            else if (port == 139)
+            {
+                postScanActions += $"- Port 139 - rpcdump.py @{target} (Probably egrep for 'MS-RPRN|MS-PAR' for the PrintSpooler exploits)" + Environment.NewLine;
+            }
             else if (port == 443)
             {
                 postScanActions += $"- gobuster dir -u=https://{target}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-https-medium.txt -x.php,.txt" + Environment.NewLine;

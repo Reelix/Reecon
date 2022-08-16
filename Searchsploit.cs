@@ -58,7 +58,7 @@ namespace Reecon
                         Console.WriteLine("Exploit " + theItem.ID + ": " + theItem.Title);
                         string URL = "https://www.exploit-db.com/download/" + theItem.ID;
                         Console.WriteLine(URL);
-                        string downloadData = General.DownloadString(URL, UserAgent: "curl/7.55.1"); // Download restriction bypass
+                        string downloadData = Web.DownloadString(URL, UserAgent: "curl/7.55.1"); // Download restriction bypass
                         Console.WriteLine(downloadData);
                     }
                     else

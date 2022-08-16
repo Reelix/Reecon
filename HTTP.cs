@@ -51,7 +51,7 @@ namespace Reecon
                 {
                     return "";
                 }
-                string portData = Web.FormatHTTPInfo(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert, httpInfo.URL);
+                string portData = Web.ParseHTTPInfo(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert, httpInfo.URL);
 
                 // The final Environment.NewLine is stripped from portData, so we need to re-add it
                 if (httpInfo.StatusCode == System.Net.HttpStatusCode.Unauthorized)
