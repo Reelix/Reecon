@@ -21,7 +21,10 @@ Reelix's Recon - A small program for network recon. This program is still in ear
 
 ## Build Instructions
 ### Linux (Ubuntu 22.04)
+sudo apt update
+sudo apt install dotnet-runtime-6.0
 
+### Linux (Ubuntu < 22.04)
 #### Install repository configuration
 curl -sSL https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/microsoft-prod.list
 
@@ -31,12 +34,14 @@ curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/
 #### Update package index files
 sudo apt-get update
 
-1.) Install the .NET 6 Runtime if you don't have it: sudo apt install dotnet-runtime-6.0  
-2.) Clone the repo: `git clone https://github.com/Reelix/Reecon.git`  
-3.) Run the build file: `chmod +x ./Reecon/build && ./Reecon/build`  
-4.) Run: `./reecon`  
-5.) Optional: Move `./reecon` into `/usr/local/bin/reecon` to be able to run `reecon` from anywhere  
-6.) Optional: You can remove the `Reecon` folder if you want - The binary is standalone
+### Install the dotnet runtime
+sudo apt install dotnet-runtime-6.0  
+
+1.) Clone the repo: `git clone https://github.com/Reelix/Reecon.git`  
+2.) Run the build file: `chmod +x ./Reecon/build && ./Reecon/build`  
+3.) Run: `./reecon`  
+4.) Optional: Move `./reecon` into `/usr/local/bin/reecon` to be able to run `reecon` from anywhere  
+5.) Optional: You can remove the `Reecon` folder if you want - The binary is standalone
 
 ### Windows  
 1.) Clone the repo: `git clone https://github.com/Reelix/Reecon.git`  
