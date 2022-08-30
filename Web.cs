@@ -40,13 +40,16 @@ namespace Reecon
             var httpInfo = Web.GetHTTPInfo(scanURL);
             string pageText = httpInfo.PageText;
             string pageInfo = FindInfo(pageText);
+            // Add a newline if it returns something
+            pageInfo += pageInfo != "" ? Environment.NewLine : "";
             pageInfo += FindLinks(pageText); // Todo: Recursive
             // TODO: Auto SQLi - Web.GetInfo(new[] { "-web", "http://testphp.vulnweb.com/" });
+            string parsedHTTPInfo = ParseHTTPInfo(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert, httpInfo.URL);
+            Console.WriteLine(parsedHTTPInfo);
             if (pageInfo.Trim() != "")
             {
                 Console.WriteLine(pageInfo);
             }
-            Console.WriteLine(ParseHTTPInfo(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert, httpInfo.URL));
 
             // Then find common files
             Console.WriteLine("Searching for common files...");
@@ -869,10 +872,10 @@ namespace Reecon
             // Headers!
             if (Headers.Any())
             {
+                string urlWithSlash = URL.EndsWith("/") ? URL : URL + "/";
                 // Server info
                 if (Headers.Any(x => x.Key == "Server"))
                 {
-                    // Note: {URL} ends with a /
                     string serverText = Headers.Server.ToString();
                     Headers.Remove("Server");
                     // Eg: Apache/2.4.46, (Win64), OpenSSL/1.1.1j, PHP/7.3.27
@@ -906,7 +909,7 @@ namespace Reecon
                     else if (serverText.StartsWith("Werkzeug/"))
                     {
                         responseText += "-- " + "Werkzeug Detected" + Environment.NewLine;
-                        var consolePage = GetHTTPInfo($"{URL}console");
+                        var consolePage = GetHTTPInfo($"{urlWithSlash}console");
                         if (consolePage.StatusCode != HttpStatusCode.NotFound)
                         {
                             if (consolePage.PageText.Contains("The console is locked and needs to be unlocked by entering the PIN."))
@@ -935,19 +938,19 @@ namespace Reecon
                     else if (serverText.StartsWith("CouchDB/"))
                     {
                         responseText += "-- CouchDB Detected!" + Environment.NewLine;
-                        var utilsPage = GetHTTPInfo($"{URL}_utils/");
+                        var utilsPage = GetHTTPInfo($"{urlWithSlash}_utils/");
                         if (utilsPage.StatusCode == HttpStatusCode.OK || utilsPage.StatusCode == HttpStatusCode.NotModified)
                         {
                             responseText += "--- " + $"Web Admin Tool Found: {utilsPage.URL}".Pastel(Color.Orange) + Environment.NewLine;
                         }
-                        var allDBsPage = GetHTTPInfo($"{URL}_all_dbs");
+                        var allDBsPage = GetHTTPInfo($"{urlWithSlash}_all_dbs");
                         if (allDBsPage.StatusCode == HttpStatusCode.OK)
                         {
                             string allDBsPageText = allDBsPage.PageText.Trim(Environment.NewLine.ToCharArray());
                             responseText += "--- " + $"All DBs Found ( {allDBsPage.URL} ) : {allDBsPageText}".Pastel(Color.Orange) + Environment.NewLine;
-                            responseText += $"--- Enumeration: {URL}dbNameHere/_all_docs" + Environment.NewLine;
+                            responseText += $"--- Enumeration: {urlWithSlash}dbNameHere/_all_docs" + Environment.NewLine;
                             // ID or Key Name? They both seem to be the same in test scnearios...
-                            responseText += $"--- Enumeration: {URL}dbNameHere/idHere" + Environment.NewLine;
+                            responseText += $"--- Enumeration: {urlWithSlash}dbNameHere/idHere" + Environment.NewLine;
                         }
                     }
                 }
@@ -1215,6 +1218,18 @@ namespace Reecon
                     }
                 }
 
+                // Grafana
+                if (PageText.Contains("Grafana v")) // ,"subTitle":"Grafana v8.3.0 (914fcedb72)"
+                {
+                    responseText += "- " + "Grafana detected!".Pastel(Color.Orange) + Environment.NewLine;
+                    string grafanaVersion = PageText.Remove(0, PageText.IndexOf("Grafana v") + 8);
+                    grafanaVersion = grafanaVersion.Substring(0, grafanaVersion.IndexOf("\""));
+                    responseText += "-- Version: " + grafanaVersion + Environment.NewLine;
+                    if (grafanaVersion.Contains("v8."))
+                    {
+                        responseText += "--- " + "Possibly vulnerable to CVE-2021-43798 (Grafana versions 8.0.0-beta1 through 8.3.0)".Pastel(Color.Orange) + Environment.NewLine;
+                    }
+                }
                 // Icecast
                 if (PageText.Trim() == "<b>The source you requested could not be found.</b>")
                 {
@@ -1420,14 +1435,15 @@ namespace Reecon
             }
         }
 
-        public static string DownloadString(string url, string Cookie = "", NetworkCredential Creds = null, string UserAgent = "")
+        public static string DownloadString(string url, string Cookie = null, NetworkCredential Creds = null, string UserAgent = null)
         {
             // Note: This cannot go at the top due to the various custom values being set for it
             HttpClient httpClient = new HttpClient();
             string toReturn = "";
+
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, url);
             // Cookie
-            if (Cookie != "")
+            if (Cookie != null)
             {
                 request.Headers.Add("Cookie", Cookie);
             }
@@ -1435,12 +1451,12 @@ namespace Reecon
             // Creds
             if (Creds != null)
             {
-                string auth = "Basic " + Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(Creds.UserName + ":" + Creds.Password));
+                string auth = "Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(Creds.UserName + ":" + Creds.Password));
                 request.Headers.Add("Authorization", auth);
             }
 
             // UserAgent
-            if (UserAgent != "")
+            if (UserAgent != null)
             {
                 request.Headers.Add("User-Agent", UserAgent);
             }

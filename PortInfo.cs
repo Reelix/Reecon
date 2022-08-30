@@ -240,8 +240,8 @@ namespace Reecon
                     if (httpsData != "")
                     {
                         Console.WriteLine(unknownPortResult += $"Port {port} - HTTPS".Pastel(Color.Green) + Environment.NewLine + httpsData + Environment.NewLine);
-                        postScanActions += $"- gobuster dir -u=https://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-{port}-medium.txt -x.php,.txt" + Environment.NewLine;
-                        postScanActions += $"- gobuster dir -u=https://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-{port}-common.txt -x.php,.txt" + Environment.NewLine;
+                        postScanActions += $"- gobuster dir -u https://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-{port}-medium.txt -x.php,.txt" + Environment.NewLine;
+                        postScanActions += $"- gobuster dir -u https://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-{port}-common.txt -x.php,.txt" + Environment.NewLine;
                     }
                 }
                 // Probably a general HTTP or HTTPS web server - Try both
@@ -260,8 +260,8 @@ namespace Reecon
                     if (httpData != "")
                     {
                         Console.WriteLine(unknownPortResult += $"Port {port} - HTTP".Pastel(Color.Green) + Environment.NewLine + httpData + Environment.NewLine);
-                        postScanActions += $"- gobuster dir -u=http://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-" + port + "-medium.txt -x.php,.txt" + Environment.NewLine;
-                        postScanActions += $"- gobuster dir -u=http://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-" + port + "-common.txt -x.php,.txt" + Environment.NewLine;
+                        postScanActions += $"- gobuster dir -u http://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-" + port + "-medium.txt -x.php,.txt" + Environment.NewLine;
+                        postScanActions += $"- gobuster dir -u http://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-" + port + "-common.txt -x.php,.txt" + Environment.NewLine;
                     }
                     if (Web.BasicHTTPSTest(target, port))
                     {
@@ -269,8 +269,8 @@ namespace Reecon
                         if (httpsData != "")
                         {
                             Console.WriteLine(unknownPortResult += $"Port {port} - HTTPS".Pastel(Color.Green) + Environment.NewLine + httpsData + Environment.NewLine);
-                            postScanActions += $"- gobuster dir -u=https://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-{port}-medium.txt -x.php,.txt" + Environment.NewLine;
-                            postScanActions += $"- gobuster dir -u=https://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-{port}-common.txt -x.php,.txt" + Environment.NewLine;
+                            postScanActions += $"- gobuster dir -u https://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-{port}-medium.txt -x.php,.txt" + Environment.NewLine;
+                            postScanActions += $"- gobuster dir -u https://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-{port}-common.txt -x.php,.txt" + Environment.NewLine;
                         }
                     }
                     break;
@@ -452,8 +452,8 @@ namespace Reecon
             }
             else if (port == 80)
             {
-                postScanActions += $"- gobuster dir -u=http://{target}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http-medium.txt -x.php,.txt" + Environment.NewLine;
-                postScanActions += $"- gobuster dir -u=http://{target}/ -w ~/wordlists/common.txt -t 25 -o gobuster-http-common.txt -x.php,.txt" + Environment.NewLine;
+                postScanActions += $"- gobuster dir -u http://{target}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http-medium.txt -x.php,.txt" + Environment.NewLine;
+                postScanActions += $"- gobuster dir -u http://{target}/ -w ~/wordlists/common.txt -t 25 -o gobuster-http-common.txt -x.php,.txt" + Environment.NewLine;
 
             }
             else if (port == 88)
@@ -480,6 +480,9 @@ namespace Reecon
                 // The / at the end of defaultNamingContext is not a typo and is required
                 postScanActions += $"- Kerberos non-preauth: sudo GetNPUsers.py {defaultNamingContext}/ -usersfile users.txt -dc-ip {target}" + Environment.NewLine;
 
+                // Try to find Service Principal Names that are associated with normal user account.
+                postScanActions += $"- Kerberos Associated SPNs (Auth'd): GetUserSPNs.py {defaultNamingContext}/username:\"password\" -request" + Environment.NewLine;
+
                 // Post exploitation
                 postScanActions += $"- If you get details: python3 secretsdump.py usernameHere:\"passwordHere\"@{target} | grep :" + Environment.NewLine;
             }
@@ -489,8 +492,8 @@ namespace Reecon
             }
             else if (port == 443)
             {
-                postScanActions += $"- gobuster dir -u=https://{target}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-https-medium.txt -x.php,.txt" + Environment.NewLine;
-                postScanActions += $"- gobuster dir -u=https://{target}/ -w ~/wordlists/common -t 25 -o gobuster-https-common.txt -x.php,.txt" + Environment.NewLine;
+                postScanActions += $"- gobuster dir -u https://{target}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-https-medium.txt -x.php,.txt" + Environment.NewLine;
+                postScanActions += $"- gobuster dir -u https://{target}/ -w ~/wordlists/common -t 25 -o gobuster-https-common.txt -x.php,.txt" + Environment.NewLine;
             }
             else if (port == 445)
             {

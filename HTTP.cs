@@ -10,7 +10,8 @@ namespace Reecon
             if (result.Contains("Page Text: Client sent an HTTP request to an HTTPS server."))
             {
                 // Whoops - HTTPS Server!
-                Console.WriteLine("-- Possible HTTP Server - Bug Reelix to fix this!");
+                // TODO: This still returns as HTTP instead of HTTPS though - Need to find a way to change it...
+                result = GetInfoMain(target, port, true);
             }
             return result;
         }

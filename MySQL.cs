@@ -33,6 +33,10 @@ namespace Reecon
             catch (MySqlException ex)
             {
                 // Access Denied (Incorrect password)
+                if (ex.Number == 1042)
+                {
+                    return "- Error 1042 - Timeout :(";
+                }
                 if (ex.Number == 1045)
                 {
                     string defaultCredsResult = TestDefaults(target, port);

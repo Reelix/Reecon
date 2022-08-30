@@ -184,7 +184,6 @@ namespace Reecon
                             }
                             else if (rcptToResponse.StartsWith("501")) // 501 5.1.3 Bad recipient address syntax
                             {
-                                Console.WriteLine("DEBUG: " + rcptToResponse);
                                 // Can't RCPT to mails - How about names?
                                 // https://github.com/rapid7/metasploit-framework/blob/master//modules/auxiliary/scanner/smtp/smtp_enum.rb
                                 returnText += "-- Unable to RCPT TO addresses - Checking name test..." + Environment.NewLine;

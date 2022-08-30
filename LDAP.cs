@@ -1,5 +1,8 @@
-﻿using System;
+﻿using Pastel;
+using System;
+using System.Collections.Generic;
 using System.DirectoryServices.Protocols;
+using System.Drawing;
 using System.Net;
 using System.Text;
 
@@ -17,8 +20,7 @@ namespace Reecon
             string returnInfo = "";
             ldapPort = port;
             returnInfo = LDAP.GetDefaultNamingContext(ip);
-            //returnInfo += LDAPNew.GetDefaultNamingContext(ip);
-            // returnInfo += LDAP.GetAccountInfo(ip);
+            returnInfo += LDAP.GetAccountInfo(ip, null, null);
             return returnInfo.Trim(Environment.NewLine.ToCharArray());
         }
 
@@ -48,14 +50,22 @@ namespace Reecon
                 string defaultNamingContext = "";
                 if (General.GetOS() == General.OS.Windows)
                 {
-                    byte[] byteList = (byte[])coll[0];
-                    defaultNamingContext = Encoding.UTF8.GetString(byteList);
+                    if (coll[0].GetType() == typeof(String))
+                    {
+                        defaultNamingContext = coll[0].ToString();
+                    }
+                    else
+                    {
+                        byte[] byteList = (byte[])coll[0];
+                        defaultNamingContext = Encoding.UTF8.GetString(byteList);
+                    }
                 }
                 else
                 {
                     defaultNamingContext = coll[0].ToString();
                 }
-                
+                rootDseString = defaultNamingContext;
+
                 if (raw)
                 {
                     ldapInfo = defaultNamingContext;
@@ -83,48 +93,6 @@ namespace Reecon
             return ldapInfo;
         }
 
-        public static string GetInfo2(string ip)
-        {
-            string ldapInfo = string.Empty;
-            LdapDirectoryIdentifier identifier = new LdapDirectoryIdentifier(ip);
-            NetworkCredential creds = new NetworkCredential();
-            //creds.UserName = "support\\ldap";
-            creds.UserName = "support\\ldap";
-            creds.Password = "Invalid"; // getPassword();
-            //creds.Password = original;
-            LdapConnection connection = new LdapConnection(identifier, creds)
-            {
-                AuthType = AuthType.Basic,
-                SessionOptions =
-                {
-                    ProtocolVersion = 3
-                }
-            };
-            try
-            {
-                connection.Bind();
-                Console.WriteLine("Correct Creds");
-            }
-            catch (Exception ex)
-            {
-                if (ex.Message == "The supplied credential is invalid.")
-                {
-                    Console.WriteLine("Invalid Creds");
-                }
-                else
-                {
-                    Console.WriteLine("Unknown Error in LdapNew.GetInfo2 - Bug Reelix: " + ex.Message);
-                }
-            }
-            return "";
-            /*
-            SearchRequest searchRequest = new SearchRequest(null, "(objectclass=*)", SearchScope.Base);
-            var response = connection.SendRequest(searchRequest) as SearchResponse;
-            var searchEntries = response.Entries;
-            return "Woof";
-            */
-        }
-
         public static string GetAccountInfo(string ip, string username = null, string password = null)
         {
             string ldapInfo = string.Empty;
@@ -137,6 +105,10 @@ namespace Reecon
             {
                 creds = null;
             }
+            else
+            {
+                Console.WriteLine("Testing LDAP with: " + username + ":" + password);
+            }
             LdapConnection connection = new LdapConnection(identifier, creds)
             {
                 AuthType = AuthType.Basic,
@@ -148,20 +120,105 @@ namespace Reecon
             try
             {
                 connection.Bind();
-                Console.WriteLine("Correct Creds");
+                if (rootDseString == "")
+                {
+                    LDAP.GetDefaultNamingContext(ip);
+                }
+                SearchRequest searchRequest = new SearchRequest(rootDseString, "(objectclass=user)", SearchScope.Subtree);
+                SearchResponse searchResponse = connection.SendRequest(searchRequest) as SearchResponse;
+                var searchEntries = searchResponse.Entries;
+                Console.WriteLine("Found " + searchEntries.Count + " users");
+                foreach (SearchResultEntry entry in searchEntries)
+                {
+                    // Account Name
+                    string accountName = entry.Attributes.Contains("sAMAccountName") ? (string)entry.Attributes["sAMAccountName"][0] : "";
+                    accountName = accountName.Trim();
+                    ldapInfo += "- Account Name: " + accountName + Environment.NewLine;
+
+                    // Common Name
+                    string commonName = entry.Attributes.Contains("cn") ? (string)entry.Attributes["cn"][0] : "";
+                    commonName = commonName.Trim();
+                    if (commonName != accountName)
+                    {
+                        ldapInfo += "-- Common Name: " + commonName + Environment.NewLine;
+                    }
+
+                    // User Principle Name
+                    // userPrincipalName - Not really important
+                    /*
+                    string userPrincipalName = entry.Attributes.Contains("userPrincipalName") ? (string)entry.Attributes["userPrincipalName"][0] : "";
+                    userPrincipalName = userPrincipalName.Trim();
+                    if (userPrincipalName != accountName && userPrincipalName != "")
+                    {
+                        // Console.WriteLine("-- User Principle Name: " + userPrincipalName);
+                    }
+                    */
+
+                    // memberOf
+                    if (entry.Attributes.Contains("memberOf"))
+                    {
+                        foreach (var item in entry.Attributes["memberOf"])
+                        {
+                            if (item.GetType() == typeof(Byte[]))
+                            {
+                                string itemStr = Encoding.Default.GetString((Byte[])item);
+                                if (itemStr.Contains("CN=Remote Desktop Users"))
+                                {
+                                    ldapInfo += "-- " + "Member of the Remote Desktop Users Group (Can RDP in)".Pastel(Color.Orange) + Environment.NewLine;
+                                }
+                            }
+                            else
+                            {
+                                Console.WriteLine("-- Error - Unknown memberOf type - Bug Reelix: " + item.GetType());
+                            }
+                        }
+                    }
+                    // lastLogon
+                    if (entry.Attributes.Contains("lastLogon"))
+                    {
+                        string value = (string)entry.Attributes["lastLogon"][0];
+                        string lastLoggedIn = value == "0" ? "Never" : DateTime.FromFileTime(long.Parse(value)).ToString();
+                        string lastLoggedInResponse = "-- Last Logged In: " + (lastLoggedIn == "Never" ? "Never" : lastLoggedIn.Pastel(Color.Orange));
+                        ldapInfo += lastLoggedInResponse + Environment.NewLine;
+                    }
+
+                    // Description
+                    string description = entry.Attributes.Contains("description") ? (string)entry.Attributes["description"][0] : "";
+                    if (description != "")
+                    {
+                        // Default - Probably nothing interesting
+                        if (accountName == "Administrator" || accountName == "Guest" || accountName == "krbtgt")
+                        {
+                            ldapInfo += "-- Description: " + description + Environment.NewLine;
+                        }
+                        else
+                        {
+                            // Custom description - Notify the user
+                            ldapInfo += "-- " + ("Description: " + description).Pastel(Color.Orange) + Environment.NewLine;
+                        }
+                    }
+                }
             }
             catch (Exception ex)
             {
                 if (ex.Message == "The supplied credential is invalid.")
                 {
-                    Console.WriteLine("Invalid Creds");
+                    ldapInfo = "- Invalid Creds" + Environment.NewLine;
+                }
+                else if (ex.Message.Contains("In order to perform this operation a successful bind must be completed on the connection."))
+                {
+                    ldapInfo = "- Invalid Creds" + Environment.NewLine;
+                }
+                else if (ex.Message == "The LDAP server is unavailable.")
+                {
+                    ldapInfo = "- " + ex.Message;
                 }
                 else
                 {
-                    Console.WriteLine("Unknown Error in LdapNew.GetInfo2 - Bug Reelix: " + ex.Message);
+                    Console.WriteLine("--> Unknown Error in LdapNew.GetInfo2 - Bug Reelix: " + ex.Message);
                 }
             }
-            return "Woof";
+            return ldapInfo;
             /*
             using (LdapConnection ldapConnection = new LdapConnection())
             {
