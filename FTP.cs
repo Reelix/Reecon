@@ -1,4 +1,5 @@
 ﻿using FluentFTP;
+using FluentFTP.Client.BaseClient;
 using Pastel;
 using System;
 using System.Drawing;
@@ -53,7 +54,12 @@ namespace Reecon
                 ftpServer = $"ftp://{ftpServer}:{port}";
             }
 
+            // https://github.com/dotnet/platform-compat/blob/master/docs/DE0003.md
+            // About that....
+
+#pragma warning disable SYSLIB0014 // Type or member is obsolete
             FtpWebRequest request = (FtpWebRequest)WebRequest.Create(ftpServer);
+#pragma warning restore SYSLIB0014 // Type or member is obsolete
             request.Timeout = 5000;
             request.UseBinary = true; // Better for downloading files if we ever need
             request.UsePassive = true; // A better way to receive file listing
@@ -177,14 +183,13 @@ namespace Reecon
                 {
                     target = "ftp://" + target;
                 }
-                FtpClient client = new(target, "reelixwoof", "reelixwoof")
-                {
-                    EncryptionMode = FtpEncryptionMode.Explicit // Port 990 for Implicit
-                };
+                FtpClient client = new(target, "reelixwoof", "reelixwoof");
+                client.Config.EncryptionMode = FtpEncryptionMode.Explicit; // Port 990 for Implicit 
                 client.ValidateCertificate += new FtpSslValidation(OnValidateCertificate);
                 client.Connect();
 
-                void OnValidateCertificate(FtpClient control, FtpSslValidationEventArgs e)
+                // Inline for returns
+                void OnValidateCertificate(BaseFtpClient control, FtpSslValidationEventArgs e)
                 {
                     string issuer = e.Certificate.Issuer;
                     string subject = e.Certificate.Subject;
@@ -201,6 +206,7 @@ namespace Reecon
                     // add logic to test if certificate is valid here
                     e.Accept = true;
                 }
+
             }
             catch
             {
@@ -212,7 +218,7 @@ namespace Reecon
         public static string TryListFiles(string ftpServer, int port, bool usePassive, string username = "", string password = "")
         {
             string toReturn = "";
-            FtpClient client = new(ftpServer, port, username, password);
+            FtpClient client = new(ftpServer, username, password, port);
             client.Connect();
             /*
             Console.WriteLine("Test Type: " + client.ServerType.ToString());

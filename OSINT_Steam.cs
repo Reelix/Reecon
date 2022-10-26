@@ -14,10 +14,14 @@ namespace Reecon
             // TODO: Fix layout bug - ChuckLephuck
             // Direct profile
             string profileName = GetProfileName(name);
+            if (profileName != "")
+            {
+                profileName += Environment.NewLine;
+            }
 
             // Search
             string searchResult = GetSearchInfo(name);
-            return profileName + Environment.NewLine + searchResult;
+            return profileName + searchResult;
         }
 
         private static string GetProfileName(string name)
@@ -40,6 +44,7 @@ namespace Reecon
         private static string GetSearchInfo(string name)
         {
             string toReturn = "";
+            // Get the session value for Steam profile searching
             string pageText = Web.DownloadString("https://steamcommunity.com/search/users/");
             string sessionValue = pageText.Remove(0, pageText.IndexOf("g_sessionID = \"") + 15);
             sessionValue = sessionValue.Substring(0, sessionValue.IndexOf("\""));
@@ -47,6 +52,10 @@ namespace Reecon
             pageText = Web.DownloadString($"https://steamcommunity.com/search/SearchCommunityAjax?text={name}&filter=users&sessionid={sessionValue}", Cookie: $"sessionid={sessionValue}");
             OSINT_Steam_Search searchResults = JsonSerializer.Deserialize<OSINT_Steam_Search>(pageText);
             string htmlResult = searchResults.html;
+            if (htmlResult.Contains("There are no users that match your search"))
+            {
+                return "";
+            }
             htmlResult = htmlResult.Remove(0, htmlResult.IndexOf("<a class=\"searchPersonaName\""));
             List<string> resultList = htmlResult.Split("<a class=\"searchPersonaName\"", StringSplitOptions.RemoveEmptyEntries).ToList();
             foreach (string result in resultList)
@@ -75,9 +84,9 @@ namespace Reecon
                 }
                 string steamName = profileLink.Remove(0, profileLink.IndexOf(">") + 1);
                 steamName = steamName.Substring(0, steamName.IndexOf("<")); // Hope we don't have anyone with a > in their name
-                toReturn += $"-- Possible Match: {steamName} -> {steamLink}";
+                toReturn += $"-- Possible Match: {steamName} -> {steamLink}" + Environment.NewLine;
             }
-            return toReturn;
+            return toReturn.Trim(Environment.NewLine.ToCharArray());
         }
     }
 

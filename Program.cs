@@ -15,7 +15,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow; // .Pastel has a weirder yellow to the one I want
-            Console.WriteLine("Reecon - Version 0.30 ( https://github.com/Reelix/Reecon )");
+            Console.WriteLine("Reecon - Version 0.31 ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
@@ -122,7 +122,7 @@ namespace Reecon
             if (args[0].EndsWith(".nmap"))
             {
                 string fileName = args[0];
-                var (Target, Ports) = Nmap.ParseFile(fileName, false);
+                var (Target, Ports) = Nmap.ParseFile(fileName);
                 target = Target;
                 if (!Ports.Any())
                 {
@@ -186,7 +186,7 @@ namespace Reecon
                 fileName += ".nmap";
 
                 // Parse the ports
-                var (Target, Ports) = Nmap.ParseFile(fileName, false);
+                var (Target, Ports) = Nmap.ParseFile(fileName);
                 target = Target;
                 portList.AddRange(Ports);
             }

@@ -11,6 +11,7 @@ namespace Reecon
             {
                 // Whoops - HTTPS Server!
                 // TODO: This still returns as HTTP instead of HTTPS though - Need to find a way to change it...
+                Console.WriteLine("Whoops - HTTPS Server - Not HTTP - Bug Reelix to update this in General.MultiBannerGrab!");
                 result = GetInfoMain(target, port, true);
             }
             return result;

@@ -56,6 +56,8 @@ namespace Reecon
                     returnList.Add("Reecon - HTTPS");
                 }
             }
+            // if (result.Contains("Page Text: Client sent an HTTP request to an HTTPS server."))
+            // Remove it, HTTPS instead.
             return returnList.ToList();
         }
 

@@ -685,6 +685,7 @@ namespace Reecon
                     Console.WriteLine("HttpClient rewrite had an error: " + ex.Message + ex.InnerException);
                 }
             }
+            // Returns nothing on Twitter since they set their titles weirdly
             if (pageText.Contains("<title>") && pageText.Contains("</title>"))
             {
                 pageTitle = pageText.Remove(0, pageText.IndexOf("<title>") + "<title>".Length);
@@ -697,6 +698,8 @@ namespace Reecon
         {
             string urlPrefix = URL.StartsWith("https") ? "https" : "http";
             string responseText = "";
+
+            // Not OK - Check what's up
             if (StatusCode != HttpStatusCode.OK)
             {
                 // There's a low chance that it will return a StatusCode that is not in the HttpStatusCode list in which case (int)StatusCode will crash
@@ -739,6 +742,7 @@ namespace Reecon
                     }
                 }
             }
+
             // Page Title
             if (!string.IsNullOrEmpty(PageTitle))
             {
@@ -1024,14 +1028,14 @@ namespace Reecon
                 // Kubernetes
                 if (Headers.Any(x => x.Key.StartsWith("X-Kubernetes-")))
                 {
-                    responseText += "-- Kubernetes Detected".Pastel(Color.Orange) + Environment.NewLine;
+                    responseText += "-- " + "Kubernetes Detected".Pastel(Color.Orange) + Environment.NewLine;
                     var versionCheck = GetHTTPInfo($"{URL}version");
                     if (versionCheck.StatusCode == HttpStatusCode.OK)
                     {
                         var versionData = JsonDocument.Parse(versionCheck.PageText);
                         string major = versionData.RootElement.GetProperty("major").GetString();
                         string minor = versionData.RootElement.GetProperty("minor").GetString();
-                        responseText += $"-- " + "Version: {major}.{minor} (In /version)".Pastel(Color.Orange) + Environment.NewLine;
+                        responseText += "-- " + $"Version: {major}.{minor} (In /version)".Pastel(Color.Orange) + Environment.NewLine;
                     }
                     responseText += "--- " + "Try get /run/secrets/kubernetes.io/serviceaccount/token" + Environment.NewLine;
                     responseText += "--- " + "If you do, read: https://www.cyberark.com/resources/threat-research-blog/kubernetes-pentest-methodology-part-3" + Environment.NewLine;
@@ -1386,8 +1390,10 @@ namespace Reecon
                     }
                 }
             }
+
             // Clean off any redundant newlines
             responseText = responseText.TrimEnd(Environment.NewLine.ToCharArray());
+
             return responseText;
         }
 
@@ -1419,13 +1425,7 @@ namespace Reecon
         {
             try
             {
-                // HttpWebRequest has the ability to ignore invalid SSL Certs - WebRequest doesn't
-                HttpWebRequest request = (HttpWebRequest)WebRequest.Create($"https://{target}:{port}/");
-                // HEAD request - Faster
-                request.Method = "HEAD";
-                // Ignore invalid SSL Certs
-                request.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
-                WebResponse r = request.GetResponse();
+                string theString = DownloadString($"https://{target}:{port}/", Method: HttpMethod.Head);
                 return true;
             }
             catch
@@ -1435,13 +1435,30 @@ namespace Reecon
             }
         }
 
-        public static string DownloadString(string url, string Cookie = null, NetworkCredential Creds = null, string UserAgent = null)
+        public static string DownloadString(string url, HttpMethod Method = null, HttpContent PostContent = null, string Cookie = null, NetworkCredential Creds = null, string UserAgent = null)
         {
+            // For invalid HTTPS Certs
+            var handler = new HttpClientHandler()
+            {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            };
+
             // Note: This cannot go at the top due to the various custom values being set for it
-            HttpClient httpClient = new HttpClient();
+            HttpClient httpClient = new HttpClient(handler);
             string toReturn = "";
 
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, url);
+            if (Method == null)
+            {
+                Method = HttpMethod.Get;
+            }
+
+            HttpRequestMessage request = new HttpRequestMessage(Method, url);
+            if (PostContent != null)
+            {
+                request.Method = HttpMethod.Post;
+                request.Content = PostContent;
+            }
+
             // Cookie
             if (Cookie != null)
             {

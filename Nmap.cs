@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Pastel;
+using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 
@@ -72,7 +74,7 @@ namespace Reecon
         }
 
         // Parses an -oG nmap file for ports and scans the results
-        public static (string Target, List<int> Ports) ParseFile(string fileName, bool deleteFile = true)
+        public static (string Target, List<int> Ports) ParseFile(string fileName)
         {
             if (!File.Exists(fileName))
             {
@@ -86,10 +88,6 @@ namespace Reecon
             StreamReader sr1 = new(fileName);
             string[] fileLines = sr1.ReadToEnd().Replace("\r", "").Split(new[] { "\n" }, StringSplitOptions.None);
             sr1.Close();
-            if (deleteFile)
-            {
-                File.Delete(fileName);
-            }
             // fileLines[1]: Host: 10.10.10.175 ()   Status: Up
             string upLine = fileLines[1];
             returnTarget = upLine.Split(' ')[1];
@@ -117,6 +115,14 @@ namespace Reecon
                     {
                         allPorts.Add(port);
                         returnPorts.Add(port);
+                    }
+                }
+                else if (status == "filtered")
+                {
+                    if (!allPorts.Contains(port))
+                    {
+                        allPorts.Add(port);
+                        Console.WriteLine($"Port {port} - Filtered".Pastel(Color.Orange));
                     }
                 }
                 else

@@ -37,9 +37,9 @@ namespace Reecon
             GetGithubInfo(username);
         }
 
-        private static void GetInstagramInfo(string username)
+        public static void GetInstagramInfo(string username)
         {
-            string pageText = Web.DownloadString("https://www.instagram.com/web/search/topsearch/?query=" + username);
+            string pageText = Web.DownloadString($"https://www.instagram.com/web/search/topsearch/?query={username}", UserAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36");
             try
             {
                 Instagram.Rootobject theObject = JsonSerializer.Deserialize<Instagram.Rootobject>(pageText);
@@ -50,15 +50,15 @@ namespace Reecon
                 else
                 {
                     Console.WriteLine("- Instagram: " + "Found".Pastel(Color.Green));
-                }
-                foreach (Instagram.User user in theObject.users)
-                {
-                    string userUsername = user.user.username;
-                    if (userUsername == username || userUsername == username.ToLower())
+                    foreach (Instagram.User user in theObject.users)
                     {
-                        Console.WriteLine("-- User ID: " + user.user.pk);
-                        Console.WriteLine("-- Full Name: " + user.user.full_name);
-                        Console.WriteLine("-- Username: " + user.user.username);
+                        string userUsername = user.user.username;
+                        if (userUsername == username || userUsername == username.ToLower())
+                        {
+                            Console.WriteLine("-- User ID: " + user.user.pk);
+                            Console.WriteLine("-- Full Name: " + user.user.full_name);
+                            Console.WriteLine("-- Username: " + user.user.username);
+                        }
                     }
                 }
             }
@@ -210,7 +210,7 @@ namespace Reecon
         {
             // Twitter usernames don't have spaces
             username = username.Replace(" ", "");
-            var httpInfo = Web.GetHTTPInfo("https://mobile.twitter.com/" + username);
+            var httpInfo = Web.GetHTTPInfo($"https://mobile.twitter.com/{username}", "Mozilla/5.0 (Linux; Android 10; SM-A205U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.5195.77 Mobile Safari/537.36");
             if (httpInfo.StatusCode == HttpStatusCode.NotFound)
             {
                 Console.WriteLine("- Twitter: Not Found");
