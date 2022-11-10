@@ -171,7 +171,7 @@ namespace Reecon
                 {
                     // Find the Domain Name
                     // Console.WriteLine("RPC - lsaquery");
-                    List<string> domainNameList = rpcclient.GetLsaqueryOutput(ip);
+                    List<string> domainNameList = RPCClient.GetLsaqueryOutput(ip);
                     domainNameList.RemoveAll(x => !x.StartsWith("Domain Name:"));
                     if (domainNameList.Count == 1)
                     {
@@ -181,14 +181,14 @@ namespace Reecon
                     
                     // Server info
                     // Console.WriteLine("RPC - srvinfo");
-                    List<string> srvinfoList = rpcclient.GetSrvinfoOutput(ip);
+                    List<string> srvinfoList = RPCClient.GetSrvinfoOutput(ip);
                     bool setNoSigning = false;
                     // If it's denied the first time - Try the no-signing backup
                     if (srvinfoList.Count != 0 && srvinfoList[0].Contains("NT_STATUS_ACCESS_DENIED"))
                     {
                         // noSigning backup!
                         // Console.WriteLine("RPC - srvinfo - noSigning Backup");
-                        srvinfoList = rpcclient.GetSrvinfoOutput(ip, false);
+                        srvinfoList = RPCClient.GetSrvinfoOutput(ip, false);
                         setNoSigning = true;
                     }
                     if (srvinfoList.Count != 0 && !srvinfoList.Any(x => x.Contains("NT_STATUS_ACCESS_DENIED")) && !srvinfoList[0].Contains("NT_STATUS_LOGON_FAILURE"))
@@ -240,19 +240,19 @@ namespace Reecon
                     }
 
                     // Console.WriteLine("RPC - enumdomusers");
-                    List<string> enumdomusersList = rpcclient.GetEnumdomusersOutput(ip, signing);
+                    List<string> enumdomusersList = RPCClient.GetEnumdomusersOutput(ip, signing);
                     if (enumdomusersList.Count == 0 // Allowed - But no results
                         || enumdomusersList.Count == 1 && enumdomusersList[0].Contains("NT_STATUS_ACCESS_DENIED"))
                     {
                         // Find public SIDs with lsaenumsid
                         // Console.WriteLine("RPC - lsaenumid");
-                        List<string> sidList = rpcclient.GetLsaenumsidOutput(ip, signing);
+                        List<string> sidList = RPCClient.GetLsaenumsidOutput(ip, signing);
                         if (sidList.Count != 0 && !sidList[0].Contains("NT_STATUS_ACCESS_DENIED"))
                         {
                             anonAccess = true;
                             rpcInfo += "- Found SIDs" + Environment.NewLine;
 
-                            List<string> sidResolution = rpcclient.GetLookupsidsOutput(ip, sidList, signing);
+                            List<string> sidResolution = RPCClient.GetLookupsidsOutput(ip, sidList, signing);
                             if (sidResolution.Count != 0)
                             {
                                 foreach (string result in sidResolution)
@@ -264,7 +264,7 @@ namespace Reecon
 
                         // Find sneaky SIDs
                         // Console.WriteLine("RPC - lookupnames");
-                        List<string> sneakyNameLookup = rpcclient.GetLookupnamesOutput(ip, "administrator guest krbtgt root bin none", signing);
+                        List<string> sneakyNameLookup = RPCClient.GetLookupnamesOutput(ip, "administrator guest krbtgt root bin none", signing);
                         sneakyNameLookup.RemoveAll(x => !x.Contains("(User: "));
                         if (sneakyNameLookup.Count != 0)
                         {
@@ -300,7 +300,7 @@ namespace Reecon
                                     {
                                         sneakySIDList.Add(sneakyBase + j);
                                     }
-                                    List<string> sneakySIDLookup = rpcclient.GetLookupsidsOutput(ip, sneakySIDList, signing);
+                                    List<string> sneakySIDLookup = RPCClient.GetLookupsidsOutput(ip, sneakySIDList, signing);
                                     if (sneakySIDLookup.Count != 0)
                                     {
                                         // Remove non-users
@@ -341,13 +341,13 @@ namespace Reecon
                                 string username = user.Remove(0, user.IndexOf("[") + 1);
                                 username = username.Substring(0, username.IndexOf("]"));
                                 usernames.Add(username);
-                                rpcInfo += rpcclient.GetQueryuserInfo(ip, username);
+                                rpcInfo += RPCClient.GetQueryuserInfo(ip, username);
                             }
 
                             // See if there are any we're missing
 
                             // Get the default names list
-                            var defaultNames = rpcclient.LookupNames(ip, "administrator guest krbtgt root bin none", signing);
+                            var defaultNames = RPCClient.LookupNames(ip, "administrator guest krbtgt root bin none", signing);
 
                             // Filter them to only get the users
                             defaultNames = defaultNames.Where(x => x.Type.Contains("User")).ToList();
@@ -356,7 +356,7 @@ namespace Reecon
                             List<string> defaultNameSids = defaultNames.Select(x => x.SID).ToList();
 
                             // Sneaky sid lookup by the sids
-                            var sneakySids = rpcclient.GetSneakySids(ip, defaultNameSids, signing);
+                            var sneakySids = RPCClient.GetSneakySids(ip, defaultNameSids, signing);
 
                             // Remove the names we already have
                             sneakySids.RemoveAll(x => usernames.Contains(x.Name));

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Reecon
 {
-    class rpcclient
+    class RPCClient
     {
         private static List<string> RunCommand(string ip, string command, bool signing)
         {
@@ -158,7 +158,7 @@ namespace Reecon
                 {
                     sneakySIDList.Add(sneakyBase + j);
                 }
-                List<LookupSid> sneakySIDLookup = rpcclient.LookupSids(ip, sneakySIDList, signing);
+                List<LookupSid> sneakySIDLookup = RPCClient.LookupSids(ip, sneakySIDList, signing);
                 if (sneakySIDLookup.Count != 0)
                 {
                     // Remove non-users

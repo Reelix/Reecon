@@ -2,13 +2,14 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-	<TargetFramework>net6.0</TargetFramework>
+	<TargetFramework>net7.0</TargetFramework>
 	<PublishSingleFile>true</PublishSingleFile>
 	<RuntimeIdentifier>win-x64</RuntimeIdentifier>
 	<StartupObject>Reecon.Program</StartupObject>
 	<SignAssembly>true</SignAssembly>
 	<SelfContained>false</SelfContained>
-	<Platforms>x64</Platforms>
+	<Platforms>arm64</Platforms>
+	<PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
 
   <ItemGroup>

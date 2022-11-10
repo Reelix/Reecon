@@ -1232,6 +1232,7 @@ namespace Reecon
                     if (grafanaVersion.Contains("v8."))
                     {
                         responseText += "--- " + "Possibly vulnerable to CVE-2021-43798 (Grafana versions 8.0.0-beta1 through 8.3.0)".Pastel(Color.Orange) + Environment.NewLine;
+                        responseText += "--- " + "Exploit: https://github.com/taythebot/CVE-2021-43798" + Environment.NewLine;
                     }
                 }
                 // Icecast

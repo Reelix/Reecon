@@ -1,7 +1,7 @@
 # Reecon
 
 Reelix's Recon - A small program for network recon. This program is still in early stages of development and should probably not be used by anyone.
-* Version: 0.31
+* Version: 0.32
 * Build Status: <img src = "https://travis-ci.com/Reelix/Reecon.svg?branch=master" valign="middle" />
 * Requirements: [NMap 7.92+](https://nmap.org/download.html), [.NET 6.0](https://dotnet.microsoft.com/download/dotnet/6.0)
   * LDAP Enumeration on Ubuntu 22.04: Download + dpkg -i [this](https://packages.ubuntu.com/focal-updates/amd64/libldap-2.4-2/download)
@@ -12,7 +12,7 @@ Reelix's Recon - A small program for network recon. This program is still in ear
   * Printer Enumeration: [PRET](https://github.com/RUB-NDS/PRET)
 
 ## Installation Instructions (No Building)
-### Linux (x64 - Requires the .NET 6 Runtime)
+### Linux (x64 - Requires the .NET 7 Runtime)
 - Download + Run https://github.com/Reelix/Reecon/releases/download/latest/reecon-linux-x64
 ### Windows (x64)
 - Download + Run https://github.com/Reelix/Reecon/releases/download/latest/Reecon-windows.exe
@@ -24,7 +24,7 @@ Reelix's Recon - A small program for network recon. This program is still in ear
 ## Build Instructions
 ### Linux (Ubuntu 22.04)
 sudo apt update
-sudo apt install dotnet-runtime-6.0
+sudo apt install dotnet-runtime-7.0
 
 ### Linux (Ubuntu < 22.04)
 #### Install repository configuration
