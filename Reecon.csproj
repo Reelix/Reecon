@@ -20,7 +20,7 @@
 	<!-- To access PostgreSQL servers -->
     <PackageReference Include="Npgsql" Version="6.0.7" />
 	<!-- Better Console color output -->
-    <PackageReference Include="Pastel" Version="3.0.1" />
+    <PackageReference Include="Pastel" Version="4.0.2" />
 	<!-- LDAP -->
     <PackageReference Include="System.DirectoryServices.Protocols" Version="6.0.1" />
 	<!-- A list of ports and their descriptions -->
