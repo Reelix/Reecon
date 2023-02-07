@@ -538,10 +538,26 @@ namespace Reecon
         {
             HttpClient httpClient = new HttpClient();
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, url);
-            using (HttpResponseMessage response = httpClient.Send(request))
+            HttpResponseMessage response = new HttpResponseMessage();
+            try
             {
-                return response.StatusCode;
+                response = httpClient.Send(request);
             }
+            catch (HttpRequestException hre)
+            {
+                if (hre.InnerException.Message == "No such host is known.")
+                {
+                    Console.WriteLine("Error: " + hre.InnerException.Message);
+                    Console.WriteLine($"You might have messed up the URL: {url}");
+                    response.StatusCode = HttpStatusCode.PreconditionFailed;
+                }
+                else
+                {
+                    Console.WriteLine("Fatal Error in General.GetResponseCode (Bug Reelix): " + hre.InnerException.Message);
+                }
+            }
+            return response.StatusCode;
+
         }
 
         public static async void DownloadFile(string uri, string outputPath)

