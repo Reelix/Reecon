@@ -18,6 +18,7 @@ namespace Reecon
 
             string returnInfo = "";
 
+            // Yes = I know it's obsolete - Need to fix this some day...
             WebClient wc = new();
             wc.Headers.Add("Content-Type", "application/soap+xml;charset=UTF-8");
             // Fix for invalid SSL Certs

@@ -536,7 +536,12 @@ namespace Reecon
         // Maybe move these to Web or another class?
         public static HttpStatusCode GetResponseCode(string url)
         {
-            HttpClient httpClient = new HttpClient();
+            // These 2 lines fix:
+            // System.Net.Http.HttpRequestException: The SSL connection could not be established
+            HttpClientHandler clientHandler = new HttpClientHandler();
+            clientHandler.ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => { return true; };
+            
+            HttpClient httpClient = new HttpClient(clientHandler);
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, url);
             HttpResponseMessage response = new HttpResponseMessage();
             try
