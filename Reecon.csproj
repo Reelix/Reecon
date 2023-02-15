@@ -18,7 +18,7 @@
 	<!-- MySQL - To interact with MySQL servers -->
     <PackageReference Include="MySqlConnector" Version="2.1.13" />
 	<!-- To access PostgreSQL servers -->
-    <PackageReference Include="Npgsql" Version="6.0.7" />
+    <PackageReference Include="Npgsql" Version="7.0.2" />
 	<!-- Better Console color output -->
     <PackageReference Include="Pastel" Version="3.0.1" />
 	<!-- LDAP -->
