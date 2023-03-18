@@ -15,7 +15,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow; // .Pastel has a weirder yellow to the one I want
-            Console.WriteLine("Reecon - Version 0.32a ( https://github.com/Reelix/Reecon )");
+            Console.WriteLine("Reecon - Version 0.32b ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
@@ -25,7 +25,7 @@ namespace Reecon
             }
 
             // Check if it's anything custom
-            if (args.Contains("-h") || args.Contains("--help"))
+            if (args.Contains("-h") || args.Contains("--help") || args.Contains("--version"))
             {
                 General.ShowHelp();
                 Console.ResetColor();

@@ -242,6 +242,7 @@ namespace Reecon
             int notFoundLength = -1;
             int ignoreFileLength = -1;
             int ignoreFolderLength = -1;
+            // Currently google-able - Need to randomise
             string wildcardURL = url + "be0df04b-f5ff-4b4f-af99-00968cf08fed";
             bool ignoreRedirect = false;
             bool ignoreForbidden = false;
@@ -278,7 +279,7 @@ namespace Reecon
             // PHP wildcards can be differnt
             bool ignorePHP = false;
             bool ignorePHPRedirect = false;
-            string phpWildcardURL = url + "be0df04b-f5ff-4b4f-af99-00968cf08fed.php";
+            string phpWildcardURL = wildcardURL + ".php";
             pageResult = Web.GetHTTPInfo(phpWildcardURL);
             pageResultText = pageResult.PageText;
             if (pageResult.StatusCode == HttpStatusCode.OK)
@@ -297,7 +298,7 @@ namespace Reecon
             }
 
             // Folder wildcards can also be different
-            var folderWildcard = Web.GetHTTPInfo(url + "be0df04b-f5ff-4b4f-af99-00968cf08fed/");
+            var folderWildcard = Web.GetHTTPInfo(wildcardURL + "/");
             if (folderWildcard.StatusCode == HttpStatusCode.OK)
             {
                 ignoreFolderLength = folderWildcard.PageText.Length;
@@ -320,6 +321,9 @@ namespace Reecon
                 "index.php",
                 "index.html",
                 "index.jsp",
+                // Common upload paths
+                "upload/",
+                "uploads/",
                 // Common images folder
                 "images/",
                 // Hidden mail server
@@ -344,6 +348,8 @@ namespace Reecon
                 "wordpress/wp-config.php.bak",
                 "wp-config.php",
                 "wp-config.php.bak",
+                // Other blog stuff
+                "blogs/",
                 // phpmyadmin
                 "phpmyadmin/",
                 "phpMyAdmin", // Some are case sensitive
@@ -355,10 +361,13 @@ namespace Reecon
                 "cgi-bin/", 
                 // Well-Known
                 ".well-known/", // https://www.google.com/.well-known/security.txt
-                // Docker
+                // Docker and other common versions
                 "version",
+                "version.txt",
                 // PHP stuff
-                "vendor/"
+                "vendor/",
+                // Java - Spring
+                "functionRouter"
             };
 
             if (ignorePHP)
@@ -543,13 +552,6 @@ namespace Reecon
                         returnText += $"-- WWW-Authenticate: {headers.GetValues("WWW-Authenticate").First()}" + Environment.NewLine;
                     }
                 }
-                else if (response.StatusCode != HttpStatusCode.NotFound && response.StatusCode != HttpStatusCode.TooManyRequests)
-                {
-                    if (response.PageText != "")
-                    {
-                        returnText += $"-- Page Text: {response.PageText}" + Environment.NewLine;
-                    }
-                }
                 else if (response.StatusCode == 0)
                 {
                     returnText += $"- " + "Host timed out - Unable to enumerate".Pastel(Color.Red);
@@ -558,6 +560,10 @@ namespace Reecon
                 else if (response.StatusCode == HttpStatusCode.InternalServerError)
                 {
                     returnText += $"- Common path throws an Internal Server Error: {url}{file}" + Environment.NewLine;
+                    if (file == "functionRouter")
+                    {
+                        returnText += "-- " + "An Internal Server Error on functionRouter indicates that it's probably a Java Spring app - You should investigate this!".Pastel(Color.Orange) + Environment.NewLine;
+                    }
                 }
                 else if (response.StatusCode == HttpStatusCode.TemporaryRedirect)
                 {
@@ -611,10 +617,15 @@ namespace Reecon
                         returnText += "-- Unknown Docker API Version - Bug Reelix!";
                     }
                 }
-                // We ignore basic 404's and 503's since they're not useful
-                else if (response.StatusCode != HttpStatusCode.NotFound && response.StatusCode != HttpStatusCode.ServiceUnavailable)
+                // Something else - Just print the response
+                else if (response.StatusCode != HttpStatusCode.NotFound
+                    && response.StatusCode != HttpStatusCode.TooManyRequests
+                    && response.StatusCode != HttpStatusCode.ServiceUnavailable)
                 {
-                    Console.WriteLine($"Unknown response for {file} - {response.StatusCode}");
+                    if (response.PageText != "")
+                    {
+                        returnText += $"-- Page Text: {response.PageText}" + Environment.NewLine;
+                    }
                 }
             }
             return returnText.Trim(Environment.NewLine.ToArray());
@@ -909,6 +920,15 @@ namespace Reecon
                             responseText += "--- " + "Version Likely vulnerable to CVE-2019-15107!!".Pastel(Color.Orange) + Environment.NewLine;
                             responseText += "---- git clone https://github.com/MuirlandOracle/CVE-2019-15107 OR https://github.com/rapid7/metasploit-framework/blob/master/modules/exploits/linux/http/webmin_backdoor.rb" + Environment.NewLine;
                         }
+                        // https://www.cybersecurity-help.cz/vdb/SB2019030801
+                        // -> Webmin: 0.1 - 1.900
+                        // --> 2019-9624
+                        // ---> https://www.exploit-db.com/exploits/46201
+                        // ----> Webmin <= Webmin 1.900 (<= ??)
+
+                        // Webmin: 0.1 - 1.910
+                        // -> CVE-2019-12840
+                        // --> https://www.exploit-db.com/exploits/46984
                     }
                     else if (serverText.StartsWith("Werkzeug/"))
                     {
@@ -1273,6 +1293,7 @@ namespace Reecon
                 if (PageText.Contains("/wp-includes/") || PageText.Contains("/wp-includes\\"))
                 {
                     responseText += "- " + "Wordpress detected!".Pastel(Color.Orange) + Environment.NewLine;
+                    
                     // Basic User Enumeration - Need to combine these two...
                     List<string> wpUsers = new();
                     var wpUserTestOne = Web.GetHTTPInfo($"{urlPrefix}://{DNS}/wp-json/wp/v2/users");
@@ -1290,6 +1311,7 @@ namespace Reecon
                             }
                         }
                     }
+                    
                     var wpUserTestTwo = Web.GetHTTPInfo($"{urlPrefix}://{DNS}/index.php/wp-json/wp/v2/users");
                     if (wpUserTestTwo.StatusCode == HttpStatusCode.OK)
                     {
@@ -1333,6 +1355,7 @@ namespace Reecon
                     responseText += $"-- User Enumeration: wpscan --url {urlPrefix}://{DNS}/ --enumerate u1-5" + Environment.NewLine;
                     responseText += $"-- Plugin Enumeration: wpscan --url {urlPrefix}://{DNS}/ --enumerate p" + Environment.NewLine;
                     responseText += $"-- User + Plugin Enumeration: wpscan --url {urlPrefix}://{DNS}/ --enumerate u1-5,p" + Environment.NewLine;
+                    responseText += $"-- Aggressive Plugin Enumeration (Slow): wpscan --url {urlPrefix}://{DNS}/ --plugins-detection aggressive" + Environment.NewLine;
 
                     // Checking for wp-login.php
                     var wplogin = GetHTTPInfo($"{urlPrefix}://{DNS}/wp-login.php");
@@ -1340,6 +1363,19 @@ namespace Reecon
                     if (wplogin.StatusCode == HttpStatusCode.OK && wplogin.PageText.Contains("action=lostpassword"))
                     {
                         wpLoginPath = "/wp-login.php";
+                    }
+
+                    // More aggressive plugin detection
+                    // TODO: Add more
+
+                    // wpDiscuz
+                    // Can also be found by view-source of a specific page
+                    // Maybe find the first post, and enumerate all wp* ?
+                    var wpdiscuz = GetHTTPInfo($"{urlPrefix}://{DNS}/wp-content/plugins/wpdiscuz/readme.txt");
+                    if (wpdiscuz.StatusCode == HttpStatusCode.OK && wpdiscuz.PageText.Contains("wpDiscuz "))
+                    {
+                        responseText += "wpDiscuz detected - Bug Reelix to update this." + Environment.NewLine;
+                        responseText += "- If 7.0.4 -> https://www.exploit-db.com/raw/49967" + Environment.NewLine;
                     }
                     responseText += $"-- hydra -L users.txt -P passwords.txt {DNS} http-post-form \"{wpLoginPath}:log=^USER^&pwd=^PASS^&wp-submit=Log In&testcookie=1:The password you entered for the username\" -I -t 50" + Environment.NewLine;
                 }

