@@ -35,6 +35,7 @@
 5222|N/A|Jabber
 5269|N/A|xmpp-server
 5432|PostgreSQL|PostgreSQL
+5900|VNC|VNC
 5985|WinRM|WinRM
 5986|WinRM|Secure WinRM
 6379|Redis|Redis

