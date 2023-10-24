@@ -49,6 +49,10 @@ namespace Reecon
                 {
                     return "- Timeout";
                 }
+                else if (httpInfo.AdditionalInfo == "WeirdSSL")
+                {
+                    return "- It's SSL, but can't connect with https for some reason :(";
+                }
                 else if (httpInfo == (0, null, null, null, null, null, null, null))
                 {
                     return "";

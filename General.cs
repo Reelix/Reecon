@@ -56,6 +56,12 @@ namespace Reecon
                     returnList.Add("Reecon - HTTPS");
                 }
             }
+            if (returnList.Any(x => x.Contains("Client sent an HTTP request to an HTTPS server")))
+            {
+                // Whoops - It's an https that got caught by an http!
+                returnList.RemoveAll(x => x.Contains("Client sent an HTTP request to an HTTPS server"));
+                returnList.Add("Reecon - HTTPS");
+            }
             // if (result.Contains("Page Text: Client sent an HTTP request to an HTTPS server."))
             // Remove it, HTTPS instead.
             return returnList.ToList();
@@ -534,15 +540,24 @@ namespace Reecon
         }
 
         // Maybe move these to Web or another class?
-        public static HttpStatusCode GetResponseCode(string url)
+        public static HttpStatusCode GetResponseCode(string url, string cookie = null)
         {
             // These 2 lines fix:
             // System.Net.Http.HttpRequestException: The SSL connection could not be established
-            HttpClientHandler clientHandler = new HttpClientHandler();
+            HttpClientHandler clientHandler = new HttpClientHandler()
+            {
+                UseCookies = false // Needed for a custom Cookie header
+            };
+
             clientHandler.ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => { return true; };
             
             HttpClient httpClient = new HttpClient(clientHandler);
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, url);
+            if (cookie != null)
+            {
+                // Console.WriteLine("Setting cookie to " + cookie + " on the ResponseCode check");
+                request.Headers.Add("Cookie", cookie);
+            }
             HttpResponseMessage response = new HttpResponseMessage();
             try
             {

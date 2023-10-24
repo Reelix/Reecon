@@ -191,9 +191,9 @@ namespace Reecon
             public bool no_follow { get; set; }
             public string author { get; set; }
             public int num_comments { get; set; }
-            public bool edited { get; set; }
+            public object edited { get; set; } // Not Edited = False, Edited = time stamp with decimal. What.
             public bool can_mod_post { get; set; }
-            public float created_utc { get; set; }
+            public double created_utc { get; set; }
             public bool send_replies { get; set; }
             public string parent_id { get; set; }
             public int score { get; set; }
@@ -381,7 +381,7 @@ namespace Reecon
             public bool stickied { get; set; }
             public string url { get; set; }
             public int subreddit_subscribers { get; set; }
-            public float created_utc { get; set; }
+            public double created_utc { get; set; } // Ends with a .0 for some reason
             public int num_crossposts { get; set; }
             public Media media { get; set; }
             public bool is_video { get; set; }

@@ -5,6 +5,8 @@ using System.Drawing;
 using System.Linq;
 using System.Net;
 using System.Text.Json;
+using System.Xml.Linq;
+using static Reecon.OSINT_Instagram_Info;
 
 namespace Reecon
 {
@@ -23,42 +25,27 @@ namespace Reecon
             string username = args[1];
             Console.WriteLine("Searching for " + username + "...");
             GetInstagramInfo(username);
-            try
-            {
-                GetRedditInfo(username); //- Borked on felmoltor
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Reddit OSINT is Broken - Bug Reelix: " + ex.Message);
-            }
+            GetRedditInfo(username);
             GetSteamInfo(username);
             GetTwitterInfo(username);
             GetYouTubeInfo(username);
             GetGithubInfo(username);
+            GetPastebinInfo(username);
+            // Pastebin - https://pastebin.com/u/rzsdw2iwug77eda
         }
 
         public static void GetInstagramInfo(string username)
         {
-            string pageText = Web.DownloadString($"https://www.instagram.com/web/search/topsearch/?query={username}", UserAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36");
             try
             {
-                Instagram.Rootobject theObject = JsonSerializer.Deserialize<Instagram.Rootobject>(pageText);
-                if (theObject.users == null || theObject.users.Length == 0)
+                var instagramInfo = OSINT_Instagram.GetInfo(username);
+                if (instagramInfo.Exists)
                 {
-                    Console.WriteLine("- Instagram: Not Found");
-                }
-                else
-                {
-                    Console.WriteLine("- Instagram: " + "Found".Pastel(Color.Green));
-                    foreach (Instagram.User user in theObject.users)
+                    foreach (var user in instagramInfo.Users)
                     {
-                        string userUsername = user.user.username;
-                        if (userUsername == username || userUsername == username.ToLower())
-                        {
-                            Console.WriteLine("-- User ID: " + user.user.pk);
-                            Console.WriteLine("-- Full Name: " + user.user.full_name);
-                            Console.WriteLine("-- Username: " + user.user.username);
-                        }
+                        Console.WriteLine("-- User ID: " + user.user.pk);
+                        Console.WriteLine("-- Full Name: " + user.user.full_name);
+                        Console.WriteLine("-- Username: " + user.user.username);
                     }
                 }
             }
@@ -66,88 +53,6 @@ namespace Reecon
             {
                 Console.WriteLine("Instagram OSINT is currently broken - " + jex.Message + " - Bug Reelix!");
             }
-        }
-
-        // Pasted as JSON from https://www.instagram.com/web/search/topsearch/?query=Reelix
-        public static class Instagram
-        {
-#pragma warning disable IDE1006 // Naming Styles
-            public class Rootobject
-            {
-                public User[] users { get; set; }
-                public Place[] places { get; set; }
-                public Hashtag[] hashtags { get; set; }
-                public bool has_more { get; set; }
-                public string rank_token { get; set; }
-                public object clear_client_cache { get; set; }
-                public string status { get; set; }
-            }
-
-            public class User
-            {
-                public int position { get; set; }
-                public User1 user { get; set; }
-            }
-
-            public class User1
-            {
-                public string pk { get; set; }
-                public string username { get; set; }
-                public string full_name { get; set; }
-                public bool is_private { get; set; }
-                public string profile_pic_url { get; set; }
-                public string profile_pic_id { get; set; }
-                public bool is_verified { get; set; }
-                public bool has_anonymous_profile_picture { get; set; }
-                public int mutual_followers_count { get; set; }
-                public object[] account_badges { get; set; }
-                public int latest_reel_media { get; set; }
-            }
-
-            public class Place
-            {
-                public Place1 place { get; set; }
-                public int position { get; set; }
-            }
-
-            public class Place1
-            {
-                public Location location { get; set; }
-                public string title { get; set; }
-                public string subtitle { get; set; }
-                public object[] media_bundles { get; set; }
-                public string slug { get; set; }
-            }
-
-            public class Location
-            {
-                public string pk { get; set; }
-                public string short_name { get; set; }
-                public long facebook_places_id { get; set; }
-                public string external_source { get; set; }
-                public string name { get; set; }
-                public string address { get; set; }
-                public string city { get; set; }
-                public float lng { get; set; }
-                public float lat { get; set; }
-            }
-
-            public class Hashtag
-            {
-                public int position { get; set; }
-                public Hashtag1 hashtag { get; set; }
-            }
-
-            public class Hashtag1
-            {
-                public string name { get; set; }
-                public long id { get; set; }
-                public int media_count { get; set; }
-                public bool use_default_avatar { get; set; }
-                public string profile_pic_url { get; set; }
-                public string search_result_subtitle { get; set; }
-            }
-#pragma warning restore IDE1006 // Naming Styles
         }
 
         public static void GetRedditInfo(string username)
@@ -167,7 +72,16 @@ namespace Reecon
                 {
                     foreach (var comment in redditInfo.CommentList)
                     {
-                        Console.WriteLine("-- Comment: " + comment.body);
+                        DateTimeOffset offset = DateTimeOffset.FromUnixTimeSeconds((long)comment.created_utc); // It's returned as .0 for some reason
+                        string date = offset.UtcDateTime.ToString();
+                        Console.WriteLine($"-- Comment from {date} UTC");
+                        Console.WriteLine($"--- Link: https://www.reddit.com{comment.permalink}");
+                        string shorterComment = new string(comment.body.Take(250).ToArray());
+                        if (comment.body.Length > 250)
+                        {
+                            shorterComment += "... (Snipped due to length)";
+                        }
+                        Console.WriteLine($"--- Comment: {shorterComment}");
                     }
                 }
 
@@ -181,8 +95,14 @@ namespace Reecon
                     foreach (var submission in redditInfo.SubmissionList)
                     {
                         Console.WriteLine("-- Submission: " + submission.title);
+                        DateTimeOffset offset = DateTimeOffset.FromUnixTimeSeconds((long)submission.created_utc);
+                        string date = offset.UtcDateTime.ToString();
+                        Console.WriteLine("--- Created At: " + date + "UTC");
                         Console.WriteLine("--- Link: " + submission.url);
-                        Console.WriteLine("--- Blurb: " + submission.selftext);
+                        if (submission.selftext != "")
+                        {
+                            Console.WriteLine("--- Blurb: " + submission.selftext);
+                        }
                     }
                 }
             }
@@ -202,7 +122,7 @@ namespace Reecon
             else
             {
                 Console.WriteLine("- Steam: " + "Found".Pastel(Color.Green));
-                Console.WriteLine(result);
+                Console.WriteLine(result.Trim(Environment.NewLine.ToCharArray()));
             }
         }
 
@@ -265,7 +185,7 @@ namespace Reecon
             }
             else
             {
-                Console.WriteLine("- Twitter: Error - Bug Reelix");
+                Console.WriteLine("- Twitter: " + "Error".Pastel(Color.Red) + " - Bug Reelix");
             }
         }
 
@@ -323,11 +243,7 @@ namespace Reecon
         public static void GetGithubInfo(string username)
         {
             var httpInfo = Web.GetHTTPInfo($"https://api.github.com/users/{username}", "Reecon");
-            if (httpInfo.StatusCode == HttpStatusCode.NotFound)
-            {
-                Console.WriteLine("- Github: Not Found");
-            }
-            else
+            if (httpInfo.StatusCode != HttpStatusCode.NotFound)
             {
                 Console.WriteLine("- Github: " + "Found".Pastel(Color.Green));
                 var githubInfo = JsonDocument.Parse(httpInfo.PageText);
@@ -338,9 +254,39 @@ namespace Reecon
                 Console.WriteLine($"-- Link: {htmlLink}");
                 JsonElement name = githubInfo.RootElement.GetProperty("name");
                 Console.WriteLine("-- Name: " + name);
+                JsonElement location = githubInfo.RootElement.GetProperty("location");
+                if (location.ValueKind != JsonValueKind.Null)
+                {
+                    Console.WriteLine("-- Location: " + location);
+                }
+                JsonElement avatar = githubInfo.RootElement.GetProperty("avatar_url");
+                if (avatar.ValueKind != JsonValueKind.Null)
+                {
+                    Console.WriteLine("-- Avatar Picture: " + avatar);
+                }
+                JsonElement blog = githubInfo.RootElement.GetProperty("blog");
+                Console.WriteLine("-- Blog: " + blog);
                 // TODO: Parse Repos + Commits
                 // Repos: https://api.github.com/users/sakurasnowangelaiko/repos
                 // Commits (And everything else): https://api.github.com/users/sakurasnowangelaiko/events (
+            }
+            else
+            {
+                Console.WriteLine("- Github: Not Found");
+            }
+        }
+
+        public static void GetPastebinInfo(string username)
+        {
+            var httpInfo = Web.GetHTTPInfo($"https://pastebin.com/u/{username}");
+            if (httpInfo.StatusCode != HttpStatusCode.NotFound)
+            {
+                Console.WriteLine("- Pastebin: Found");
+                Console.WriteLine($"-- Link: https://pastebin.com/u/{username}");
+            }
+            else
+            {
+                Console.WriteLine("- Pastebin: Not Found");
             }
         }
     }

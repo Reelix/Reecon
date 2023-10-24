@@ -1,2 +1,11 @@
 #!/bin/bash
-dotnet publish Reecon -r linux-x64 --self-contained false -o ./Reecon/bin/ && mv ./Reecon/bin/Reecon ./reecon
+arch=$(uname -i)
+if [[ $arch == x86_64* ]]; then
+	echo "Found an x64 Architecture - Publishing for that"
+	dotnet publish Reecon -r linux-x64 --self-contained false -o ./Reecon/bin/ && mv ./Reecon/bin/Reecon ./reecon
+elif [[ $arch == aarch64 ]]; then
+	echo "Found an ARM64 Architecture - Publishing for that"
+	dotnet publish Reecon -r linux-arm64 --self-contained false -o ./Reecon/bin/ && mv ./Reecon/bin/Reecon ./reecon
+else
+	echo "Unknown CPU Architecture - Bug Reelix!"
+fi

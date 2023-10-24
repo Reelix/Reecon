@@ -22,6 +22,9 @@ namespace Reecon
 
         Query Specific Value: {Ping(ip:"127.0.0.1") { output }}
 
+        Run a Mutation: {"query":"mutation{ UpdatePassword(email: \"reelix2@gmail.com\", username: \"reelix2\", password: \"reelix2\") { message } }"}
+
+
         */
     }
 }

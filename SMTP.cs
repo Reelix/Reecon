@@ -27,7 +27,7 @@ namespace Reecon
                     // Wait for info
                     int bytes = smtpSocket.Receive(buffer, buffer.Length, 0);
                     smtpBanner = Encoding.ASCII.GetString(buffer, 0, bytes);
-                    if (smtpBanner.StartsWith("220") && smtpBanner.ToUpper().Contains("SMTP")) // ESMTP contains SMTP
+                    if (smtpBanner.StartsWith("220 ")) // Most, but not all SMTP banners contain the text smtp - But all contains a 220 followed by a space
                     {
                         // We got a valid response! Let's do some parsing!
                         // 220 ESMTP MAIL Service ready (EXCHANGE.HTB.LOCAL)
@@ -54,12 +54,12 @@ namespace Reecon
                         string newlineChars = "";
                         if (nameAndDate.EndsWith("\r\n"))
                         {
-                            //returnText += "- Windows Newline Characters Detected" + Environment.NewLine;
+                            returnText += "- Windows Newline Characters Detected" + Environment.NewLine;
                             newlineChars = "\r\n";
                         }
                         else if (nameAndDate.EndsWith("\n"))
                         {
-                            //returnText += "- Linux Newline Characters Detected" + Environment.NewLine;
+                            returnText += "- Linux Newline Characters Detected" + Environment.NewLine;
                             newlineChars = "\n";
                         }
                         else

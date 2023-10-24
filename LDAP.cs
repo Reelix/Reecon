@@ -1,9 +1,9 @@
 ﻿using Pastel;
 using System;
-using System.Collections.Generic;
 using System.DirectoryServices.Protocols;
 using System.Drawing;
 using System.Net;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Reecon
@@ -19,11 +19,63 @@ namespace Reecon
         {
             string returnInfo = "";
             ldapPort = port;
+            string checkCanRun = CanLDAPRun();
+            if (checkCanRun != null)
+            {
+                return checkCanRun;
+            }
             returnInfo = LDAP.GetDefaultNamingContext(ip);
             returnInfo += LDAP.GetAccountInfo(ip, null, null);
             return returnInfo.Trim(Environment.NewLine.ToCharArray());
         }
 
+        public static string CanLDAPRun()
+
+        {
+            string toReturn = null;
+            try
+            {
+                LdapConnection connection = new LdapConnection("");
+                return toReturn;
+            }
+            catch (TypeInitializationException tex)
+            {
+                try
+                {
+                    throw tex.InnerException;
+                }
+                catch (DllNotFoundException dex)
+                {
+                    if (dex.Message.StartsWith("Unable to load shared library '"))
+                    {
+                        string missingLib = dex.Message.Remove(0, dex.Message.IndexOf("Unable to load shared library '") + ("Unable to load shared library '").Length);
+                        missingLib = missingLib.Substring(0, missingLib.IndexOf("'"));
+                        toReturn = "- LDAP.GetInfo - Cannot run without DLL: " + missingLib + Environment.NewLine;
+                        if (RuntimeInformation.ProcessArchitecture.ToString() == "Arm64")
+                        {
+                            toReturn += "-- Detected Arm64 - Download + Install: http://ports.ubuntu.com/pool/main/o/openldap/libldap-2.4-2_2.4.49+dfsg-2ubuntu1_arm64.deb";
+                            return toReturn;
+                        }
+                        else
+                        {
+                            toReturn += "-- Detected: " + RuntimeInformation.ProcessArchitecture.ToString() + " - Bug Reelix";
+                            return toReturn;
+                        }
+                    }
+                    else
+                    {
+                        toReturn = "- LDAP.GetInfo - Unknown Error 1 - Bug Reelix";
+                        return toReturn;
+                    }
+                }
+                catch
+                {
+                    toReturn = "- LDAP.GetInfo - Unknown Error 2 - Bug Reelix";
+                    return toReturn;
+                }
+            }
+            return toReturn;
+        }
         public static string GetDefaultNamingContext(string ip, bool raw = false)
         {
             string ldapInfo = string.Empty;
@@ -207,7 +259,9 @@ namespace Reecon
                 }
                 else if (ex.Message.Contains("In order to perform this operation a successful bind must be completed on the connection."))
                 {
-                    ldapInfo = "- Invalid Creds" + Environment.NewLine;
+                    username = username == null ? "null" : username;
+                    password = password == null ? "null" : password;
+                    ldapInfo = $"- Invalid Creds: {username} / {password}" + Environment.NewLine;
                 }
                 else if (ex.Message == "The LDAP server is unavailable.")
                 {
