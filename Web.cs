@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -39,9 +40,9 @@ namespace Reecon
             // First - Scan the base page
             var httpInfo = Web.GetHTTPInfo(scanURL);
             string pageText = httpInfo.PageText;
-            if (httpInfo.AdditionalInfo == "Timeout")
+            if (httpInfo.AdditionalInfo != null)
             {
-                Console.WriteLine("- Timed Out :(");
+                Console.WriteLine("- " + httpInfo.AdditionalInfo);
             }
             else
             {
@@ -90,7 +91,8 @@ namespace Reecon
             return "";
         }
 
-        private static string FindFormData(string text)
+        // Set me back to private
+        public static string FindFormData(string text)
         {
             // This is very hacky and will probably break
             // I can't just use the WebBrowser control since it's not cross-platform on devices with no GUI
@@ -104,52 +106,66 @@ namespace Reecon
                     {
                         returnText += "- Form Found" + Environment.NewLine;
                         text = text.Substring(0, text.IndexOf("</form>"));
-                        List<string> formData = text.Split(Environment.NewLine.ToCharArray()).ToList();
-                        foreach (string line in formData)
+
+                        // Form title / actions
+                        string formHeader = text.Substring(0, text.IndexOf(">"));
+                        if (formHeader.Replace(" ","").Contains("method=\""))
                         {
-                            if (line.Trim().StartsWith("<form"))
+                            string formMethod = formHeader.Remove(0, formHeader.IndexOf("method"));
+                            formMethod = formMethod.Remove(0, formMethod.IndexOf("\"") + 1);
+                            formMethod = formMethod.Substring(0, formMethod.IndexOf("\""));
+                            returnText += "-- Method: " + formMethod + Environment.NewLine;
+                        }
+                        if (formHeader.Replace(" ", "").Contains("action=\""))
+                        {
+                            string formAction = formHeader.Remove(0, formHeader.IndexOf("action"));
+                            formAction = formAction.Remove(0, formAction.IndexOf("\"") + 1);
+                            formAction = formAction.Substring(0, formAction.IndexOf("\""));
+                            returnText += "-- Action: " + formAction + Environment.NewLine;
+                        }
+
+                        // Inputs
+                        List<string> inputs = text.Split("<input").ToList();
+                        inputs = inputs.Where(x => !x.StartsWith("<form")).ToList();
+                        string username = null;
+                        string password = null;
+                        foreach (string item in inputs)
+                        {
+                            // Textbox
+                            if (item.Replace(" ", "").Contains("type=\"text\""))
                             {
-                                string formHeader = line.Trim();
-                                if (formHeader.Contains("action=\""))
+                                returnText += "-- Textbox Discovered" + Environment.NewLine;
+                                if (item.Contains(" name=\""))
                                 {
-                                    string formAction = formHeader.Remove(0, formHeader.IndexOf("action=\"") + 8);
-                                    formAction = formAction.Substring(0, formAction.IndexOf("\""));
-                                    returnText += "-- Form Action: " + formAction + Environment.NewLine;
-                                }
-                                if (formHeader.Contains("method=\""))
-                                {
-                                    string formMethod = formHeader.Remove(0, formHeader.IndexOf("method=\"") + 8);
-                                    formMethod = formMethod.Substring(0, formMethod.IndexOf("\""));
-                                    returnText += "-- Form Method: " + formMethod + Environment.NewLine;
+                                    string textBoxName = item.Remove(0, item.IndexOf("name"));
+                                    textBoxName = textBoxName.Remove(0, textBoxName.IndexOf("\"") + 1);
+                                    textBoxName = textBoxName.Substring(0, textBoxName.IndexOf("\""));
+                                    returnText += $"--- Name: {textBoxName}" + Environment.NewLine;
+                                    username = textBoxName;
                                 }
                             }
 
-                            // Bugs out if the input tag is spread over multiple lines
-                            if (line.Trim().StartsWith("<input"))
+                            // Password Box
+                            if (item.Replace(" ", "").Contains("type=\"password\""))
                             {
-                                string inputName = "";
-                                string inputValue = "";
-                                string inputLine = line.Trim(); ;
-                                if (inputLine.Contains("name=\""))
+                                returnText += "-- Password Input Discovered" + Environment.NewLine;
+                                // Textbox
+                                if (item.Contains(" name=\""))
                                 {
-                                    inputName = inputLine.Remove(0, inputLine.IndexOf("name=\"") + 6);
-                                    inputName = inputName.Substring(0, inputName.IndexOf("\""));
-                                }
-                                if (inputLine.Contains("value=\""))
-                                {
-                                    inputValue = inputLine.Remove(0, inputLine.IndexOf("value=\"") + 6);
-                                    inputValue = inputValue.Substring(0, inputValue.IndexOf("\""));
-                                }
-                                if (inputName != "")
-                                {
-                                    returnText += "-- Input -> Name: " + inputName + (inputValue != "" ? ", Value: " + inputValue : "") + Environment.NewLine;
+                                    string textBoxName = item.Remove(0, item.IndexOf("name"));
+                                    textBoxName = textBoxName.Remove(0, textBoxName.IndexOf("\"") + 1);
+                                    textBoxName = textBoxName.Substring(0, textBoxName.IndexOf("\""));
+                                    returnText += $"--- Name: {textBoxName}" + Environment.NewLine;
+                                    password = textBoxName;
                                 }
                             }
+                        }
 
-                            if (line.Trim().StartsWith("<button"))
-                            {
-                                returnText += "-- Button: " + line.Trim() + Environment.NewLine;
-                            }
+                        // This will only work in the best of cases
+                        if (inputs.Count == 3 && username != null && password != null)
+                        {
+                            returnText += "-- " + "Possible Form Found".Pastel(Color.Orange) + Environment.NewLine;
+                            returnText += "--- " + $"hydra -l logins.txt -p passwords.txt 127.0.0.1 http-form-post \"/folder/post.php:{username}=^USER^&{password}=^PASS^:Invalid password error here\"".Pastel(Color.Orange) + Environment.NewLine;
                         }
                     }
                 }
@@ -362,6 +378,8 @@ namespace Reecon
                 "admin.php",
                 "admin/",
                 "manager/",
+                // Access details
+                ".htaccess",
                 // Git repo
                 ".git/HEAD",
                 // SSH
@@ -402,6 +420,7 @@ namespace Reecon
                 // APIs
                 "api",
                 // A bit CTFy
+                "server-status",
                 "LICENSE",
                 "help",
                 "info"
@@ -746,7 +765,7 @@ namespace Reecon
                 {
                     // Why is this not caught in the TimeoutException...
                     Console.WriteLine($"- TimeoutError - {url} timed out :(".Pastel(Color.Red));
-                    return (statusCode, null, null, null, null, null, url, "Timeout");
+                    return (statusCode, null, null, null, null, null, url, "Timed Out :(");
                 }
                 else if (ex.InnerException != null && ex.InnerException.GetType().IsAssignableFrom(typeof(IOException)))
                 {
@@ -759,6 +778,17 @@ namespace Reecon
                         // Soome weird cert thing
                         // * schannel: failed to read data from server: SEC_E_CERT_UNKNOWN (0x80090327) - An unknown error occurred while processing the certificate.
                         return (statusCode, null, null, null, null, null, url, "WeirdSSL");
+                    }
+                }
+                else if (ex.InnerException != null && ex.InnerException.GetType().IsAssignableFrom(typeof(SocketException)))
+                {
+                    if (ex.InnerException.Message == "Name or service not known")
+                    {
+                        return (statusCode, null, null, null, null, null, url, $"The url {url} does not exist - Maybe fix your /etc/hosts file?");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Reecon.Web - Fatal Exception - Bug Reelix - SocketException: " + ex.InnerException.Message);
                     }
                 }
                 else
@@ -898,6 +928,7 @@ namespace Reecon
                     }
 
                     // Check Manager (HTML)
+
                     string managerAppHTMLURL = URL + "manager/html";
                     var managerAppInfo = Web.GetHTTPInfo(managerAppHTMLURL);
                     if (managerAppInfo.StatusCode == HttpStatusCode.Unauthorized)

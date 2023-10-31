@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 
 namespace Reecon
 {
@@ -26,25 +27,28 @@ namespace Reecon
 
         private static void Search(string searchCommand)
         {
+            string dbPath = Directory.GetCurrentDirectory() + @"/files_exploits.csv";
+            string updatePath = "https://gitlab.com/exploit-database/exploitdb/raw/main/files_exploits.csv";
+            Console.WriteLine(dbPath);
             if (searchCommand.Contains("-update"))
             {
                 Console.WriteLine("Updating...");
-                if (File.Exists("files_exploits.csv"))
+                if (File.Exists(dbPath))
                 {
                     Console.WriteLine("Existing exploit database found - Removing");
                 }
-                Console.WriteLine("Downloading update...");
-                General.DownloadFile("https://github.com/offensive-security/exploitdb/raw/master/files_exploits.csv", "files_exploits.csv");
+                Console.WriteLine($"Downloading update from {updatePath}...");
+                General.DownloadFile(updatePath, dbPath);
                 Console.WriteLine("Update complete!");
                 return;
             }
-            if (!File.Exists("files_exploits.csv"))
+            if (!File.Exists(dbPath))
             {
-                Console.WriteLine("Cannot find database - Please run -searchsploit -update");
+                Console.WriteLine("Cannot find database - Please run -searchsploit -update (Will create a files_exploits.csv file in your current folder)");
                 return;
             }
 
-            List<DatabaseItem> database = Database.Parse("files_exploits.csv");
+            List<DatabaseItem> database = Database.Parse(dbPath);
 
             if (searchCommand.Contains("-view"))
             {

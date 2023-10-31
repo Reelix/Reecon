@@ -46,6 +46,7 @@ namespace Reecon
                     List<string> showmountOutput = General.GetProcessOutput("showmount", "-e " + target);
                     foreach (string line in showmountOutput)
                     {
+                        // A portable version of bash
                         // https://github.com/TheRealPoloMints/Blog/blob/master/Security%20Challenge%20Walkthroughs/Networks%202/bash
 
                         // NFS V1
@@ -61,6 +62,11 @@ namespace Reecon
                             fileList += "- " + line.Pastel(Color.Orange) + Environment.NewLine;
                             fileList += "-- NFSV2 -> " + $"sudo mount -t nfs -o vers=2 {target}:/mountNameHere /mnt".Pastel(Color.Orange) + Environment.NewLine;
                             fileList += "--- " + "Try copy over a version of bash onto the share, +s +x it, then ./bash -p".Pastel(Color.Orange) + Environment.NewLine;
+                        }
+                        // This took me far too long to figure out
+                        else if (line.Contains("clnt_create: RPC: Program not registered"))
+                        {
+                            fileList = "- showmount cannot connect to the NFS service on port 2049 :(" + Environment.NewLine;
                         }
                         else
                         {

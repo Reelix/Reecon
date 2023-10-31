@@ -40,7 +40,8 @@ namespace Reecon
             string SSLCertInfo = FindFTPSSLCert(target);
             if (!string.IsNullOrEmpty(SSLCertInfo))
             {
-                ftpLoginInfo += Environment.NewLine + SSLCertInfo;
+                // ftpLoginInfo might end in a NewLine - It might not
+                ftpLoginInfo = ftpLoginInfo.Trim(Environment.NewLine.ToCharArray()) + Environment.NewLine + SSLCertInfo;
             }
             return ftpLoginInfo.Trim(Environment.NewLine.ToCharArray());
         }

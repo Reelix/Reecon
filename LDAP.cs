@@ -1,9 +1,12 @@
-﻿using Pastel;
+﻿using FluentFTP.Client.BaseClient;
+using FluentFTP;
+using Pastel;
 using System;
 using System.DirectoryServices.Protocols;
 using System.Drawing;
 using System.Net;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
 namespace Reecon
@@ -11,7 +14,6 @@ namespace Reecon
     class LDAP // Port 389
     {
         // Linux requires: https://packages.ubuntu.com/focal-updates/amd64/libldap-2.4-2/download
-        // https://github.com/dotnet/runtime/issues/69456
         static string rootDseString = "";
 
         static int ldapPort = 0;
@@ -22,6 +24,7 @@ namespace Reecon
             string checkCanRun = CanLDAPRun();
             if (checkCanRun != null)
             {
+                // https://github.com/dotnet/runtime/issues/69456
                 return checkCanRun;
             }
             returnInfo = LDAP.GetDefaultNamingContext(ip);
@@ -30,7 +33,6 @@ namespace Reecon
         }
 
         public static string CanLDAPRun()
-
         {
             string toReturn = null;
             try
@@ -74,7 +76,6 @@ namespace Reecon
                     return toReturn;
                 }
             }
-            return toReturn;
         }
         public static string GetDefaultNamingContext(string ip, bool raw = false)
         {
@@ -85,14 +86,16 @@ namespace Reecon
             creds.UserName = null;
             creds.Password = null;
             //creds.Password = original;
-            LdapConnection connection = new LdapConnection(identifier, null)
+            LdapConnection connection = new LdapConnection(identifier, null);
+            connection.AuthType = AuthType.Anonymous;
+            connection.SessionOptions.ProtocolVersion = 3;
+            if (identifier.PortNumber == 636)
             {
-                AuthType = AuthType.Anonymous,
-                SessionOptions =
-                {
-                    ProtocolVersion = 3
-                }
-            };
+                // Console.WriteLine("Setting SSL!");
+                // connection.SessionOptions.ReferralChasing = ReferralChasingOptions.None;
+                // connection.SessionOptions.SecureSocketLayer = true;
+
+            }
             SearchRequest searchRequest = new SearchRequest(null, "(objectclass=*)", SearchScope.Base);
             var response = connection.SendRequest(searchRequest) as SearchResponse;
             var searchEntries = response.Entries;
@@ -124,7 +127,7 @@ namespace Reecon
                 }
                 else
                 {
-                    ldapInfo = $"- defaultNamingContext: {defaultNamingContext}" + Environment.NewLine;
+                    ldapInfo += $"- defaultNamingContext: {defaultNamingContext}" + Environment.NewLine;
                 }
             }
             else if (searchEntries[0].Attributes.Contains("objectClass"))
@@ -144,6 +147,44 @@ namespace Reecon
             // var searchEntries = ldapConnection.Search(null, "(objectclass=*)", scope: Native.LdapSearchScope.LDAP_SCOPE_BASE);
             return ldapInfo;
         }
+
+        // Any time I try to get the LDAP Server SSL Cert details
+        // connection.SessionOptions.VerifyServerCertificate = new VerifyServerCertificateCallback(OnVerifyServerCertificateCallback);
+        // It freaks out with "The LDAP server is unavailable."
+        static bool OnVerifyServerCertificateCallback(LdapConnection ldapConnection, X509Certificate certificate)
+        {
+            Console.WriteLine("Callback hit"); // Never gotten this hit...
+            string issuer = certificate.Issuer;
+            string subject = certificate.Subject;
+            if (issuer != subject)
+            {
+                //ldapInfo += "-- LDAP SSL Cert Subject: " + subject;
+            }
+            /*
+            Console.WriteLine("Issuer: " + e.Certificate.Issuer);
+            Console.WriteLine("Subject: " + e.Certificate.Subject);
+            Console.WriteLine("Raw: " + e.Certificate.GetRawCertDataString());
+            */
+            return true;
+        }
+
+        /*
+        public static string GetLDAPCertInfo(string ip)
+        {
+            LdapDirectoryIdentifier identifier = new LdapDirectoryIdentifier(ip);
+            LdapConnection connection = new LdapConnection(identifier, null)
+            {
+                AuthType = AuthType.Anonymous,
+                SessionOptions =
+                {
+                    ProtocolVersion = 3
+                }
+            };
+            connection.SessionOptions.VerifyServerCertificate = new VerifyServerCertificateCallback(VerifyServerCertificate);
+        }
+        */
+
+
 
         public static string GetAccountInfo(string ip, string username = null, string password = null)
         {
@@ -169,6 +210,7 @@ namespace Reecon
                     ProtocolVersion = 3
                 }
             };
+            // 
             try
             {
                 connection.Bind();

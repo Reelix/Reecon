@@ -36,8 +36,9 @@ namespace Reecon
                     byte[] cmdBytes = Encoding.ASCII.GetBytes(("INFO" + Environment.NewLine).ToCharArray());
                     redisSocket.Send(cmdBytes, cmdBytes.Length, 0);
                     // Get basic info
-                    int bytes = redisSocket.Receive(buffer, buffer.Length, 0);
-                    string redisText = Encoding.ASCII.GetString(buffer, 0, bytes);
+                    int bytes = 0;
+                    buffer = General.ReceiveSocketData(redisSocket);
+                    string redisText = Encoding.ASCII.GetString(buffer);
                     if (redisText.StartsWith("-NOAUTH Authentication"))
                     {
                         returnText = "- Redis Authentication required" + Environment.NewLine;
@@ -67,8 +68,8 @@ namespace Reecon
                         // Get dbfilenme
                         cmdBytes = Encoding.ASCII.GetBytes(("CONFIG GET dbfilename" + Environment.NewLine).ToCharArray());
                         redisSocket.Send(cmdBytes, cmdBytes.Length, 0);
-                        bytes = redisSocket.Receive(buffer, buffer.Length, 0);
-                        redisText = Encoding.ASCII.GetString(buffer, 0, bytes);
+                        buffer = General.ReceiveSocketData(redisSocket);
+                        redisText = Encoding.ASCII.GetString(buffer);
                         redisLines = redisText.Split(new[] { Environment.NewLine }, StringSplitOptions.None).ToList();
                         string dbFilename = "";
                         if (redisLines.Count == 6)
@@ -87,7 +88,7 @@ namespace Reecon
                         {
                             cmdBytes = Encoding.ASCII.GetBytes(("CONFIG SET dbfilename woof" + Environment.NewLine).ToCharArray());
                             redisSocket.Send(cmdBytes, cmdBytes.Length, 0);
-                            bytes = redisSocket.Receive(buffer, buffer.Length, 0);
+                            buffer = General.ReceiveSocketData(redisSocket);
                             redisText = Encoding.ASCII.GetString(buffer, 0, bytes);
                             redisLines = redisText.Split(new[] { Environment.NewLine }, StringSplitOptions.None).ToList();
                             if (redisLines.Count == 2 && redisLines[0].Contains("+OK"))
@@ -104,8 +105,8 @@ namespace Reecon
                         // Get dir
                         cmdBytes = Encoding.ASCII.GetBytes(("CONFIG GET dir" + Environment.NewLine).ToCharArray());
                         redisSocket.Send(cmdBytes, cmdBytes.Length, 0);
-                        bytes = redisSocket.Receive(buffer, buffer.Length, 0);
-                        redisText = Encoding.ASCII.GetString(buffer, 0, bytes);
+                        buffer = General.ReceiveSocketData(redisSocket);
+                        redisText = Encoding.ASCII.GetString(buffer);
                         redisLines = redisText.Split(new[] { Environment.NewLine }, StringSplitOptions.None).ToList();
                         string dirPath = "";
                         if (redisLines.Count == 6)
@@ -123,8 +124,8 @@ namespace Reecon
                         {
                             cmdBytes = Encoding.ASCII.GetBytes(("CONFIG SET dir /var/" + Environment.NewLine).ToCharArray());
                             redisSocket.Send(cmdBytes, cmdBytes.Length, 0);
-                            bytes = redisSocket.Receive(buffer, buffer.Length, 0);
-                            redisText = Encoding.ASCII.GetString(buffer, 0, bytes);
+                            buffer = General.ReceiveSocketData(redisSocket);
+                            redisText = Encoding.ASCII.GetString(buffer);
                             redisLines = redisText.Split(new[] { Environment.NewLine }, StringSplitOptions.None).ToList();
                             if (redisLines.Count == 2 && redisLines[0].Contains("+OK"))
                             {
@@ -134,7 +135,7 @@ namespace Reecon
                             // Reset it back to what it was
                             cmdBytes = Encoding.ASCII.GetBytes(("CONFIG SET dir " + dirPath + Environment.NewLine).ToCharArray());
                             redisSocket.Send(cmdBytes, cmdBytes.Length, 0);
-                            bytes = redisSocket.Receive(buffer, buffer.Length, 0);
+                            // (bytes, buffer) = General.ReceiveData(redisSocket, buffer);
                         }
 
                         if (canSetDB && canSetPath)

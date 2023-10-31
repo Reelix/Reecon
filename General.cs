@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Pipes;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -580,23 +581,33 @@ namespace Reecon
 
         }
 
-        public static async void DownloadFile(string uri, string outputPath)
+        // HttpClient version of WebClient.DownloadFile(uri, outpath)
+        public static void DownloadFile(string uri, string outputPath)
         {
-            HttpClient httpClient = new HttpClient();
-            Uri uriResult;
-
-            if (!Uri.TryCreate(uri, UriKind.Absolute, out uriResult))
+            HttpClient client = new HttpClient();
+            HttpRequestMessage message = new HttpRequestMessage(HttpMethod.Get, uri);
+            HttpResponseMessage response = client.Send(message);
+            if (response.StatusCode == HttpStatusCode.OK)
             {
-                throw new InvalidOperationException("URI is invalid.");
+                Stream httpStream = response.Content.ReadAsStream();
+                FileStream fileStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
+                httpStream.CopyTo(fileStream);
             }
-
-            if (!File.Exists(outputPath))
+        }
+        public static byte[] ReceiveSocketData(Socket theSocket)
+        {
+            byte[] buffer = new byte[5000];
+            byte[] totBuffer = new byte[5000];
+            int size = theSocket.Receive(buffer, buffer.Length, 0);
+            int totSize = 0;
+            Array.Copy(buffer, 0, totBuffer, totSize, size);
+            while ((theSocket.Poll(1000, SelectMode.SelectRead)))
             {
-                throw new FileNotFoundException("File not found.", nameof(outputPath));
+                totSize += size;
+                size = theSocket.Receive(buffer);
+                Array.Copy(buffer, 0, totBuffer, totSize, size);
             }
-
-            byte[] fileBytes = await httpClient.GetByteArrayAsync(uri);
-            File.WriteAllBytes(outputPath, fileBytes);
+            return (totBuffer);
         }
     }
 }

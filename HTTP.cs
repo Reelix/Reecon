@@ -53,6 +53,10 @@ namespace Reecon
                 {
                     return "- It's SSL, but can't connect with https for some reason :(";
                 }
+                else if (httpInfo.AdditionalInfo == "Name or service not known")
+                {
+                    return $"- The url {url} does not exist - Maybe fix your /etc/hosts file?";
+                }
                 else if (httpInfo == (0, null, null, null, null, null, null, null))
                 {
                     return "";
