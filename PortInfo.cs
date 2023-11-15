@@ -245,7 +245,7 @@ namespace Reecon
                         postScanActions += $"- gobuster dir -u https://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-{port}-common.txt -x.php,.txt" + Environment.NewLine;
                     }
                 }
-                // Probably a general HTTP or HTTPS web server - Try both
+                // Probably a general HTTP or HTTPS web server
                 else if (
                     theBanner.Contains("Server: Apache") // Apache Web Server
                     || theBanner.Contains("Server: cloudflare") // Cloudflare Server
@@ -257,22 +257,14 @@ namespace Reecon
                     || theBanner.Trim().StartsWith("<!DOCTYPE html>") // General HTML
                     )
                 {
-                    string httpData = HTTP.GetInfo(target, port);
+                    bool isHTTPS = Web.BasicHTTPSTest(target, port);
+                    string httpData = isHTTPS ? HTTPS.GetInfo(target, port) : HTTP.GetInfo(target, port);
                     if (httpData != "")
                     {
-                        Console.WriteLine(unknownPortResult += $"Port {port} - HTTP".Pastel(Color.Green) + Environment.NewLine + httpData + Environment.NewLine);
-                        postScanActions += $"- gobuster dir -u http://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-" + port + "-medium.txt -x.php,.txt" + Environment.NewLine;
-                        postScanActions += $"- gobuster dir -u http://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-" + port + "-common.txt -x.php,.txt" + Environment.NewLine;
-                    }
-                    if (Web.BasicHTTPSTest(target, port))
-                    {
-                        string httpsData = HTTPS.GetInfo(target, port);
-                        if (httpsData != "")
-                        {
-                            Console.WriteLine(unknownPortResult += $"Port {port} - HTTPS".Pastel(Color.Green) + Environment.NewLine + httpsData + Environment.NewLine);
-                            postScanActions += $"- gobuster dir -u https://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-{port}-medium.txt -x.php,.txt" + Environment.NewLine;
-                            postScanActions += $"- gobuster dir -u https://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-{port}-common.txt -x.php,.txt" + Environment.NewLine;
-                        }
+                        string headerText = $"Port {port} - HTTP" + (isHTTPS ? "S" : "");
+                        Console.WriteLine(unknownPortResult += headerText.Pastel(Color.Green) + Environment.NewLine + httpData + Environment.NewLine);
+                        postScanActions += "- gobuster dir -u http" + (isHTTPS ? "s" : "") + $"://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-" + port + "-medium.txt -x.php,.txt" + Environment.NewLine;
+                        postScanActions += "- gobuster dir -u http" + (isHTTPS ? "S" : "") + $"://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-" + port + "-common.txt -x.php,.txt" + Environment.NewLine;
                     }
                     break;
                 }
@@ -511,7 +503,7 @@ namespace Reecon
                     postScanActions += $"- Port 445 - Linux (SMBClient) has better info on this: smbclient -L {target} --no-pass" + Environment.NewLine;
                 }
                 postScanActions += $"- Port 445 - I miss a lot: nmap -sC -sV -p445 {target}" + Environment.NewLine;
-                postScanActions += $"- Port 445 - Unauthenticated SID (Username) Lookup: lookupsid.py anonymous@{target} -no-pass | grep -e \"Brute forcing\" -e SidTypeUser" + Environment.NewLine;
+                postScanActions += $"- Port 445 - Unauthenticated SID (Username) Lookup: lookupsid.py anonymous@{target} -no-pass | grep -e \"Brute forcing\" -e SidTypeUser -e STATUS_LOGON_FAILURE" + Environment.NewLine;
                 postScanActions += $"- Port 445 - Authenticated SID Lookup: lookupsid.py DOMAIN/Username:password@{target}" + Environment.NewLine;
                 postScanActions += $"- Port 445 - Testing passwords: crackmapexec smb {target} -u users.txt -p passwords.txt" + Environment.NewLine;
                 postScanActions += $"- Port 445 - List Shares: smbclient -L //{target} -U validusername%validpass" + Environment.NewLine;
