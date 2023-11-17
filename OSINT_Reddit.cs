@@ -1,10 +1,8 @@
 ﻿using System;
-using System.Net;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Net;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Reecon
 {
@@ -17,7 +15,7 @@ namespace Reecon
             if (aboutPage.StatusCode == HttpStatusCode.OK)
             {
                 redditInfo.Exists = true;
-                OSINT_Reddit_Profile.Rootobject profile = JsonSerializer.Deserialize<OSINT_Reddit_Profile.Rootobject>(aboutPage.PageText);
+                OSINT_Reddit_Profile.Rootobject profile = JsonSerializer.Deserialize(aboutPage.PageText, typeof(OSINT_Reddit_Profile.Rootobject), SourceGenerationContext.Default) as OSINT_Reddit_Profile.Rootobject;
                 redditInfo.CreationDate = DateTime.FromFileTimeUtc((long)profile.data.created_utc);
                 redditInfo.CommentKarma = profile.data.comment_karma;
 
@@ -25,7 +23,8 @@ namespace Reecon
                 var commentsPage = Web.GetHTTPInfo($"https://www.reddit.com/user/{name}/comments.json");
                 if (commentsPage.StatusCode == HttpStatusCode.OK)
                 {
-                    OSINT_Reddit_Comments.Rootobject commentInfo = JsonSerializer.Deserialize<OSINT_Reddit_Comments.Rootobject>(commentsPage.PageText);
+                    //OSINT_Reddit_Comments.Rootobject commentInfo = JsonSerializer.Deserialize<OSINT_Reddit_Comments.Rootobject>(commentsPage.PageText);
+                    OSINT_Reddit_Comments.Rootobject commentInfo = JsonSerializer.Deserialize(commentsPage.PageText, typeof(OSINT_Reddit_Comments.Rootobject), SourceGenerationContext.Default) as OSINT_Reddit_Comments.Rootobject;
                     foreach (var comment in commentInfo.data.children)
                     {
                         redditInfo.CommentList.Add(comment.data);
@@ -38,7 +37,7 @@ namespace Reecon
                     var submissionsPage = Web.GetHTTPInfo($"https://www.reddit.com/user/{name}/submitted.json");
                     if (submissionsPage.StatusCode == HttpStatusCode.OK)
                     {
-                        OSINT_Reddit_Submitted.Rootobject submissionInfo = JsonSerializer.Deserialize<OSINT_Reddit_Submitted.Rootobject>(submissionsPage.PageText);
+                        OSINT_Reddit_Submitted.Rootobject submissionInfo = JsonSerializer.Deserialize(submissionsPage.PageText, typeof(OSINT_Reddit_Submitted.Rootobject), SourceGenerationContext.Default) as OSINT_Reddit_Submitted.Rootobject;
                         foreach (var submission in submissionInfo.data.children)
                         {
                             redditInfo.SubmissionList.Add(submission.data);
@@ -142,6 +141,12 @@ namespace Reecon
             public string subreddit_type { get; set; }
             public bool? user_is_subscriber { get; set; }
         }
+    }
+
+    [JsonSourceGenerationOptions(WriteIndented = true)]
+    [JsonSerializable(typeof(OSINT_Reddit_Comments))]
+    internal partial class SourceGenerationContext : JsonSerializerContext
+    {
     }
 
     public class OSINT_Reddit_Comments

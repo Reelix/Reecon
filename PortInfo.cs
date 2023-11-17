@@ -228,7 +228,8 @@ namespace Reecon
                     Console.WriteLine(unknownPortResult + Environment.NewLine);
                 }
                 // FTP
-                else if (theBanner.StartsWith("220 ") && theBanner.ToUpper().Contains("FTP")) // ToUpper for things like pyftpdlib / FreeFloat Ftp Server
+                //  && theBanner.ToUpper().Contains("FTP") - Not all FTP servers contain FTP in the Server header
+                else if (theBanner.StartsWith("220 ")) // ToUpper for things like pyftpdlib / FreeFloat Ftp Server
                 {
                     unknownPortResult += $"Port {port} - FTP".Pastel(Color.Green) + Environment.NewLine;
                     unknownPortResult += FTP.GetInfo(target, port);

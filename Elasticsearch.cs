@@ -13,7 +13,8 @@ namespace Reecon
             string returnString = "";
             // Get basic data
             string pageData = Web.DownloadString($"http://{ip}:{port}/");
-            ElasticSearchObject theObject = JsonSerializer.Deserialize<ElasticSearchObject>(pageData);
+            //ElasticSearchObject theObject = JsonSerializer.Deserialize<ElasticSearchObject>(pageData);
+            ElasticSearchObject theObject = (ElasticSearchObject)JsonSerializer.Deserialize(pageData, typeof(ElasticSearchObject), SourceGenerationContext.Default);
             // Simialr formatting to nmap
             returnString += $"- Version: {theObject.version.number} (name: {theObject.name}; cluster: {theObject.cluster_name}; Lucene: {theObject.version.lucene_version}){Environment.NewLine}";
             // Get indices

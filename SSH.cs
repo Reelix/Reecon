@@ -39,7 +39,7 @@ namespace Reecon
                         if (versionMessage.StartsWith("SSH-2.0-"))
                         {
                             versionMessage = versionMessage.Remove(0, 8);
-                            versionMessage = versionMessage.Replace("_", "");
+                            versionMessage = versionMessage.Replace("_", " ");
                             versionMessage += " (protocol 2.0)"; // Nmap's format
                         }
                         if (versionMessage.Trim() == "")

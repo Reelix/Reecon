@@ -2,15 +2,25 @@
 
 Reelix's Recon - A small program for network recon.  
 This program is still in early stages of development and should probably not be used by anyone.
-* Version: 0.34
+* Version: 0.34a
 * Build Status: <img src = "https://travis-ci.com/Reelix/Reecon.svg?branch=master" valign="middle" />
 * Requirements: [NMap 7.94+](https://nmap.org/download.html)
   * LDAP Enumeration on Ubuntu 22.04: Download + dpkg -i [this](https://packages.ubuntu.com/focal-updates/amd64/libldap-2.4-2/download)
-* Recommended:
-  * HTTP/S Enumeration: [Gobuster](https://github.com/OJ/gobuster)
+* Recommended (It won't run these, but it will suggest that you do):
+  * Manual HTTP/S Enumeration: [Gobuster](https://github.com/OJ/gobuster)
   * SMB Enumeration: [smbclient](https://github.com/SecureAuthCorp/impacket/blob/master/examples/smbclient.py)
-  * Kerberos Enumeration: [Kerbrute](https://github.com/ropnop/kerbrute), [GetNPUsers](https://github.com/SecureAuthCorp/impacket/blob/master/examples/GetNPUsers.py), [secretsdump](https://github.com/SecureAuthCorp/impacket/blob/master/examples/secretsdump.py)
+  * Kerberos Enumeration: [Kerbrute](https://github.com/ropnop/kerbrute), [GetNPUsers](https://github.com/fortra/impacket/blob/master/examples/GetNPUsers.py), [secretsdump](https://github.com/fortra/impacket/blob/master/examples/secretsdump.py)
+  * Multiple Enumerations: [crackmapexec](https://github.com/byt3bl33d3r/CrackMapExec)
   * Printer Enumeration: [PRET](https://github.com/RUB-NDS/PRET)
+
+## Frequently Asked Questions
+### WTF - Why is it 15MB? That's huge!
+It's standalone with parts of the .NET Framework built in. It runs on the device without any other requirements. No additional Framework is required if you're not self-compiling.
+That said, I'm always trying to make it smaller (Working on cross-OS trimming and reducing third-party libraries)
+### It broke
+It is still in the early stages of development. Tell me how it broke, and I'll see if I can fix it.
+### You should add XYZ
+If it sounds cool, I'll try :)
 
 ## Installation Instructions
 ### Linux (x64)
@@ -22,23 +32,16 @@ This program is still in early stages of development and should probably not be 
 ### Linux (armx64 / aarch64 - Is this the future?)
 - Download + Run https://github.com/Reelix/Reecon/releases/download/latest/reecon-linux-arm64
 
-## Build Instructions
+## Build Setup
 ### Linux (Ubuntu 22.10 and above)
 sudo apt update  
 sudo apt upgrade  
 sudo apt install dotnet-runtime-8.0  
 sudo apt install dotnet-sdk-8.0
-
 ### Linux (Other)
-#### Install repository configuration
-curl -sSL https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/microsoft-prod.list
+If you're running this, you probably know how to get dotnet setup. Start [here](https://dotnet.microsoft.com/en-us/download).
 
-#### Install Microsoft GPG public key
-curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc
-
-#### Update package index files
-sudo apt-get update
-
+## Build Instructions
 1.) Clone the repo: `git clone https://github.com/Reelix/Reecon.git`  
 2.) Run the build file: `chmod +x ./Reecon/build && ./Reecon/build`  
 3.) Run: `./reecon`  

@@ -15,7 +15,8 @@ namespace Reecon
         {
             InstagramInfo instagramInfo = new InstagramInfo();
             string pageText = Web.DownloadString($"https://www.instagram.com/web/search/topsearch/?query={username}", UserAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36");
-            OSINT_Instagram_Info.Rootobject theObject = JsonSerializer.Deserialize<OSINT_Instagram_Info.Rootobject>(pageText);
+            // 
+            OSINT_Instagram_Info.Rootobject theObject = (OSINT_Instagram_Info.Rootobject)JsonSerializer.Deserialize(pageText, typeof(OSINT_Instagram_Info.Rootobject), SourceGenerationContext.Default);
             if (theObject.users == null || theObject.users.Length == 0)
             {
                 Console.WriteLine("- Instagram: Not Found");

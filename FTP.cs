@@ -1,5 +1,6 @@
 ﻿using FluentFTP;
 using FluentFTP.Client.BaseClient;
+using FluentFTP.Exceptions;
 using Pastel;
 using System;
 using System.Drawing;
@@ -14,7 +15,18 @@ namespace Reecon
         public static string GetInfo(string target, int port)
         {
             string ftpUsername = "";
-            string ftpLoginInfo;
+            string ftpLoginInfo = "";
+            try
+            {
+                ftpLoginInfo = FtpLogin2(target, port, ftpUsername);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Rewrite Error: " + ex.Message);
+            }
+            return ftpLoginInfo.Trim(Environment.NewLine.ToCharArray());
+
+            // May be removed in the future when the above is more stable
             try
             {
                 ftpLoginInfo = FTP.FtpLogin(target, port, ftpUsername) + Environment.NewLine;
@@ -37,16 +49,135 @@ namespace Reecon
                 }
                 ftpLoginInfo += fileListInfo;
             }
-            string SSLCertInfo = FindFTPSSLCert(target);
-            if (!string.IsNullOrEmpty(SSLCertInfo))
-            {
-                // ftpLoginInfo might end in a NewLine - It might not
-                ftpLoginInfo = ftpLoginInfo.Trim(Environment.NewLine.ToCharArray()) + Environment.NewLine + SSLCertInfo;
-            }
             return ftpLoginInfo.Trim(Environment.NewLine.ToCharArray());
         }
 
-        public static string FtpLogin(string target, int port, string username = "", string password = "")
+
+        public void OnTest(FtpTraceLevel s, string z)
+        {
+
+        }
+
+        public static string FtpLogin2(string target, int port, string username = "", string password = "")
+        {
+            Console.WriteLine("In FtpLogin2");
+            string ftpLoginResult = "";
+            if (username == "")
+            {
+                username = "anonymous";
+            }
+            NetworkCredential networkCredential = new NetworkCredential(username, password);
+            FtpClient ftpClient = new FtpClient(target, networkCredential, port);
+            ftpClient.Config.EncryptionMode = FtpEncryptionMode.Auto; // Port 990 for Implicit 
+            ftpClient.ValidateCertificate += new FtpSslValidation(OnValidateCertificate);
+            ftpClient.LegacyLogger = OnLogMessage;
+
+            void OnLogMessage(FtpTraceLevel t, string loggerString)
+            {
+                if (loggerString.StartsWith("Response: 220 "))
+                {
+                    ftpLoginResult += ParseBannerMessageResponse(loggerString.Remove(0, "Response: ".Length)) + Environment.NewLine;
+                }
+            }
+
+            void OnValidateCertificate(BaseFtpClient control, FtpSslValidationEventArgs e)
+            {
+                string issuer = e.Certificate.Issuer;
+                string subject = e.Certificate.Subject;
+                ftpLoginResult += "-- SSL Cert Issuer: " + issuer + Environment.NewLine;
+                if (issuer != subject)
+                {
+                    ftpLoginResult += "-- SSL Cert Subject: " + subject;
+                }
+                /*
+                Console.WriteLine("Issuer: " + e.Certificate.Issuer);
+                Console.WriteLine("Subject: " + e.Certificate.Subject);
+                Console.WriteLine("Raw: " + e.Certificate.GetRawCertDataString());
+                */
+                // add logic to test if certificate is valid here
+                e.Accept = true;
+            }
+
+            try
+            {
+                ftpClient.Connect();
+
+                if (ftpClient.IsConnected)
+                {
+                    ftpLoginResult += "- " + $"Anonymous login allowed -> ftp ftp://anonymous:@{target}".Pastel(Color.Orange) + Environment.NewLine;
+                    Console.WriteLine("FtpLogin2 - Connected");
+                    if (ftpClient.IsAuthenticated)
+                    {
+                        ftpLoginResult += "-- OS: " + ftpClient.ServerOS + Environment.NewLine;
+                        Console.WriteLine("FtpLogin2 - Auth'd");
+                        FtpListItem[] items = ftpClient.GetListing();
+                        foreach (var item in items)
+                        {
+                            // Ack
+                            ftpLoginResult += "-- " + item.FullName + " (" + (item.Type == FtpObjectType.Directory ? "" : ("Size: " + item.Size + " -> ")) + "Perms: " + item.Chmod + " -> ";
+                            if (item.Type == FtpObjectType.Directory)
+                            {
+                                ftpLoginResult += "Directory - Might want to look into this)" + Environment.NewLine;
+                                FtpListItem[] innerItems = ftpClient.GetListing(item.FullName);
+                                foreach (var innerItem in innerItems)
+                                {
+                                    ftpLoginResult += "--- " + innerItem.FullName + " (Size: " + innerItem.Size + " -> Perms: " + innerItem.Chmod + " -> " + innerItem.Type + ")" + Environment.NewLine;
+                                    if (innerItem.Type == FtpObjectType.File && innerItem.Name.EndsWith(".txt"))
+                                    {
+                                        using Stream stream = ftpClient.OpenRead(innerItem.FullName);
+                                        using StreamReader reader = new(stream);
+                                        while (!reader.EndOfStream)
+                                        {
+                                            string line = reader.ReadLine();
+                                            ftpLoginResult += "---- Text: " + line + Environment.NewLine;
+                                        }
+                                    }
+                                }
+                            }
+                            else if (item.Type == FtpObjectType.File)
+                            {
+                                ftpLoginResult += "File)";
+                            }
+                            ftpLoginResult += Environment.NewLine;
+                            if (item.Type == FtpObjectType.File && item.Name.EndsWith(".txt"))
+                            {
+                                using Stream stream = ftpClient.OpenRead(item.FullName);
+                                using StreamReader reader = new(stream);
+                                while (!reader.EndOfStream)
+                                {
+                                    string line = reader.ReadLine();
+                                    ftpLoginResult += "--- Text: " + line + Environment.NewLine;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (FtpAuthenticationException aex)
+            {
+                Console.WriteLine("OS: " + ftpClient.ServerOS);
+                string banner = ftpClient.LastReplies.First(x => x.Code == "220").Message;
+                ftpLoginResult += ParseBannerMessageResponse(banner);
+                ftpLoginResult += "- Banner: " + banner + Environment.NewLine;
+                if (username == "anonymous" && aex.CompletionCode == "530")
+                {
+                    ftpLoginResult += "- No anonymous access permitted";
+                }
+                else
+                {
+                    ftpLoginResult += "- Ftp.cs - Unknown FtpAuthenticationException: " + aex.Message; ;
+                }
+            }
+            catch (Exception ex)
+            {
+                string banner = ftpClient.LastReplies.First(x => x.Code == "220").Message;
+                ftpLoginResult += "- Banner: " + banner + Environment.NewLine;
+                ftpLoginResult += "- Ftp.cs - Unknown Exception - Bug Reelix: " + ex.Message; ;
+            }
+            return ftpLoginResult;
+        }
+
+       public static string FtpLogin(string target, int port, string username = "", string password = "")
         {
             string ftpLoginResult = "";
             string ftpServer = target;
@@ -59,6 +190,7 @@ namespace Reecon
             // About that....
 
 #pragma warning disable SYSLIB0014 // Type or member is obsolete
+            // Test
             FtpWebRequest request = (FtpWebRequest)WebRequest.Create(ftpServer);
 #pragma warning restore SYSLIB0014 // Type or member is obsolete
             request.Timeout = 5000;
@@ -175,47 +307,6 @@ namespace Reecon
             return toReturn.Trim(Environment.NewLine.ToCharArray());
         }
 
-        public static string FindFTPSSLCert(string target)
-        {
-            string toReturn = "";
-            try
-            {
-                if (!target.StartsWith("ftp://"))
-                {
-                    target = "ftp://" + target;
-                }
-                FtpClient client = new(target, "reelixwoof", "reelixwoof");
-                client.Config.EncryptionMode = FtpEncryptionMode.Explicit; // Port 990 for Implicit 
-                client.ValidateCertificate += new FtpSslValidation(OnValidateCertificate);
-                client.Connect();
-
-                // Inline for returns
-                void OnValidateCertificate(BaseFtpClient control, FtpSslValidationEventArgs e)
-                {
-                    string issuer = e.Certificate.Issuer;
-                    string subject = e.Certificate.Subject;
-                    toReturn = "-- SSL Cert Issuer: " + issuer + Environment.NewLine;
-                    if (issuer != subject)
-                    {
-                        toReturn += "-- SSL Cert Subject: " + subject;
-                    }
-                    /*
-                    Console.WriteLine("Issuer: " + e.Certificate.Issuer);
-                    Console.WriteLine("Subject: " + e.Certificate.Subject);
-                    Console.WriteLine("Raw: " + e.Certificate.GetRawCertDataString());
-                    */
-                    // add logic to test if certificate is valid here
-                    e.Accept = true;
-                }
-
-            }
-            catch
-            {
-                // We don't really care
-            }
-            return toReturn.Trim(Environment.NewLine.ToCharArray());
-        }
-
         public static string TryListFiles(string ftpServer, int port, bool usePassive, string username = "", string password = "")
         {
             string toReturn = "";
@@ -248,16 +339,7 @@ namespace Reecon
                     fileType = " (Fix Me!)";
                 }
                 toReturn += "-- " + item.Name + fileType + Environment.NewLine;
-                if (item.Type == FtpObjectType.File && item.Name.EndsWith(".txt"))
-                {
-                    using Stream stream = client.OpenRead(item.FullName);
-                    using StreamReader reader = new(stream);
-                    while (!reader.EndOfStream)
-                    {
-                        string line = reader.ReadLine();
-                        toReturn += "--- Text: " + line + Environment.NewLine;
-                    }
-                }
+                
             }
             return toReturn;
         }

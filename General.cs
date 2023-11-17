@@ -3,14 +3,15 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.IO.Pipes;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,19 +22,20 @@ namespace Reecon
     {
         public static void ShowHelp()
         {
+            string reeconFileName = typeof(Program).Assembly.GetName().Name;
             Console.WriteLine("Usage");
             Console.WriteLine("-----");
-            Console.WriteLine("Basic Scan:\tReecon IPHere (Optional: -noping to skip the online check)");
-            Console.WriteLine("Display IP:\tReecon -ip");
-            Console.WriteLine("NMap-Load Scan:\tReecon outfile.nmap (Requires -oG on a regular nmap scan)");
-            Console.WriteLine("Binary Pwn:\tReecon -pwn FileName (Very buggy)");
-            Console.WriteLine("LDAP Auth Enum:\tReecon -ldap IP validUsername validPassword");
-            Console.WriteLine("Searchsploit:\tReecon -searchsploit nameHere (Beta)");
-            Console.WriteLine("Shell Gen:\tReecon -shell");
-            Console.WriteLine("SMB Brute:\tReecon -smb-brute (Linux Only)");
-            Console.WriteLine("WinRM Brute:\tReecon -winrm-brute IP UserList PassList");
-            Console.WriteLine("LFI Test:\tReecon -lfi (Very buggy)");
-            Console.WriteLine("Web Info:\tReecon -web url (Very buggy)");
+            Console.WriteLine($"Basic Scan:\t{reeconFileName} IPHere (Optional: -noping to skip the online check)");
+            Console.WriteLine($"Display IP:\t{reeconFileName} -ip");
+            Console.WriteLine($"NMap-Load Scan:\t{reeconFileName} outfile.nmap (Requires -oG on a regular nmap scan)");
+            Console.WriteLine($"Binary Pwn:\t{reeconFileName} -pwn FileName (Very buggy)");
+            Console.WriteLine($"LDAP Auth Enum:\t{reeconFileName} -ldap IP validUsername validPassword");
+            Console.WriteLine($"Searchsploit:\t{reeconFileName} -searchsploit nameHere (Beta)");
+            Console.WriteLine($"Shell Gen:\t{reeconFileName} -shell");
+            Console.WriteLine($"SMB Brute:\t{reeconFileName} -smb-brute (Linux Only)");
+            Console.WriteLine($"WinRM Brute:\t{reeconFileName} -winrm-brute IP UserList PassList");
+            Console.WriteLine($"LFI Test:\t{reeconFileName} -lfi (Very buggy)");
+            Console.WriteLine($"Web Info:\t{reeconFileName} -web url (Very buggy)");
         }
 
         public static List<string> MultiBannerGrab(string ip, int port, int bufferSize = 512, int timeout = 5000)
@@ -608,6 +610,12 @@ namespace Reecon
                 Array.Copy(buffer, 0, totBuffer, totSize, size);
             }
             return (totBuffer);
+        }
+
+        public static object DesrialzeTrim(string text, Type theType)
+        {
+            var theObject = JsonSerializer.Deserialize(text, theType, SourceGenerationContext.Default);
+            return theObject;
         }
     }
 }
