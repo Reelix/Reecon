@@ -1,7 +1,7 @@
-﻿using System;
+﻿using Npgsql; // For PostgreSQL Stuff
+using System;
 using System.Collections.Generic;
 using System.Data;
-using Npgsql; // For PostgreSQL Stuff
 
 namespace Reecon
 {

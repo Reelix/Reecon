@@ -4,9 +4,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Reflection;
-using System.Security.Cryptography;
 
 namespace Reecon
 {
@@ -19,7 +17,7 @@ namespace Reecon
 
     public class PortInfo
     {
-        private static readonly List<Port> PortInfoList = new();
+        private static List<Port> PortInfoList = new();
 
         // Parse Ports.txt into useful information
         public static void LoadPortInfo()
@@ -50,22 +48,22 @@ namespace Reecon
                         int highPort = int.Parse(portNumber.Split('-')[1]);
                         for (int j = lowPort; j <= highPort; j++)
                         {
-                            Port thePort = new()
+                            Port thePort = new Port()
                             {
                                 Number = j,
                                 FileName = portFileName,
-                                FriendlyName = portFriendlyName
+                                FriendlyName = portFriendlyName,
                             };
                             PortInfoList.Add(thePort);
                         }
                     }
                     else
                     {
-                        Port thePort = new()
+                        Port thePort = new Port()
                         {
                             Number = int.Parse(portNumber),
                             FileName = portFileName,
-                            FriendlyName = portFriendlyName
+                            FriendlyName = portFriendlyName,
                         };
                         PortInfoList.Add(thePort);
                     }
@@ -79,76 +77,64 @@ namespace Reecon
             // See if the port is in our list of known ports
             if (PortInfoList.Any(x => x.Number == port))
             {
-                try
+                Port thePort = PortInfoList.First(x => x.Number == port);
+                string portHeader = $"Port {thePort.Number} - {thePort.FriendlyName}";
+                string fileName = thePort.FileName;
+                // No Custom File for it
+                if (fileName == "N/A")
                 {
-                    Port thePort = PortInfoList.First(x => x.Number == port);
-                    string portHeader = $"Port {thePort.Number} - {thePort.FriendlyName}";
-                    
-                    // No Custom File for it
-                    if (thePort.FileName == "N/A")
-                    {
-                        Console.WriteLine(portHeader.Pastel(Color.Green) + Environment.NewLine + $"- Reecon currently lacks {thePort.FriendlyName} support" + Environment.NewLine);
-                    }
-                    else
-                    {
-                        // Get the file and see if it exists
-                        Type t = Type.GetType($"Reecon.{thePort.FileName}");
-                        if (t != null)
-                        {
-                            // Get the standard "GetInfo" method
-                            MethodInfo method = t.GetMethod("GetInfo", BindingFlags.Static | BindingFlags.Public);
-                            if (method != null)
-                            {
-                                try
-                                {
-                                    // Send it the standard target / port
-                                    var result = method.Invoke(null, new Object[] { target, port });
-                                    // Receive the result
-                                    string portData = result.ToString();
-                                    // Display it
-                                    Console.WriteLine(portHeader.Pastel(Color.Green) + Environment.NewLine + portData + Environment.NewLine);
-                                }
-                                catch (Exception ex)
-                                {
-                                    Console.WriteLine("Error: Cannot run GetInfo(target, port) in " + thePort.FileName + ": " + ex.Message + " -- Bug Reelix!");
-                                    if (ex.Message.Trim() == "Exception has been thrown by the target of an invocation.")
-                                    {
-                                        if (ex.InnerException != null)
-                                        {
-                                            Console.WriteLine("- " + ex.InnerException.Message);
-                                        }
-                                        else
-                                        {
-                                            Console.WriteLine("No inner exception :<");
-                                        }
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                Console.WriteLine($"Error - Missing Method: {thePort.FileName}.GetInfo");
-                            }
-                        }
-                        else
-                        {
-                            Console.WriteLine($"Missing Class: {thePort.FileName}");
-                        }
-                    }
-
-                    // Get additional info for post-scan running
+                    Console.WriteLine(portHeader.Pastel(Color.Green) + Environment.NewLine + $"- Reecon currently lacks {thePort.FriendlyName} support" + Environment.NewLine);
+                }
+                else
+                {
+                    // This was previously done by reflection, but reflection freaks out with AoT / Trimming
+                    string portData = "";
                     try
                     {
-                        string additionalPortInfo = GetAdditionalPortInfo(target, port);
-                        return additionalPortInfo;
+                        switch (fileName)
+                        {
+                            case "FTP": portData = FTP.GetInfo(target, port); break;
+                            case "SSH": portData = SSH.GetInfo(target, port); break;
+                            case "Telnet": portData = Telnet.GetInfo(target, port); break;
+                            case "SMTP": portData = SMTP.GetInfo(target, port); break;
+                            case "DNS": portData = DNS.GetInfo(target, port); break;
+                            case "HTTP": portData = HTTP.GetInfo(target, port); break;
+                            case "POP3": portData = POP3.GetInfo(target, port); break;
+                            case "RPCBind": portData = RPCBind.GetInfo(target, port); break;
+                            case "NETBIOS": portData = NETBIOS.GetInfo(target, port); break;
+                            case "IMAP": portData = IMAP.GetInfo(target, port); break;
+                            case "LDAP": portData = LDAP.GetInfo(target, port); break;
+                            case "HTTPS": portData = HTTPS.GetInfo(target, port); break;
+                            case "SMB": portData = SMB.GetInfo(target, port); break;
+                            case "Rsync": portData = Rsync.GetInfo(target, port); break;
+                            case "NFS": portData = NFS.GetInfo(target, port); break;
+                            case "Squid": portData = Squid.GetInfo(target, port); break;
+                            case "MySQL": portData = MySQL.GetInfo(target, port); break;
+                            case "SVN": portData = SVN.GetInfo(target, port); break;
+                            case "PostgreSQL": portData = PostgreSQL.GetInfo(target, port); break;
+                            case "VNC": portData = VNC.GetInfo(target, port); break;
+                            case "WinRM": portData = WinRM.GetInfo(target, port); break;
+                            case "Redis": portData = Redis.GetInfo(target, port); break;
+                            case "AJP13": portData = AJP13.GetInfo(target, port); break;
+                            case "Elasticsearch": portData = Elasticsearch.GetInfo(target, port); break;
+
+                            default: portData = $"- Error - Reecon has not yet implemented {fileName} - Bug Reelix!"; break;
+                        }
+                        Console.WriteLine(portHeader.Pastel(Color.Green) + Environment.NewLine + portData + Environment.NewLine);
+                        try
+                        {
+                            string additionalPortInfo = GetAdditionalPortInfo(target, port);
+                            return additionalPortInfo;
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Fatal Error retreiving additional Info for port {port} - {ex.Message} - Bug Reelix ASAP!".Pastel(Color.Red));
+                        }
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Fatal Error retreiving additional Info for port {port} - {ex.Message}- Bug Reelix ASAP!".Pastel(Color.Red));
+                        Console.WriteLine($"Fatal Error retreiving Info for port {port} - {ex.Message} - Bug Reelix ASAP!".Pastel(Color.Red));
                     }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Ultra Fatal Error in ScanPort - Bug Reelix: {ex.Message}");
                 }
             }
             else

@@ -5,8 +5,6 @@ using System.Drawing;
 using System.Linq;
 using System.Net;
 using System.Text.Json;
-using System.Xml.Linq;
-using static Reecon.OSINT_Instagram_Info;
 
 namespace Reecon
 {

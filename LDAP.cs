@@ -1,6 +1,4 @@
-﻿using FluentFTP.Client.BaseClient;
-using FluentFTP;
-using Pastel;
+﻿using Pastel;
 using System;
 using System.DirectoryServices.Protocols;
 using System.Drawing;

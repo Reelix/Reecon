@@ -2,7 +2,7 @@
 
 Reelix's Recon - A small program for network recon.  
 This program is still in early stages of development and should probably not be used by anyone.
-* Version: 0.34a
+* Version: 0.34b
 * Build Status: <img src = "https://travis-ci.com/Reelix/Reecon.svg?branch=master" valign="middle" />
 * Requirements: [NMap 7.94+](https://nmap.org/download.html)
   * LDAP Enumeration on Ubuntu 22.04: Download + dpkg -i [this](https://packages.ubuntu.com/focal-updates/amd64/libldap-2.4-2/download)
@@ -14,7 +14,7 @@ This program is still in early stages of development and should probably not be 
   * Printer Enumeration: [PRET](https://github.com/RUB-NDS/PRET)
 
 ## Frequently Asked Questions
-### WTF - Why is it 15MB? That's huge!
+### WTF - Why is it 20MB? That's huge!
 It's standalone with parts of the .NET Framework built in. It runs on the device without any other requirements. No additional Framework is required if you're not self-compiling.
 That said, I'm always trying to make it smaller (Working on cross-OS trimming and reducing third-party libraries)
 ### It broke

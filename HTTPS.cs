@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Reecon
+﻿namespace Reecon
 {
     class HTTPS // 443
     {

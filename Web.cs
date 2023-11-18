@@ -76,10 +76,6 @@ namespace Reecon
             if (pageText == null)
             {
                 Console.WriteLine("ReeDebug - Web.FindInfo - pageText is null - WTF?");
-                // Get call stack
-                StackTrace stackTrace = new StackTrace();
-                // Get calling method name
-                Console.WriteLine("The following called FindInfo with null pageText: " + stackTrace.GetFrame(1).GetMethod().Name);
                 return "";
             }
             if (pageText.Trim() != "")
