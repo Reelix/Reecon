@@ -11,36 +11,19 @@ on:
 
 jobs:
   analyze:
-    name: Analyze
+    name: analyze
     runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [ 'csharp' ]
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
-    - name: Install .NET Core
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: '8.0.100'
-
-    - name: Initialize CodeQL
+    - name: init-codeql
       uses: github/codeql-action/init@v2
       with:
-        languages: ${{ matrix.language }}
+        languages: csharp
 
-    - name: Autobuild
+    - name: autobuild
       uses: github/codeql-action/autobuild@v2
 
-    - name: Perform CodeQL Analysis
+    - name: codeql-analyze
       uses: github/codeql-action/analyze@v2
-      with:
-        category: "/language:${{matrix.language}}"
