@@ -41,10 +41,19 @@ namespace Reecon
                             versionMessage = versionMessage.Replace("_", " ");
                             versionMessage += " (protocol 2.0)"; // Nmap's format
                         }
-                        if (versionMessage.Trim() == "")
+                        else if (versionMessage.Trim() == "")
                         {
                             // Can also get here on closed ports - What the?
                             versionMessage = "Port is open, but no version info";
+                        }
+                        else
+                        {
+                            versionMessage = $"Weird SSH Version: {versionMessage}";
+                        }
+                        // https://gist.github.com/0x4D31/35ddb0322530414bbb4c3288292749cc
+                        if (versionMessage.ToLower().Contains("libssh"))
+                        {
+                            versionMessage += " <--- libssh detected - Bug Reelix!";
                         }
                         return versionMessage;
                     }

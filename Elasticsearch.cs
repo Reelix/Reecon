@@ -12,13 +12,16 @@ namespace Reecon
         {
             string returnString = "";
             // Get basic data
-            string pageData = Web.DownloadString($"http://{ip}:{port}/");
+            string pageData = Web.DownloadString($"http://{ip}:{port}/").Text;
             //ElasticSearchObject theObject = JsonSerializer.Deserialize<ElasticSearchObject>(pageData);
             ElasticSearchObject theObject = (ElasticSearchObject)JsonSerializer.Deserialize(pageData, typeof(ElasticSearchObject), SourceGenerationContext.Default);
             // Simialr formatting to nmap
             returnString += $"- Version: {theObject.version.number} (name: {theObject.name}; cluster: {theObject.cluster_name}; Lucene: {theObject.version.lucene_version}){Environment.NewLine}";
+            // https://nvd.nist.gov/vuln/detail/CVE-2015-5531
+            // Directory traversal vulnerability in Elasticsearch before 1.6.1
+            // https://www.exploit-db.com/exploits/38383
             // Get indices
-            string indexData = Web.DownloadString($"http://{ip}:{port}/_cat/indices"); // ?v for non-ordered data
+            string indexData = Web.DownloadString($"http://{ip}:{port}/_cat/indices").Text; // ?v for non-ordered data
             List<string> indexList = indexData.Split(Environment.NewLine.ToCharArray()).ToList();
             // Remove any empty indices
             indexList = indexList.Where(x => x.Length != 0).ToList();

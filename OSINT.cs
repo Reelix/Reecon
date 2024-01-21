@@ -10,6 +10,7 @@ namespace Reecon
 {
     class OSINT
     {
+        // This module is completely broken from the in-progress trimming.
         public static void GetInfo(string[] args)
         {
             if (args.Length != 2)
@@ -30,6 +31,7 @@ namespace Reecon
             GetGithubInfo(username);
             GetPastebinInfo(username);
             // Pastebin - https://pastebin.com/u/rzsdw2iwug77eda
+            // TODO: Disqus - https://disqus.com/by/soremanzo/about/ (Comment count + About page)
         }
 
         public static void GetInstagramInfo(string username)

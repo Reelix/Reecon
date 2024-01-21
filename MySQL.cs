@@ -3,6 +3,7 @@ using Pastel;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 
 namespace Reecon
 {
@@ -15,85 +16,102 @@ namespace Reecon
         public static string GetInfo(string target, int port)
         {
             string returnData = "";
-            
-            MySqlConnection connection = new($"Server={target};Port={port};Database=;Uid=reelixuser123;Pwd=;");
 
-            try
+            string connectionString = $"Server ={target};Port={port};Database=;Uid=reelixuser123;Pwd=;";
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
-                connection.Open();
-                if (connection.ServerVersion != null)
+                try
                 {
-                    returnData += "- Version: " + connection.ServerVersion;
-                }
-                else
-                {
-                    returnData += "- Version: Unknown";
-                }
-            }
-            catch (MySqlException ex)
-            {
-                // Access Denied (Incorrect password)
-                if (ex.Number == 1042)
-                {
-                    return "- Error 1042 - Timeout :(";
-                }
-                if (ex.Number == 1045)
-                {
-                    string defaultCredsResult = TestDefaults(target, port);
-                    return defaultCredsResult;
-                }
-                else if (ex.Number == 1130)
-                {
-                    // Not allowed
-                    if (ex.Message.Contains("MariaDB"))
-                    {
-                        return "- MariaDB Server (No External Authentication)";
-                    }
-                    else if (ex.Message.Contains("is not allowed to connect to this MySQL server"))
-                    {
-                        return "- MySQL (No External Authentication)";
-                    }
-                    else
-                    {
-                        return "- Unknown SQL Server Type - Bug Reelix" + Environment.NewLine + "-- " + ex.Message;
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("Unknown MySQL Error: " + ex.Number + " -- " + ex.Message);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Error type: " + ex.Message);
-                if (ex.Message.Contains("ERR 1044"))
-                {
+                    connection.Open();
                     if (connection.ServerVersion != null)
                     {
-                        returnData = "- Version: " + connection.ServerVersion;
+                        returnData += "- Version: " + connection.ServerVersion;
                     }
                     else
                     {
-                        Console.WriteLine("It's null :<");
+                        returnData += "- Version: Unknown";
                     }
                 }
-                else if (ex.Message.Contains("ERR 1130"))
+                catch (MySqlException ex)
                 {
-                    returnData = "- Access Denied: " + ex.Message;
+                    if (ex.ErrorCode == MySqlErrorCode.UnableToConnectToHost)
+                    {
+                        returnData += "- Error 1042 - Timeout :(";
+                    }
+                    // Access Denied (Incorrect password)
+                    else if (ex.ErrorCode == MySqlErrorCode.AccessDenied)
+                    {
+                        string defaultCredsResult = TestDefaults(target, port);
+                        returnData += defaultCredsResult;
+                    }
+                    else if (ex.ErrorCode == MySqlErrorCode.HostNotPrivileged)
+                    {
+                        // Not allowed
+                        if (ex.Message.Contains("MariaDB"))
+                        {
+                            Console.WriteLine("MySQL.cs - Bug Reelix 1");
+                            return "- MariaDB Server (No External Authentication)";
+                        }
+                        else if (ex.Message.Contains("is not allowed to connect to this MySQL server"))
+                        {
+                            Console.WriteLine("MySQL.cs - Bug Reelix 2");
+                            return "- MySQL (No External Authentication)";
+                        }
+                        else
+                        {
+                            Console.WriteLine("MySQL.cs - Bug Reelix 3");
+                            return "- Unknown SQL Server Type - Bug Reelix" + Environment.NewLine + "-- " + ex.Message;
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("MySQL.cs - Bug Reelix 4");
+                        Console.WriteLine("Unknown MySQL Error: " + ex.Number + " -- " + ex.Message);
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    returnData = "Unknown Connection Exception: " + ex.Message;
+                    Console.WriteLine("Error type: " + ex.Message);
+                    if (ex.Message.Contains("ERR 1044"))
+                    {
+                        if (connection.ServerVersion != null)
+                        {
+                            Console.WriteLine("MySQL.cs - Bug Reelix 5");
+                            returnData = "- Version: " + connection.ServerVersion;
+                        }
+                        else
+                        {
+                            Console.WriteLine("MySQL.cs - Bug Reelix 6");
+                            Console.WriteLine("It's null :<");
+                        }
+                    }
+                    else if (ex.Message.Contains("ERR 1130"))
+                    {
+                        Console.WriteLine("MySQL.cs - Bug Reelix 7");
+                        returnData = "- Access Denied: " + ex.Message;
+                    }
+                    else
+                    {
+                        Console.WriteLine("MySQL.cs - Bug Reelix 8");
+                        returnData = "Unknown Connection Exception: " + ex.Message;
+                    }
                 }
+                finally
+                {
+                    if (connection != null && connection.State == System.Data.ConnectionState.Open && connection.ServerVersion != null)
+                    {
+                        Console.WriteLine("Woooof");
+                        Console.WriteLine(connection.ServerVersion);
+                    }
+                    if (connection != null && connection.State == System.Data.ConnectionState.Open)
+                    {
+                        connection.Close();
+                    }
+                }
+                return returnData;
             }
-            finally
-            {
-                connection.Close();
-            }
-            return returnData;
-            
         }
-        
+
         // Currently requires the GIGANTIC MySQL.dll as well as a dozen other refs >_<
         public static string TestDefaults(string target, int port)
         {
@@ -125,6 +143,7 @@ namespace Reecon
                 "root:password"
             };
             int tried = 0;
+
             foreach (string toTest in testDetails)
             {
                 string username = toTest.Split(':')[0];
@@ -158,17 +177,16 @@ namespace Reecon
             }
             catch (MySqlException ex)
             {
-                if (ex.Number == 1045)
+                if (connection.State == System.Data.ConnectionState.Open)
+                {
+                    Console.WriteLine("Wadda");
+                }
+                if (ex.ErrorCode == MySqlErrorCode.AccessDenied)
                 {
                     return "";
                 }
                 // Correct creds - Inval
-                else if (ex.Number == 1049)
-                {
-                    Console.WriteLine("Woof: " + ex.Message);
-                    return "true";
-                }
-                else if (ex.Number == 1049)
+                else if (ex.ErrorCode == MySqlErrorCode.UnknownDatabase)
                 {
                     Console.WriteLine("Error whilst testing MySQL Passwords");
                     Console.WriteLine("Unknown MySQL Error: " + ex.Number + " -- " + ex.Message);
@@ -178,7 +196,7 @@ namespace Reecon
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+                Console.WriteLine("Woofles: " + ex);
                 return "break";
             }
         }

@@ -25,7 +25,7 @@
 1433|N/A|MSSQL (MSSQL)
 2049|NFS|NFS (Network File System)
 3128|Squid|Squid
-3268|N/A|LDAP (Global Catalog)
+3268|LDAP|LDAP (Global Catalog)
 3269|N/A|LDAP (Global Catalog) over SSL
 3306|MySQL|MySQL
 3389|N/A|Remote Desktop

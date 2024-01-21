@@ -8,38 +8,72 @@ namespace Reecon
     // https://github.com/offensive-security/exploitdb/blob/master/searchsploit
     class Searchsploit
     {
+        static string dbPath = Directory.GetCurrentDirectory() + @"/files_exploits.csv";
+        static string updatePath = "https://gitlab.com/exploit-database/exploitdb/raw/main/files_exploits.csv";
+
         public static void Search(string[] args)
         {
             if (args.Length < 2)
             {
-                Console.WriteLine("SearchSploit Usage: reecon -searchsploit ProcessNameHere");
+                Console.WriteLine("SearchSploit Usage: reecon -searchsploit ProcessNameHere / ExploitID");
                 Console.WriteLine("SearchSploit Usage: reecon -searchsploit -update");
-                Console.WriteLine("SearchSploit Usage: reecon -searchsploit ExploitID -view");
                 return;
             }
 
             string searchCommand = string.Join(" ", args);
             searchCommand = searchCommand.Remove(0, 14);
-            Search(searchCommand);
+            if (searchCommand.Contains("-update"))
+            {
+                Update();
+            }
+            else
+            {
+                string toSearch = args[1];
+                if (int.TryParse(toSearch, out _))
+                {
+                    View(toSearch);
+                }
+                else
+                {
+                    Search(toSearch);
+                }
+            }
+        }
+
+        private static void Update()
+        {
+            Console.WriteLine("Updating...");
+            if (File.Exists(dbPath))
+            {
+                Console.WriteLine("Existing exploit database found - Removing");
+            }
+            Console.WriteLine($"Downloading update from {updatePath}...");
+            General.DownloadFile(updatePath, dbPath);
+            Console.WriteLine("Update complete!");
+            return;
+        }
+
+        private static void View(string exploitId)
+        {
+            List<DatabaseItem> database = Database.Parse(dbPath);
+            DatabaseItem theItem = database.FirstOrDefault(x => x.ID == exploitId);
+            if (theItem != null)
+            {
+                Console.WriteLine("Exploit " + theItem.ID + ": " + theItem.Title);
+                string URL = "https://www.exploit-db.com/download/" + theItem.ID;
+                Console.WriteLine(URL);
+                string downloadData = Web.DownloadString(URL, UserAgent: "curl/7.55.1").Text; // Download restriction bypass
+                Console.WriteLine(downloadData);
+            }
+            else
+            {
+                Console.WriteLine("Error - Invalid Item Id: " + exploitId);
+            }
+            return;
         }
 
         private static void Search(string searchCommand)
         {
-            string dbPath = Directory.GetCurrentDirectory() + @"/files_exploits.csv";
-            string updatePath = "https://gitlab.com/exploit-database/exploitdb/raw/main/files_exploits.csv";
-            Console.WriteLine(dbPath);
-            if (searchCommand.Contains("-update"))
-            {
-                Console.WriteLine("Updating...");
-                if (File.Exists(dbPath))
-                {
-                    Console.WriteLine("Existing exploit database found - Removing");
-                }
-                Console.WriteLine($"Downloading update from {updatePath}...");
-                General.DownloadFile(updatePath, dbPath);
-                Console.WriteLine("Update complete!");
-                return;
-            }
             if (!File.Exists(dbPath))
             {
                 Console.WriteLine("Cannot find database - Please run -searchsploit -update (Will create a files_exploits.csv file in your current folder)");
@@ -47,41 +81,20 @@ namespace Reecon
             }
 
             List<DatabaseItem> database = Database.Parse(dbPath);
-
-            if (searchCommand.Contains("-view"))
+            foreach (string searchItem in searchCommand.Split(' '))
             {
-                string[] searchItems = searchCommand.Split(' ');
-                if (searchItems.Length == 2)
-                {
-                    string searchId = searchItems[0];
-                    DatabaseItem theItem = database.FirstOrDefault(x => x.ID == searchId);
-                    if (theItem != null)
-                    {
-                        Console.WriteLine("Exploit " + theItem.ID + ": " + theItem.Title);
-                        string URL = "https://www.exploit-db.com/download/" + theItem.ID;
-                        Console.WriteLine(URL);
-                        string downloadData = Web.DownloadString(URL, UserAgent: "curl/7.55.1"); // Download restriction bypass
-                        Console.WriteLine(downloadData);
-                    }
-                    else
-                    {
-                        Console.WriteLine("Error - Invalid Item Id: " + searchId);
-                    }
-                }
-                return;
+                database = database.Where(x => x.Title.ToLower().Contains(searchItem.ToLower())).ToList(); // Case insensitive
             }
-
-            List<DatabaseItem> items = database.Where(x => x.Title.ToLower().Contains(searchCommand.ToLower())).ToList(); // Case insensitive
-            if (items.Count > 0)
+            if (database.Count > 0)
             {
-                items = items.OrderByDescending(x => x.ReleaseDate).ToList();
+                database = database.OrderByDescending(x => x.ReleaseDate).ToList();
 
-                int maxTitleLength = items.OrderByDescending(x => x.Title.Length).First().Title.Length;
-                int maxAuthorLength = items.OrderByDescending(x => x.Author.Length).First().Author.Length;
+                int maxTitleLength = database.OrderByDescending(x => x.Title.Length).First().Title.Length;
+                int maxAuthorLength = database.OrderByDescending(x => x.Author.Length).First().Author.Length;
                 Console.WriteLine("".PadRight(47 + maxTitleLength + maxAuthorLength, '-'));
                 Console.WriteLine("|  ID   |    Date    | " + "Title".PadRight(maxTitleLength, ' ') + "|  Type   | Platform | " + "Author".PadRight(maxAuthorLength, ' ') + "|");
                 Console.WriteLine("".PadRight(47 + maxTitleLength + maxAuthorLength, '-'));
-                foreach (DatabaseItem item in items)
+                foreach (DatabaseItem item in database)
                 {
                     Console.WriteLine("| " + item.ID.PadRight(6, ' ') + "| " + item.ReleaseDate + " | " + item.Title.Trim('"').PadRight(maxTitleLength, ' ') +
                         "| " + item.Type.PadRight(8, ' ') + "| " + item.Platform.PadRight(9, ' ') + "| " + item.Author.Trim('"').PadRight(maxAuthorLength, ' ') + "|");
@@ -112,7 +125,7 @@ namespace Reecon
                     };
                     database.Add(dbItem);
                 }
-                
+
                 return database;
             }
         }

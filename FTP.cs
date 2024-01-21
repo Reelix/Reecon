@@ -53,11 +53,6 @@ namespace Reecon
         }
 
 
-        public void OnTest(FtpTraceLevel s, string z)
-        {
-
-        }
-
         public static string FtpLogin2(string target, int port, string username = "", string password = "")
         {
             Console.WriteLine("In FtpLogin2");
@@ -298,10 +293,19 @@ namespace Reecon
                         bannerMessage = bannerMessage.Remove(bannerMessage.Length - 1, 1);
                     }
                 }
-                toReturn += "- Version: " + bannerMessage + Environment.NewLine;
-                if (bannerMessage.Contains("ProFTPD 1.3.5"))
+                toReturn += "- Banner: " + bannerMessage + Environment.NewLine;
+                // All versions of ProFTPD 1.3.5 before 1.3.5a
+                // All versions of ProFTPD 1.3.6 before 1.3.6rc1
+                if (bannerMessage.Contains("ProFTPD "))
                 {
-                    toReturn += "-- " + "Vulnerable ProFTPD Version Detected (Potential RCE) - CVE-2015-3306".Pastel(Color.Orange) + Environment.NewLine;
+                    if (bannerMessage.Contains("ProFTPD 1.3.5") || bannerMessage.Contains("ProFTPD  1.3.6"))
+                    {
+                        toReturn += "-- " + "Vulnerable ProFTPD Version Detected (Potential RCE) - CVE-2015-3306".Pastel(Color.Orange) + Environment.NewLine;
+                    }
+                    else
+                    {
+                        toReturn += "-- ProFTPD detected - Maybe vulnerable - Bug Reelix" + Environment.NewLine;
+                    }
                 }
             }
             return toReturn.Trim(Environment.NewLine.ToCharArray());

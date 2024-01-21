@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -18,7 +19,7 @@ namespace Reecon
             // if 2008 before r2 -- CVE-2009-3103
             string toReturn = "";
             toReturn += GetOSDetails(target);
-            if (SMB_MS17_010.IsVulnerable(target))
+            if (SMB_MS17_010.IsVulnerable(target, false))
             {
                 toReturn += "----> VULNERABLE TO ETERNAL BLUE (MS10-017) <-----" + Environment.NewLine;
                 toReturn += "-----> Metasploit: use windows/smb/ms17_010_psexec" + Environment.NewLine;
@@ -108,6 +109,14 @@ namespace Reecon
                             {
                                 smbClientItems += "-- " + $"{itemName} has ls perms - {subProcessResults.Count} items found! -> smbclient //{target}/{itemName} --no-pass".Pastel(Color.Orange) + Environment.NewLine;
                                 smbClientItems += "--- To download the entire contents, add -c \"recurse; prompt; mget *\"" + Environment.NewLine;
+                            }
+                            if (itemType == "IPC" && itemName == "IPC$")
+                            {
+                                if (itemComment.Contains("Samba Server"))
+                                {
+                                    smbClientItems += "-- Samba Detected".Pastel(Color.Orange) + Environment.NewLine;
+                                    smbClientItems += "-- If version Samba 3.5.0 < 4.4.14/4.5.10/4.6.4, https://www.exploit-db.com/exploits/42084 / msfconsole -x \"use /exploit/linux/samba/is_known_pipename\"" + Environment.NewLine;
+                                }    
                             }
                         }
                         catch (Exception ex)

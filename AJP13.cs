@@ -37,6 +37,8 @@ namespace Reecon
             pageTitle = pageTitle.Replace("Apache Tomcat/", "");
             System.Version theVersion = System.Version.Parse(pageTitle);
 
+            // In Apache Tomcat 9.0.0.M1 to 9.0.0.30, 8.5.0 to 8.5.50 and 7.0.0 to 7.0.99,
+            
             // 6.* is EOL and unpatched
             if (theVersion.Major <= 6)
             {

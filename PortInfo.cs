@@ -121,20 +121,22 @@ namespace Reecon
                             default: portData = $"- Error - Reecon has not yet implemented {fileName} - Bug Reelix!"; break;
                         }
                         Console.WriteLine(portHeader.Pastel(Color.Green) + Environment.NewLine + portData + Environment.NewLine);
-                        try
-                        {
-                            string additionalPortInfo = GetAdditionalPortInfo(target, port);
-                            return additionalPortInfo;
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Fatal Error retreiving additional Info for port {port} - {ex.Message} - Bug Reelix ASAP!".Pastel(Color.Red));
-                        }
                     }
                     catch (Exception ex)
                     {
                         Console.WriteLine($"Fatal Error retreiving Info for port {port} - {ex.Message} - Bug Reelix ASAP!".Pastel(Color.Red));
                     }
+                }
+
+                // Regular scanning done - Now for the additional info
+                try
+                {
+                    string additionalPortInfo = GetAdditionalPortInfo(target, port);
+                    return additionalPortInfo;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Fatal Error retreiving additional Info for port {port} - {ex.Message} - Bug Reelix ASAP!".Pastel(Color.Red));
                 }
             }
             else
@@ -213,12 +215,41 @@ namespace Reecon
                     unknownPortResult += "- To Read: https://www.hackingarticles.in/penetration-testing-on-voip-asterisk-server-part-2/";
                     Console.WriteLine(unknownPortResult + Environment.NewLine);
                 }
-                // FTP
-                //  && theBanner.ToUpper().Contains("FTP") - Not all FTP servers contain FTP in the Server header
+                // FTP / SMTP
+                // Both start with a 220 response....
                 else if (theBanner.StartsWith("220 ")) // ToUpper for things like pyftpdlib / FreeFloat Ftp Server
                 {
-                    unknownPortResult += $"Port {port} - FTP".Pastel(Color.Green) + Environment.NewLine;
-                    unknownPortResult += FTP.GetInfo(target, port);
+                    if (theBanner.ToUpper().Contains("FTP"))
+                    {
+                        unknownPortResult += $"Port {port} - FTP".Pastel(Color.Green) + Environment.NewLine;
+                        unknownPortResult += FTP.GetInfo(target, port);
+                    }
+                    else if (theBanner.ToUpper().Contains("SMTP"))
+                    {
+                        unknownPortResult = $"Port {port} - SMTP".Pastel(Color.Green) + Environment.NewLine;
+                        unknownPortResult += SMTP.GetInfo(target, port);
+                    }
+                    else
+                    {
+                        unknownPortResult += $"Port {port} - Either SMTP or FTP".Pastel(Color.Green) + Environment.NewLine;
+                        if (theBanner.EndsWith("\r\n"))
+                        {
+                            unknownPortResult += "- Windows Newline Characters Detected" + Environment.NewLine;
+                        }
+                        else if (theBanner.EndsWith("\n"))
+                        {
+                            unknownPortResult += "- Linux Newline Characters Detected" + Environment.NewLine;
+                        }
+                        else
+                        {
+                            Console.WriteLine("theBanner - Fatal Error in FTP/SMTP Detection :<");
+                            return "";
+                        }
+                        unknownPortResult += "- Manual Enumeration Required: " + theBanner;
+                        
+                        // Note: EHLO {IP} with \n for Linux or \r\n for Windows returns something
+                    }
+                    
                     Console.WriteLine(unknownPortResult + Environment.NewLine);
                 }
                 // HTTPS
@@ -244,14 +275,24 @@ namespace Reecon
                     || theBanner.Trim().StartsWith("<!DOCTYPE html>") // General HTML
                     )
                 {
-                    bool isHTTPS = Web.BasicHTTPSTest(target, port);
-                    string httpData = isHTTPS ? HTTPS.GetInfo(target, port) : HTTP.GetInfo(target, port);
-                    if (httpData != "")
+                    // WinRM - HTTP with special stuff
+                    if (theBanner.Contains("Server: Microsoft-HTTPAPI/2.0"))
                     {
-                        string headerText = $"Port {port} - HTTP" + (isHTTPS ? "S" : "");
-                        Console.WriteLine(unknownPortResult += headerText.Pastel(Color.Green) + Environment.NewLine + httpData + Environment.NewLine);
-                        postScanActions += "- gobuster dir -u http" + (isHTTPS ? "s" : "") + $"://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-" + port + "-medium.txt -x.php,.txt" + Environment.NewLine;
-                        postScanActions += "- gobuster dir -u http" + (isHTTPS ? "S" : "") + $"://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-" + port + "-common.txt -x.php,.txt" + Environment.NewLine;
+                        unknownPortResult += $"Port {port} - WinRM".Pastel(Color.Green);
+                        string portData = WinRM.GetInfo(target, port);
+                        Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
+                    }
+                    else
+                    {
+                        bool isHTTPS = Web.BasicHTTPSTest(target, port);
+                        string httpData = isHTTPS ? HTTPS.GetInfo(target, port) : HTTP.GetInfo(target, port);
+                        if (httpData != "")
+                        {
+                            string headerText = $"Port {port} - HTTP" + (isHTTPS ? "S" : "");
+                            Console.WriteLine(unknownPortResult += headerText.Pastel(Color.Green) + Environment.NewLine + httpData + Environment.NewLine);
+                            postScanActions += "- gobuster dir -u http" + (isHTTPS ? "s" : "") + $"://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-" + port + "-medium.txt -x.php,.txt" + Environment.NewLine;
+                            postScanActions += "- gobuster dir -u http" + (isHTTPS ? "S" : "") + $"://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-" + port + "-common.txt -x.php,.txt" + Environment.NewLine;
+                        }
                     }
                     break;
                 }
@@ -339,13 +380,6 @@ namespace Reecon
                     unknownPortResult += "- Microsoft Windows RPC over HTTP".Pastel(Color.Green) + Environment.NewLine;
                     unknownPortResult += "- Reecon currently lacks Microsoft Windows RPC over HTTP support" + Environment.NewLine;
                     Console.WriteLine(unknownPortResult);
-                }
-                // WinRM - HTTP with special stuff
-                else if (theBanner.Contains("Server: Microsoft-HTTPAPI/2.0"))
-                {
-                    unknownPortResult += $"Port {port} - WinRM".Pastel(Color.Green);
-                    string portData = WinRM.GetInfo(target, port);
-                    Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
                 }
                 // XMPP
                 else if (theBanner == "</stream:stream>")
@@ -442,7 +476,8 @@ namespace Reecon
                 string defaultNamingContext = "Unknown";
                 try
                 {
-                    defaultNamingContext = LDAP.GetDefaultNamingContext(target, true);
+                    // It's generally assumed that if 88 is up, 389 is up as well.
+                    defaultNamingContext = LDAP.GetDefaultNamingContext(target, 389, true);
                 }
                 catch (Exception ex)
                 {
@@ -462,11 +497,11 @@ namespace Reecon
                 postScanActions += $"- Kerberos Username Enum: kerbrute userenum --dc {target} -d {defaultNamingContext} users.txt (Very very fast - Use xato and wait 10 minutes)" + Environment.NewLine;
 
                 // Requests TGT (Ticket Granting Tickets) for users
-                postScanActions += $"- Kerberos TGT Request: sudo GetNPUsers.py {defaultNamingContext}/ -dc-ip {target} -request" + Environment.NewLine;
+                postScanActions += $"- Kerberos TGT Request: GetNPUsers.py {defaultNamingContext}/ -dc-ip {target} -request" + Environment.NewLine;
 
                 // Test for users with 'Do not require Kerberos preauthentication'
                 // The / at the end of defaultNamingContext is not a typo and is required
-                postScanActions += $"- Kerberos non-preauth: sudo GetNPUsers.py {defaultNamingContext}/ -usersfile users.txt -dc-ip {target}" + Environment.NewLine;
+                postScanActions += $"- Kerberos non-preauth: GetNPUsers.py {defaultNamingContext}/ -usersfile users.txt -dc-ip {target}" + Environment.NewLine;
 
                 // Try to find Service Principal Names that are associated with normal user account.
                 postScanActions += $"- Kerberos Associated SPNs (Auth'd): GetUserSPNs.py {defaultNamingContext}/username:\"password\" -request" + Environment.NewLine;

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
@@ -9,48 +10,61 @@ namespace Reecon
     // Ref: PingCastle.Scanners ms17_010scanner
     class SMB_MS17_010
     {
-        static public bool IsVulnerable(string ip)
+        static public bool IsVulnerable(string ip, bool debug = false)
         {
             TcpClient client = new();
             client.Connect(ip, 445);
             try
             {
+                if (debug) Console.WriteLine("1");
                 NetworkStream stream = client.GetStream();
                 byte[] negotiatemessage = GetNegotiateMessage();
                 stream.Write(negotiatemessage, 0, negotiatemessage.Length);
                 stream.Flush();
+                if (debug) Console.WriteLine("2");
                 byte[] response = ReadSmbResponse(stream);
+                string result = Encoding.UTF8.GetString(response);
+                if (debug) Console.WriteLine("Mega Debug: " + result);
                 if (!(response[8] == 0x72 && response[9] == 00))
                 {
                     throw new InvalidOperationException("invalid negotiate response");
                 }
+                if (debug) Console.WriteLine("3");
                 byte[] sessionSetup = GetSessionSetupAndXRequest(response);
                 stream.Write(sessionSetup, 0, sessionSetup.Length);
                 stream.Flush();
+                if (debug) Console.WriteLine("4");
                 response = ReadSmbResponse(stream);
+                if (debug) Console.WriteLine("5");
                 if (!(response[8] == 0x73 && response[9] == 00))
                 {
                     throw new InvalidOperationException("invalid sessionSetup response");
                 }
+                if (debug) Console.WriteLine("6");
                 byte[] treeconnect = GetTreeConnectAndXRequest(response, ip);
                 stream.Write(treeconnect, 0, treeconnect.Length);
                 stream.Flush();
+                if (debug) Console.WriteLine("7");
                 response = ReadSmbResponse(stream);
                 if (!(response[8] == 0x75 && response[9] == 00))
                 {
                     throw new InvalidOperationException("invalid TreeConnect response");
                 }
+                if (debug) Console.WriteLine("8");
                 byte[] peeknamedpipe = GetPeekNamedPipe(response);
                 stream.Write(peeknamedpipe, 0, peeknamedpipe.Length);
                 stream.Flush();
+                if (debug) Console.WriteLine("9");
                 response = ReadSmbResponse(stream);
+                if (debug) Console.WriteLine("10");
                 if (response[8] == 0x25 && response[9] == 0x05 && response[10] == 0x02 && response[11] == 0x00 && response[12] == 0xc0)
                 {
                     return true;
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                if (debug) Console.WriteLine("Exception: " + ex.Message);
                 return false;
             }
             return false;

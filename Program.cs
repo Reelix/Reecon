@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Pastel;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -15,7 +16,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow; // .Pastel has a weirder yellow to the one I want
-            Console.WriteLine("Reecon - Version 0.34b ( https://github.com/Reelix/Reecon )");
+            Console.WriteLine("Reecon - Version 0.34c ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
@@ -40,9 +41,10 @@ namespace Reecon
             else if (args.Contains("-ldap") || args.Contains("--ldap"))
             {
                 string ip = args[1];
-                string username = args[2];
-                string password = args[3];
-                string accountInfo = LDAP.GetAccountInfo(ip, username, password);
+                string port = args[2];
+                string username = args[3];
+                string password = args[4];
+                string accountInfo = LDAP.GetAccountInfo(ip, int.Parse(port), username, password);
                 Console.WriteLine(accountInfo);
                 return;
             }
@@ -81,6 +83,13 @@ namespace Reecon
                 SMB.SMBBrute(args);
                 Console.ResetColor();
                 return;
+            }
+            else if (args.Contains("-smb-eternalblue"))
+            {
+                string ip = args[1];
+                Console.WriteLine($"Checking {ip}...");
+                SMB_MS17_010.IsVulnerable(ip, true);
+                Console.WriteLine("Check Complete");
             }
             else if (args.Contains("-winrm-brute"))
             {
@@ -174,7 +183,7 @@ namespace Reecon
                 }
                 if (!isHostOnline.Value)
                 {
-                    Console.WriteLine("Host is not responding to pings :(");
+                    Console.WriteLine($"Host {target} is not responding to pings :(");
                     Console.WriteLine("If you are sure it's up and are specifying ports, you can use -noping");
                     return;
                 }
@@ -192,19 +201,9 @@ namespace Reecon
                 portList.AddRange(Ports);
             }
 
-            // Everything parsed - Down to the scanning!
-            PortInfo.LoadPortInfo();
-
             // Ports have been defined (Either nmap or custom)
             if (portList.Count != 0)
             {
-                Console.Write("Scanning: " + target);
-                Console.Write(" (Port");
-                if (portList.Count > 1)
-                {
-                    Console.Write("s");
-                }
-                Console.WriteLine(": " + string.Join(",", portList) + ")");
                 ScanPorts(portList);
             }
             else
@@ -213,6 +212,42 @@ namespace Reecon
                 Console.WriteLine("No open ports found to scan :<");
                 return;
             }
+
+            // All done - Output stats
+            DateTime endDate = DateTime.Now;
+            TimeSpan t = endDate - startDate;
+            Console.WriteLine("Done in " + string.Format("{0:0.00}s", t.TotalSeconds) + " - Have fun :)");
+            Console.ResetColor();
+        }
+
+        static void ScanPorts(List<int> portList)
+        {
+            PortInfo.LoadPortInfo();
+
+            Console.Write("Scanning: " + target);
+            Console.Write(" (Port");
+            if (portList.Count > 1)
+            {
+                Console.Write("s");
+            }
+            Console.WriteLine(": " + string.Join(",", portList) + ")");
+
+            // Multi-threaded scan
+            foreach (int port in portList)
+            {
+                Thread myThread = new(() => ScanPort(port));
+                threadList.Add(myThread);
+                myThread.Start();
+            }
+
+            // Wait for the scans to finish
+            foreach (Thread theThread in threadList)
+            {
+                theThread.Join();
+            }
+
+            // And clear the thread list
+            threadList.Clear();
 
             // Everything done - Now for some helpful info!
             Console.WriteLine("Finished - Some things you probably want to do: ");
@@ -232,30 +267,6 @@ namespace Reecon
                     Console.Write(item);
                 }
             }
-            DateTime endDate = DateTime.Now;
-            TimeSpan t = endDate - startDate;
-            Console.WriteLine("Done in " + string.Format("{0:0.00}s", t.TotalSeconds) + " - Have fun :)");
-            Console.ResetColor();
-        }
-
-        static void ScanPorts(List<int> portList)
-        {
-            // Multi-threaded scan
-            foreach (int port in portList)
-            {
-                Thread myThread = new(() => ScanPort(port));
-                threadList.Add(myThread);
-                myThread.Start();
-            }
-
-            // Wait for the scans to finish
-            foreach (Thread theThread in threadList)
-            {
-                theThread.Join();
-            }
-
-            // And clear the thread list
-            threadList.Clear();
         }
 
         static void ScanPort(int port)

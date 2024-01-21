@@ -131,6 +131,10 @@ namespace Reecon
                                 }
                             }
                         }
+                        else
+                        {
+                            Console.WriteLine("Fatal Error in Reecon.SMTP - Bug Reelix!");
+                        }
 
                         // Check the MAIL FROM to see if we can phish
                         byte[] mailFromBytes = Encoding.ASCII.GetBytes(("MAIL FROM:<test@test.com>" + newlineChars).ToCharArray());

