@@ -14,13 +14,13 @@
 
   <ItemGroup>
 	<!-- FTP - To find hidden folders (Named .) and to read strings on files -->
-	<PackageReference Include="FluentFTP" Version="48.0.3" />
+	<PackageReference Include="FluentFTP" Version="49.0.2" />
 	<!-- MySQL - To interact with MySQL servers -->
-    <PackageReference Include="MySqlConnector" Version="2.3.1" />
+    <PackageReference Include="MySqlConnector" Version="2.3.5" />
 	<!-- To access PostgreSQL servers -->
-    <PackageReference Include="Npgsql" Version="8.0.0" />
+    <PackageReference Include="Npgsql" Version="8.0.1" />
 	<!-- Better Console color output -->
-    <PackageReference Include="Pastel" Version="4.2.0" />
+    <PackageReference Include="Pastel" Version="5.0.0" />
 	<!-- LDAP -->
     <PackageReference Include="System.DirectoryServices.Protocols" Version="8.0.0" />
 	<!-- A list of ports and their descriptions -->
