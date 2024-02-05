@@ -132,7 +132,7 @@ namespace Reecon
                 try
                 {
                     string additionalPortInfo = GetAdditionalPortInfo(target, port);
-                    return additionalPortInfo;
+                    toReturn += additionalPortInfo;
                 }
                 catch (Exception ex)
                 {

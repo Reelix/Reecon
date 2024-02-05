@@ -152,7 +152,7 @@ namespace Reecon
                 if (success == "true")
                 {
                     // Wow o_O
-                    string toReturn = $"- Default Credentials Found: {username}:{password}".Pastel(Color.Orange) + Environment.NewLine;
+                    string toReturn = "- " + $"Default Credentials Found: {username}:{password}".Pastel(Color.Orange) + Environment.NewLine;
                     toReturn += $"-- mysql -h {target} -u {username} -p" + Environment.NewLine;
                     toReturn += GetCreds();
                     return toReturn;

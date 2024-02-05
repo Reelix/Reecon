@@ -1049,6 +1049,37 @@ namespace Reecon
                             // TODO: Add better sources
                         }
                     }
+                    else if (serverText.StartsWith("CouchDB/"))
+                    {
+                        responseText += "-- CouchDB Detected!" + Environment.NewLine;
+                        var utilsPage = GetHTTPInfo($"{urlWithSlash}_utils/");
+                        if (utilsPage.StatusCode == HttpStatusCode.OK || utilsPage.StatusCode == HttpStatusCode.NotModified)
+                        {
+                            responseText += "--- " + $"Web Admin Tool Found: {utilsPage.URL}".Pastel(Color.Orange) + Environment.NewLine;
+                        }
+                        var allDBsPage = GetHTTPInfo($"{urlWithSlash}_all_dbs");
+                        if (allDBsPage.StatusCode == HttpStatusCode.OK)
+                        {
+                            string allDBsPageText = allDBsPage.PageText.Trim(Environment.NewLine.ToCharArray());
+                            responseText += "--- " + $"All DBs Found ( {allDBsPage.URL} ) : {allDBsPageText}".Pastel(Color.Orange) + Environment.NewLine;
+                            responseText += $"--- Enumeration: {urlWithSlash}dbNameHere/_all_docs" + Environment.NewLine;
+                            // ID or Key Name? They both seem to be the same in test scnearios...
+                            responseText += $"--- Enumeration: {urlWithSlash}dbNameHere/idHere" + Environment.NewLine;
+                        }
+                    }
+                    else if (serverText.StartsWith("HFS"))
+                    {
+                        responseText += "-- HTTP File Server (HFS) Detected!" + Environment.NewLine;
+                        if (serverText.Contains("HFS 2.3"))
+                        {
+                            responseText += "--- " + "Version likely vulnerable to CVE-2014-6287 - https://www.exploit-db.com/raw/49584".Pastel(Color.Orange) + Environment.NewLine;
+                        }
+                    }
+                    else if (serverText.StartsWith("lighttpd"))
+                    {
+                        responseText += "-- " + "lighttpd Detected" + Environment.NewLine;
+                        responseText += "-- If version is below 1.4.19, check https://www.exploit-db.com/exploits/31396 (CVE-2008-1270)" + Environment.NewLine;
+                    }
                     else if (serverText.StartsWith("MiniServ/"))
                     {
                         responseText += "-- " + "Webmin Server Detected".Pastel(Color.Orange) + Environment.NewLine;
@@ -1097,35 +1128,9 @@ namespace Reecon
                             responseText += "--- No /console :(" + Environment.NewLine;
                         }
                     }
-                    else if (serverText.StartsWith("HFS"))
-                    {
-                        responseText += "-- HTTP File Server (HFS) Detected!" + Environment.NewLine;
-                        if (serverText.Contains("HFS 2.3"))
-                        {
-                            responseText += "--- " + "Version likely vulnerable to CVE-2014-6287 - https://www.exploit-db.com/raw/49584".Pastel(Color.Orange) + Environment.NewLine;
-                        }
-                    }
-                    else if (serverText.StartsWith("CouchDB/"))
-                    {
-                        responseText += "-- CouchDB Detected!" + Environment.NewLine;
-                        var utilsPage = GetHTTPInfo($"{urlWithSlash}_utils/");
-                        if (utilsPage.StatusCode == HttpStatusCode.OK || utilsPage.StatusCode == HttpStatusCode.NotModified)
-                        {
-                            responseText += "--- " + $"Web Admin Tool Found: {utilsPage.URL}".Pastel(Color.Orange) + Environment.NewLine;
-                        }
-                        var allDBsPage = GetHTTPInfo($"{urlWithSlash}_all_dbs");
-                        if (allDBsPage.StatusCode == HttpStatusCode.OK)
-                        {
-                            string allDBsPageText = allDBsPage.PageText.Trim(Environment.NewLine.ToCharArray());
-                            responseText += "--- " + $"All DBs Found ( {allDBsPage.URL} ) : {allDBsPageText}".Pastel(Color.Orange) + Environment.NewLine;
-                            responseText += $"--- Enumeration: {urlWithSlash}dbNameHere/_all_docs" + Environment.NewLine;
-                            // ID or Key Name? They both seem to be the same in test scnearios...
-                            responseText += $"--- Enumeration: {urlWithSlash}dbNameHere/idHere" + Environment.NewLine;
-                        }
-                    }
                 }
 
-                // All the X's
+                // So many X's....
                 if (Headers.Any(x => x.Key.StartsWith("X-Generator")))
                 {
                     string generator = Headers.GetValues("X-Generator").First();
@@ -1200,6 +1205,13 @@ namespace Reecon
                     }
                 }
 
+                // Confluence
+                if (Headers.Any(x => x.Key == "X-Confluence-Request-Time"))
+                {
+                    responseText += "-- " + "Confluence Detected".Pastel(Color.Orange) + Environment.NewLine;
+                    responseText += "--- Bug Reelix - https://nvd.nist.gov/vuln/detail/CVE-2023-22527";
+                }
+
                 // Gitlab
                 if (Headers.Any(x => x.Key == "X-Gitlab-Meta"))
                 {
@@ -1213,6 +1225,19 @@ namespace Reecon
                         responseText += "-- " + "Search in: https://raw.githubusercontent.com/righel/gitlab-version-nse/main/gitlab_hashes.json".Pastel(Color.Orange) + Environment.NewLine;
                         responseText += "--- " + "CVE-2021-22205: 11.9.0 to 13.8.7, 13.9.0 to 13.9.5, 13.10.0 to 13.10.2 (Inclusive)".Pastel(Color.Orange) + Environment.NewLine;
                         responseText += "--- " + "CVE-2023-7028: 16.1 to 16.1.5, 16.2 to 16.2.8, 16.3 to 16.3.6, 16.4 to 16.4.4, 16.5 to 16.5.5, 16.6 to 16.6.3, 16.7 to 16.7.1 (Inclusive)".Pastel(Color.Orange) + Environment.NewLine;
+                    }
+                }
+
+                // Influxdb
+                if (Headers.Any(x => x.Key.StartsWith("X-Influxdb-Version")))
+                {
+                    string influxDBVersion = Headers.GetValues("X-Influxdb-Version").First();
+                    Headers.Remove("X-Influxdb-Version");
+                    responseText += "- InfluxDB Detected - Version: " + influxDBVersion + Environment.NewLine;
+                    Version theVersion = new Version(influxDBVersion);
+                    if (theVersion <= new Version("1.3.0"))
+                    {
+                        responseText += "-- " + "Possible Vulnerable Version Detected - https://www.komodosec.com/post/when-all-else-fails-find-a-0-day <-----".Pastel(Color.Orange) + Environment.NewLine;
                     }
                 }
 
@@ -1233,19 +1258,6 @@ namespace Reecon
 
                 }
 
-                // Influxdb
-                if (Headers.Any(x => x.Key.StartsWith("X-Influxdb-Version")))
-                {
-                    string influxDBVersion = Headers.GetValues("X-Influxdb-Version").First();
-                    Headers.Remove("X-Influxdb-Version");
-                    responseText += "- InfluxDB Detected - Version: " + influxDBVersion + Environment.NewLine;
-                    Version theVersion = new Version(influxDBVersion);
-                    if (theVersion <= new Version("1.3.0"))
-                    {
-                        responseText += "-- " + "Possible Vulnerable Version Detected - https://www.komodosec.com/post/when-all-else-fails-find-a-0-day <-----".Pastel(Color.Orange) + Environment.NewLine;
-                    }
-                }
-
                 // All the rest
                 if (Headers.Any(x => x.Key.StartsWith("X-")))
                 {
@@ -1256,7 +1268,7 @@ namespace Reecon
                         if (headerName != "X-Content-Type-Options") // Not really useful
                         {
                             string headerValues = string.Join(",", Headers.GetValues(headerName));
-                            responseText += $"- {headerName}: {headerValues}{Environment.NewLine}";
+                            responseText += $"- {headerName}: {headerValues}{Environment.NewLine} (Bug Reelix for a useful X- Header)";
                         }
                         Headers.Remove(theHeader.Key);
                     }
@@ -1345,6 +1357,8 @@ namespace Reecon
                     responseText += "- Content-Security-Policy: " + csp + Environment.NewLine;
                     responseText += "-- Verify security with: https://csp-evaluator.withgoogle.com/" + Environment.NewLine;
                 }
+
+                // And the rest
                 string otherHeaders = "";
                 foreach (var header in Headers)
                 {
@@ -1567,6 +1581,7 @@ namespace Reecon
                 if (PageText.Contains("com_content") && PageText.Contains("com_users"))
                 {
                     responseText += "- " + "Joomla! Detected".Pastel(Color.Orange) + Environment.NewLine;
+                    responseText += "- " + $"Brute Force: nmap -p80 -sV --script http-joomla-brute {DNS} --script-args 'userdb=users.txt,passdb=words.txt,http-joomla-brute.uri=/administrator/index.php'".Pastel(Color.Orange);
                     var adminXML = GetHTTPInfo($"{URL}administrator/manifests/files/joomla.xml");
                     if (adminXML.StatusCode == HttpStatusCode.OK)
                     {
@@ -1574,7 +1589,7 @@ namespace Reecon
                         {
                             string versionText = adminXML.PageText.Remove(0, adminXML.PageText.IndexOf("<version>") + "<version>".Length);
                             versionText = versionText.Substring(0, versionText.IndexOf("</version"));
-                            responseText += $"-- Joomla! Version: {versionText}".Pastel(Color.Orange) + Environment.NewLine;
+                            responseText += "-- " + "Joomla! Version: {versionText}".Pastel(Color.Orange) + Environment.NewLine;
                             // https://vulncheck.com/blog/joomla-for-rce
                             // - CVE-2023-23752 - 4.0.0 through 4.2.7
                         }
