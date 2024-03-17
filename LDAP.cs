@@ -1,7 +1,8 @@
-﻿using Pastel;
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.DirectoryServices.Protocols;
 using System.Drawing;
+using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
@@ -73,16 +74,17 @@ namespace Reecon
                 }
             }
         }
+
         public static string GetDefaultNamingContext(string ip, int port, bool raw = false)
         {
             string ldapInfo = string.Empty;
-            LdapDirectoryIdentifier identifier = new LdapDirectoryIdentifier(ip, port);
+            LdapDirectoryIdentifier identifier = new LdapDirectoryIdentifier(ip); //, port);
             NetworkCredential creds = new NetworkCredential();
             //creds.UserName = "support\\ldap";
-            creds.UserName = null;
-            creds.Password = null;
+            // creds.UserName = "anonymous";
+            // creds.Password = "test";
             //creds.Password = original;
-            LdapConnection connection = new LdapConnection(identifier, null);
+            LdapConnection connection = new LdapConnection(identifier, creds);
             connection.AuthType = AuthType.Anonymous;
             connection.SessionOptions.ProtocolVersion = 3;
             if (identifier.PortNumber == 636)
@@ -93,11 +95,24 @@ namespace Reecon
                 // connection.SessionOptions.SecureSocketLayer = true;
 
             }
-            SearchRequest searchRequest = new SearchRequest(null, "(objectclass=*)", SearchScope.Base);
+            SearchRequest searchRequest = new SearchRequest("", "(objectClass=computer)", SearchScope.Base);
             try
             {
-                var response = connection.SendRequest(searchRequest) as SearchResponse;
-                var searchEntries = response.Entries;
+                SearchResponse searchResponse = (SearchResponse)connection.SendRequest(searchRequest);
+                SearchResultEntryCollection searchEntries = searchResponse.Entries;
+
+                if (searchResponse.Entries.Count > 0)
+                {
+                    SearchResultEntry entry = searchResponse.Entries[0];
+                    rootDseString = entry.Attributes["defaultNamingContext"][0].ToString();
+                    return rootDseString;
+                }
+                else
+                {
+                    throw new InvalidOperationException("defaultNamingContext not found in RootDSE.");
+                }
+
+                Console.WriteLine("Found: " + searchEntries.Count + " entries.");
                 if (searchEntries[0].Attributes.Contains("defaultNamingContext"))
                 {
                     DirectoryAttribute coll = searchEntries[0].Attributes["defaultNamingContext"];
@@ -218,81 +233,142 @@ namespace Reecon
             try
             {
                 connection.Bind();
+                Console.WriteLine("Creds are correct!");
                 if (rootDseString == "")
                 {
-                    LDAP.GetDefaultNamingContext(ip, port);
+                    rootDseString = LDAP.GetDefaultNamingContext(ip, port);
+                    // Console.WriteLine("Found Default Naming Context: " + rootDseString);
                 }
+                List<SearchResponse> searchResponseList = new List<SearchResponse>();
+                SearchResponse searchResponse = null;
+                int maxResultsToRequest = 100;
+                // Over 100 can cause a "The size limit was exceeded" error.
+                PageResultRequestControl pageRequestControl = new PageResultRequestControl(maxResultsToRequest);
+                PageResultResponseControl pageResponseControl;
                 SearchRequest searchRequest = new SearchRequest(rootDseString, "(objectclass=user)", SearchScope.Subtree);
-                SearchResponse searchResponse = connection.SendRequest(searchRequest) as SearchResponse;
-                var searchEntries = searchResponse.Entries;
-                Console.WriteLine("Found " + searchEntries.Count + " users");
-                foreach (SearchResultEntry entry in searchEntries)
+                searchRequest.Controls.Add(pageRequestControl);
+
+                // Iterate through the responses and add each to the searchResponseList (Pagination)
+                while (true)
                 {
-                    // Account Name
-                    string accountName = entry.Attributes.Contains("sAMAccountName") ? (string)entry.Attributes["sAMAccountName"][0] : "";
-                    accountName = accountName.Trim();
-                    ldapInfo += "- Account Name: " + accountName + Environment.NewLine;
-
-                    // Common Name
-                    string commonName = entry.Attributes.Contains("cn") ? (string)entry.Attributes["cn"][0] : "";
-                    commonName = commonName.Trim();
-                    if (commonName != accountName)
+                    // Console.WriteLine("Paging...");
+                    // Console.WriteLine(1);
+                    // This complains about a bind error - Why?
+                    // Does it only happen in cases where there are more than 100 pages?
+                    try
                     {
-                        ldapInfo += "-- Common Name: " + commonName + Environment.NewLine;
+                        searchResponse = (SearchResponse)connection.SendRequest(searchRequest);
                     }
-
-                    // User Principle Name
-                    // userPrincipalName - Not really important
-                    /*
-                    string userPrincipalName = entry.Attributes.Contains("userPrincipalName") ? (string)entry.Attributes["userPrincipalName"][0] : "";
-                    userPrincipalName = userPrincipalName.Trim();
-                    if (userPrincipalName != accountName && userPrincipalName != "")
+                    catch (DirectoryOperationException doex)
                     {
-                        // Console.WriteLine("-- User Principle Name: " + userPrincipalName);
+                        Console.WriteLine("Fatal error in LDAP.GetAccountInfo - doex Error: " + doex.Message);
+                        Console.ReadLine();
+                        Environment.Exit(0);
                     }
-                    */
-
-                    // memberOf
-                    if (entry.Attributes.Contains("memberOf"))
+                    catch (Exception ex)
                     {
-                        foreach (var item in entry.Attributes["memberOf"])
+                        Console.WriteLine("Fatal error in LDAP.GetAccountInfo - ex Error: " + ex.Message);
+                        Console.ReadLine();
+                        Environment.Exit(0);
+                    }
+                    // Console.WriteLine(2);
+                    // Console.WriteLine("Adding a searchResponse with " + searchResponse.Entries.Count + " entries.");
+                    searchResponseList.Add(searchResponse);
+                    // Console.WriteLine(3);
+                    try
+                    {
+                        // Console.WriteLine("3a");
+                        pageResponseControl = (PageResultResponseControl)searchResponse.Controls[0];
+                        // Console.WriteLine("3b");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("Paging Error after 3: " + ex.Message);
+                        break;
+                    }
+                    // Console.WriteLine(4);
+                    if (pageResponseControl.Cookie.Length == 0)
+                    {
+                        // Console.WriteLine(5);
+                        break;
+                    }
+                    // Console.WriteLine(6);
+                    pageRequestControl.Cookie = pageResponseControl.Cookie;
+                }
+                // Console.WriteLine("Finding total count...");
+                int totalCount = searchResponseList.Select(x => x.Entries.Count).ToList().Sum();
+                Console.WriteLine("Found " + totalCount + " users");
+                foreach (SearchResponse response in searchResponseList)
+                {
+                    var searchEntries = response.Entries;
+
+                    foreach (SearchResultEntry entry in searchEntries)
+                    {
+                        // Account Name
+                        string accountName = entry.Attributes.Contains("sAMAccountName") ? (string)entry.Attributes["sAMAccountName"][0] : "";
+                        accountName = accountName.Trim();
+                        ldapInfo += $"- Account Name: {accountName}" + Environment.NewLine;
+
+                        // Common Name
+                        string commonName = entry.Attributes.Contains("cn") ? (string)entry.Attributes["cn"][0] : "";
+                        commonName = commonName.Trim();
+                        if (commonName != accountName)
                         {
-                            if (item.GetType() == typeof(Byte[]))
+                            ldapInfo += $"-- Common Name: {commonName}" + Environment.NewLine;
+                        }
+
+                        // User Principle Name
+                        // userPrincipalName - Not really important
+                            /*
+                            string userPrincipalName = entry.Attributes.Contains("userPrincipalName") ? (string)entry.Attributes["userPrincipalName"][0] : "";
+                            userPrincipalName = userPrincipalName.Trim();
+                            if (userPrincipalName != accountName && userPrincipalName != "")
                             {
-                                string itemStr = Encoding.Default.GetString((Byte[])item);
-                                if (itemStr.Contains("CN=Remote Desktop Users"))
+                                // Console.WriteLine("-- User Principle Name: " + userPrincipalName);
+                            }
+                            */
+                            // memberOf
+                        if (entry.Attributes.Contains("memberOf"))
+                        {
+                            foreach (var item in entry.Attributes["memberOf"])
+                            {
+                                if (item.GetType() == typeof(Byte[]))
                                 {
-                                    ldapInfo += "-- " + "Member of the Remote Desktop Users Group (Can RDP in)".Pastel(Color.Orange) + Environment.NewLine;
+                                    string itemStr = Encoding.Default.GetString((Byte[])item);
+                                    if (itemStr.Contains("CN=Remote Desktop Users"))
+                                    {
+                                        ldapInfo += "-- " + "Member of the Remote Desktop Users Group (Can RDP in)".Recolor(Color.Orange) + Environment.NewLine;
+                                    }
                                 }
+                                else
+                                {
+                                    Console.WriteLine("-- Error - Unknown memberOf type - Bug Reelix: " + item.GetType());
+                                }
+                            }
+                        }
+                        // lastLogon
+                        if (entry.Attributes.Contains("lastLogon"))
+                        {
+                            string value = (string)entry.Attributes["lastLogon"][0];
+                            string lastLoggedIn = value == "0" ? "Never" : DateTime.FromFileTime(long.Parse(value)).ToString();
+                            string lastLoggedInResponse = "-- Last Logged In: " + (lastLoggedIn == "Never" ? "Never" : lastLoggedIn.Recolor (Color.Orange));
+                            ldapInfo += lastLoggedInResponse + Environment.NewLine;
+                        }
+
+                        // Description
+                        string description = entry.Attributes.Contains("description") ? (string)entry.Attributes["description"][0] : "";
+                        if (description != "")
+                        {
+                            // Default - Probably nothing interesting
+                            if (accountName == "Administrator" || accountName == "Guest" || accountName == "krbtgt")
+                            {
+                                ldapInfo += $"-- Description: {description}" + Environment.NewLine;
                             }
                             else
                             {
-                                Console.WriteLine("-- Error - Unknown memberOf type - Bug Reelix: " + item.GetType());
+                                // Custom description - Notify the user
+                                ldapInfo += "-- " + ("Description: " + description).Recolor(Color.Orange) + Environment.NewLine;
                             }
-                        }
-                    }
-                    // lastLogon
-                    if (entry.Attributes.Contains("lastLogon"))
-                    {
-                        string value = (string)entry.Attributes["lastLogon"][0];
-                        string lastLoggedIn = value == "0" ? "Never" : DateTime.FromFileTime(long.Parse(value)).ToString();
-                        string lastLoggedInResponse = "-- Last Logged In: " + (lastLoggedIn == "Never" ? "Never" : lastLoggedIn.Pastel(Color.Orange));
-                        ldapInfo += lastLoggedInResponse + Environment.NewLine;
-                    }
-
-                    // Description
-                    string description = entry.Attributes.Contains("description") ? (string)entry.Attributes["description"][0] : "";
-                    if (description != "")
-                    {
-                        // Default - Probably nothing interesting
-                        if (accountName == "Administrator" || accountName == "Guest" || accountName == "krbtgt")
-                        {
-                            ldapInfo += "-- Description: " + description + Environment.NewLine;
-                        }
-                        else
-                        {
-                            // Custom description - Notify the user
-                            ldapInfo += "-- " + ("Description: " + description).Pastel(Color.Orange) + Environment.NewLine;
                         }
                     }
                 }

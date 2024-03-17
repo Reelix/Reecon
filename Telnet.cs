@@ -8,7 +8,7 @@ namespace Reecon
     {
         public static string GetInfo(string ip, int port)
         {
-            Console.OutputEncoding = System.Text.Encoding.UTF8;
+            Console.OutputEncoding = Encoding.UTF8;
             int timeout = 5000; // ms
             string bannerText = "";
             Byte[] buffer = new Byte[512];
@@ -32,8 +32,13 @@ namespace Reecon
                         // Type: ??
                         if (buffer[0] == 255 && buffer[1] == 253)
                         {
+                            // Option: 1 = Echo - RFC857
+                            if (buffer[2] == 1)
+                            {
+                                return "- Valid Telnet response, but it's an Echo service (RFC857) - You can probably ignore this";
+                            }
                             // Option: 24 = Terminal Type - RFC1091
-                            if (buffer[2] == 24)
+                            else if (buffer[2] == 24)
                             {
                                 telnetSocket.Send(buffer, bytes, 0);
                                 // Receive 2 - And Parrot

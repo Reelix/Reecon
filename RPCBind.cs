@@ -1,5 +1,4 @@
-﻿using Pastel;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 
@@ -13,7 +12,7 @@ namespace Reecon
             string toReturn = "";
             if (!General.IsInstalledOnLinux("rpcinfo"))
             {
-                toReturn = "- " + "Error: Cannot find rpcinfo - Unable to enumerate - install rpcbind".Pastel(Color.Red);
+                toReturn = "- " + "Error: Cannot find rpcinfo - Unable to enumerate - install rpcbind".Recolor(Color.Red);
             }
             else
             {

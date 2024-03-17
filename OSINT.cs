@@ -1,5 +1,4 @@
-﻿using Pastel;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -20,7 +19,7 @@ namespace Reecon
             }
             // Support the weird chars people use on Social Media
             Console.OutputEncoding = System.Text.Encoding.UTF8;
-            Console.WriteLine("Warning: The OSINT Module is still in early development and will probably break / give incorrect information".Pastel(Color.Red));
+            Console.WriteLine("Warning: The OSINT Module is still in early development and will probably break / give incorrect information".Recolor(Color.Red));
             string username = args[1];
             Console.WriteLine("Searching for " + username + "...");
             GetInstagramInfo(username);
@@ -60,7 +59,7 @@ namespace Reecon
             var redditInfo = OSINT_Reddit.GetInfo(username);
             if (redditInfo.Exists)
             {
-                Console.WriteLine("- Reddit: " + "Found".Pastel(Color.Green));
+                Console.WriteLine("- Reddit: " + "Found".Recolor(Color.Green));
                 Console.WriteLine($"-- Link: https://www.reddit.com/user/{username}");
                 // Get Comments
                 if (redditInfo.CommentList.Count == 0)
@@ -121,7 +120,7 @@ namespace Reecon
             }
             else
             {
-                Console.WriteLine("- Steam: " + "Found".Pastel(Color.Green));
+                Console.WriteLine("- Steam: " + "Found".Recolor(Color.Green));
                 Console.WriteLine(result.Trim(Environment.NewLine.ToCharArray()));
             }
         }
@@ -137,7 +136,7 @@ namespace Reecon
             }
             else if (httpInfo.StatusCode == HttpStatusCode.OK)
             {
-                Console.WriteLine("- Twitter: " + "Found".Pastel(Color.Green));
+                Console.WriteLine("- Twitter: " + "Found".Recolor(Color.Green));
                 Console.WriteLine("-- Link: https://www.twitter.com/" + username);
 
                 // Profile name
@@ -185,7 +184,7 @@ namespace Reecon
             }
             else
             {
-                Console.WriteLine("- Twitter: " + "Error".Pastel(Color.Red) + " - Bug Reelix");
+                Console.WriteLine("- Twitter: " + "Error".Recolor(Color.Red) + " - Bug Reelix");
             }
         }
 
@@ -196,7 +195,7 @@ namespace Reecon
             if (httpInfo.StatusCode == HttpStatusCode.OK)
             {
                 string youtubeUsername = httpInfo.PageTitle.Replace(" - YouTube", "");
-                Console.WriteLine("- YouTube: " + "Found".Pastel(Color.Green));
+                Console.WriteLine("- YouTube: " + "Found".Recolor(Color.Green));
                 Console.WriteLine("-- Link: https://www.youtube.com/" + username);
                 Console.WriteLine("-- Name: " + youtubeUsername);
 
@@ -224,7 +223,7 @@ namespace Reecon
                     if (location.Contains("/user/"))
                     {
                         var userInfo = Web.GetHTTPInfo(location);
-                        Console.WriteLine("- YouTube: " + "Found".Pastel(Color.Green));
+                        Console.WriteLine("- YouTube: " + "Found".Recolor(Color.Green));
                         Console.WriteLine("-- User Profile: " + location);
                         Console.WriteLine("-- Name: " + userInfo.PageTitle.Replace(" - YouTube", ""));
                     }
@@ -245,7 +244,7 @@ namespace Reecon
             var httpInfo = Web.GetHTTPInfo($"https://api.github.com/users/{username}", "Reecon");
             if (httpInfo.StatusCode != HttpStatusCode.NotFound)
             {
-                Console.WriteLine("- Github: " + "Found".Pastel(Color.Green));
+                Console.WriteLine("- Github: " + "Found".Recolor(Color.Green));
                 var githubInfo = JsonDocument.Parse(httpInfo.PageText);
 
                 JsonElement login = githubInfo.RootElement.GetProperty("login");

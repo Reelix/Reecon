@@ -23,13 +23,17 @@ namespace Reecon
             }
 
             // Get useful info
-            if (bannerResult.Contains("HTTP/1.1 401 Unauthorized") && bannerResult.Contains("ERR_CACHE_MGR_ACCESS_DENIED"))
+            if (bannerResult.StartsWith("HTTP/1.1 401 Unauthorized") && bannerResult.Contains("ERR_CACHE_MGR_ACCESS_DENIED"))
             {
                 returnInfo += "- Password authentication is enabled and a password is required";
             }
+            else if (bannerResult.StartsWith("HTTP/1.1 403 Forbidden"))
+            {
+                returnInfo += "- No unauthorized Cache Manager access" + Environment.NewLine;
+            }
             else if (bannerResult.Contains("Cache Manager Interface"))
             {
-                returnInfo += "- Unauthorized Cache Mananger Menu Access! Bug Reelix to update this!";
+                returnInfo += "- Unauthorized Cache Mananger Menu access! Bug Reelix to update this!";
             }
             else
             {

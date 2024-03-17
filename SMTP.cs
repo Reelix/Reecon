@@ -1,5 +1,4 @@
-﻿using Pastel;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -168,7 +167,7 @@ namespace Reecon
                         else if (mailFromResponse.StartsWith("250 ") || mailFromResponse.StartsWith("250-"))
                         {
                             // Can Spoof the Mail From!
-                            returnText += "- " + "Valid unauth'd MAIL FROM! Maybe try phish?".Pastel(Color.Orange) + Environment.NewLine;
+                            returnText += "- " + "Valid unauth'd MAIL FROM! Maybe try phish?".Recolor(Color.Orange) + Environment.NewLine;
                             
                             // How about the RCPT TO?
                             byte[] rcptToBytes = Encoding.ASCII.GetBytes(($"RCPT TO:<test@{ip}>" + newlineChars).ToCharArray());
@@ -182,7 +181,7 @@ namespace Reecon
                             }
                             else if (rcptToResponse.StartsWith("550"))
                             {
-                                returnText += "-- " + "RCPT Validation Enabled - You can validate user accounts!".Pastel(Color.Orange) + Environment.NewLine;
+                                returnText += "-- " + "RCPT Validation Enabled - You can validate user accounts!".Recolor(Color.Orange) + Environment.NewLine;
                                 returnText += $"-- Phishing Command: swaks --to target@domain.com --from it@domain.com --server {ip} --port {port} --body phish.txt" + Environment.NewLine;
                             }
                             else if (rcptToResponse.StartsWith("501")) // 501 5.1.3 Bad recipient address syntax
@@ -196,7 +195,7 @@ namespace Reecon
                                 rcptToResponse = Encoding.ASCII.GetString(buffer, 0, bytes).Trim();
                                 if (rcptToResponse.StartsWith("550") && rcptToResponse.Contains("User unknown in local recipient table"))
                                 {
-                                    returnText += "-- " + "Name test verified! Use Metasploit: auxiliary/scanner/smtp/smtp_enum".Pastel(Color.Orange) + Environment.NewLine;
+                                    returnText += "-- " + "Name test verified! Use Metasploit: auxiliary/scanner/smtp/smtp_enum".Recolor(Color.Orange) + Environment.NewLine;
                                     returnText += $"-- Phishing Command: swaks --from it@domain.com --to user,user2,user3 --server {ip} --port {port} --body @phish.txt" + Environment.NewLine;
                                 }
                                 else

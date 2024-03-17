@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -14,10 +15,11 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Reecon
 {
-    class General
+    static class General
     {
         public static void ShowHelp()
         {
@@ -28,7 +30,7 @@ namespace Reecon
             Console.WriteLine($"Display IP:\t{reeconFileName} -ip");
             Console.WriteLine($"NMap-Load Scan:\t{reeconFileName} outfile.nmap (Requires -oG on a regular nmap scan)");
             Console.WriteLine($"Binary Pwn:\t{reeconFileName} -pwn FileName (Very buggy)");
-            Console.WriteLine($"LDAP Auth Enum:\t{reeconFileName} -ldap IP validUsername validPassword");
+            Console.WriteLine($"LDAP Auth Enum:\t{reeconFileName} -ldap IP port validUsername validPassword");
             Console.WriteLine($"Searchsploit:\t{reeconFileName} -searchsploit nameHere (Beta)");
             Console.WriteLine($"Shell Gen:\t{reeconFileName} -shell");
             Console.WriteLine($"SMB Brute:\t{reeconFileName} -smb-brute (Linux Only)");
@@ -37,15 +39,20 @@ namespace Reecon
             Console.WriteLine($"Web Info:\t{reeconFileName} -web url (Very buggy)");
         }
 
+        // Fingerprinting service
         public static List<string> MultiBannerGrab(string ip, int port, int bufferSize = 512, int timeout = 5000)
         {
             List<string> returnList = new();
             ConcurrentBag<string> resultCollection = new();
             List<string> toTest = new()
             {
+                // General
                 "",
                 "Woof\r\n\r\n",
+                // HTTP (Windows)
                 "HEAD / HTTP/1.1\r\nHost: " + ip + "\r\n\r\n",
+                // Minecraft
+                "0xFE, 0x01",
                 // TLS
                 // "0x16, 0x03, 0x01, 0x00, 0xa5, 0x01, 0x00, 0x00, 0xa1, 0x03, 0x03, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x00, 0x00, 0x20, 0xcc, 0xa8, 0xcc, 0xa9, 0xc0, 0x2f, 0xc0, 0x30, 0xc0, 0x2b, 0xc0, 0x2c, 0xc0, 0x13, 0xc0, 0x09, 0xc0, 0x14, 0xc0, 0x0a, 0x00, 0x9c, 0x00, 0x9d, 0x00, 0x2f, 0x00, 0x35, 0xc0, 0x12, 0x00, 0x0a, 0x01, 0x00, 0x00, 0x58, 0x00, 0x00, 0x00, 0x18, 0x00, 0x16, 0x00, 0x00, 0x13, 0x65, 0x78, 0x61, 0x6d, 0x70, 0x6c, 0x65, 0x2e, 0x75, 0x6c, 0x66, 0x68, 0x65, 0x69, 0x6d, 0x2e, 0x6e, 0x65, 0x74, 0x00, 0x05, 0x00, 0x05, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x0a, 0x00, 0x08, 0x00, 0x1d, 0x00, 0x17, 0x00, 0x18, 0x00, 0x19, 0x00, 0x0b, 0x00, 0x02, 0x01, 0x00, 0x00, 0x0d, 0x00, 0x12, 0x00, 0x10, 0x04, 0x01, 0x04, 0x03, 0x05, 0x01, 0x05, 0x03, 0x06, 0x01, 0x06, 0x03, 0x02, 0x01, 0x02, 0x03, 0xff, 0x01, 0x00, 0x01, 0x00, 0x00, 0x12, 0x00, 0x00"
             };
@@ -180,6 +187,8 @@ namespace Reecon
                         if (initialText.Length != 0)
                         {
                             Byte[] cmdBytes;
+
+                            // Check if it's a hex input instead of just a regular banner string
                             if (initialText.StartsWith("0x") && initialText.Contains(", "))
                             {
                                 string[] s = initialText.Split(',');
@@ -248,7 +257,6 @@ namespace Reecon
             }
             return bannerText;
         }
-
 
         // This is for custom requests where you know the actual bytes to send
         public static byte[] BannerGrabBytes(string ip, int port, List<byte[]> bytesToSend, int bufferSize = 1024)
@@ -474,7 +482,7 @@ namespace Reecon
                 }
                 else
                 {
-                    Console.WriteLine("Error - Directory " + pathDirectory + " does not exist. Your PATH variable might be broken");
+                    Console.WriteLine($"Error - Directory ${pathDirectory} does not exist. Your PATH variable might be broken");
                 }
             }
             return false;
@@ -507,25 +515,22 @@ namespace Reecon
 
         public static List<IP> GetIPList()
         {
-            List<IP> ipList = new();
-            NetworkInterface[] networkInterfaces = NetworkInterface.GetAllNetworkInterfaces();
+            List<IP> ipList = new List<IP>();
+            List<NetworkInterface> networkInterfaces = NetworkInterface.GetAllNetworkInterfaces().ToList();
+            networkInterfaces = networkInterfaces.Where(x => x.Name != "lo").ToList(); // Remove Loopback
             foreach (NetworkInterface ni in networkInterfaces)
             {
                 IPInterfaceProperties properties = ni.GetIPProperties();
-                string name = ni.Name;
-                if (name != "lo") // Loopback
+                foreach (UnicastIPAddressInformation ip in ni.GetIPProperties().UnicastAddresses)
                 {
-                    foreach (UnicastIPAddressInformation ip in ni.GetIPProperties().UnicastAddresses)
+                    if (ip.Address.AddressFamily == AddressFamily.InterNetwork)
                     {
-                        if (ip.Address.AddressFamily == AddressFamily.InterNetwork)
+                        IP returnIP = new()
                         {
-                            IP returnIP = new()
-                            {
-                                Name = name,
-                                Address = ip.Address
-                            };
-                            ipList.Add(returnIP);
-                        }
+                            Name = ni.Name,
+                            Address = ip.Address
+                        };
+                        ipList.Add(returnIP);
                     }
                 }
             }
@@ -595,6 +600,8 @@ namespace Reecon
                 httpStream.CopyTo(fileStream);
             }
         }
+
+
         public static byte[] ReceiveSocketData(Socket theSocket)
         {
             byte[] buffer = new byte[5000];
@@ -602,19 +609,44 @@ namespace Reecon
             int size = theSocket.Receive(buffer, buffer.Length, 0);
             int totSize = 0;
             Array.Copy(buffer, 0, totBuffer, totSize, size);
-            while ((theSocket.Poll(1000, SelectMode.SelectRead)))
+            while (theSocket.Poll(1000, SelectMode.SelectRead))
             {
                 totSize += size;
                 size = theSocket.Receive(buffer);
                 Array.Copy(buffer, 0, totBuffer, totSize, size);
             }
-            return (totBuffer);
+            return totBuffer;
         }
 
-        public static object DesrialzeTrim(string text, Type theType)
+        // Changes the color of a specific string in a line of text, then everything after is white
+        public static string Recolor(this string input, Color color)
         {
-            var theObject = JsonSerializer.Deserialize(text, theType, SourceGenerationContext.Default);
-            return theObject;
+            // https://misc.flogisoft.com/bash/tip_colors_and_formatting
+            // For using one of the 256 colors on the foreground (text color), the control sequence is “<Esc>[38;5;ColorNumberm” where ColorNumber is one of the following colors:
+            string toReturn = "";
+            string backToWhite = "\u001b[97m";
+            string Green = "\u001b[38;5;46m";
+            string Orange = "\u001b[38;5;214m";
+            string Red = "\u001b[38;5;9m";
+            if (color == Color.Green)
+            {
+                // Console.WriteLine("Setting Green");
+                toReturn = $"{Green}{input}{backToWhite}";
+            }
+            else if (color == Color.Orange)
+            {
+                // Console.WriteLine("Setting Orange");
+                toReturn = $"{Orange}{input}{backToWhite}";
+            }
+            else if (color == Color.Red)
+            {
+                toReturn = $"{Red}{input}{backToWhite}";
+            }
+            else
+            {
+                Console.WriteLine("Unknown Color: " + color.Name.ToString());
+            }
+            return toReturn;
         }
     }
 }

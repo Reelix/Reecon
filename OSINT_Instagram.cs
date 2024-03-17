@@ -1,5 +1,4 @@
-﻿using Pastel;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Text.Json;
@@ -20,7 +19,7 @@ namespace Reecon
             }
             else
             {
-                Console.WriteLine("- Instagram: " + "Found".Pastel(Color.Green));
+                Console.WriteLine("- Instagram: " + "Found".Recolor(Color.Green));
                 foreach (OSINT_Instagram_Info.User user in theObject.users)
                 {
                     string userUsername = user.user.username;

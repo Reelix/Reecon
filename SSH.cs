@@ -31,10 +31,21 @@ namespace Reecon
                     if (success)
                     {
                         int bytes = sshSocket.Receive(buffer, buffer.Length, 0);
-                        string versionMessage = Encoding.ASCII.GetString(buffer, 0, bytes);
-                        versionMessage = versionMessage.Trim().Replace(Environment.NewLine, "");
+                        string responseMessage = Encoding.ASCII.GetString(buffer, 0, bytes);
+                        responseMessage = responseMessage.Trim();
+                        
+                        string versionMessage = "";
+                        if (responseMessage.Contains("\r"))
+                        {
+                            versionMessage = responseMessage.Split("\r")[0].Trim('\n');
+                        }
+                        else
+                        {
+                            versionMessage = responseMessage;
+                        }
                         // SSH-2.0-OpenSSH_6.6.1p1
                         // SSH-2.0-dropbear_0.45
+                        // SSH-2.0-dropbear_2016.74
                         if (versionMessage.StartsWith("SSH-2.0-"))
                         {
                             versionMessage = versionMessage.Remove(0, 8);
@@ -51,9 +62,10 @@ namespace Reecon
                             versionMessage = $"Weird SSH Version: {versionMessage}";
                         }
                         // https://gist.github.com/0x4D31/35ddb0322530414bbb4c3288292749cc
-                        if (versionMessage.ToLower().Contains("libssh"))
+                        if (responseMessage.ToLower().Contains("libssh"))
                         {
-                            versionMessage += " <--- libssh detected - Bug Reelix!";
+                            versionMessage += Environment.NewLine;
+                            versionMessage += "--> libssh detected - Bug Reelix!";
                         }
                         return versionMessage;
                     }
@@ -88,15 +100,24 @@ namespace Reecon
                 Console.WriteLine("Error in ssh.GetAuthMethods - Missing IP");
                 return "";
             }
-            List<string> outputLines = General.GetProcessOutput("ssh", $"-o PreferredAuthentications=none -o StrictHostKeyChecking=no -o ConnectTimeout=5 {ip} -p {port}");
+            List<string> outputLines = General.GetProcessOutput("ssh", $"-o PreferredAuthentications=none -o StrictHostKeyChecking=no -o ConnectTimeout=5 {ip} -p {port} -oHostKeyAlgorithms=ssh-ed25519,ssh-rsa");
             // kex_exchange_identification: read: Connection reset by peer
             if (outputLines.Count == 1 && outputLines[0].EndsWith("Connection refused"))
             {
                 return "- Port is closed";
             }
-            if (outputLines.Count == 1 && outputLines[0].Contains("no matching key exchange method found. Their offer:"))
+            if (outputLines.Any(x => x.Contains("no matching key exchange method found. Their offer:")))
             {
-                return "- Weird Auth Method: " + outputLines[0];
+                string theLine = outputLines.First(x => x.Contains("no matching key exchange method found. Their offer:"));
+                string authMethods = theLine.Remove(0, theLine.IndexOf("Their offer: ") + 13);
+                return "Unknown - Weird Auth Algos: " + authMethods + Environment.NewLine + $"--> ssh {ip} -p {port} -o PreferredAuthentications=none -o StrictHostKeyChecking=no -o ConnectTimeout=5 -oHostKeyAlgorithms=ABOVE";
+            }
+            // Similar
+            if (outputLines.Any(x => x.Contains("no matching host key type found. Their offer")))
+            {
+                string theLine = outputLines.First(x => x.Contains("no matching host key type found. Their offer"));
+                string authMethods = theLine.Remove(0, theLine.IndexOf("Their offer: ") + 13);
+                return "Unknown - Weird Auth Algos: " + authMethods + Environment.NewLine + $"--> ssh {ip} -p {port} -o PreferredAuthentications=none -o StrictHostKeyChecking=no -o ConnectTimeout=5 -oHostKeyAlgorithms=ABOVE";
             }
             if (outputLines.Count == 1 && outputLines[0].Trim() == "kex_exchange_identification: Connection closed by remote host")
             {

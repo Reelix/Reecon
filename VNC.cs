@@ -37,7 +37,10 @@ namespace Reecon
                     }
                     else
                     {
-                        returnText += "- Unknown VNC Header: " + bannerText;
+                        // Not VNC
+                        returnText += "- Unknown VNC Header: " + bannerText + Environment.NewLine;
+                        string portInfo = PortInfo.FindUnknownPortInfo(target, port);
+                        return portInfo;
                     }
                 }
                 catch (Exception ex)

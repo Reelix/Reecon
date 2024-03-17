@@ -1,5 +1,4 @@
-﻿using Pastel;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -315,7 +314,7 @@ namespace Reecon
                                             // A bit hacky, but it works
                                             if (!int.TryParse(name, out int toIgnore))
                                             {
-                                                rpcInfo += "-- " + $"Sneaky Username Found: {name}".Pastel(Color.Orange) + Environment.NewLine;
+                                                rpcInfo += "-- " + $"Sneaky Username Found: {name}".Recolor(Color.Orange) + Environment.NewLine;
                                             }
                                         }
                                     }
@@ -364,7 +363,7 @@ namespace Reecon
                             // Rest are missed!
                             foreach (var item in sneakySids)
                             {
-                                rpcInfo += "-- " + $"Sneaky Username Found: {item.Name}".Pastel(Color.Orange) + Environment.NewLine;
+                                rpcInfo += "-- " + $"Sneaky Username Found: {item.Name}".Recolor(Color.Orange) + Environment.NewLine;
                             }
                             // 23 -> https://room362.com/post/2017/reset-ad-user-password-with-linux/
                             rpcInfo += "--> rpcclient -> setuserinfo2 userNameHere 23 'newPasswordHere'" + Environment.NewLine;
@@ -400,7 +399,7 @@ namespace Reecon
                     }
                     if (anonAccess == true)
                     {
-                        rpcInfo += "- " + $"Anonymous access permitted! -> rpcclient -U \"\"%\"\" {ip}".Pastel(Color.Orange) + Environment.NewLine;
+                        rpcInfo += "- " + $"Anonymous access permitted! -> rpcclient -U \"\"%\"\" {ip}".Recolor(Color.Orange) + Environment.NewLine;
                     }
                     else
                     {
@@ -411,7 +410,7 @@ namespace Reecon
                 }
                 else
                 {
-                    rpcInfo = "- Error: Cannot find /usr/bin/rpcclient - Please install smbclient (Includes it)".Pastel(Color.Red) + Environment.NewLine;
+                    rpcInfo = "- Error: Cannot find /usr/bin/rpcclient - Please install smbclient (Includes it)".Recolor(Color.Red) + Environment.NewLine;
                 }
             }
             else

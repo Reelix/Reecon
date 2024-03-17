@@ -1,5 +1,4 @@
-﻿using Pastel;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -52,16 +51,16 @@ namespace Reecon
                         // NFS V1
                         if (line.Trim().EndsWith("*"))
                         {
-                            fileList += "- " + line.Pastel(Color.Orange) + Environment.NewLine;
-                            fileList += "-- NFSV1 -> " + $"sudo mount -t nfs {target}:/mountNameHere /tmp/mount/ -nolock".Pastel(Color.Orange) + Environment.NewLine;
-                            fileList += "--- " + "Try copy over a version of bash onto the share, +s +x it, then ./bash -p".Pastel(Color.Orange) + Environment.NewLine;
+                            fileList += "- " + line.Recolor(Color.Orange) + Environment.NewLine;
+                            fileList += "-- NFSV1 -> " + $"sudo mount -t nfs {target}:/mountNameHere /tmp/mount/ -nolock".Recolor(Color.Orange) + Environment.NewLine;
+                            fileList += "--- " + "Try copy over a version of bash onto the share, +s +x it, then ./bash -p".Recolor(Color.Orange) + Environment.NewLine;
                         }
                         // NFS V2
                         else if (line.Contains(" (everyone)"))
                         {
-                            fileList += "- " + line.Pastel(Color.Orange) + Environment.NewLine;
-                            fileList += "-- NFSV2 -> " + $"sudo mount -t nfs -o vers=2 {target}:/mountNameHere /mnt".Pastel(Color.Orange) + Environment.NewLine;
-                            fileList += "--- " + "Try copy over a version of bash onto the share, +s +x it, then ./bash -p".Pastel(Color.Orange) + Environment.NewLine;
+                            fileList += "- " + line.Recolor(Color.Orange) + Environment.NewLine;
+                            fileList += "-- NFSV2 -> " + $"sudo mount -t nfs -o vers=2 {target}:/mountNameHere /mnt".Recolor(Color.Orange) + Environment.NewLine;
+                            fileList += "--- " + "Try copy over a version of bash onto the share, +s +x it, then ./bash -p".Recolor(Color.Orange) + Environment.NewLine;
                         }
                         // This took me far too long to figure out
                         else if (line.Contains("clnt_create: RPC: Program not registered"))
@@ -108,7 +107,7 @@ namespace Reecon
                 }
                 else
                 {
-                    return "- Error - showmount is not installed - Unable to enumerate! Run: sudo apt install nfs-common".Pastel(Color.Red);
+                    return "- Error - showmount is not installed - Unable to enumerate! Run: sudo apt install nfs-common".Recolor(Color.Red);
                 }
             }
             else

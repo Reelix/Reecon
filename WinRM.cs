@@ -178,14 +178,15 @@ namespace Reecon
 
         private static void WinRMBrute_Linux(string ip, string userFile, string passFile)
         {
-            if (General.IsInstalledOnLinux("crackmapexec", ""))
+            // This is currently just a nxc wrapper until I figure out a better way to do it.
+            if (General.IsInstalledOnLinux("nxc", ""))
             {
                 Console.WriteLine("Starting - Please wait...");
-                General.RunProcessWithOutput("crackmapexec", "winrm " + ip + " -u " + userFile + " -p " + passFile);
+                General.RunProcessWithOutput("nxc", "winrm " + ip + " -u " + userFile + " -p " + passFile);
             }
             else
             {
-                Console.WriteLine("This requires crackmapexec -> https://github.com/byt3bl33d3r/CrackMapExec/releases");
+                Console.WriteLine("This requires NetExec -> https://github.com/Pennyw0rth/NetExec");
             }
         }
     }

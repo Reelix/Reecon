@@ -1,5 +1,4 @@
-﻿using Pastel;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -96,7 +95,7 @@ namespace Reecon
                             if (redisLines.Count == 2 && redisLines[0].Contains("+OK"))
                             {
                                 canSetDB = true;
-                                returnText += Environment.NewLine + "--- " + "Able to CONFIG SET dbfilename value!".Pastel(Color.Orange);
+                                returnText += Environment.NewLine + "--- " + "Able to CONFIG SET dbfilename value!".Recolor(Color.Orange);
                             }
                             // Reset it back to what it was
                             cmdBytes = Encoding.ASCII.GetBytes(("CONFIG SET dbfilename " + dbFilename + Environment.NewLine).ToCharArray());
@@ -132,7 +131,7 @@ namespace Reecon
                             if (redisLines.Count == 2 && redisLines[0].Contains("+OK"))
                             {
                                 canSetPath = true;
-                                returnText += Environment.NewLine + "--- " + "Able to CONFIG SET dir value!".Pastel(Color.Orange);
+                                returnText += Environment.NewLine + "--- " + "Able to CONFIG SET dir value!".Recolor(Color.Orange);
                             }
                             // Reset it back to what it was
                             cmdBytes = Encoding.ASCII.GetBytes(("CONFIG SET dir " + dirPath + Environment.NewLine).ToCharArray());
@@ -142,14 +141,14 @@ namespace Reecon
 
                         if (canSetDB && canSetPath)
                         {
-                            returnText += Environment.NewLine + "--- " + "Exploit Possible".Pastel(Color.Orange);
-                            returnText += Environment.NewLine + "--- " + "----------------".Pastel(Color.Orange);
-                            returnText += Environment.NewLine + "--- " + "1.) Connect with redis-cli".Pastel(Color.Orange);
-                            returnText += Environment.NewLine + "--- " + "2.) CONFIG SET dbfilename PathOfFileYouCanView.php".Pastel(Color.Orange);
-                            returnText += Environment.NewLine + "--- " + "3.) CONFIG SET dir /var/www/html/shell.php".Pastel(Color.Orange);
-                            returnText += Environment.NewLine + "--- " + "4.) SET test \"SomeValueYouWant\"".Pastel(Color.Orange);
-                            returnText += Environment.NewLine + "--- " + "5.) Save".Pastel(Color.Orange);
-                            returnText += Environment.NewLine + "--- " + "6.) Browse to file location on server to see your custom value".Pastel(Color.Orange);
+                            returnText += Environment.NewLine + "--- " + "Exploit Possible".Recolor(Color.Orange);
+                            returnText += Environment.NewLine + "--- " + "----------------".Recolor(Color.Orange);
+                            returnText += Environment.NewLine + "--- " + "1.) Connect with redis-cli".Recolor(Color.Orange);
+                            returnText += Environment.NewLine + "--- " + "2.) CONFIG SET dbfilename PathOfFileYouCanView.php".Recolor(Color.Orange);
+                            returnText += Environment.NewLine + "--- " + "3.) CONFIG SET dir /var/www/html/shell.php".Recolor(Color.Orange);
+                            returnText += Environment.NewLine + "--- " + "4.) SET test \"SomeValueYouWant\"".Recolor(Color.Orange);
+                            returnText += Environment.NewLine + "--- " + "5.) Save".Recolor(Color.Orange);
+                            returnText += Environment.NewLine + "--- " + "6.) Browse to file location on server to see your custom value".Recolor(Color.Orange);
                         }
                     }
 

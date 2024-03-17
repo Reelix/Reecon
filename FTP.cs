@@ -1,7 +1,6 @@
 ﻿using FluentFTP;
 using FluentFTP.Client.BaseClient;
 using FluentFTP.Exceptions;
-using Pastel;
 using System;
 using System.Drawing;
 using System.IO;
@@ -25,37 +24,12 @@ namespace Reecon
                 Console.WriteLine("Rewrite Error: " + ex.Message);
             }
             return ftpLoginInfo.Trim(Environment.NewLine.ToCharArray());
-
-            // May be removed in the future when the above is more stable
-            try
-            {
-                ftpLoginInfo = FTP.FtpLogin(target, port, ftpUsername) + Environment.NewLine;
-            }
-            catch (Exception ex)
-            {
-                return ("- Error: Unable to test FTP: " + ex.Message).Pastel(Color.Red);
-            }
-            if (ftpLoginInfo.Contains("Unable to login: This FTP server is anonymous only.") || ftpLoginInfo.Contains("Unable to login: USER: command requires a parameter") || ftpLoginInfo.Contains("Unable to login: Login with USER first.") || ftpLoginInfo.Contains("530 This FTP server is anonymous only."))
-            {
-                ftpUsername = "anonymous";
-                ftpLoginInfo = FTP.FtpLogin(target, port, ftpUsername, "");
-            }
-            if (ftpLoginInfo.Contains("Anonymous login allowed"))
-            {
-                string fileListInfo = FTP.TryListFiles(target, port, true, "anonymous", "");
-                if (fileListInfo.Contains("Not Implemented") || fileListInfo.Contains("invalid pasv_address"))
-                {
-                    fileListInfo = FTP.TryListFiles(target, port, false, ftpUsername, "");
-                }
-                ftpLoginInfo += fileListInfo;
-            }
-            return ftpLoginInfo.Trim(Environment.NewLine.ToCharArray());
         }
 
 
         public static string FtpLogin2(string target, int port, string username = "", string password = "")
         {
-            Console.WriteLine("In FtpLogin2");
+            // Console.WriteLine("In FtpLogin2");
             string ftpLoginResult = "";
             if (username == "")
             {
@@ -71,7 +45,15 @@ namespace Reecon
             {
                 if (loggerString.StartsWith("Response: 220 "))
                 {
-                    ftpLoginResult += ParseBannerMessageResponse(loggerString.Remove(0, "Response: ".Length)) + Environment.NewLine;
+                    // Remove the logger-related stuff
+                    string bannerMessage = loggerString.Remove(0, "Response: ".Length);
+                    // logger messages end off with a time stamp in some weird format - [738959.568d]
+                    bannerMessage = bannerMessage.Substring(0, bannerMessage.LastIndexOf("[") - 1);
+                    ftpLoginResult += ParseBannerMessageResponse(bannerMessage) + Environment.NewLine;
+                }
+                else
+                {
+                    Console.WriteLine("Woof: " + loggerString);
                 }
             }
 
@@ -99,12 +81,13 @@ namespace Reecon
 
                 if (ftpClient.IsConnected)
                 {
-                    ftpLoginResult += "- " + $"Anonymous login allowed -> ftp ftp://anonymous:@{target}".Pastel(Color.Orange) + Environment.NewLine;
-                    Console.WriteLine("FtpLogin2 - Connected");
+                    string portInfo = port == 21 ? "" : $":{port}";
+                    ftpLoginResult += "- " + $"Anonymous login allowed -> ftp ftp://anonymous:@{target}{portInfo}".Recolor(Color.Orange) + Environment.NewLine;
+                    // Console.WriteLine("FtpLogin2 - Connected");
                     if (ftpClient.IsAuthenticated)
                     {
                         ftpLoginResult += "-- OS: " + ftpClient.ServerOS + Environment.NewLine;
-                        Console.WriteLine("FtpLogin2 - Auth'd");
+                        // Console.WriteLine("FtpLogin2 - Auth'd");
                         FtpListItem[] items = ftpClient.GetListing();
                         foreach (var item in items)
                         {
@@ -150,10 +133,8 @@ namespace Reecon
             }
             catch (FtpAuthenticationException aex)
             {
-                Console.WriteLine("OS: " + ftpClient.ServerOS);
+                ftpLoginResult += "- OS: " + ftpClient.ServerOS + Environment.NewLine;
                 string banner = ftpClient.LastReplies.First(x => x.Code == "220").Message;
-                ftpLoginResult += ParseBannerMessageResponse(banner);
-                ftpLoginResult += "- Banner: " + banner + Environment.NewLine;
                 if (username == "anonymous" && aex.CompletionCode == "530")
                 {
                     ftpLoginResult += "- No anonymous access permitted";
@@ -165,9 +146,23 @@ namespace Reecon
             }
             catch (Exception ex)
             {
-                string banner = ftpClient.LastReplies.First(x => x.Code == "220").Message;
-                ftpLoginResult += "- Banner: " + banner + Environment.NewLine;
-                ftpLoginResult += "- Ftp.cs - Unknown Exception - Bug Reelix: " + ex.Message; ;
+                if (ftpClient.LastReplies == null)
+                {
+                    if (ex.Message == "Unable to read data from the transport connection: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.")
+                    {
+                        ftpLoginResult += "- Might've been an FTP Server, but it stopped responding." + Environment.NewLine;
+                    }
+                    else
+                    {
+                        ftpLoginResult += "- Weird FTP Server - Bug Reelix: " + ex.Message + Environment.NewLine;
+                    }
+                }
+                else
+                {
+                    string banner = ftpClient.LastReplies.First(x => x.Code == "220").Message;
+                    ftpLoginResult += "- Banner: " + banner + Environment.NewLine;
+                    ftpLoginResult += "- Ftp.cs - Unknown Exception - Bug Reelix: " + ex.Message; ;
+                }
             }
             return ftpLoginResult;
         }
@@ -217,7 +212,7 @@ namespace Reecon
                 }
                 if (string.IsNullOrEmpty(username) || username == "anonymous")
                 {
-                    ftpLoginResult += "- " + "Anonymous login allowed (Username: anonymous Password: *Leave Blank*)".Pastel(Color.Orange) + Environment.NewLine;
+                    ftpLoginResult += "- " + "Anonymous login allowed (Username: anonymous Password: *Leave Blank*)".Recolor(Color.Orange) + Environment.NewLine;
                 }
                 else
                 {
@@ -300,7 +295,7 @@ namespace Reecon
                 {
                     if (bannerMessage.Contains("ProFTPD 1.3.5") || bannerMessage.Contains("ProFTPD  1.3.6"))
                     {
-                        toReturn += "-- " + "Vulnerable ProFTPD Version Detected (Potential RCE) - CVE-2015-3306".Pastel(Color.Orange) + Environment.NewLine;
+                        toReturn += "-- " + "Vulnerable ProFTPD Version Detected (Potential RCE) - CVE-2015-3306".Recolor(Color.Orange) + Environment.NewLine;
                     }
                     else
                     {

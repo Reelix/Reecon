@@ -1,9 +1,7 @@
 ﻿using MySqlConnector;
-using Pastel;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
 
 namespace Reecon
 {
@@ -39,7 +37,8 @@ namespace Reecon
                         returnData += "- Error 1042 - Timeout :(";
                     }
                     // Access Denied (Incorrect password)
-                    else if (ex.ErrorCode == MySqlErrorCode.AccessDenied)
+                    // 1698 -- Access denied for user 'reelixuser123'@'ip-10-9-11-118.eu-west-1.compute.internal'
+                    else if (ex.ErrorCode == MySqlErrorCode.AccessDenied || ex.Number == 1698)
                     {
                         string defaultCredsResult = TestDefaults(target, port);
                         returnData += defaultCredsResult;
@@ -49,12 +48,10 @@ namespace Reecon
                         // Not allowed
                         if (ex.Message.Contains("MariaDB"))
                         {
-                            Console.WriteLine("MySQL.cs - Bug Reelix 1");
                             return "- MariaDB Server (No External Authentication)";
                         }
                         else if (ex.Message.Contains("is not allowed to connect to this MySQL server"))
                         {
-                            Console.WriteLine("MySQL.cs - Bug Reelix 2");
                             return "- MySQL (No External Authentication)";
                         }
                         else
@@ -63,6 +60,7 @@ namespace Reecon
                             return "- Unknown SQL Server Type - Bug Reelix" + Environment.NewLine + "-- " + ex.Message;
                         }
                     }
+                    // 1698
                     else
                     {
                         Console.WriteLine("MySQL.cs - Bug Reelix 4");
@@ -120,6 +118,7 @@ namespace Reecon
                 "root:mysql",
                 "root:root",
                 "root:chippc",
+                "admin:",
                 "admin:admin",
                 "root:",
                 "root:nagiosxi",
@@ -152,7 +151,7 @@ namespace Reecon
                 if (success == "true")
                 {
                     // Wow o_O
-                    string toReturn = "- " + $"Default Credentials Found: {username}:{password}".Pastel(Color.Orange) + Environment.NewLine;
+                    string toReturn = "- " + $"Default Credentials Found: {username}:{password}".Recolor(Color.Orange) + Environment.NewLine;
                     toReturn += $"-- mysql -h {target} -u {username} -p" + Environment.NewLine;
                     toReturn += GetCreds();
                     return toReturn;
@@ -215,7 +214,7 @@ namespace Reecon
                 {
                     string username = rdr[0].ToString();
                     string password = rdr[1].ToString();
-                    creds += "--- " + $"{username}:{password}".Pastel(Color.Orange) + Environment.NewLine;
+                    creds += "--- " + $"{username}:{password}".Recolor(Color.Orange) + Environment.NewLine;
                 }
                 rdr.Close();
             }

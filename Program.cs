@@ -1,5 +1,4 @@
-﻿using Pastel;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -15,8 +14,8 @@ namespace Reecon
         static void Main(string[] args)
         {
             DateTime startDate = DateTime.Now;
-            Console.ForegroundColor = ConsoleColor.Yellow; // .Pastel has a weirder yellow to the one I want
-            Console.WriteLine("Reecon - Version 0.34c ( https://github.com/Reelix/Reecon )");
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("Reecon - Version 0.34d ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
@@ -40,8 +39,20 @@ namespace Reecon
             }
             else if (args.Contains("-ldap") || args.Contains("--ldap"))
             {
+                string reeconFileName = typeof(Program).Assembly.GetName().Name;
+                if (args.Count() != 5)
+                {
+                    Console.WriteLine($"LDAP Auth Enum:\t{reeconFileName} -ldap IP port validUsername validPassword");
+                }
                 string ip = args[1];
                 string port = args[2];
+                if (!int.TryParse(port, out _))
+                {
+                    Console.WriteLine($"Invalid Port: {port}");
+                    Console.WriteLine($"LDAP Auth Enum:\t{reeconFileName} -ldap IP port validUsername validPassword");
+                    Console.ResetColor();
+                    return;
+                }
                 string username = args[3];
                 string password = args[4];
                 string accountInfo = LDAP.GetAccountInfo(ip, int.Parse(port), username, password);
@@ -178,7 +189,7 @@ namespace Reecon
 
                 if (isHostOnline == null)
                 {
-                    Console.WriteLine("Invalid target: " + target);
+                    Console.WriteLine($"Invalid target: {target}");
                     return;
                 }
                 if (!isHostOnline.Value)
@@ -254,8 +265,8 @@ namespace Reecon
             if (portList.Count == 0)
             {
                 // Something broke, or there are only UDP Ports :|
-                Console.WriteLine("- nmap -sC -sV -p- " + target + " -oN nmap.txt");
-                Console.WriteLine("- nmap -sU " + target + " -oN nmap-UDP.txt");
+                Console.WriteLine($"- nmap -sC -sV -p- {target} -oN nmap.txt");
+                Console.WriteLine($"- nmap -sU {target} -oN nmap-UDP.txt");
             }
             else
             {
