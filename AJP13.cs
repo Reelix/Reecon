@@ -6,6 +6,8 @@ namespace Reecon
     {
         public static string GetInfo(string target, int port)
         {
+            // https://nvd.nist.gov/vuln/detail/cve-2020-1938
+            // https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-1938
             if (CheckGhostcat(target))
             {
                 return "-- Vulnerable to CVE-2020-1938!".Recolor(Color.Orange);
@@ -36,8 +38,13 @@ namespace Reecon
             pageTitle = pageTitle.Replace("Apache Tomcat/", "");
             System.Version theVersion = System.Version.Parse(pageTitle);
 
+
             // In Apache Tomcat 9.0.0.M1 to 9.0.0.30, 8.5.0 to 8.5.50 and 7.0.0 to 7.0.99,
             // 6.* is EOL and unpatched
+
+            // Users wishing to take a defence-in-depth approach and block the vector that permits returning arbitrary files and execution as JSP may upgrade to Apache Tomcat 9.0.31, 8.5.51 or 7.0.100 or later.\
+
+            // 9.0.31 or 9.0.0.31??
             if (theVersion.Major <= 6)
             {
                 return true;

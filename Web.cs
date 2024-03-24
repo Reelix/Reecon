@@ -441,7 +441,8 @@ namespace Reecon
                 "LICENSE",
                 "help",
                 "info",
-                "files/"
+                "files/",
+                "console"
             };
 
             if (ignorePHP)
@@ -1310,6 +1311,7 @@ namespace Reecon
                 // X-Matched-Path ?
                 Headers.Remove("X-Content-Type-Options");
                 Headers.Remove("X-Frame-Options");
+                Headers.Remove("X-XSS-Protection");
 
                 // All the rest
                 while (Headers.Any(x => x.Key.StartsWith("X-")))

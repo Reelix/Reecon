@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net.Sockets;
 using System.Text;
+using static Reecon.OSINT_Instagram_Info;
 
 namespace Reecon
 {
@@ -22,18 +23,22 @@ namespace Reecon
                     bannerText = bannerText.Trim();
                     if (bannerText.StartsWith("RFB "))
                     {
+                        // https://www.dcs.ed.ac.uk/home/vnc/rfbproto.pdf
+                        // Handshaking begins by the server sending the client a ProtocolVersion message. This
+                        // lets the client know which is the latest RFB protocol version number supported by the
+                        // server
                         returnText += "- VNC Header Confirmed." + Environment.NewLine;
                         // Extract the protocol version from the data string
                         string version = bannerText.Remove(0, 4).Trim();
                         Version theVersion = Version.Parse(version);
-                        returnText += "- Protocol version: " + theVersion;
-                        // Extract the Auth Version
-                        byteCount = vncSocket.Receive(buffer, 0, 1, SocketFlags.None);
-                        Console.WriteLine("Read: " + byteCount);
-                        int numSecurityTypes = buffer[0];
-                        Console.WriteLine("Security Types: " + numSecurityTypes);
-                        Console.WriteLine("Total Bytes: " + byteCount);
-                        Console.WriteLine("Full Banner Text: " + bannerText);
+                        returnText += "- Protocol version: " + theVersion + Environment.NewLine;
+
+                        // The client then replies with a similar message giving the version number of the protocol which should actually be used
+                        // Console.WriteLine("Sending back....");
+                        // vncSocket.Send(buffer, 0, byteCount, SocketFlags.None);
+                        // byteCount = vncSocket.Receive(buffer, buffer.Length, 0);
+                        // Once the protocol version has been decided, the server then sends a word indicating the
+                        // authentication scheme to be used on the connection:
                     }
                     else
                     {

@@ -51,10 +51,13 @@ namespace Reecon
                     bannerMessage = bannerMessage.Substring(0, bannerMessage.LastIndexOf("[") - 1);
                     ftpLoginResult += ParseBannerMessageResponse(bannerMessage) + Environment.NewLine;
                 }
+                /*
+                 * For debugging
                 else
                 {
                     Console.WriteLine("Woof: " + loggerString);
                 }
+                */
             }
 
             void OnValidateCertificate(BaseFtpClient control, FtpSslValidationEventArgs e)
