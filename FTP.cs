@@ -11,7 +11,7 @@ namespace Reecon
 {
     class FTP // Port 21
     {
-        public static string GetInfo(string target, int port)
+        public static (string, string) GetInfo(string target, int port)
         {
             string ftpUsername = "";
             string ftpLoginInfo = "";
@@ -23,7 +23,8 @@ namespace Reecon
             {
                 Console.WriteLine("Rewrite Error: " + ex.Message);
             }
-            return ftpLoginInfo.Trim(Environment.NewLine.ToCharArray());
+            ftpLoginInfo = ftpLoginInfo.Trim(Environment.NewLine.ToCharArray());
+            return ("FTP", ftpLoginInfo);
         }
 
 

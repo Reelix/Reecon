@@ -7,6 +7,7 @@ namespace Reecon
 {
     class OSINT_Steam
     {
+        /*
         public static string GetInfo(string name)
         {
             // TODO: Fix layout bug - ChuckLephuck
@@ -86,6 +87,7 @@ namespace Reecon
             }
             return toReturn.Trim(Environment.NewLine.ToCharArray());
         }
+        */
     }
 
     public class OSINT_Steam_Search
@@ -97,5 +99,6 @@ namespace Reecon
         public int search_page { get; set; }
         public string html { get; set; }
     }
+        
 
 }

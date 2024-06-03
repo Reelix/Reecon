@@ -9,7 +9,7 @@ namespace Reecon
     // Port 25565
     class Minecraft
     {
-        public static string GetInfo(string ip, int port)
+        public static (string, string) GetInfo(string ip, int port)
         {
             string returnText = "";
             Byte[] buffer = new Byte[5000];
@@ -51,7 +51,8 @@ namespace Reecon
                     returnText += "- Error - Cannot pull Minecraft Server Info: " + ex.Message + Environment.NewLine;
                 }
             }
-            return returnText.Trim(Environment.NewLine.ToCharArray());
+            returnText = returnText.Trim(Environment.NewLine.ToCharArray());
+            return ("Minecraft", returnText);
         }
     }
 }

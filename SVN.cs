@@ -6,7 +6,7 @@ namespace Reecon
 {
     class SVN // 3690
     {
-        public static string GetInfo(string ip, int port)
+        public static (string, string) GetInfo(string ip, int port)
         {
             string toReturn = "";
             if (General.GetOS() == General.OS.Linux)
@@ -53,7 +53,7 @@ namespace Reecon
             {
                 Console.WriteLine("svn.GetInfo currently lacks Windows support. Bug Reelix.");
             }
-            return toReturn;
+            return ("SVN", toReturn);
         }
     }
 }

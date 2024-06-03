@@ -11,7 +11,7 @@ namespace Reecon
 {
     class SMB : SMB_Protocol //445
     {
-        public static string GetInfo(string target, int port)
+        public static (string, string) GetInfo(string target, int port)
         {
             // https://github.com/checkymander/Sharp-SMBExec/blob/master/SharpInvoke-SMBExec/Program.cs
             // https://github.com/checkymander/Sharp-SMBExec/blob/master/SharpInvoke-SMBExec/SMBExec.cs
@@ -34,7 +34,8 @@ namespace Reecon
             {
                 toReturn += "- Reecon currently lacks advanced SMB Support on Windows (Ironic, I know)";
             }
-            return toReturn.Trim(Environment.NewLine.ToCharArray());
+            toReturn = toReturn.Trim(Environment.NewLine.ToCharArray());
+            return ("SMB", toReturn);
         }
 
         // Taken from: https://github.com/TeskeVirtualSystem/MS17010Test

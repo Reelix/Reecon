@@ -15,7 +15,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.34d ( https://github.com/Reelix/Reecon )");
+            Console.WriteLine("Reecon - Version 0.34e ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
@@ -25,7 +25,7 @@ namespace Reecon
             }
 
             // Check if it's anything custom
-            if (args.Contains("-h") || args.Contains("--help") || args.Contains("--version"))
+            if (args.Contains("-h") || args.Contains("--help") || args.Contains("--version") || args.Contains("-v") || args.Contains("-V") || args.Contains("--v")) // Any others? :p
             {
                 General.ShowHelp();
                 Console.ResetColor();
@@ -229,6 +229,17 @@ namespace Reecon
             TimeSpan t = endDate - startDate;
             Console.WriteLine("Done in " + string.Format("{0:0.00}s", t.TotalSeconds) + " - Have fun :)");
             Console.ResetColor();
+        }
+
+        static void LocalDebug(string ip, int port)
+        {
+            Console.WriteLine("-- Debug Start --");
+            target = ip;
+            PortInfo.LoadPortInfo();
+            ScanPort(port);
+            Console.WriteLine("-- Debug Ended --");
+            Console.ReadLine();
+            Environment.Exit(0);
         }
 
         static void ScanPorts(List<int> portList)

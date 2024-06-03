@@ -2,10 +2,10 @@
 {
     class HTTPS // 443
     {
-        public static string GetInfo(string target, int port)
+        public static (string PortName, string PortData) GetInfo(string target, int port)
         {
             string result = HTTP.GetInfoMain(target, port, true);
-            return result;
+            return ("HTTPS", result);
         }
     }
 }

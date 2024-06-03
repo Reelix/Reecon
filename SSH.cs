@@ -8,12 +8,12 @@ namespace Reecon
 {
     class SSH // Commonly Port 22 or 2222
     {
-        public static string GetInfo(string ip, int port)
+        public static (string, string) GetInfo(string ip, int port)
         {
             string sshVersion = "- SSH Version: " + SSH.GetVersion(ip, port);
             string authMethods = "- Authentication Methods: " + SSH.GetAuthMethods(ip, port);
             string returnInfo = sshVersion + Environment.NewLine + authMethods;
-            return returnInfo;
+            return ("SSH", returnInfo);
         }
         // Get version
         public static string GetVersion(string ip, int port)

@@ -10,7 +10,7 @@ namespace Reecon
 {
     class NETBIOS // TCP 139
     {
-        public static string GetInfo(string target, int port)
+        public static (string, string) GetInfo(string target, int port)
         {
             string toReturn = "";
             // Console.WriteLine("Running: GetNBStatInfo");
@@ -22,7 +22,7 @@ namespace Reecon
             // Console.WriteLine("Running: GetRPCInfo");
             toReturn += GetRPCInfo(target);
             toReturn += $"- nmap -sC -sV may have some additional information for port {port}";
-            return toReturn;
+            return ("NETBIOS", toReturn);
         }
 
         public static string GetNBStatInfo(string ip)

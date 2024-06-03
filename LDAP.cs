@@ -15,18 +15,19 @@ namespace Reecon
         // Linux requires: https://packages.ubuntu.com/focal-updates/amd64/libldap-2.4-2/download
         static string rootDseString = "";
 
-        public static string GetInfo(string ip, int port)
+        public static (string, string) GetInfo(string ip, int port)
         {
             string returnInfo = "";
             string checkCanRun = CanLDAPRun();
             if (checkCanRun != null)
             {
                 // https://github.com/dotnet/runtime/issues/69456
-                return checkCanRun;
+                return ("LDAP", checkCanRun);
             }
             returnInfo = LDAP.GetDefaultNamingContext(ip, port);
             returnInfo += LDAP.GetAccountInfo(ip, port, null);
-            return returnInfo.Trim(Environment.NewLine.ToCharArray());
+            returnInfo = returnInfo.Trim(Environment.NewLine.ToCharArray());
+            return ("LDAP", returnInfo.Trim(Environment.NewLine.ToCharArray()));
         }
 
         public static string CanLDAPRun()
@@ -110,55 +111,56 @@ namespace Reecon
                 else
                 {
                     throw new InvalidOperationException("defaultNamingContext not found in RootDSE.");
-                }
-
-                Console.WriteLine("Found: " + searchEntries.Count + " entries.");
-                if (searchEntries[0].Attributes.Contains("defaultNamingContext"))
-                {
-                    DirectoryAttribute coll = searchEntries[0].Attributes["defaultNamingContext"];
-                    string defaultNamingContext = "";
-                    if (General.GetOS() == General.OS.Windows)
+                    /*
+                    Console.WriteLine("Found: " + searchEntries.Count + " entries.");
+                    if (searchEntries[0].Attributes.Contains("defaultNamingContext"))
                     {
-                        if (coll[0].GetType() == typeof(String))
+                        DirectoryAttribute coll = searchEntries[0].Attributes["defaultNamingContext"];
+                        string defaultNamingContext = "";
+                        if (General.GetOS() == General.OS.Windows)
                         {
-                            defaultNamingContext = coll[0].ToString();
+                            if (coll[0].GetType() == typeof(String))
+                            {
+                                defaultNamingContext = coll[0].ToString();
+                            }
+                            else
+                            {
+                                byte[] byteList = (byte[])coll[0];
+                                defaultNamingContext = Encoding.UTF8.GetString(byteList);
+                            }
                         }
                         else
                         {
-                            byte[] byteList = (byte[])coll[0];
-                            defaultNamingContext = Encoding.UTF8.GetString(byteList);
+                            defaultNamingContext = coll[0].ToString();
+                        }
+                        rootDseString = defaultNamingContext;
+
+                        if (raw)
+                        {
+                            ldapInfo = defaultNamingContext;
+                        }
+                        else
+                        {
+                            ldapInfo += $"- defaultNamingContext: {defaultNamingContext}" + Environment.NewLine;
                         }
                     }
-                    else
+                    else if (searchEntries[0].Attributes.Contains("objectClass"))
                     {
-                        defaultNamingContext = coll[0].ToString();
-                    }
-                    rootDseString = defaultNamingContext;
-
-                    if (raw)
-                    {
-                        ldapInfo = defaultNamingContext;
+                        string objectClass = searchEntries[0].Attributes["objectClass"].ToString();
+                        ldapInfo = "- No defaultNamingContext, but we have an objectClass - Bug Reelix To Fix: " + objectClass + Environment.NewLine;
                     }
                     else
                     {
-                        ldapInfo += $"- defaultNamingContext: {defaultNamingContext}" + Environment.NewLine;
+                        ldapInfo = "- Error: No defaultNamingContext! Keys: " + searchEntries[0].Attributes.Count + Environment.NewLine;
+                        foreach (var item in searchEntries[0].Attributes)
+                        {
+                            Console.WriteLine("Bug Reelix To Fix");
+                            //ldapInfo += "- Found Key: " + item.Name + " with value " + item.GetValue<string>() + Environment.NewLine;
+                        }
                     }
+                    // var searchEntries = ldapConnection.Search(null, "(objectclass=*)", scope: Native.LdapSearchScope.LDAP_SCOPE_BASE);
+                    */
                 }
-                else if (searchEntries[0].Attributes.Contains("objectClass"))
-                {
-                    string objectClass = searchEntries[0].Attributes["objectClass"].ToString();
-                    ldapInfo = "- No defaultNamingContext, but we have an objectClass - Bug Reelix To Fix: " + objectClass + Environment.NewLine;
-                }
-                else
-                {
-                    ldapInfo = "- Error: No defaultNamingContext! Keys: " + searchEntries[0].Attributes.Count + Environment.NewLine;
-                    foreach (var item in searchEntries[0].Attributes)
-                    {
-                        Console.WriteLine("Bug Reelix To Fix");
-                        //ldapInfo += "- Found Key: " + item.Name + " with value " + item.GetValue<string>() + Environment.NewLine;
-                    }
-                }
-                // var searchEntries = ldapConnection.Search(null, "(objectclass=*)", scope: Native.LdapSearchScope.LDAP_SCOPE_BASE);
             }
             catch (Exception ex)
             {
@@ -233,7 +235,7 @@ namespace Reecon
             try
             {
                 connection.Bind();
-                Console.WriteLine("Creds are correct!");
+                // Console.WriteLine("Creds are correct!");
                 if (rootDseString == "")
                 {
                     rootDseString = LDAP.GetDefaultNamingContext(ip, port);
@@ -261,14 +263,19 @@ namespace Reecon
                     }
                     catch (DirectoryOperationException doex)
                     {
-                        Console.WriteLine("Fatal error in LDAP.GetAccountInfo - doex Error: " + doex.Message);
-                        Console.ReadLine();
-                        Environment.Exit(0);
+                        if (doex.Message.Contains("In order to perform this operation a successful bind must be completed on the connection."))
+                        {
+                            break;
+                        }
+                        else
+                        {
+                            Console.WriteLine("Fatal error in LDAP.GetAccountInfo - doex Error: " + doex.Message);
+                            Environment.Exit(0);
+                        }
                     }
                     catch (Exception ex)
                     {
                         Console.WriteLine("Fatal error in LDAP.GetAccountInfo - ex Error: " + ex.Message);
-                        Console.ReadLine();
                         Environment.Exit(0);
                     }
                     // Console.WriteLine(2);
@@ -297,7 +304,7 @@ namespace Reecon
                 }
                 // Console.WriteLine("Finding total count...");
                 int totalCount = searchResponseList.Select(x => x.Entries.Count).ToList().Sum();
-                Console.WriteLine("Found " + totalCount + " users");
+                // Console.WriteLine("Found " + totalCount + " users");
                 foreach (SearchResponse response in searchResponseList)
                 {
                     var searchEntries = response.Entries;

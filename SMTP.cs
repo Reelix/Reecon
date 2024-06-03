@@ -9,18 +9,18 @@ namespace Reecon
 {
     class SMTP // Generally Port 25
     {
-        public static string GetInfo(string ip, int port)
+        public static (string, string) GetInfo(string ip, int port)
         {
             string returnText = "";
             string smtpBanner = "";
             Byte[] buffer = new Byte[5000];
             using (Socket smtpSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
-                // They're like.... REALLY SLOW!
-                smtpSocket.ReceiveTimeout = 15000;
-                smtpSocket.SendTimeout = 15000;
+                smtpSocket.ReceiveTimeout = 5000;
+                smtpSocket.SendTimeout = 5000;
                 try
                 {
+                    Console.WriteLine($"Connecting to {ip}:{port}");
                     smtpSocket.Connect(ip, port);
                     // Wait for info
                     int bytes = smtpSocket.Receive(buffer, buffer.Length, 0);
@@ -62,8 +62,7 @@ namespace Reecon
                         }
                         else
                         {
-                            Console.WriteLine("Unknown newline character :<");
-                            return "";
+                            return ("SMTP?", "- Unknown newline character :<");
                         }
                         if (hostName != "")
                         {
@@ -188,6 +187,7 @@ namespace Reecon
                             {
                                 // Can't RCPT to mails - How about names?
                                 // https://github.com/rapid7/metasploit-framework/blob/master//modules/auxiliary/scanner/smtp/smtp_enum.rb
+                                // use auxiliary/scanner/smtp/smtp_enum
                                 returnText += "-- Unable to RCPT TO addresses - Checking name test..." + Environment.NewLine;
                                 rcptToBytes = Encoding.ASCII.GetBytes(($"RCPT TO:asdniasudnaisud" + newlineChars).ToCharArray());
                                 smtpSocket.Send(rcptToBytes, rcptToBytes.Length, 0);
@@ -212,7 +212,7 @@ namespace Reecon
                                 returnText += "-- Unknown rcptToResponse - Bug Reelix - DEBUG: " + rcptToResponse + Environment.NewLine;
                             }
                         }
-                        // https://github.com/rapid7/metasploit-framework/blob/master//modules/auxiliary/scanner/smtp/smtp_enum.rb
+                        // https://github.com/rapid7/metasploit-framework/blob/master/modules/auxiliary/scanner/smtp/smtp_enum.rb
                         else if (mailFromResponse.Trim() == "")
                         {
                             returnText += "- No MAIL FROM response." + Environment.NewLine;
@@ -229,10 +229,11 @@ namespace Reecon
                 }
                 catch (Exception ex)
                 {
-                    returnText = "Error - Unable to connect: " + ex.Message + Environment.NewLine;
+                    returnText = "- SMTP.cs Error - Unable to connect: " + ex.Message + Environment.NewLine;
                 }
             }
-            return returnText.Trim(Environment.NewLine.ToCharArray());
+            returnText = returnText.Trim(Environment.NewLine.ToCharArray());
+            return ("SMTP", returnText);
         }
     }
 }

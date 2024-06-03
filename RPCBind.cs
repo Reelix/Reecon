@@ -6,7 +6,7 @@ namespace Reecon
 {
     class RPCBind
     {
-        public static string GetInfo(string target, int port)
+        public static (string, string) GetInfo(string target, int port)
         {
             // rpcinfo has no Port parameter - Weird...
             string toReturn = "";
@@ -22,7 +22,8 @@ namespace Reecon
                     toReturn += "- " + item + Environment.NewLine;
                 }
             }
-            return toReturn.Trim(Environment.NewLine.ToCharArray());
+            toReturn = toReturn.Trim(Environment.NewLine.ToCharArray());
+            return ("RPCBind", toReturn);
         }
     }
 }

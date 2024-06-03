@@ -8,7 +8,7 @@ namespace Reecon
     class NFS // Port 2049
     {
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "Port is always required")]
-        public static string GetInfo(string target, int port)
+        public static (string, string) GetInfo(string target, int port)
         {
             // TODO: https://svn.nmap.org/nmap/scripts/nfs-ls.nse
 
@@ -30,12 +30,12 @@ namespace Reecon
                         fileList += Environment.NewLine + $"- To Mount --> mount \\\\{target}\\shareNameHere x:";
                     }
                     fileList = fileList.Trim(Environment.NewLine.ToCharArray());
-                    return fileList;
+                    return ("NFS", fileList);
                 }
                 else
                 {
                     fileList = "- showmount does not exist - Bug Reelix to update this section for more compatibility";
-                    return fileList;
+                    return ("NFS", fileList);
                 }
             }
             else if (General.GetOS() == General.OS.Linux)
@@ -72,7 +72,8 @@ namespace Reecon
                             fileList += "- " + line + Environment.NewLine;
                         }
                     }
-                    return fileList.Trim(Environment.NewLine.ToCharArray());
+                    fileList = fileList.Trim(Environment.NewLine.ToCharArray());
+                    return ("NFS", fileList);
 
                     //
                     // Windows
@@ -107,14 +108,14 @@ namespace Reecon
                 }
                 else
                 {
-                    return "- Error - showmount is not installed - Unable to enumerate! Run: sudo apt install nfs-common".Recolor(Color.Red);
+                    return ("NFS", "- Error - showmount is not installed - Unable to enumerate! Run: sudo apt install nfs-common".Recolor(Color.Red));
                 }
             }
             else
             {
                 Console.WriteLine("Error - OS Not Supportd - Bug Reelix");
             }
-            return "";
+            return ("NFS?", "- Bug Reelix");
         }
     }
 }

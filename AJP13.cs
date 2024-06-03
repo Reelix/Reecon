@@ -4,17 +4,17 @@ namespace Reecon
 {
     class AJP13 // 8009 - Just AJP?
     {
-        public static string GetInfo(string target, int port)
+        public static (string, string) GetInfo(string target, int port)
         {
             // https://nvd.nist.gov/vuln/detail/cve-2020-1938
             // https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-1938
             if (CheckGhostcat(target))
             {
-                return "-- Vulnerable to CVE-2020-1938!".Recolor(Color.Orange);
+                return ("AFJP13", "-- Vulnerable to CVE-2020-1938!".Recolor(Color.Orange));
             }
             else
             {
-                return "-- No useful info :<";
+                return ("AJP13", "-- No useful info :<");
             }
         }
 

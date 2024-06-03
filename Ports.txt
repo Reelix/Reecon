@@ -53,6 +53,7 @@
 9389|N/A|ADWS (Active Directory Web Services)
 9418|N/A|Git
 11211|N/A|Memcache
+25565|Minecraft|Minecraft
 25568|N/A|Minecraft
 27017|N/A|MongoDB
 49664-49690|N/A|Microsoft Windows RPC

@@ -6,7 +6,7 @@ namespace Reecon
 {
     class Telnet // Port 23
     {
-        public static string GetInfo(string ip, int port)
+        public static (string, string) GetInfo(string ip, int port)
         {
             Console.OutputEncoding = Encoding.UTF8;
             int timeout = 5000; // ms
@@ -35,7 +35,7 @@ namespace Reecon
                             // Option: 1 = Echo - RFC857
                             if (buffer[2] == 1)
                             {
-                                return "- Valid Telnet response, but it's an Echo service (RFC857) - You can probably ignore this";
+                                return ("Telnet (Echo)", "- Valid Telnet response, but it's an Echo service (RFC857) - You can probably ignore this");
                             }
                             // Option: 24 = Terminal Type - RFC1091
                             else if (buffer[2] == 24)
@@ -58,30 +58,30 @@ namespace Reecon
                                 string response = Encoding.UTF8.GetString(buffer, 0, bytes);
                                 if (response.Length > 5)
                                 {
-                                    return "- - - - - - - - - - - - - - - -" + Environment.NewLine + response + Environment.NewLine + "- - - - - - - - - - - - - - - -";
+                                    return ("Telnet?", "- - - - - - - - - - - - - - - -" + Environment.NewLine + response + Environment.NewLine + "- - - - - - - - - - - - - - - -");
                                 }
                                 else if (response.Length > 0)
                                 {
-                                    return "- Weird response length: " + response;
+                                    return ("Telnet?", "- Weird response length: " + response);
                                 }
                                 else
                                 {
-                                    return "- No Response :<";
+                                    return ("Telnet?", "- No Response :<");
                                 }
                             }
                             // 37 = Authentication Option - RFC2941
                             else if (buffer[2] == 37)
                             {
-                                return "- Authentication required";
+                                return ("Telnet", "- Authentication required");
                             }
                             else
                             {
-                                return "- Unhandled Telnet Response Code " + (int)buffer[2] + " - Bug Reelix!";
+                                return ("Telnet?", "- Unhandled Telnet Response Code " + (int)buffer[2] + " - Bug Reelix!");
                             }
                         }
                         else
                         {
-                            return "- Invalid Telnet Response :<";
+                            return ("Telnet?", "- Invalid Telnet Response :<");
                         }
 
                     }
@@ -92,7 +92,7 @@ namespace Reecon
                     Console.WriteLine("Error in Telnet.cs: " + ex.Message + " - Bug Reelix");
                 }
             }
-            return "- :(";
+            return ("Telnet?", "- :(");
         }
     }
 }

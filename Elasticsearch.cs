@@ -8,13 +8,15 @@ namespace Reecon
 {
     class Elasticsearch // Port 9200
     {
-        public static string GetInfo(string ip, int port)
+        public static (string, string) GetInfo(string ip, int port)
         {
             string returnString = "";
             // Get basic data
             string pageData = Web.DownloadString($"http://{ip}:{port}/").Text;
+            returnString = "- Bug Reelix to fix this (Ref: OSINT Json)";
+            /*
             //ElasticSearchObject theObject = JsonSerializer.Deserialize<ElasticSearchObject>(pageData);
-            ElasticSearchObject theObject = (ElasticSearchObject)JsonSerializer.Deserialize(pageData, typeof(ElasticSearchObject), SourceGenerationContext.Default);
+            ElasticSearchObject theObject = (ElasticSearchObject)JsonSerializer.Deserialize(pageData, typeof(ElasticSearchObject));
             // Simialr formatting to nmap
             returnString += $"- Version: {theObject.version.number} (name: {theObject.name}; cluster: {theObject.cluster_name}; Lucene: {theObject.version.lucene_version}){Environment.NewLine}";
             // https://nvd.nist.gov/vuln/detail/CVE-2015-5531
@@ -38,7 +40,8 @@ namespace Reecon
                 returnString += $"--- http://{ip}:9200/{indexName}/_search/?pretty&size={indexItems}{Environment.NewLine}";
             }
             returnString = returnString.Trim(Environment.NewLine.ToCharArray());
-            return returnString;
+            */
+            return ("Elasticsearch", returnString);
         }
     }
 

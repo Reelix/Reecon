@@ -7,7 +7,7 @@ namespace Reecon
 {
     class PostgreSQL
     {
-        public static string GetInfo(string target, int port)
+        public static (string, string) GetInfo(string target, int port)
         {
             string toReturn = "";
             // Thanks Metasploit!
@@ -103,7 +103,8 @@ namespace Reecon
             {
                 toReturn = "- Unable to find credentials";
             }
-            return toReturn.Trim(Environment.NewLine.ToCharArray());
+            toReturn = toReturn.Trim(Environment.NewLine.ToCharArray());
+            return ("PostgreSQL", toReturn);
         }
     }
 }

@@ -22,17 +22,18 @@ namespace Reecon
             Console.WriteLine("Warning: The OSINT Module is still in early development and will probably break / give incorrect information".Recolor(Color.Red));
             string username = args[1];
             Console.WriteLine("Searching for " + username + "...");
-            GetInstagramInfo(username);
+            //GetInstagramInfo(username); - Broken - https://www.instagram.com/web/search/topsearch/?query=Reelix
             GetRedditInfo(username);
-            GetSteamInfo(username);
-            GetTwitterInfo(username);
-            GetYouTubeInfo(username);
+            //GetSteamInfo(username);
+            //GetTwitterInfo(username);
+            //GetYouTubeInfo(username);
             GetGithubInfo(username);
-            GetPastebinInfo(username);
+            //GetPastebinInfo(username);
             // Pastebin - https://pastebin.com/u/rzsdw2iwug77eda
             // TODO: Disqus - https://disqus.com/by/soremanzo/about/ (Comment count + About page)
         }
 
+        /*
         public static void GetInstagramInfo(string username)
         {
             try
@@ -53,6 +54,7 @@ namespace Reecon
                 Console.WriteLine("Instagram OSINT is currently broken - " + jex.Message + " - Bug Reelix!");
             }
         }
+        */
 
         public static void GetRedditInfo(string username)
         {
@@ -71,9 +73,7 @@ namespace Reecon
                 {
                     foreach (var comment in redditInfo.CommentList)
                     {
-                        DateTimeOffset offset = DateTimeOffset.FromUnixTimeSeconds((long)comment.created_utc); // It's returned as .0 for some reason
-                        string date = offset.UtcDateTime.ToString();
-                        Console.WriteLine($"-- Comment from {date} UTC");
+                        Console.WriteLine($"-- Comment from {comment.created_utc} UTC");
                         Console.WriteLine($"--- Link: https://www.reddit.com{comment.permalink}");
                         string shorterComment = new string(comment.body.Take(250).ToArray());
                         if (comment.body.Length > 250)
@@ -85,6 +85,7 @@ namespace Reecon
                 }
 
                 // Get submissions
+                /*
                 if (redditInfo.SubmissionList.Count == 0)
                 {
                     Console.WriteLine("-- 0 Submissions Made");
@@ -104,6 +105,7 @@ namespace Reecon
                         }
                     }
                 }
+                */
             }
             else
             {
@@ -113,8 +115,9 @@ namespace Reecon
 
         public static void GetSteamInfo(string username)
         {
+            /*
             string result = OSINT_Steam.GetInfo(username);
-            if (result == "")
+            if (result == ""
             {
                 Console.WriteLine("- Steam: Not Found");
             }
@@ -122,7 +125,7 @@ namespace Reecon
             {
                 Console.WriteLine("- Steam: " + "Found".Recolor(Color.Green));
                 Console.WriteLine(result.Trim(Environment.NewLine.ToCharArray()));
-            }
+            }*/
         }
 
         private static void GetTwitterInfo(string username)

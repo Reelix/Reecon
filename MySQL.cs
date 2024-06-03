@@ -11,7 +11,7 @@ namespace Reecon
         // https://github.com/danielmiessler/SecLists/blob/master/Passwords/Default-Credentials/mysql-betterdefaultpasslist.txt
         // https://svn.nmap.org/nmap/scripts/mysql-info.nse
         // --> https://svn.nmap.org/nmap/nselib/mysql.lua -> receiveGreeting
-        public static string GetInfo(string target, int port)
+        public static (string, string) GetInfo(string target, int port)
         {
             string returnData = "";
 
@@ -48,16 +48,16 @@ namespace Reecon
                         // Not allowed
                         if (ex.Message.Contains("MariaDB"))
                         {
-                            return "- MariaDB Server (No External Authentication)";
+                            return ("MySQL (MariaDB)", "- MariaDB Server (No External Authentication)");
                         }
                         else if (ex.Message.Contains("is not allowed to connect to this MySQL server"))
                         {
-                            return "- MySQL (No External Authentication)";
+                            return ("MySQL", "- MySQL (No External Authentication)");
                         }
                         else
                         {
                             Console.WriteLine("MySQL.cs - Bug Reelix 3");
-                            return "- Unknown SQL Server Type - Bug Reelix" + Environment.NewLine + "-- " + ex.Message;
+                            return ("MySQL?", "- Unknown SQL Server Type - Bug Reelix" + Environment.NewLine + "-- " + ex.Message);
                         }
                     }
                     // 1698
@@ -106,7 +106,7 @@ namespace Reecon
                         connection.Close();
                     }
                 }
-                return returnData;
+                return ("MySQL", returnData);
             }
         }
 
@@ -152,7 +152,16 @@ namespace Reecon
                 {
                     // Wow o_O
                     string toReturn = "- " + $"Default Credentials Found: {username}:{password}".Recolor(Color.Orange) + Environment.NewLine;
-                    toReturn += $"-- mysql -h {target} -u {username} -p" + Environment.NewLine;
+                    
+                    // Should be able to inline this - It's being weird though
+                    if (port == 3306)
+                    {
+                        toReturn += $"-- mysql -h {target} -u {username} -p" + Environment.NewLine;
+                    }
+                    else
+                    {
+                        toReturn += $"-- mysql -h {target} -u {username} -P {port} -p" + Environment.NewLine;
+                    }
                     toReturn += GetCreds();
                     return toReturn;
                 }
@@ -168,6 +177,7 @@ namespace Reecon
         private static string TestPassword(string target, int port, string username, string password)
         {
             string connectionString = $"Server={target};Port={port};Database=;Uid=" + username + ";Pwd=" + password + ";";
+            Console.WriteLine(connectionString);
             connection = new MySqlConnection(connectionString);
             try
             {
@@ -176,11 +186,12 @@ namespace Reecon
             }
             catch (MySqlException ex)
             {
+                Console.WriteLine(ex.Message);
                 if (connection.State == System.Data.ConnectionState.Open)
                 {
                     Console.WriteLine("Wadda");
                 }
-                if (ex.ErrorCode == MySqlErrorCode.AccessDenied)
+                if (ex.ErrorCode == MySqlErrorCode.AccessDenied || ex.Number == 1698)
                 {
                     return "";
                 }
@@ -213,7 +224,8 @@ namespace Reecon
                 while (rdr.Read())
                 {
                     string username = rdr[0].ToString();
-                    string password = rdr[1].ToString();
+                    string password = rdr[1].ToString() == "" ? "*BLANK*" : rdr[1].ToString();
+                    creds += "--- Creds in mysql.user" + Environment.NewLine; 
                     creds += "--- " + $"{username}:{password}".Recolor(Color.Orange) + Environment.NewLine;
                 }
                 rdr.Close();

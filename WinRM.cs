@@ -10,7 +10,7 @@ namespace Reecon
 {
     class WinRM
     {
-        public static string GetInfo(string ip, int port)
+        public static (string, string) GetInfo(string ip, int port)
         {
             // TODO: Figure out how to do basic evil-winrm.rb connections
             // evil-winrm.rb -i 10.10.10.161
@@ -101,7 +101,8 @@ namespace Reecon
                 }
             }
 
-            return returnInfo.Trim(Environment.NewLine.ToCharArray());
+            returnInfo = returnInfo.Trim(Environment.NewLine.ToCharArray());
+            return ("WinRM", returnInfo);
         }
 
         public static void WinRMBrute(string[] args)

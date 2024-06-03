@@ -7,7 +7,7 @@ namespace Reecon
 {
     class VNC
     {
-        public static string GetInfo(string target, int port)
+        public static (string PortTitle, string PortInfo) GetInfo(string target, int port)
         {
             string returnText = "";
             Byte[] buffer = new Byte[12];
@@ -44,8 +44,8 @@ namespace Reecon
                     {
                         // Not VNC
                         returnText += "- Unknown VNC Header: " + bannerText + Environment.NewLine;
-                        string portInfo = PortInfo.FindUnknownPortInfo(target, port);
-                        return portInfo;
+                        PortInfo.FindUnknownPortInfo(target, port);
+                        return ("Done", "");
                     }
                 }
                 catch (Exception ex)
@@ -53,7 +53,7 @@ namespace Reecon
                     returnText += $"- Unknown Error: {ex.Message}";
                 }
             }
-            return returnText;
+            return ("VNC", returnText);
         }
     }
 }
