@@ -13,7 +13,7 @@
 
   <ItemGroup>
 		<!-- FTP - To find hidden folders (Named .) and to read text in files -->
-		<PackageReference Include="FluentFTP" Version="50.1.0" />
+		<PackageReference Include="FluentFTP" Version="51.0.0" />
 		<!-- MySQL - To interact with MySQL servers -->
 	  <PackageReference Include="MySqlConnector" Version="2.3.7" />
 		<!-- To access PostgreSQL servers -->
