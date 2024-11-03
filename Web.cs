@@ -1380,7 +1380,11 @@ namespace Reecon
                     {
                         toReturn += "-- " + $"Moodle Found".Recolor(Color.Orange) + Environment.NewLine;
                         toReturn += $"--- " + $"Browse to {urlWithSlash}lib/upgrade.txt".Recolor(Color.Orange) + Environment.NewLine;
-                        toReturn += "--- If 3.9 -> https://www.exploit-db.com/exploits/50180" + Environment.NewLine;
+                        toReturn += "--- " + $"If 3.9 -> https://www.exploit-db.com/exploits/50180".Recolor(Color.Orange) + Environment.NewLine;
+                        // https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2024-43425
+                        // https://blog.redteam-pentesting.de/2024/moodle-rce/
+                        // https://www.redteam-pentesting.de/en/advisories/rt-sa-2024-009/
+                        toReturn += "--- " + $"If before 4.1.12, 4.2.9, 4.3.6, 4.4.2 -> https://blog.redteam-pentesting.de/2024/moodle-rce/".Recolor(Color.Orange) + Environment.NewLine;
                     }
                 }
                 // Fun content types
@@ -1828,6 +1832,16 @@ namespace Reecon
                         toReturn += "-- " + "Wordpress Plugin Simple Backup Detected - Bug Reelix to update this.".Recolor(Color.Orange) + Environment.NewLine;
                         toReturn += "--- https://packetstormsecurity.com/files/131919/WordPress-Simple-Backup-Plugin-Arbitrary-Download.html" + Environment.NewLine;
                     }
+
+                    // wp-advanced-search - /wp-content/plugins/wp-advanced-search/
+                    // https://wpscan.com/vulnerability/2ddd6839-6bcb-4bb8-97e0-1516b8c2b99b/ - CVE-2024-9796
+                    // https://www.acunetix.com/vulnerabilities/web/wordpress-plugin-wordpress-wp-advanced-search-sql-injection-3-3-6/ - CVE-2020-12104
+                    // < 3.3.9.2 
+                    // https://wordpress.ddev.site/wp-content/plugins/wp-advanced-search/class.inc/autocompletion/autocompletion-PHP5.5.php?q=admin&t=wp_users%20UNION%20SELECT%20user_pass%20FROM%20wp_users--&f=user_login&type=&e
+
+                    // Other: https://www.wordfence.com/threat-intel/vulnerabilities/wordpress-plugins/{url-plugin-name}
+
+                    // Plugins done - Add a basic user brute force command
                     toReturn += $"-- hydra -L users.txt -P passwords.txt {DNS} http-post-form \"{wpLoginPath}:log=^USER^&pwd=^PASS^&wp-submit=Log In&testcookie=1:The password you entered for the username\" -I -t 50" + Environment.NewLine;
                 }
             }

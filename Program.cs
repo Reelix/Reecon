@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using static Reecon.General;
 
 namespace Reecon
 {
@@ -15,7 +16,7 @@ namespace Reecon
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.34e ( https://github.com/Reelix/Reecon )");
+            Console.WriteLine("Reecon - Version 0.34f ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
@@ -75,6 +76,12 @@ namespace Reecon
             {
                 Pwn.Scan(args);
                 Console.ResetColor();
+                return;
+            }
+            else if (args.Contains("-search"))
+            {
+                string searchTerm = args[1];
+                Nist.FindExploit(searchTerm);
                 return;
             }
             else if (args.Contains("-searchsploit") || args.Contains("--searchsploit"))
