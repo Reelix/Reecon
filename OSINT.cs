@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Text.Json;
 
 namespace Reecon
@@ -62,7 +63,7 @@ namespace Reecon
             if (redditInfo.Exists)
             {
                 Console.WriteLine("- Reddit: " + "Found".Recolor(Color.Green));
-                Console.WriteLine($"-- Link: https://www.reddit.com/user/{username}");
+                Console.WriteLine($"-- Profile Link: https://www.reddit.com/user/{username}");
                 // Get Comments
                 if (redditInfo.CommentList.Count == 0)
                 {
@@ -71,12 +72,12 @@ namespace Reecon
                 // User has comments - List them
                 else
                 {
+                    Console.WriteLine("-- " + $"Listing {redditInfo.CommentList.Count} comments".Recolor(Color.Green));
                     foreach (var comment in redditInfo.CommentList)
                     {
-                        Console.WriteLine($"-- Comment from {comment.created_utc} UTC");
-                        Console.WriteLine($"--- Link: https://www.reddit.com{comment.permalink}");
-                        string shorterComment = new string(comment.body.Take(250).ToArray());
-                        if (comment.body.Length > 250)
+                        Console.WriteLine($"-- Comment Link: https://www.reddit.com{comment.Permalink} from {comment.Created_UTC} UTC");
+                        string shorterComment = new string(comment.Body.Take(250).ToArray());
+                        if (comment.Body.Length > 250)
                         {
                             shorterComment += "... (Snipped due to length)";
                         }
@@ -85,27 +86,22 @@ namespace Reecon
                 }
 
                 // Get submissions
-                /*
                 if (redditInfo.SubmissionList.Count == 0)
                 {
                     Console.WriteLine("-- 0 Submissions Made");
                 }
                 else
                 {
+                    Console.WriteLine("-- " + $"Listing {redditInfo.SubmissionList.Count} submissions".Recolor(Color.Green));
                     foreach (var submission in redditInfo.SubmissionList)
                     {
-                        Console.WriteLine("-- Submission: " + submission.title);
-                        DateTimeOffset offset = DateTimeOffset.FromUnixTimeSeconds((long)submission.created_utc);
-                        string date = offset.UtcDateTime.ToString();
-                        Console.WriteLine("--- Created At: " + date + "UTC");
-                        Console.WriteLine("--- Link: " + submission.url);
-                        if (submission.selftext != "")
+                        Console.WriteLine($"-- Submission: {submission.Title} at {submission.URL} from {submission.Created_UTC} UTC");
+                        if (submission.Selftext != "")
                         {
-                            Console.WriteLine("--- Blurb: " + submission.selftext);
+                            Console.WriteLine("--- Blurb: " + submission.Selftext);
                         }
                     }
                 }
-                */
             }
             else
             {

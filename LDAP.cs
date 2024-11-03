@@ -88,12 +88,11 @@ namespace Reecon
             LdapConnection connection = new LdapConnection(identifier, creds);
             connection.AuthType = AuthType.Anonymous;
             connection.SessionOptions.ProtocolVersion = 3;
-            if (identifier.PortNumber == 636)
+            if (identifier.PortNumber == 389)
             {
                 // This currently does not work - Need to fix it some day
                 // Console.WriteLine("Setting SSL!");
-                // connection.SessionOptions.ReferralChasing = ReferralChasingOptions.None;
-                // connection.SessionOptions.SecureSocketLayer = true;
+                connection.SessionOptions.ReferralChasing = ReferralChasingOptions.None;
 
             }
             SearchRequest searchRequest = new SearchRequest("", "(objectClass=computer)", SearchScope.Base);
@@ -106,6 +105,7 @@ namespace Reecon
                 {
                     SearchResultEntry entry = searchResponse.Entries[0];
                     rootDseString = entry.Attributes["defaultNamingContext"][0].ToString();
+                    // string serverName = entry.Attributes["serverName"][0].ToString();
                     return rootDseString;
                 }
                 else
@@ -211,8 +211,9 @@ namespace Reecon
         {
             string ldapInfo = string.Empty;
             LdapDirectoryIdentifier identifier = new LdapDirectoryIdentifier(ip, port);
-            NetworkCredential creds = new NetworkCredential();
+            NetworkCredential creds = new NetworkCredential(username, password);
             //creds.UserName = "support\\ldap";
+            // creds.Domain = "cicada.htb";
             creds.UserName = username;
             creds.Password = password;
             if (username == null && password == null)
@@ -223,15 +224,27 @@ namespace Reecon
             {
                 Console.WriteLine("Testing LDAP with: " + username + ":" + password);
             }
-            LdapConnection connection = new LdapConnection(identifier, creds)
+            LdapConnection connection = new LdapConnection(identifier, creds);
+
+
+            if (port == 389)
             {
-                AuthType = AuthType.Basic,
-                SessionOptions =
-                {
-                    ProtocolVersion = 3
-                }
+                // Normally basic - Why Negotiate Now... ????
+                connection.AuthType = AuthType.Negotiate;
             };
-            // 
+            //required for searching on root of ldap directory https://github.com/dotnet/runtime/issues/64900
+            // connection.SessionOptions.ReferralChasing = ReferralChasingOptions.None;
+
+            connection.SessionOptions.ProtocolVersion = 3;
+
+            if (port == 389)
+            {
+                // For AuthType.Negotiate
+                connection.SessionOptions.VerifyServerCertificate += (conn, cert) => { return true; };
+                connection.SessionOptions.StartTransportLayerSecurity(null);
+
+            }
+             
             try
             {
                 connection.Bind();

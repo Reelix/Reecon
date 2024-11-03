@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-	  <TargetFramework>net80</TargetFramework>
+	  <TargetFramework>net8.0</TargetFramework>
 	  <RuntimeIdentifier>win-x64</RuntimeIdentifier>
 	  <StartupObject>Reecon.Program</StartupObject>
 	  <SignAssembly>true</SignAssembly>
@@ -13,11 +13,11 @@
 
   <ItemGroup>
 		<!-- FTP - To find hidden folders (Named .) and to read text in files -->
-		<PackageReference Include="FluentFTP" Version="50.0.1" />
+		<PackageReference Include="FluentFTP" Version="51.1.0" />
 		<!-- MySQL - To interact with MySQL servers -->
 	  <PackageReference Include="MySqlConnector" Version="2.3.7" />
 		<!-- To access PostgreSQL servers -->
-	  <PackageReference Include="Npgsql" Version="8.0.3" />
+	  <PackageReference Include="Npgsql" Version="8.0.5" />
 		<!-- LDAP -->
 	  <PackageReference Include="System.DirectoryServices.Protocols" Version="8.0.0" />
 		<!-- A list of ports and their descriptions -->

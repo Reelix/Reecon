@@ -34,9 +34,32 @@
 
         // S3 - Logging In
         // export AWS_SESSION_TOKEN=FindIt
-        // export AWS_SECRET_ACCESS_KEY=FindIt
-        // export AWS_ACCESS_KEY_ID=FindIt
+        // export AWS_ACCESS_KEY_ID=FindIt (Eg: AKIAWHEOTHRFW4CEP7HK)
+        // export AWS_SECRET_ACCESS_KEY=FindIt (Eg: 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)
+        // Check if creds are correct
+        // aws sts get-caller-identity
+        // If "Could not connect to the endpoint URL:", try change region
+        // curl -s -I https://mega-big-tech.s3.amazonaws.com/ | grep region
+        // export AWS_DEFAULT_REGION=us-west-2
+        // export AWS_DEFAULT_REGION=us-east-1
+        
+        // Test if ls is publicly accessible
         // aws s3 ls s3://sample-name-here
+
+        // Role enum
+        // Check output of aws sts get-caller-identity under "Arn" - Eg: arn:aws:iam::427648302155:user/s3user (ARN -> Amazon Resource Name)
+        // python3 -m pip install s3-account-search
+        // s3-account-search arn:aws:iam::427648302155:role/InvalidRole samplename (InvalidRole for role searching)
+        // An error occurred (AccessDenied) when calling the AssumeRole operation = Invalid Role
+        // Starting search (this can take a while) = Valid Role
+        // 107513503799 = AWS Account ID
+        // aws ec2 describe-snapshots --owner-ids 107513503799
+
+        // List policies given username
+        // aws iam list-attached-user-policies --user-name intern
+
+        // Get info on specific PolicyARN
+        // aws iam get-policy --policy-arn arn:aws:iam::104506445608:policy/PublicSnapper
 
         // Downloading
         // aws s3 cp s3://sample-name-here/file.txt .

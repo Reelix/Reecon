@@ -4,15 +4,19 @@ using System.Drawing;
 using System.Linq;
 using System.Net;
 using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Xml.Linq;
 
 namespace Reecon
 {
     class Nist
     {
-        public static void FindExploit(string programName)
+        public static void Search(string[] args)
         {
+            if (args.Length < 2)
+            {
+                Console.WriteLine("Search Usage: reecon -search Program Name Here");
+                return;
+            }
+            string programName = string.Join('+', args.Skip(2));
             var jsonPage = Web.GetHTTPInfo($"https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch={programName}&resultsPerPage=500", "Reecon (https://github.com/Reelix/reecon)");
             if (jsonPage.StatusCode == HttpStatusCode.OK)
             {
@@ -27,6 +31,7 @@ namespace Reecon
                     {
                         Cve cve = vuln.cve;
                         Console.WriteLine(cve.id.Recolor(Color.Green));
+                        Console.WriteLine($"- Link: https://nvd.nist.gov/vuln/detail/{cve.id}");
                         string description = cve.descriptions.Where(x => x.lang == "en").FirstOrDefault().value;
                         Console.WriteLine("- Desc: " + description);
                         foreach (Reference bla in cve.references)

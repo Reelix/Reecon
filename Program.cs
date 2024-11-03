@@ -80,8 +80,8 @@ namespace Reecon
             }
             else if (args.Contains("-search"))
             {
-                string searchTerm = args[1];
-                Nist.FindExploit(searchTerm);
+                Nist.Search(args);
+                Console.ResetColor();
                 return;
             }
             else if (args.Contains("-searchsploit") || args.Contains("--searchsploit"))

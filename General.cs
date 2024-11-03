@@ -11,11 +11,9 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace Reecon
 {
@@ -31,6 +29,7 @@ namespace Reecon
             Console.WriteLine($"NMap-Load Scan:\t{reeconFileName} outfile.nmap (Requires -oG on a regular nmap scan)");
             Console.WriteLine($"Binary Pwn:\t{reeconFileName} -pwn FileName (Very buggy)");
             Console.WriteLine($"LDAP Auth Enum:\t{reeconFileName} -ldap IP port validUsername validPassword");
+            Console.WriteLine($"Nist Search:\t{reeconFileName} -search nameHere (Only HIGH results)");
             Console.WriteLine($"Searchsploit:\t{reeconFileName} -searchsploit nameHere (Beta)");
             Console.WriteLine($"Shell Gen:\t{reeconFileName} -shell");
             Console.WriteLine($"SMB Brute:\t{reeconFileName} -smb-brute (Linux Only)");
@@ -320,6 +319,7 @@ namespace Reecon
                     }
                     else
                     {
+                        Console.WriteLine("General.cs->IsUp - Unknown pex.Message: " + pex.Message);
                         return false;
                     }
                 }
@@ -619,6 +619,7 @@ namespace Reecon
         }
 
         // Changes the color of a specific string in a line of text, then everything after is white
+        // Whilst colour is technically correct for EU-based, color is more often used in software development
         public static string Recolor(this string input, Color color)
         {
             // https://misc.flogisoft.com/bash/tip_colors_and_formatting
