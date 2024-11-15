@@ -340,3 +340,4 @@ ASALocalRun/
 healthchecksdb
 /.github
 /.svn/pristine
+/git

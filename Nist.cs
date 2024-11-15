@@ -16,7 +16,8 @@ namespace Reecon
                 Console.WriteLine("Search Usage: reecon -search Program Name Here");
                 return;
             }
-            string programName = string.Join('+', args.Skip(2));
+            string programName = string.Join('+', args.Skip(1));
+            Console.WriteLine($"Searching for CVE's for {programName}...");
             var jsonPage = Web.GetHTTPInfo($"https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch={programName}&resultsPerPage=500", "Reecon (https://github.com/Reelix/reecon)");
             if (jsonPage.StatusCode == HttpStatusCode.OK)
             {
