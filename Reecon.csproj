@@ -15,7 +15,7 @@
 		<!-- FTP - To find hidden folders (Named .) and to read text in files -->
 		<PackageReference Include="FluentFTP" Version="51.1.0" />
 		<!-- MySQL - To interact with MySQL servers -->
-	  <PackageReference Include="MySqlConnector" Version="2.3.7" />
+	  <PackageReference Include="MySqlConnector" Version="2.4.0" />
 		<!-- To access PostgreSQL servers -->
 	  <PackageReference Include="Npgsql" Version="9.0.0" />
 		<!-- LDAP -->
