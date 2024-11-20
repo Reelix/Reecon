@@ -17,7 +17,7 @@
 		<!-- MySQL - To interact with MySQL servers -->
 	  <PackageReference Include="MySqlConnector" Version="2.4.0" />
 		<!-- To access PostgreSQL servers -->
-	  <PackageReference Include="Npgsql" Version="9.0.0" />
+	  <PackageReference Include="Npgsql" Version="9.0.1" />
 		<!-- LDAP -->
 	  <PackageReference Include="System.DirectoryServices.Protocols" Version="9.0.0" />
 		<!-- A list of ports and their descriptions -->
