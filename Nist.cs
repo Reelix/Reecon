@@ -16,16 +16,15 @@ namespace Reecon
                 Console.WriteLine("Search Usage: reecon -search Program Name Here");
                 return;
             }
-            string programName = string.Join('+', args.Skip(1));
+            string programName = string.Join('+', args.Skip(1)).Trim();
             Console.WriteLine($"Searching for CVE's for {programName}...");
-            var jsonPage = Web.GetHTTPInfo($"https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch={programName}&resultsPerPage=500", "Reecon (https://github.com/Reelix/reecon)");
+            string URL = $"https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch={programName}&resultsPerPage=250";
+            var jsonPage = Web.GetHTTPInfo(URL, "Reecon (https://github.com/Reelix/reecon)");
             if (jsonPage.StatusCode == HttpStatusCode.OK)
             {
                 Rootobject myObject = JsonSerializer.Deserialize<Rootobject>(jsonPage.PageText);
-                List<Vulnerability> highVulns = myObject.vulnerabilities.Where(x => x.cve.metrics.cvssMetricV31 != null 
-                && x.cve.metrics.cvssMetricV31.Any(x => x.cvssData.baseSeverity == "HIGH")).ToList();
+                List <Vulnerability> highVulns = myObject.vulnerabilities.Where(x => x.cve.metrics.cvssMetricV31 != null && x.cve.metrics.cvssMetricV31.Any(x => x.cvssData.baseScore >= 6f)).ToList();
                 highVulns = highVulns.OrderByDescending(x => x.cve.id).ToList();
-                // var highVulns = myObject.vulnerabilities.Where(x => x.cve.metrics);
                 if (highVulns.Count > 0)
                 {
                     foreach (var vuln in highVulns)
@@ -34,17 +33,42 @@ namespace Reecon
                         Console.WriteLine(cve.id.Recolor(Color.Green));
                         Console.WriteLine($"- Link: https://nvd.nist.gov/vuln/detail/{cve.id}");
                         string description = cve.descriptions.Where(x => x.lang == "en").FirstOrDefault().value;
-                        Console.WriteLine("- Desc: " + description);
-                        foreach (Reference bla in cve.references)
+                        Console.WriteLine("- Desc: " + description.Trim());
+
+                        // Probably a cleaner way to do this, but hey
+                        foreach (Reference reference in cve.references)
                         {
-                            Console.WriteLine("- Ref: " + bla.url + " -- " + bla.source);
+                            string tags = "";
+                            if (reference.tags != null)
+                            {
+                                tags = string.Join(',', reference.tags);
+                                if (reference.tags.Contains("Exploit"))
+                                {
+                                    Console.WriteLine("- Ref: " + $"{reference.url} - {reference.source}".Recolor(Color.Red) + $" ({tags})");
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"- Ref: {reference.url} - {reference.source} ({tags})");
+                                }
+                            }
+                            else
+                            {
+                                Console.WriteLine($"- Ref: {reference.url} - {reference.source}");
+                            }
                         }
+
+                        // Leave an empty gap between each CVE
+                        Console.WriteLine();
                     }
                 }
                 else
                 {
-                    Console.WriteLine($"0 High results found for {programName}");
+                    Console.WriteLine($"0 relevant results found for {programName}");
                 }
+            }
+            else
+            {
+                Console.WriteLine($"Error with: {URL}" + Environment.NewLine + "- Nist returned: " + jsonPage.StatusCode);
             }
         }
     }

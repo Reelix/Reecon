@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using static Reecon.General;
 
 namespace Reecon
 {
@@ -12,11 +11,12 @@ namespace Reecon
         static readonly List<int> portList = new();
         static readonly List<Thread> threadList = new();
         static readonly List<string> postScanList = new();
-        static void Main(string[] args)
+
+        public static void Main(string[] args)
         {
             DateTime startDate = DateTime.Now;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.34f ( https://github.com/Reelix/Reecon )");
+            Console.WriteLine("Reecon - Version 0.34g ( https://github.com/Reelix/Reecon )");
             Console.ForegroundColor = ConsoleColor.White;
             if (args.Length == 0)
             {
@@ -78,7 +78,7 @@ namespace Reecon
                 Console.ResetColor();
                 return;
             }
-            else if (args.Contains("-search"))
+            else if (args.Contains("-search") || args.Contains("--search"))
             {
                 Nist.Search(args);
                 Console.ResetColor();

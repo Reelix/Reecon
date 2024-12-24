@@ -185,7 +185,7 @@ namespace Reecon
             Console.WriteLine("Determining invalid path results...");
 
             // NFL1 - A regular invalid path
-            string result = Web.GetHTTPInfo(baseURL + "Reelix", cookie: cookie).PageText;
+            string result = Web.GetHTTPInfo(baseURL + "Reelix", Cookie: cookie).PageText;
             notFoundLength = result.Length; // Check for cases where the page text contains the URL?
             // Some not-found pages can be blank
             if (notFoundLength < 0)
@@ -195,7 +195,7 @@ namespace Reecon
             Console.WriteLine("Invalid Path 1/3 Length: " + notFoundLength);
 
             // NFL2 - An invalid path with 2 dots
-            result = Web.GetHTTPInfo(baseURL + "Ree..lix", cookie: cookie).PageText;
+            result = Web.GetHTTPInfo(baseURL + "Ree..lix", Cookie: cookie).PageText;
             notFoundLength2 = result.Length;
             if (notFoundLength2 < 0)
             {
@@ -204,7 +204,7 @@ namespace Reecon
             Console.WriteLine("Invalid Path 2/3 Length: " + notFoundLength2);
 
             // NFL3 - An invalid path, but the error message contains the path itself
-            result = Web.GetHTTPInfo(baseURL + "/some/file/name.txt", cookie: cookie).PageText;
+            result = Web.GetHTTPInfo(baseURL + "/some/file/name.txt", Cookie: cookie).PageText;
             notFoundLength3 = result.Replace("/some/file/name.txt", "").Length;
             if (notFoundLength3 < 0)
             {
@@ -437,7 +437,7 @@ namespace Reecon
         {
             try
             {
-                var requestResult = Web.GetHTTPInfo(fullPath, cookie: cookie);
+                var requestResult = Web.GetHTTPInfo(fullPath, Cookie: cookie);
                 if (requestResult.AdditionalInfo == "Timeout")
                 {
                     Console.WriteLine("- " + fullPath + " -- Timeout :(");

@@ -29,7 +29,7 @@ namespace Reecon
             Console.WriteLine($"NMap-Load Scan:\t{reeconFileName} outfile.nmap (Requires -oG on a regular nmap scan)");
             Console.WriteLine($"Binary Pwn:\t{reeconFileName} -pwn FileName (Very buggy)");
             Console.WriteLine($"LDAP Auth Enum:\t{reeconFileName} -ldap IP port validUsername validPassword");
-            Console.WriteLine($"Nist Search:\t{reeconFileName} -search nameHere (Only HIGH results)");
+            Console.WriteLine($"Nist Search:\t{reeconFileName} -search nameHere (Only 6/10+ results)");
             Console.WriteLine($"Searchsploit:\t{reeconFileName} -searchsploit nameHere (Beta)");
             Console.WriteLine($"Shell Gen:\t{reeconFileName} -shell");
             Console.WriteLine($"SMB Brute:\t{reeconFileName} -smb-brute (Linux Only)");
@@ -642,6 +642,10 @@ namespace Reecon
             else if (color == Color.Red)
             {
                 toReturn = $"{Red}{input}{backToWhite}";
+            }
+            else if (color == Color.White)
+            {
+                toReturn = $"{backToWhite}";
             }
             else
             {

@@ -297,7 +297,7 @@ namespace Reecon
                 // All versions of ProFTPD 1.3.6 before 1.3.6rc1
                 if (bannerMessage.Contains("ProFTPD "))
                 {
-                    if (bannerMessage.Contains("ProFTPD 1.3.5") || bannerMessage.Contains("ProFTPD  1.3.6"))
+                    if (bannerMessage.Contains("ProFTPD 1.3.5") || bannerMessage.Contains("ProFTPD 1.3.6"))
                     {
                         toReturn += "-- " + "Vulnerable ProFTPD Version Detected (Potential RCE) - CVE-2015-3306".Recolor(Color.Orange) + Environment.NewLine;
                     }

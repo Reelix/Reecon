@@ -33,7 +33,7 @@ namespace Reecon
                 return;
             }
 
-            Console.WriteLine("Scanning...");
+            Console.WriteLine($"Scanning {scanURL} - Please wait...");
 
             // First - Scan the base page
             var httpInfo = Web.GetHTTPInfo(scanURL);
@@ -49,6 +49,7 @@ namespace Reecon
                 pageInfo += pageInfo != "" ? Environment.NewLine : "";
                 pageInfo += FindLinks(pageText); // Todo: Recursive
                                                  // TODO: Auto SQLi - Web.GetInfo(new[] { "-web", "http://testphp.vulnweb.com/" });
+
                 string parsedHTTPInfo = ParseHTTPInfo(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert, httpInfo.URL);
                 Console.WriteLine(parsedHTTPInfo);
                 if (pageInfo.Trim() != "")
@@ -64,6 +65,16 @@ namespace Reecon
                 {
                     Console.WriteLine(commonFiles);
                 }
+
+                // How about some subdomains?
+                Console.WriteLine("Searching for common subdomains...");
+                string subDomains = FindCommonSubdomains(scanURL);
+                if (subDomains.Trim() != String.Empty)
+                {
+                    Console.WriteLine("- Subdomains Discovered! Need to add them to your hosts file.");
+                    Console.WriteLine(subDomains);
+                }
+
             }
             Console.WriteLine("Web Info Scan Finished");
         }
@@ -164,7 +175,7 @@ namespace Reecon
                         if ((inputs.Count == 3 || (inputs.Count == 2 && submitButtons.Count == 1)) && username != null && password != null)
                         {
                             returnText += "-- " + "Possible Login Form Found".Recolor(Color.Orange) + Environment.NewLine;
-                            returnText += "--- " + $"hydra -l logins.txt -p passwords.txt 127.0.0.1 http-form-post \"/folder/post.php:{username}=^USER^&{password}=^PASS^:Invalid password error here\"".Recolor(Color.Orange) + Environment.NewLine;
+                            returnText += "--- " + $"hydra -L logins.txt -P passwords.txt 127.0.0.1 http-form-post \"/folder/post.php:{username}=^USER^&{password}=^PASS^:Invalid password error here\"".Recolor(Color.Orange) + Environment.NewLine;
                         }
                     }
                 }
@@ -326,6 +337,19 @@ namespace Reecon
                 notFoundLength2 = pageResultText.Replace("be0df04b-f5ff-4b4f-af99-00968cf08fed", "").Length;
                 // returnText += "NFL 1: " + notFoundLength + Environment.NewLine;
                 // returnText += "NFL 2: " + notFoundLength2 + Environment.NewLine;
+            }
+
+            // If there's no 404, then maybe it only works with slashes?
+            if (notFoundLength == -1)
+            {
+                // Wildcards with a slash
+                pageResult = Web.GetHTTPInfo(wildcardURL + "/");
+                pageResultText = pageResult.PageText;
+                if (pageResult.StatusCode == HttpStatusCode.NotFound)
+                {
+                    notFoundLength = pageResultText.Length;
+                    notFoundLength2 = pageResultText.Replace("be0df04b-f5ff-4b4f-af99-00968cf08fed", "").Length;
+                }
             }
 
             // PHP wildcards can be differnt
@@ -516,6 +540,7 @@ namespace Reecon
                                         // db.sqlite3
                                         returnText += "--- Show a specific commit: git show 2eb93ac (Press q to close)" + Environment.NewLine;
                                         // https://stackoverflow.com/questions/34751837/git-can-we-recover-deleted-commits
+                                        returnText += "--- Find in-progress stuff: git status" + Environment.NewLine;
                                         returnText += "--- Find deleted commits: git reflog" + Environment.NewLine;
 
                                         continue;
@@ -664,6 +689,7 @@ namespace Reecon
                     if (file == "functionRouter")
                     {
                         returnText += "-- " + "An Internal Server Error on functionRouter indicates that it's probably a Java Spring app - You should investigate this!".Recolor(Color.Orange) + Environment.NewLine;
+                        returnText += "--- Maybe https://securityonline.info/cve-2024-38819-spring-framework-path-traversal-poc-exploit-released/ ?" + Environment.NewLine;
                     }
                 }
                 else if (response.StatusCode == HttpStatusCode.TemporaryRedirect)
@@ -729,7 +755,7 @@ namespace Reecon
                     {
                         continue;
                     }
-                    returnText += $"-- Maybe, Maybe Not: {url}{file}" + Environment.NewLine;
+                    returnText += $"-- Maybe, Maybe Not (Non-Native 404): {url}{file}" + Environment.NewLine;
                     // returnText += "-- Page Len: " + response.PageText.Length + Environment.NewLine;
                     // returnText += "-- Page Len Repl: " + response.PageText.ToLower().Replace(file.ToLower(), "").Length + Environment.NewLine;
                     string pageText = response.PageText.Trim();
@@ -750,7 +776,30 @@ namespace Reecon
             return returnText.Trim(Environment.NewLine.ToArray());
         }
 
-        public static (HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, HttpResponseHeaders Headers, X509Certificate2 SSLCert, string URL, string AdditionalInfo) GetHTTPInfo(string url, string userAgent = null, string cookie = null)
+        public static string FindCommonSubdomains(string url)
+        {
+            string toReturn = "";
+            Uri uri = new Uri(url);
+            string baseHost = uri.Host;
+            string scheme = uri.Scheme;
+
+            // First - Get the base len
+            var pageInfo = GetHTTPInfo(url);
+            int baseLen = pageInfo.PageText.Length;
+            List<string> subdomains = new List<string>() { "www", "dev", "test" };
+            foreach (string subdomain in subdomains)
+            {
+                string domainToCheck = scheme + "://" + baseHost + "/";
+                pageInfo = GetHTTPInfo(domainToCheck, HostHeader: subdomain + "." + baseHost);
+                if (pageInfo.StatusCode != HttpStatusCode.Moved && pageInfo.PageText.Length != baseLen)
+                {
+                    toReturn += "- Subdomain Discovered: " + (scheme + "://" + subdomain + "." + baseHost + "/").Recolor(Color.Orange) + Environment.NewLine;
+                }
+            }
+            return toReturn;
+        }
+
+        public static (HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, HttpResponseHeaders Headers, X509Certificate2 SSLCert, string URL, string AdditionalInfo) GetHTTPInfo(string url, string UserAgent = null, string Cookie = null, string HostHeader = null)
         {
             string pageTitle = "";
             string pageText = "";
@@ -778,14 +827,18 @@ namespace Reecon
             Uri theURL = new Uri(url);
             HttpRequestMessage httpClientRequest = new HttpRequestMessage(HttpMethod.Get, theURL);
             // Optional params
-            if (userAgent != null)
+            if (UserAgent != null)
             {
-                httpClientRequest.Headers.UserAgent.TryParseAdd(userAgent);
+                httpClientRequest.Headers.UserAgent.TryParseAdd(UserAgent);
             }
-            if (cookie != null)
+            if (Cookie != null)
             {
                 // Console.WriteLine("Web.cs Debug - Setting Cookie to " +  cookie);
-                httpClientRequest.Headers.Add("Cookie", cookie);
+                httpClientRequest.Headers.Add("Cookie", Cookie);
+            }
+            if (HostHeader != null)
+            {
+                httpClientRequest.Headers.Add("Host", HostHeader);
             }
             try
             {
@@ -969,6 +1022,7 @@ namespace Reecon
                     {
                         toReturn += "- " + "Apache Tomcat 9.0.17 Detected - Vulnerable to CVE-2019-0232!".Recolor(Color.Orange);
                     }
+                    // CVE-2024-50379
 
                     // Apache Tomcat Page
                     List<NetworkCredential> defaultTomcatCreds =
@@ -1461,6 +1515,11 @@ namespace Reecon
                     {
                         // Do nothing - WordPress is more thoroughly checked further down
                     }
+                    else if (contentValue.StartsWith("Ghost "))
+                    {
+                        // Ghost
+                        toReturn += "- " + (contentValue + " detected!").Recolor(Color.Orange) + Environment.NewLine;
+                    }
                     else
                     {
                         toReturn += "- " + (contentValue + " detected!").Recolor(Color.Orange) + Environment.NewLine;
@@ -1608,6 +1667,8 @@ namespace Reecon
                 if (PageText.Contains("Powered by Gitea"))
                 {
                     toReturn += "- " + "Gitea detected!".Recolor(Color.Orange) + Environment.NewLine;
+
+                    // Version Check
                     if (PageText.ToLower().Contains("appver: '") && PageText.ToLower().Contains("appsuburl: '")) // appUrl
                     {
                         string giteaVersion = PageText.Remove(0, PageText.ToLower().IndexOf("appver: '".ToLower()) + 9);
@@ -1620,6 +1681,25 @@ namespace Reecon
                             toReturn += "-- " + $"Vulnerable Gitea Version Detected {giteaVersion} -> https://www.exploit-db.com/raw/49571".Recolor(Color.Orange) + Environment.NewLine;
                         }
                         toReturn += "-- If you gain access, see if you can alter gitea.db (User table)".Recolor(Color.White) + Environment.NewLine;
+                    }
+                    else if (PageText.Contains("assetVersionEncoded: encodeURIComponent('"))
+                    {
+                        string giteaVersion = PageText.Remove(0, PageText.IndexOf("assetVersionEncoded: encodeURIComponent('") + 41);
+                        giteaVersion = giteaVersion.Substring(0, giteaVersion.IndexOf("'"));
+                        toReturn += $"-- Version: {giteaVersion}" + Environment.NewLine;
+                    }
+
+                    // User listing
+                    var usersPage = GetHTTPInfo($"{baseURL}/explore/users");
+                    if (usersPage.StatusCode == HttpStatusCode.OK)
+                    {
+                        // Why not just a sane API call :(
+                        List<string> userEntries = usersPage.PageText.Split('\n').Where(x => x.Contains("<a class=\"text muted\" href=\"")).Select(x => x.Trim().Replace("</a>", "")).ToList();
+                        List<string> users = userEntries.Select(x => x.Remove(0, x.LastIndexOf(">") + 1)).ToList();
+                        foreach (string user in users)
+                        {
+                            toReturn += $"-- User: " + user + Environment.NewLine;
+                        }
                     }
                 }
 
@@ -1775,7 +1855,12 @@ namespace Reecon
                                 }
                                 else if (thePlugin == "wp-with-spritz")
                                 {
+                                    // Not even a CVE - Lame
                                     toReturn += "--- " + "Vulnerable Plugin Detected".Recolor(Color.Orange) + $" - {urlWithSlash}wp-content/plugins/wp-with-spritz/wp.spritz.content.filter.php?url=/etc/passwd" + Environment.NewLine;
+                                }
+                                else if (thePlugin == "really-simple-ssl")
+                                {
+                                    toReturn += "--- " + "Possible Vulnerable Plugin (Really Simple Security) Detected (Vuln if 9.0.0 -> 9.1.1.1) - CVE-2024-10924".Recolor(Color.Orange) + Environment.NewLine;
                                 }
 
                             }
