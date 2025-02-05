@@ -7,7 +7,6 @@ namespace Reecon
 {
     class OSINT_Steam
     {
-        /*
         public static string GetInfo(string name)
         {
             // TODO: Fix layout bug - ChuckLephuck
@@ -62,13 +61,13 @@ namespace Reecon
                 // We also have their country - We can ignore that for now - Maybe later
                 // 2 options - /profiles/ or /id/
                 string profileLink = "";
-                if (result.Contains("https://steamcommunity.com/profiles/"))
-                {
-                    profileLink = result.Remove(0, result.IndexOf("https://steamcommunity.com/profiles/"));
-                }
-                else if (result.Contains("https://steamcommunity.com/id/"))
+                if (result.Substring(0, 50).Contains("https://steamcommunity.com/id/"))
                 {
                     profileLink = result.Remove(0, result.IndexOf("https://steamcommunity.com/id/"));
+                }
+                else if (result.Substring(0, 50).Contains("https://steamcommunity.com/profiles/"))
+                {
+                    profileLink = result.Remove(0, result.IndexOf("https://steamcommunity.com/profiles/"));
                 }
                 else
                 {
@@ -84,10 +83,19 @@ namespace Reecon
                 string steamName = profileLink.Remove(0, profileLink.IndexOf(">") + 1);
                 steamName = steamName.Substring(0, steamName.IndexOf("<")); // Hope we don't have anyone with a > in their name
                 toReturn += $"-- Possible Match: {steamName} -> {steamLink}" + Environment.NewLine;
+
+                // This can be a bit messy - Might clean up later.
+                string steamCountry = profileLink.Remove(0, profileLink.IndexOf(steamName) + steamName.Length);
+                steamCountry = steamCountry.Remove(0, 10);
+                steamCountry = steamCountry.Substring(0, steamCountry.IndexOf("&nbsp;"));
+                steamCountry = steamCountry.Trim('\n').Trim('\t');
+                if (steamCountry.Length > 0)
+                {
+                    toReturn += $"--- Location: {steamCountry}" + Environment.NewLine;
+                }
             }
             return toReturn.Trim(Environment.NewLine.ToCharArray());
         }
-        */
     }
 
     public class OSINT_Steam_Search

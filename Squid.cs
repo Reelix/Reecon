@@ -4,7 +4,7 @@ namespace Reecon
 {
     class Squid // Port 3128
     {
-        public static (string, string) GetInfo(string ip, int port)
+        public static (string Service, string PortInfo) GetInfo(string ip, int port)
         {
             string returnInfo = "";
             string bannerResult = General.BannerGrab(ip, port, "GET cache_object://" + ip + "/menu HTTP/1.0\r\n\r\n");
@@ -19,7 +19,7 @@ namespace Reecon
             }
             else
             {
-                returnInfo += "- Version: Unknown";
+                returnInfo += "- Version: Unknown" + Environment.NewLine;
             }
 
             // Get useful info
@@ -37,7 +37,7 @@ namespace Reecon
             }
             else
             {
-                returnInfo += "- Malformed return info - Bug Reelix to update this";
+                returnInfo += "- Malformed return info - Bug Reelix to update this" + Environment.NewLine + "-- " + bannerResult;
             }
             returnInfo = returnInfo.Trim(Environment.NewLine.ToCharArray());
             return ("Squid", returnInfo);

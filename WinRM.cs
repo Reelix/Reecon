@@ -53,10 +53,12 @@ namespace Reecon
                             // Aiohttp versions from and including 1.0.5 and before 3.9.2
                             // Eg: curl --path-as-is host.com/data/../../../../../../../../../../../etc/passwd
                             // - Server: Python/3.9 aiohttp/3.9.1
+                            returnInfo += "-- WinRM.cs Webclient Path - Bug Reelix!!!" + Environment.NewLine;
                         }
                         else if (headerName == "WWW-Authenticate")
                         {
                             returnInfo += "- Authentication Methods: " + headerValue + Environment.NewLine;
+                            returnInfo += "-- WinRM.cs Webclient Path - Bug Reelix!!!" + Environment.NewLine;
                         }
                     }
                     if (returnInfo == "")
@@ -78,6 +80,7 @@ namespace Reecon
                             if (headerValue == "Microsoft-HTTPAPI/2.0")
                             {
                                 isProbablyWinRM = true;
+                                returnInfo += "-- WinRM.cs Webclient Path - Bug Reelix!!!" + Environment.NewLine;
                             }
                         }
                         else if (headerName == "WWW-Authenticate")

@@ -25,13 +25,16 @@ namespace Reecon
             Console.WriteLine("Searching for " + username + "...");
             //GetInstagramInfo(username); - Broken - https://www.instagram.com/web/search/topsearch/?query=Reelix
             GetRedditInfo(username);
-            //GetSteamInfo(username);
+            GetSteamInfo(username);
             //GetTwitterInfo(username);
-            //GetYouTubeInfo(username);
+            // curl https://api.x.com/i/users/email_available.json?email=username@email.com
+            // curl https://api.x.com/i/users/username_available.json?username=usernameHere
+            GetYouTubeInfo(username);
             GetGithubInfo(username);
-            //GetPastebinInfo(username);
+            GetPastebinInfo(username);
             // Pastebin - https://pastebin.com/u/rzsdw2iwug77eda
             // TODO: Disqus - https://disqus.com/by/soremanzo/about/ (Comment count + About page)
+            // Google Storage: https://storage.googleapis.com/erg1erh315ezf5zev (Note: Malware link - Need a better valid test case)
         }
 
         /*
@@ -102,6 +105,9 @@ namespace Reecon
                         }
                     }
                 }
+
+                // New line break at the end
+                Console.WriteLine();
             }
             else
             {
@@ -111,9 +117,8 @@ namespace Reecon
 
         public static void GetSteamInfo(string username)
         {
-            /*
             string result = OSINT_Steam.GetInfo(username);
-            if (result == ""
+            if (result == "")
             {
                 Console.WriteLine("- Steam: Not Found");
             }
@@ -121,7 +126,10 @@ namespace Reecon
             {
                 Console.WriteLine("- Steam: " + "Found".Recolor(Color.Green));
                 Console.WriteLine(result.Trim(Environment.NewLine.ToCharArray()));
-            }*/
+
+                // New line break at the end
+                Console.WriteLine();
+            }
         }
 
         private static void GetTwitterInfo(string username)
@@ -176,7 +184,7 @@ namespace Reecon
             }
             else if (httpInfo.StatusCode == HttpStatusCode.TemporaryRedirect)
             {
-                if (httpInfo.Headers.Location != null && httpInfo.Headers.Location.ToString() == "/account/suspended")
+                if (httpInfo.ResponseHeaders.Location != null && httpInfo.ResponseHeaders.Location.ToString() == "/account/suspended")
                 {
                     Console.WriteLine("- Twitter: Account Suspended :<");
                 }
@@ -209,6 +217,9 @@ namespace Reecon
                 {
                     Console.WriteLine("-- Description: " + description);
                 }
+
+                // New line break at the end
+                Console.WriteLine();
             }
             else if (httpInfo.StatusCode == HttpStatusCode.NotFound)
             {
@@ -216,19 +227,22 @@ namespace Reecon
             }
             else if (httpInfo.StatusCode == HttpStatusCode.Moved)
             {
-                if (httpInfo.Headers.Location != null)
+                if (httpInfo.ResponseHeaders.Location != null)
                 {
-                    string location = httpInfo.Headers.Location.ToString();
+                    string location = httpInfo.ResponseHeaders.Location.ToString();
                     if (location.Contains("/user/"))
                     {
                         var userInfo = Web.GetHTTPInfo(location);
                         Console.WriteLine("- YouTube: " + "Found".Recolor(Color.Green));
                         Console.WriteLine("-- User Profile: " + location);
                         Console.WriteLine("-- Name: " + userInfo.PageTitle.Replace(" - YouTube", ""));
+
+                        // New line break at the end
+                        Console.WriteLine();
                     }
                     else
                     {
-                        Console.WriteLine("- YouTube: Unknown Moved to " + httpInfo.Headers.Location.ToString());
+                        Console.WriteLine("- YouTube: Unknown Moved to " + httpInfo.ResponseHeaders.Location.ToString());
                     }
                 }
             }
@@ -262,8 +276,13 @@ namespace Reecon
                 {
                     Console.WriteLine("-- Avatar Picture: " + avatar);
                 }
+                JsonElement created_at = githubInfo.RootElement.GetProperty("created_at");
+                Console.WriteLine("-- Account Created At: " + created_at);
                 JsonElement blog = githubInfo.RootElement.GetProperty("blog");
-                Console.WriteLine("-- Blog: " + blog);
+                if (blog.ToString() != "")
+                {
+                    Console.WriteLine("-- Blog: " + blog);
+                }
                 // TODO: Parse Repos + Commits
                 // Repos: https://api.github.com/users/sakurasnowangelaiko/repos
                 // Commits (And everything else): https://api.github.com/users/sakurasnowangelaiko/events (

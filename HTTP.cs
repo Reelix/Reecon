@@ -57,11 +57,11 @@ namespace Reecon
                 {
                     return $"- The url {url} does not exist - Maybe fix your /etc/hosts file?";
                 }
-                else if (httpInfo == (0, null, null, null, null, null, null, null))
+                else if (httpInfo == (0, null, null, null, null, null, null, null, null))
                 {
                     return "";
                 }
-                string portData = Web.ParseHTTPInfo(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert, httpInfo.URL);
+                string portData = Web.ParseHTTPInfo(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.ResponseHeaders, httpInfo.ContentHeaders, httpInfo.SSLCert, httpInfo.URL);
 
                 // The final Environment.NewLine is stripped from portData, so we need to re-add it
                 if (httpInfo.StatusCode == System.Net.HttpStatusCode.Unauthorized)

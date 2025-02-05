@@ -7,7 +7,7 @@ namespace Reecon
 {
     class VNC
     {
-        public static (string PortTitle, string PortInfo) GetInfo(string target, int port)
+        public static (string Service, string PortInfo) GetInfo(string target, int port)
         {
             string returnText = "";
             Byte[] buffer = new Byte[12];

@@ -363,7 +363,7 @@ namespace Reecon
                     {
                         unknownPortResult += Environment.NewLine + "- TCP Protocol Mismatch";
                     }
-                    unknownPortResult += SSH.GetInfo(target, port);
+                    unknownPortResult += SSH.GetInfo(target, port).PortInfo;
                     Console.WriteLine(unknownPortResult + Environment.NewLine);
                 }
                 // Squid - HTTP with different special stuff
@@ -384,14 +384,14 @@ namespace Reecon
                 else if (theBanner.Length > 5 && theBanner[0] == 255 && theBanner[1] == 253)
                 {
                     unknownPortResult += $"Port {port} - Telnet".Recolor(Color.Green) + Environment.NewLine;
-                    unknownPortResult += Telnet.GetInfo(target, port);
+                    unknownPortResult += Telnet.GetInfo(target, port).PortInfo;
                     Console.WriteLine(unknownPortResult);
                 }
                 // VNC
                 else if (theBanner.StartsWith("RFB "))
                 {
                     unknownPortResult += $"Port {port} - VNC".Recolor(Color.Green) + Environment.NewLine;
-                    unknownPortResult += VNC.GetInfo(target, port);
+                    unknownPortResult += VNC.GetInfo(target, port).PortInfo;
                     Console.WriteLine(unknownPortResult);
                 }
                 // Windows RPC over HTTP
@@ -549,7 +549,7 @@ namespace Reecon
                 postScanActions += $"- Port 445 - Unauthenticated SID (Username) Lookup: lookupsid.py anonymous@{target} -no-pass | grep -e \"Brute forcing\" -e SidTypeUser -e STATUS_LOGON_FAILURE" + Environment.NewLine;
                 postScanActions += $"- Port 445 - Authenticated SID Lookup: lookupsid.py DOMAIN/Username:password@{target}" + Environment.NewLine;
                 postScanActions += $"- Port 445 - Testing passwords: nxc smb {target} -u users.txt -p passwords.txt" + Environment.NewLine;
-                postScanActions += $"- Port 445 - List Shares: smbclient -L //{target} -U validusername%validpass" + Environment.NewLine;
+                postScanActions += $"- Port 445 - List Shares: smbclient -U validusername%validpass -L //{target}" + Environment.NewLine;
                 postScanActions += $"- Port 445 - Connect Share: smbclient -U validusername%validpass //{target}/shareName" + Environment.NewLine;
             }
             else if (port == 1433)

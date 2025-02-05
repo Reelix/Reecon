@@ -30,7 +30,7 @@ namespace Reecon
             // This code is messy as heck and needs to be cleaned
             // MAC was here, but got nuked
             string toReturn = "";
-            byte[] bs = new byte[] { 0x0, 0x00, 0x0, 0x10, 0x0, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x20, 0x43, 0x4b, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x0, 0x0, 0x21, 0x0, 0x1 };
+            byte[] bs = CreateNetbiosRequestPacket();
             byte[] Buf = new byte[500];
             string str = "", strHost = "", Host = "", Group = "", User = "", strHex = "";
             int receive;
@@ -38,7 +38,7 @@ namespace Reecon
             try
             {
                 IPEndPoint senderTest = new(IPAddress.Any, 137);
-                EndPoint Remote = (EndPoint)senderTest;
+                EndPoint Remote = senderTest;
 
                 IPEndPoint ipep = new(IPAddress.Parse(ip), 137);
 
@@ -123,6 +123,106 @@ namespace Reecon
                 }
             }
             return toReturn;
+        }
+
+        // This method still needs a lot of clarification
+        private static byte[] CreateNetbiosRequestPacket()
+        {
+            byte[] packet = new byte[50];
+            Random rand = new Random();
+            rand.NextBytes(packet);
+
+            // https://datatracker.ietf.org/doc/html/rfc1002#section-4.2.1
+
+            // Header
+            packet[0] = (byte)rand.Next(0, 256); ; // Transaction ID
+            packet[1] = (byte)rand.Next(0, 256); ; // Transaction ID
+
+            // Flags: set query flags (standard query)
+            packet[2] = 0x01; // QR=0, Opcode=0 (Query), AA=0, TC=0, RD=1 (Recursion Desired)
+            packet[3] = 0x10; // Other flags (e.g., recursion available)
+
+            packet[4] = 0x00; // Number of questions (high byte)
+            packet[5] = 0x01; // Number of questions (low byte)
+
+            // ANSWER RESOURCE RECORDS (ANCOUNT)
+            packet[6] = 0x00; // Answer RRs (high byte)
+            packet[7] = 0x00; // Answer RRs (low byte)
+
+            // AUTHORITY RESOURCE RECORDS (NSCOUNT)
+            packet[8] = 0x00; // Authority RRs (high byte)
+            packet[9] = 0x00; // Authority RRs
+
+            // ADDITIONAL RESOURCE RECORDS (ARCOUNT)
+            packet[10] = 0x00; // Additional RRs
+            packet[11] = 0x00; // Additional RRs
+
+            // Query name section
+            packet[12] = 0x20; // Length of name
+            Encoding.ASCII.GetBytes("CKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA").CopyTo(packet, 13);
+            packet[45] = 0x00; // Null terminator for the name
+            packet[46] = 0x00; // Type: NB
+            packet[47] = 0x21; // Type: NB
+            packet[48] = 0x00; // Class: IN
+            packet[49] = 0x01; // Class: IN
+
+            return packet;
+        }
+
+        // For later
+        private static string ParseNetbiosResponse(byte[] responsePacket)
+        {
+            // 0-35: Header (Transaction ID, Flags, etc.)
+            // 36-56: Question Section (Query for the name)
+            // 57: NETBIOS Name (the name being resolved, e.g., "COMPUTERNAME")
+            // 111 -> 116 seems to be MAC ?
+            for (int i = 0; i < responsePacket.Length; i++)
+            {
+                byte b = responsePacket[i];
+                Console.WriteLine($"Position: {i}, Character: {Convert.ToChar(b)}, Numeric: {b}, Hex: {b.ToString("X2")}");
+            }
+
+            if (responsePacket.Length < 101)
+            {
+                throw new Exception("Invalid NETBIOS response packet.");
+            }
+
+            // Extract name from the response
+
+            // First appearance of the unique NETBIOS name
+            int nameStartIndex = 57;
+            int nameEndIndex = Array.IndexOf(responsePacket, (byte)0x00, nameStartIndex);
+            if (nameEndIndex == -1) nameEndIndex = responsePacket.Length;
+            string firstName = Encoding.ASCII.GetString(responsePacket, nameStartIndex, nameEndIndex - nameStartIndex);
+
+            // Second appearance (could be a group or type-specific name)
+            nameStartIndex = 75;
+            nameEndIndex = Array.IndexOf(responsePacket, (byte)0x00, nameStartIndex);
+            if (nameEndIndex == -1) nameEndIndex = responsePacket.Length;
+            string secondName = Encoding.ASCII.GetString(responsePacket, nameStartIndex, nameEndIndex - nameStartIndex);
+            if (secondName.EndsWith("D"))
+            {
+                secondName = secondName.Substring(0, secondName.Length - 1);
+            }
+
+            // Second appearance (could be a group or type-specific name)
+            nameStartIndex = 93;
+            nameEndIndex = Array.IndexOf(responsePacket, (byte)0x00, nameStartIndex);
+            if (nameEndIndex == -1) nameEndIndex = responsePacket.Length;
+            string thirdName = Encoding.ASCII.GetString(responsePacket, nameStartIndex, nameEndIndex - nameStartIndex);
+            if (thirdName.EndsWith("D"))
+            {
+                thirdName = thirdName.Substring(0, secondName.Length - 1);
+            }
+
+            Console.WriteLine("First Name: " + firstName);
+            Console.WriteLine("Second Name: " + secondName);
+            Console.WriteLine("Third Name: " + thirdName);
+
+            // Workgroup name (could be a group name)
+
+
+            return firstName.Trim();
         }
 
         private static string GetDNSHostEntry(string ip)
