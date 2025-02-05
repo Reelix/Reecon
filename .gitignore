@@ -341,3 +341,4 @@ healthchecksdb
 /.github
 /.svn/pristine
 /git
+/build.bat
