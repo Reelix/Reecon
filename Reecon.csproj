@@ -19,7 +19,7 @@
 		<!-- To access PostgreSQL servers -->
 	  <PackageReference Include="Npgsql" Version="9.0.2" />
 		<!-- LDAP -->
-	  <PackageReference Include="System.DirectoryServices.Protocols" Version="9.0.1" />
+	  <PackageReference Include="System.DirectoryServices.Protocols" Version="9.0.2" />
 		<!-- A list of ports and their descriptions -->
 		<EmbeddedResource Include="Ports.txt" />
   </ItemGroup>
