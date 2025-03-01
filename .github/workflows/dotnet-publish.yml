@@ -1,6 +1,9 @@
 name: dotnet publish
 
-on: [push]
+on:
+  push:
+    branches:
+      - master  # Triggers only on pushes to the 'master' branch - Not on PR's (But still on PR accepts)
 
 jobs:
   build:

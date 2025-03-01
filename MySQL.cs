@@ -9,9 +9,6 @@ namespace Reecon
 {
     class MySQL // Port 3306
     {
-        // https://github.com/danielmiessler/SecLists/blob/master/Passwords/Default-Credentials/mysql-betterdefaultpasslist.txt
-        // https://svn.nmap.org/nmap/scripts/mysql-info.nse
-        // --> https://svn.nmap.org/nmap/nselib/mysql.lua -> receiveGreeting
         public static (string PortName, string PortData) GetInfo(string target, int port)
         {
             string toReturn = "";
@@ -26,7 +23,8 @@ namespace Reecon
                 toReturn += "- Capabilities: " + string.Join(", ", capabilities) + Environment.NewLine;
             }
 
-            var credentials = new List<(string user, string password)>
+            // https://github.com/danielmiessler/SecLists/blob/master/Passwords/Default-Credentials/mysql-betterdefaultpasslist.txt
+            List<(string username, string password)> credentials = new List<(string user, string password)>
             {
                 ("root", "mysql"),
                 ("root", "root"),
@@ -55,9 +53,9 @@ namespace Reecon
                 ("root", "123qweASD#"),
             };
             
-            foreach (var cred in credentials)
+            foreach ((string username, string password) cred in credentials)
             {
-                (bool result, string info) tested = TestCreds(target, port, cred.user, cred.password, serverInfo.capabilitiesLower);
+                (bool result, string info) tested = TestCreds(target, port, cred.username, cred.password, serverInfo.capabilitiesLower);
                 if (tested.result == true)
                 {
                     toReturn += tested.info;
@@ -67,39 +65,41 @@ namespace Reecon
             return ("MySQL", toReturn);
         }
 
-        static (bool result, string info) TestCreds(string server, int port, string user, string password, uint capabilitiesLower)
+        static (bool result, string info) TestCreds(string server, int port, string username, string password, uint capabilitiesLower)
         {
             string returnInfo = "";
             // Console.WriteLine($"\nTesting credentials: User={user}, Password={password}");
             try
             {
                 using (TcpClient client = new TcpClient(server, port) { ReceiveTimeout = 5000 })
-                using (NetworkStream stream = client.GetStream())
                 {
-                    byte[] buffer = new byte[2048];
-                    int bytesRead = stream.Read(buffer, 0, buffer.Length);
-                    if (Authenticate(stream, buffer, bytesRead, user, password, capabilitiesLower))
+                    using (NetworkStream stream = client.GetStream())
                     {
-                        returnInfo += $"- Discovered Creds: {user} / {password}" + Environment.NewLine;
-                        // Console.WriteLine("Authentication successful!");
-                        // Send SELECT VERSION() query and display result
-                        SendQuery(stream, "SELECT User, authentication_string from mysql.user;");
-                        string QueryResponse = ReadQueryResponse(stream);
-                        if (QueryResponse.StartsWith("- Row"))
+                        byte[] buffer = new byte[2048];
+                        int bytesRead = stream.Read(buffer, 0, buffer.Length);
+                        if (Authenticate(stream, buffer, bytesRead, username, password, capabilitiesLower))
                         {
-                            returnInfo += QueryResponse;
-                            return (true, returnInfo);
+                            returnInfo += $"- Discovered Creds: {username} / {password}" + Environment.NewLine;
+                            // Console.WriteLine("Authentication successful!");
+                            // Send SELECT VERSION() query and display result
+                            SendQuery(stream, "SELECT User, authentication_string from mysql.user;");
+                            string QueryResponse = ReadQueryResponse(stream);
+                            if (QueryResponse.StartsWith("- Row"))
+                            {
+                                returnInfo += QueryResponse;
+                                return (true, returnInfo);
+                            }
+                            else
+                            {
+                                returnInfo += "- User cannot read mysql.user";
+                                return (true, returnInfo);
+                            }
+                            // Console.WriteLine($"Server version from query: {versionResult}");
                         }
                         else
                         {
-                            returnInfo += "- User cannot read mysql.user";
-                            return (true, returnInfo);
+                            return (false, "");
                         }
-                        // Console.WriteLine($"Server version from query: {versionResult}");
-                    }
-                    else
-                    {
-                        return (false, "");
                     }
                 }
             }
@@ -146,12 +146,15 @@ namespace Reecon
             }
         }
 
+        // https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_connection_phase_packets_protocol_handshake_v10.html
         static bool Authenticate(NetworkStream stream, byte[] packet, int length, string user, string password, uint serverCapabilities)
         {
             byte sequenceNumber = packet[3];
             using (MemoryStream ms = new MemoryStream(packet, 0, length))
             {
                 ms.Seek(4, SeekOrigin.Begin);
+
+                // protocol version	-> int<1>
                 int protocolVersion = ms.ReadByte();
                 if (protocolVersion != 0x0A) // Check for Handshake V10
                 {
@@ -160,37 +163,53 @@ namespace Reecon
                     return false;
                 }
 
-                while (ms.ReadByte() != 0 && ms.Position < ms.Length) { } // Skip version string
+                // Skip version info - We already got it in GetServerInfo
+                while (ms.ReadByte() != 0 && ms.Position < ms.Length) { }
 
+                // 	thread id - int<4>
                 byte[] threadIdBytes = new byte[4];
                 ms.Read(threadIdBytes, 0, 4);
                 int threadId = BitConverter.ToInt32(threadIdBytes, 0);
                 // Console.WriteLine($"Thread ID: {threadId}");
 
+                // 	auth-plugin-data-part-1 -> string[8]	
                 byte[] authPluginDataPart1 = new byte[8];
                 ms.Read(authPluginDataPart1, 0, 8);
                 // Console.WriteLine($"Salt Part 1: {BitConverter.ToString(authPluginDataPart1)}");
 
+                // filler -> int<1>
                 ms.Seek(1, SeekOrigin.Current); // Filler
+                // capability_flags_1 -> int<2>
                 ms.Seek(2, SeekOrigin.Current); // Lower capabilities
                 ms.Seek(3, SeekOrigin.Current); // Charset + status
 
+                // capability_flags_2 -> int<2>
                 byte[] capabilityUpperBytes = new byte[2];
                 ms.Read(capabilityUpperBytes, 0, 2);
 
+                // auth_plugin_data_len -> int<1>
                 int authPluginDataLen = ms.ReadByte();
-                byte[] authPluginDataPart2 = new byte[authPluginDataLen - 8];
+
+                // reserved -> string[10]
                 ms.Seek(10, SeekOrigin.Current); // Reserved
+
+
+                // auth-plugin-data-part-2-> $length
+                byte[] authPluginDataPart2 = new byte[authPluginDataLen - 8]; // length of auth-plugin-data - 8 (Why minus 8? Because the protocol said so...)
                 ms.Read(authPluginDataPart2, 0, authPluginDataPart2.Length);
                 // Console.WriteLine($"Salt Part 2: {BitConverter.ToString(authPluginDataPart2)}");
 
+                // 
                 byte[] scramble = new byte[20];
                 Array.Copy(authPluginDataPart1, 0, scramble, 0, 8);
                 Array.Copy(authPluginDataPart2, 0, scramble, 8, 12);
                 // Console.WriteLine($"Full Salt (Scramble): {BitConverter.ToString(scramble)}");
 
                 // Define client capabilities explicitly
-                uint clientCapabilities = 0x0001 | 0x0200 | 0x8000; // LongPassword, Protocol41, SecureConnection
+                // 0x0001 = LongPassword (Password Auth)
+                // 0x0200 = Speaks41ProtocolNew (The new protocol)
+                // 0x8000 = 4.1 - SecureConnection - This was sniffed - Not sure if I even need it since it's deprecated, but hey...
+                uint clientCapabilities = 0x0001 | 0x0200 | 0x8000;
                 SendAuthResponse(stream, user, password, scramble, clientCapabilities, (byte)(sequenceNumber + 1));
 
                 byte[] responseBuffer = new byte[2048];
@@ -211,48 +230,82 @@ namespace Reecon
             }
         }
 
+        // https://dev.mysql.com/doc/dev/mysql-server/latest/group__group__cs__capabilities__flags.html
+        // Shamelessly copied shorthand naming from https://svn.nmap.org/nmap/nselib/mysql.lua
         static List<string> ParseCapabilities(uint flags)
         {
             List<string> capabilities = new List<string>();
+            // 1
             if ((flags & 0x0001) != 0) capabilities.Add("LongPassword");
+            // 2
             if ((flags & 0x0002) != 0) capabilities.Add("FoundRows");
+            // 4
             if ((flags & 0x0004) != 0) capabilities.Add("LongColumnFlag");
+            // 8
             if ((flags & 0x0008) != 0) capabilities.Add("ConnectWithDatabase");
+            // 16
             if ((flags & 0x0010) != 0) capabilities.Add("DontAllowDatabaseTableColumn");
+            // 32
             if ((flags & 0x0020) != 0) capabilities.Add("SupportsCompression");
+            // 64
             if ((flags & 0x0040) != 0) capabilities.Add("ODBCClient");
+            // 128
             if ((flags & 0x0080) != 0) capabilities.Add("SupportsLoadDataLocal");
+            // 256
             if ((flags & 0x0100) != 0) capabilities.Add("IgnoreSpaceBeforeParenthesis");
+            // 512
             if ((flags & 0x0200) != 0) capabilities.Add("Speaks41ProtocolNew");
+            // 1024
             if ((flags & 0x0400) != 0) capabilities.Add("InteractiveClient");
-            if ((flags & 0x0800) != 0) capabilities.Add("Speaks41ProtocolOld");
+            // 2048
+            if ((flags & 0x0800) != 0) capabilities.Add("SwitchToSSLAfterHandshake");
+            // 4096
             if ((flags & 0x1000) != 0) capabilities.Add("IgnoreSigpipes");
+            // 8192
             if ((flags & 0x2000) != 0) capabilities.Add("SupportsTransactions");
-            if ((flags & 0x4000) != 0) capabilities.Add("Support41Auth");
-            if ((flags & 0x8000) != 0) capabilities.Add("SupportsMultipleStatments");
+            // 16384 - DEPRECATED: Old flag for 4.1 protocol
+            if ((flags & 0x4000) != 0) capabilities.Add("Speaks41ProtocolOld");
+            // 32768 - DEPRECATED: Old flag for 4.1 authentication \ CLIENT_SECURE_CONNECTION.
+            if ((flags & 0x8000) != 0) capabilities.Add("Support41Auth");
             return capabilities;
         }
 
+        // https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_connection_phase_packets_protocol_handshake_response.html
+        // Protocol::HandshakeResponse41
         static void SendAuthResponse(NetworkStream stream, string user, string password, byte[] scramble, uint clientCapabilities, byte sequenceNumber)
         {
             using (MemoryStream ms = new MemoryStream())
             {
+                // client_flag -> int<4> -> Capabilities Flags
                 ms.Write(BitConverter.GetBytes(clientCapabilities), 0, 4);
+                // max_packet_size -> int<4>
                 ms.Write(BitConverter.GetBytes(16777215), 0, 4); // Max packet size
+                // character_set -> int<1>
+                // https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_basic_character_set.html#a_protocol_character_set
                 ms.WriteByte(33); // UTF-8 charset
+                // filler -> string[23]
                 ms.Write(new byte[23], 0, 23); // Reserved
+
+                // username string<NUL>
                 byte[] userBytes = Encoding.ASCII.GetBytes(user);
                 ms.Write(userBytes, 0, userBytes.Length);
                 ms.WriteByte(0); // Null-terminated username
+
+                // if capabilities & CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA { - May need to check later - This one worked in this case, so...
+
+                // auth_response -> string<length>
                 byte[] authResponse = GenerateAuthResponse(password, scramble);
                 // Console.WriteLine($"Hashed Password: {BitConverter.ToString(authResponse)}");
                 ms.WriteByte((byte)authResponse.Length); // Length-encoded auth response
                 ms.Write(authResponse, 0, authResponse.Length);
-                // Removed extra null byte here
+
+                // Currently assuming if capabilities & CLIENT_PLUGIN_AUTH {
+                // client_plugin_name -> string<NUL>
                 byte[] pluginName = Encoding.ASCII.GetBytes("mysql_native_password");
                 ms.Write(pluginName, 0, pluginName.Length);
                 ms.WriteByte(0); // Null-terminated plugin name
 
+                // And send
                 byte[] packetData = ms.ToArray();
                 using (MemoryStream headerMs = new MemoryStream())
                 {
@@ -329,6 +382,7 @@ namespace Reecon
         }
 
         // Send a query packet (COM_QUERY)
+        // https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_com_query.html
         static void SendQuery(NetworkStream stream, string query)
         {
             using (MemoryStream ms = new MemoryStream())
@@ -352,7 +406,7 @@ namespace Reecon
             }
         }
 
-        // Read and parse the result of SELECT VERSION();
+        // Read and parse the result of custom queries
         static string ReadQueryResponse(NetworkStream stream)
         {
             byte[] buffer = new byte[2048];
@@ -369,6 +423,7 @@ namespace Reecon
                 ms.Seek(4, SeekOrigin.Begin); // Skip 3-byte length + 1-byte seq
                 byte packetType = (byte)ms.ReadByte();
 
+                // https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_basic_err_packet.html
                 if (packetType == 0xFF) // Error packet
                 {
                     byte[] errorCodeBytes = new byte[2];
@@ -383,6 +438,8 @@ namespace Reecon
                     string errorMessage = Encoding.ASCII.GetString(errorMessageBytes);
                     return $"Query error - Code: {errorCode}, SQL State: {sqlState}, Message: {errorMessage}";
                 }
+
+                // https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_basic_ok_packet.html
                 string toReturn = "";
                 int columnCount = packetType; // Number of columns
                 
