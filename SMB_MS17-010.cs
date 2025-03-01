@@ -72,10 +72,10 @@ namespace Reecon
         private static byte[] ReadSmbResponse(NetworkStream stream)
         {
             byte[] temp = new byte[4];
-            stream.Read(temp, 0, 4);
+            stream.ReadExactly(temp, 0, 4);
             int size = temp[3] + temp[2] * 0x100 + temp[3] * 0x10000;
             byte[] output = new byte[size + 4];
-            stream.Read(output, 4, size);
+            stream.ReadExactly(output, 4, size);
             Array.Copy(temp, output, 4);
             return output;
         }

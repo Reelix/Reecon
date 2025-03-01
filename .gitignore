@@ -341,3 +341,4 @@ healthchecksdb
 /.github
 /.svn/pristine
 /git
+/Empty.cs

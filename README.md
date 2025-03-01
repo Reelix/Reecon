@@ -2,21 +2,21 @@
 
 Reelix's Recon - A small program for network recon.  
 This program is still in early stages of development and should probably not be used by anyone.
-* Version: 0.34h
+* Version: 0.35
 * Build Status: <img src="https://img.shields.io/github/actions/workflow/status/Reelix/Reecon/dotnet-publish.yml" valign="middle" />
 * Requirements: [NMap 7.95+](https://nmap.org/download.html)
   * LDAP Enumeration on Ubuntu 22.04: Download + dpkg -i [this](https://packages.ubuntu.com/focal-updates/amd64/libldap-2.4-2/download)
 * Recommended (It won't run these, but it will suggest that you do):
-  * Manual HTTP/S Enumeration: [Gobuster](https://github.com/OJ/gobuster)
+  * Manual HTTP/S Enumeration: [Gobuster](https://github.com/OJ/gobuster) / [ffuf](https://github.com/ffuf/ffuf)
   * SMB Enumeration: [smbclient](https://github.com/SecureAuthCorp/impacket/blob/master/examples/smbclient.py)
   * Kerberos Enumeration: [Kerbrute](https://github.com/ropnop/kerbrute), [GetNPUsers](https://github.com/fortra/impacket/blob/master/examples/GetNPUsers.py), [secretsdump](https://github.com/fortra/impacket/blob/master/examples/secretsdump.py)
   * Multiple Enumerations: [NetExec](https://github.com/Pennyw0rth/NetExec)
   * Printer Enumeration: [PRET](https://github.com/RUB-NDS/PRET)
 
 ## Frequently Asked Questions
-### WTF - Why is it 30MB? That's huge!
+### WTF - Why is it 15MB? That's huge!
 It's standalone with parts of the .NET Framework built in. It runs on the device without any other requirements. No additional Framework is required if you're not self-compiling.
-That said, I'm always trying to make it smaller (Working on cross-OS trimming and reducing third-party libraries)
+That said, I'm always trying to make it smaller (Working on cross-OS trimming and reducing third-party libraries) - It was over 30MB at one point :p
 ### It broke
 It is still in the early stages of development. Tell me how it broke, and I'll see if I can fix it.
 ### You should add XYZ

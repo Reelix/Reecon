@@ -6,7 +6,7 @@ namespace Reecon
 {
     class RPCBind
     {
-        public static (string, string) GetInfo(string target, int port)
+        public static (string PortName, string PortData) GetInfo(string target, int port)
         {
             // rpcinfo has no Port parameter - Weird...
             string toReturn = "";

@@ -8,7 +8,7 @@ namespace Reecon
 {
     class Elasticsearch // Port 9200
     {
-        public static (string, string) GetInfo(string ip, int port)
+        public static (string PortName, string PortData) GetInfo(string ip, int port)
         {
             string returnString = "";
             // Get basic data

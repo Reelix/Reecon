@@ -451,6 +451,7 @@ namespace Reecon
                 "composer.json",
                 // General info file
                 ".DS_STORE",
+                ".DS_Store", // Different case - Thanks Szymon ._.
                 // Wordpress stuff
                 "blog/",
                 "wordpress/",
@@ -803,9 +804,11 @@ namespace Reecon
             Uri uri = new Uri(url);
             string baseHost = uri.Host;
             string scheme = uri.Scheme;
+            string authority = uri.Authority; // domain:port
             
-            string domainToCheck = scheme + "://" + baseHost + "/";
-            List<string> subdomains = new List<string>() { "www", "dev", "test", "admin" };
+            string domainToCheck = scheme + "://" + authority + "/";
+            // Common to uncommon - Maybe alphabetical later?
+            List<string> subdomains = new List<string>() { "www", "dev", "admin", "mail", "test", "nagios" };
 
             var pageInfo = GetHTTPInfo(url);
 
@@ -819,16 +822,18 @@ namespace Reecon
             }
             foreach (string subdomain in subdomains)
             {
-                pageInfo = GetHTTPInfo(domainToCheck, HostHeader: subdomain + "." + baseHost);
+                pageInfo = GetHTTPInfo(domainToCheck, HostHeader: subdomain + "." + authority);
                 if (pageInfo.StatusCode != HttpStatusCode.Moved && pageInfo.PageText.Length != baseLen && pageInfo.PageText.Length != invalidBaseLen)
                 {
-                    toReturn += "-- Subdomain Discovered: " + (scheme + "://" + subdomain + "." + baseHost + "/").Recolor(Color.Orange) + Environment.NewLine;
+                    toReturn += "-- Subdomain Discovered: " + (scheme + "://" + subdomain + "." + authority + "/").Recolor(Color.Orange) + Environment.NewLine;
                 }
             }
             return toReturn;
         }
 
-        public static (HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, HttpResponseHeaders ResponseHeaders, HttpContentHeaders ContentHeaders, X509Certificate2 SSLCert, string URL, string AdditionalInfo) GetHTTPInfo(string url, string UserAgent = null, string Cookie = null, string HostHeader = null)
+        // This is... Very crowded
+        public static (HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, HttpResponseHeaders ResponseHeaders, HttpContentHeaders ContentHeaders, X509Certificate2 SSLCert, string URL, string AdditionalInfo)
+            GetHTTPInfo(string url, string UserAgent = null, string Cookie = null, string HostHeader = null, int Timeout=5)
         {
             string pageTitle = "";
             string pageText = "";
@@ -872,7 +877,7 @@ namespace Reecon
             }
             try
             {
-                httpClient.Timeout = TimeSpan.FromMilliseconds(5000);
+                httpClient.Timeout = TimeSpan.FromSeconds(Timeout);
                 HttpResponseMessage httpClientResponse = httpClient.Send(httpClientRequest);
                 statusCode = httpClientResponse.StatusCode;
                 dns = theURL.DnsSafeHost;
@@ -1269,6 +1274,12 @@ namespace Reecon
                                 toReturn += "--- Probably not vulnerable to CVE-2023-27997 :(" + Environment.NewLine;
                             }
                         }
+
+                        // CVE-2024-55591
+                        // FortiOS 7.0.0 through 7.0.16
+                        // FortiProxy 7.0.0 through 7.0.19
+                        // FortiProxy 7.2.0 through 7.2.12
+                        // https://github.com/watchtowrlabs/fortios-auth-bypass-poc-CVE-2024-55591
 
                     }
                 }
@@ -1821,6 +1832,7 @@ namespace Reecon
                     toReturn += "---- Kibana versions before 5.6.15 and 6.6.1 -> CVE-2019-7609 -> https://github.com/mpgn/CVE-2019-7609" + Environment.NewLine;
                 }
                 // Wordpress
+                // TODO: /?rest_route=/ - REF: https://github.com/Chocapikk/wpprobe
                 //if (PageText.Contains("/wp-content/themes/") && (PageText.Contains("/wp-includes/") || PageText.Contains("/wp-includes\\")))
                 // Some Wordpress pages don't contain "wp-content" (Ref: HTB Acute)
                 if (PageText.Contains("/wp-includes/") || PageText.Contains("/wp-includes\\"))

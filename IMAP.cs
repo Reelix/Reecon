@@ -4,7 +4,7 @@ namespace Reecon
 {
     class IMAP // Generally Port 143
     {
-        public static (string, string) GetInfo(string ip, int port)
+        public static (string PortName, string PortData) GetInfo(string ip, int port)
         {
             string returnInfo;
             string bannerInfo = General.BannerGrab(ip, port);

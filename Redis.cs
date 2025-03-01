@@ -9,7 +9,7 @@ namespace Reecon
 {
     class Redis // 6379
     {
-        public static (string, string) GetInfo(string ip, int port)
+        public static (string PortName, string PortData) GetInfo(string ip, int port)
         {
             /* Redis Command Primer!
              * 1.) Find the DB -> info (Look at "Keyspace") - Eg: db0:keys=5,expires=0,avg_ttl=0 <--- db0

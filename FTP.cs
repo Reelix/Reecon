@@ -11,7 +11,7 @@ namespace Reecon
 {
     class FTP // Port 21
     {
-        public static (string, string) GetInfo(string target, int port)
+        public static (string PortName, string PortData) GetInfo(string target, int port)
         {
             string ftpUsername = "";
             string ftpLoginInfo = "";

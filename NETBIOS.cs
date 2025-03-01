@@ -10,7 +10,7 @@ namespace Reecon
 {
     class NETBIOS // TCP 139
     {
-        public static (string, string) GetInfo(string target, int port)
+        public static (string PortName, string PortData) GetInfo(string target, int port)
         {
             string toReturn = "";
             // Console.WriteLine("Running: GetNBStatInfo");

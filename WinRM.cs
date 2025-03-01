@@ -10,7 +10,7 @@ namespace Reecon
 {
     class WinRM
     {
-        public static (string, string) GetInfo(string ip, int port)
+        public static (string PortName, string PortData) GetInfo(string ip, int port)
         {
             // TODO: Figure out how to do basic evil-winrm.rb connections
             // evil-winrm.rb -i 10.10.10.161

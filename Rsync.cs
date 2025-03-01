@@ -8,7 +8,7 @@ namespace Reecon
 {
     class Rsync // Generally Port 873 - And a lower case s in sync
     {
-        public static (string, string) GetInfo(string ip, int port)
+        public static (string PortName, string PortData) GetInfo(string ip, int port)
         {
             string rsyncInfo = GetData(ip, port);
             return ("RSync", rsyncInfo);

@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Linq;
 using System.Net;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Reecon
 {
@@ -19,11 +20,17 @@ namespace Reecon
             string programName = string.Join('+', args.Skip(1)).Trim();
             Console.WriteLine($"Searching for CVE's for {programName}...");
             string URL = $"https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch={programName}&resultsPerPage=250";
-            var jsonPage = Web.GetHTTPInfo(URL, "Reecon (https://github.com/Reelix/reecon)");
+            var jsonPage = Web.GetHTTPInfo(URL, "Reecon (https://github.com/Reelix/reecon)", Timeout: 15);
             if (jsonPage.StatusCode == HttpStatusCode.OK)
             {
-                Rootobject myObject = JsonSerializer.Deserialize<Rootobject>(jsonPage.PageText);
-                List <Vulnerability> highVulns = myObject.vulnerabilities.Where(x => x.cve.metrics.cvssMetricV31 != null && x.cve.metrics.cvssMetricV31.Any(x => x.cvssData.baseScore >= 6f)).ToList();
+                // Use the generated context for deserialization
+                Rootobject myObject = JsonSerializer.Deserialize(jsonPage.PageText, NistJsonContext.Default.Rootobject);
+
+                List<Vulnerability> highVulns = myObject.vulnerabilities.Where(x =>
+                    (x.cve.metrics.cvssMetricV31 != null && x.cve.metrics.cvssMetricV31.Any(x => x.cvssData.baseScore >= 6f)) ||
+                    (x.cve.metrics.cvssMetricV40 != null && x.cve.metrics.cvssMetricV40.Any(x => x.cvssData.baseScore >= 6f))
+                ).ToList();
+
                 highVulns = highVulns.OrderByDescending(x => x.cve.id).ToList();
                 if (highVulns.Count > 0)
                 {
@@ -35,7 +42,6 @@ namespace Reecon
                         string description = cve.descriptions.Where(x => x.lang == "en").FirstOrDefault().value;
                         Console.WriteLine("- Desc: " + description.Trim());
 
-                        // Probably a cleaner way to do this, but hey
                         foreach (Reference reference in cve.references)
                         {
                             string tags = "";
@@ -56,8 +62,6 @@ namespace Reecon
                                 Console.WriteLine($"- Ref: {reference.url} - {reference.source}");
                             }
                         }
-
-                        // Leave an empty gap between each CVE
                         Console.WriteLine();
                     }
                 }
@@ -71,6 +75,32 @@ namespace Reecon
                 Console.WriteLine($"Error with: {URL}" + Environment.NewLine + "- Nist returned: " + jsonPage.StatusCode);
             }
         }
+    }
+
+    // Define the JSON context with source generation
+    [JsonSourceGenerationOptions(WriteIndented = true)] // Optional: Makes JSON output readable
+    [JsonSerializable(typeof(Rootobject))]
+    [JsonSerializable(typeof(Vulnerability))]
+    [JsonSerializable(typeof(Cve))]
+    [JsonSerializable(typeof(Metrics))]
+    [JsonSerializable(typeof(Cvssmetricv2))]
+    [JsonSerializable(typeof(Cvssdata))]
+    [JsonSerializable(typeof(Cvssmetricv31))]
+    [JsonSerializable(typeof(Cvssdata1))]
+    [JsonSerializable(typeof(Cvssmetricv30))]
+    [JsonSerializable(typeof(Cvssdata2))]
+    [JsonSerializable(typeof(Cvssmetricv40))]
+    [JsonSerializable(typeof(Cvssdata3))]
+    [JsonSerializable(typeof(Description))]
+    [JsonSerializable(typeof(Weakness))]
+    [JsonSerializable(typeof(Description1))]
+    [JsonSerializable(typeof(Configuration))]
+    [JsonSerializable(typeof(Node))]
+    [JsonSerializable(typeof(Cpematch))]
+    [JsonSerializable(typeof(Reference))]
+    public partial class NistJsonContext : JsonSerializerContext
+    {
+
     }
 
     public class Rootobject
@@ -110,6 +140,7 @@ namespace Reecon
         public Cvssmetricv2[] cvssMetricV2 { get; set; }
         public Cvssmetricv31[] cvssMetricV31 { get; set; }
         public Cvssmetricv30[] cvssMetricV30 { get; set; }
+        public Cvssmetricv40[] cvssMetricV40 { get; set; }
     }
 
     public class Cvssmetricv2
@@ -190,6 +221,53 @@ namespace Reecon
         public string baseSeverity { get; set; }
     }
 
+    public class Cvssmetricv40
+    {
+        public string source { get; set; }
+        public string type { get; set; }
+        public Cvssdata3 cvssData { get; set; }
+    }
+
+    public class Cvssdata3
+    {
+        public string version { get; set; }
+        public string vectorString { get; set; }
+        public float baseScore { get; set; }
+        public string baseSeverity { get; set; }
+        public string attackVector { get; set; }
+        public string attackComplexity { get; set; }
+        public string attackRequirements { get; set; }
+        public string privilegesRequired { get; set; }
+        public string userInteraction { get; set; }
+        public string vulnerableSystemConfidentiality { get; set; }
+        public string vulnerableSystemIntegrity { get; set; }
+        public string vulnerableSystemAvailability { get; set; }
+        public string subsequentSystemConfidentiality { get; set; }
+        public string subsequentSystemIntegrity { get; set; }
+        public string subsequentSystemAvailability { get; set; }
+        public string exploitMaturity { get; set; }
+        public string confidentialityRequirements { get; set; }
+        public string integrityRequirements { get; set; }
+        public string availabilityRequirements { get; set; }
+        public string modifiedAttackVector { get; set; }
+        public string modifiedAttackComplexity { get; set; }
+        public string modifiedAttackRequirements { get; set; }
+        public string modifiedPrivilegesRequired { get; set; }
+        public string modifiedUserInteraction { get; set; }
+        public string modifiedVulnerableSystemConfidentiality { get; set; }
+        public string modifiedVulnerableSystemIntegrity { get; set; }
+        public string modifiedVulnerableSystemAvailability { get; set; }
+        public string modifiedSubsequentSystemConfidentiality { get; set; }
+        public string modifiedSubsequentSystemIntegrity { get; set; }
+        public string modifiedSubsequentSystemAvailability { get; set; }
+        public string safety { get; set; }
+        public string automatable { get; set; }
+        public string recovery { get; set; }
+        public string valueDensity { get; set; }
+        public string vulnerabilityResponseEffort { get; set; }
+        public string providerUrgency { get; set; }
+    }
+
     public class Description
     {
         public string lang { get; set; }
@@ -216,6 +294,7 @@ namespace Reecon
 
     public class Node
     {
+        [JsonPropertyName("operator")]
         public string _operator { get; set; }
         public bool negate { get; set; }
         public Cpematch[] cpeMatch { get; set; }
@@ -237,5 +316,4 @@ namespace Reecon
         public string source { get; set; }
         public string[] tags { get; set; }
     }
-
 }

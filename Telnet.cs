@@ -6,7 +6,7 @@ namespace Reecon
 {
     class Telnet // Port 23
     {
-        public static (string Service, string PortInfo) GetInfo(string ip, int port)
+        public static (string PortName, string PortInfo) GetInfo(string ip, int port)
         {
             Console.OutputEncoding = Encoding.UTF8;
             int timeout = 5000; // ms

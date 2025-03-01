@@ -5,7 +5,7 @@ namespace Reecon
 {
     class DNS // Port 53
     {
-        public static (string, string) GetInfo(string ip, int port)
+        public static (string PortName, string PortData) GetInfo(string ip, int port)
         {
             // https://raymii.org/s/tutorials/Get_DNS_server_version_and_hide_it_in_BIND.html
             string dnsInfo = "";

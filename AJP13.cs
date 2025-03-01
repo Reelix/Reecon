@@ -4,7 +4,7 @@ namespace Reecon
 {
     class AJP13 // 8009 - Just AJP?
     {
-        public static (string, string) GetInfo(string target, int port)
+        public static (string PortName, string PortData) GetInfo(string target, int port)
         {
             // https://nvd.nist.gov/vuln/detail/cve-2020-1938
             // https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-1938

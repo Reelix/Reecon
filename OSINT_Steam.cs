@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Reecon
 {
@@ -48,7 +49,7 @@ namespace Reecon
             sessionValue = sessionValue.Substring(0, sessionValue.IndexOf("\""));
 
             pageText = Web.DownloadString($"https://steamcommunity.com/search/SearchCommunityAjax?text={name}&filter=users&sessionid={sessionValue}", Cookie: $"sessionid={sessionValue}").Text;
-            OSINT_Steam_Search searchResults = JsonSerializer.Deserialize<OSINT_Steam_Search>(pageText);
+            OSINT_Steam_Search searchResults = JsonSerializer.Deserialize(pageText, OSINT_Steam_JsonContext.Default.OSINT_Steam_Search);
             string htmlResult = searchResults.html;
             if (htmlResult.Contains("There are no users that match your search"))
             {
@@ -96,6 +97,12 @@ namespace Reecon
             }
             return toReturn.Trim(Environment.NewLine.ToCharArray());
         }
+    }
+
+    [JsonSerializable(typeof(OSINT_Steam_Search))]
+    public partial class OSINT_Steam_JsonContext : JsonSerializerContext
+    {
+
     }
 
     public class OSINT_Steam_Search

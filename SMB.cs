@@ -11,7 +11,7 @@ namespace Reecon
 {
     class SMB : SMB_Protocol //445
     {
-        public static (string, string) GetInfo(string target, int port)
+        public static (string PortName, string PortData) GetInfo(string target, int port)
         {
             // https://github.com/checkymander/Sharp-SMBExec/blob/master/SharpInvoke-SMBExec/Program.cs
             // https://github.com/checkymander/Sharp-SMBExec/blob/master/SharpInvoke-SMBExec/SMBExec.cs

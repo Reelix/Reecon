@@ -6,7 +6,7 @@ namespace Reecon
 {
     class SVN // 3690
     {
-        public static (string, string) GetInfo(string ip, int port)
+        public static (string PortName, string PortData) GetInfo(string ip, int port)
         {
             string toReturn = "";
             if (General.GetOS() == General.OS.Linux)

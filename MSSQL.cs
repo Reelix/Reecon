@@ -2,7 +2,7 @@
 {
     class MSSQL
     {
-        public static string GetInfo(string target, int port)
+        public static (string PortName, string PortData) GetInfo(string target, int port)
         {
             // TODO: Implement MSSQL handshake for server version
             // TODO: Implement MSSQL NTLM handshake for server version
@@ -46,7 +46,7 @@
             RECONFIGURE
             EXEC master..xp_cmdshell 'whoami' // Rerun at end
             */
-            return "";
+            return ("MSSQL", "");
         }
     }
 }

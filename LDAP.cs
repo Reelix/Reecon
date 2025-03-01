@@ -15,7 +15,7 @@ namespace Reecon
         // Linux requires: https://packages.ubuntu.com/focal-updates/amd64/libldap-2.4-2/download
         static string rootDseString = "";
 
-        public static (string, string) GetInfo(string ip, int port)
+        public static (string PortName, string PortData) GetInfo(string ip, int port)
         {
             string returnInfo = "";
             string checkCanRun = CanLDAPRun();

@@ -7,7 +7,7 @@ namespace Reecon
 {
     class PostgreSQL
     {
-        public static (string, string) GetInfo(string target, int port)
+        public static (string PortName, string PortData) GetInfo(string target, int port)
         {
             string toReturn = "";
             // Thanks Metasploit!

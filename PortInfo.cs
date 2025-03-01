@@ -16,6 +16,38 @@ namespace Reecon
 
     public class PortInfo
     {
+        // For later
+        // PortName? PortType?
+        // Alphabetical or commonality?
+        public enum PortName
+        {
+            FTP,
+            SSH,
+            Telnet,
+            SMTP,
+            DNS,
+            HTTP,
+            HTTPS,
+            POP3,
+            RPCBind,
+            NETBIOS,
+            IMAP,
+            LDAP,
+            SMB,
+            Rsync,
+            NFS,
+            Squid,
+            MySQL,
+            SVN,
+            PostgreSQL,
+            VNC,
+            WinRM,
+            Redis,
+            AJP13,
+            Elasticsearch,
+            Minecraft
+        }
+
         private static List<Port> PortInfoList = new();
 
         // Parse Ports.txt into useful information
@@ -78,16 +110,17 @@ namespace Reecon
             {
                 Port thePort = PortInfoList.First(x => x.Number == port);
                 string fileName = thePort.FileName;
+                (string PortName, string PortData) portInfo;
                 // No Custom File for it
                 if (fileName == "N/A")
                 {
                     string portHeader = $"Port {thePort.Number} - {thePort.FriendlyName}";
                     Console.WriteLine(portHeader.Recolor(Color.Green) + Environment.NewLine + $"- Reecon currently lacks {thePort.FriendlyName} support" + Environment.NewLine);
+                    portInfo.PortName = thePort.FriendlyName;
                 }
                 else
                 {
                     // This was previously done by reflection, but reflection freaks out with AoT / Trimming
-                    (string PortName, string PortData) portInfo;
                     try
                     {
                         switch (fileName)
@@ -121,6 +154,8 @@ namespace Reecon
                             default: portInfo = ("Unknown", $"- Error - Reecon has not yet implemented {fileName} - Bug Reelix!"); break;
                         }
                         // If it's Done, it's done elsewhere since things were running on non-standard ports
+                        // This will probably be shifted here later for neatness so it's not in each file
+                        // Eg: If file can't verify the port, it kicks it back out here to look for info elsewhere
                         if (portInfo.PortName != "Done")
                         {
                             Console.WriteLine($"Port {thePort.Number} - {portInfo.PortName}".Recolor(Color.Green) + Environment.NewLine + portInfo.PortData + Environment.NewLine);
@@ -129,13 +164,14 @@ namespace Reecon
                     catch (Exception ex)
                     {
                         Console.WriteLine($"Fatal Error retreiving Info for port {port} - {ex.Message} - Bug Reelix ASAP!".Recolor(Color.Red));
+                        portInfo.PortName = "ERROR";
                     }
                 }
 
                 // Regular scanning done - Now for the additional info
                 try
                 {
-                    string additionalPortInfo = GetAdditionalPortInfo(target, port);
+                    string additionalPortInfo = GetAdditionalPortInfo(target, portInfo.PortName, port);
                     toReturn += additionalPortInfo;
                 }
                 catch (Exception ex)
@@ -471,21 +507,28 @@ namespace Reecon
         }
 
         // For the "Some things you probably want to do" list
-        public static string GetAdditionalPortInfo(string target, int port)
+        public static string GetAdditionalPortInfo(string target, string portName, int port)
         {
+            // This currently relies too much on specific ports
+            // Need to change it to service name later...
             string postScanActions = "";
             // Additional port info
-            if (port == 23)
+            if (portName == "ERROR")
+            {
+                postScanActions += "- Bug Reelix, and investigate this yourself :/" + Environment.NewLine;
+            }
+            else if (portName == "Telnet")
             {
                 postScanActions += "- Telnet: Just telnet in - Bug Reelix to update this though..." + Environment.NewLine;
             }
+            // Need to convert the rest of these from numbers to names at some point...
             else if (port == 53)
             {
                 // TODO: https://svn.nmap.org/nmap/scripts/dns-nsid.nse
                 postScanActions += $"- Try a reverse lookup (Linux): dig @{target} -x {target}" + Environment.NewLine;
                 postScanActions += $"- Try a zone transfer (Linux): dig axfr domain.com @{target}" + Environment.NewLine;
             }
-            else if (port == 80)
+            else if (portName == "HTTP")
             {
                 postScanActions += $"- gobuster dir -u http://{target}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-http-medium.txt -x.php,.txt" + Environment.NewLine;
                 postScanActions += $"- gobuster dir -u http://{target}/ -w ~/wordlists/common.txt -t 25 -o gobuster-http-common.txt -x.php,.txt" + Environment.NewLine;

@@ -4,7 +4,7 @@ namespace Reecon
 {
     class HTTP //80 / 8080 / 8000 (Also used for 443, HTTPS)
     {
-        public static (string, string) GetInfo(string target, int port)
+        public static (string PortName, string PortData) GetInfo(string target, int port)
         {
             string result = GetInfoMain(target, port, false);
             if (result.Contains("Page Text: Client sent an HTTP request to an HTTPS server."))

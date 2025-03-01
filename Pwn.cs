@@ -357,10 +357,12 @@ namespace Reecon
             byte[] headerBytes = new byte[5];
             using (FileStream fileStream = new(filePath, FileMode.Open, FileAccess.Read))
             {
-                fileStream.Read(headerBytes, 0, 5);
+                fileStream.ReadExactly(headerBytes);
             }
+
+            // https://en.wikipedia.org/wiki/List_of_file_signatures
             // ELF
-            if (headerBytes[0] == 0x7F && headerBytes[1] == 0x45 && headerBytes[2] == 0x4C && headerBytes[3] == 0x46)
+            if (headerBytes.Length >= 4 && headerBytes.Take(4).SequenceEqual(new byte[] { 0x7F, 0x45, 0x4C, 0x46 } ))
             {
                 if (headerBytes[4] == 0x01)
                 {
@@ -377,13 +379,14 @@ namespace Reecon
                 }
             }
             // MZ
-            else if (headerBytes[0] == 0x4D && headerBytes[1] == 0x5A)
+            else if (headerBytes.Length >= 2 && headerBytes.Take(2).SequenceEqual(new byte[] { 0x4D, 0x5A }))
             {
                 return Architecture.Windows;
             }
+            // No idea
             else
             {
-                if (BitConverter.ToString(headerBytes) == "66-72-6F-6D-20") // f r o m {space}
+                if (headerBytes.Length >= 5 && headerBytes.Take(5).SequenceEqual(new byte[] { 0x66, 0x72, 0x6F, 0x6D, 0x20 }))
                 {
                     Console.WriteLine("Error - Cannot find Architecture - That's probably a Python file...");
                 }
