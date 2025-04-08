@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -17,7 +17,7 @@
 		<!-- To access PostgreSQL servers -->
 	  <PackageReference Include="Npgsql" Version="9.0.3" />
 		<!-- LDAP -->
-	  <PackageReference Include="System.DirectoryServices.Protocols" Version="9.0.2" />
+	  <PackageReference Include="System.DirectoryServices.Protocols" Version="9.0.4" />
 		<!-- A list of ports and their descriptions -->
 		<EmbeddedResource Include="Ports.txt" />
   </ItemGroup>
