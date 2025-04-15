@@ -56,7 +56,7 @@ namespace Reecon
                         returnText += Environment.NewLine + "- " + os;
                         string osBits = redisLines.First(x => x.StartsWith("arch_bits:"));
                         returnText += Environment.NewLine + "- " + osBits;
-                        string exeLocation = redisLines.FirstOrDefault(x => x.StartsWith("executable:"));
+                        string exeLocation = redisLines.First(x => x.StartsWith("executable:"));
                         if (exeLocation != null)
                         {
                             returnText += Environment.NewLine + "- " + exeLocation;

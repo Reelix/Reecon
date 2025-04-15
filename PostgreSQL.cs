@@ -64,9 +64,9 @@ namespace Reecon
                             da.Fill(ds);
                             foreach (DataRow r in ds.Tables[0].Rows)
                             {
-                                string dbUser = r["usename"].ToString();
-                                string dbPass = r["passwd"].ToString();
-                                bool superUser = bool.Parse(r["usesuper"].ToString());
+                                string dbUser = r["usename"].ToString() ?? "";
+                                string dbPass = r["passwd"].ToString() ?? "";
+                                bool superUser = bool.Parse(r["usesuper"].ToString() ?? "false");
                                 toReturn += "- pg_shadow User: " + dbUser + " - " + dbPass + " - Super User: " + superUser + Environment.NewLine;
                             }
                             toReturn += "-- If a pg_shadow user password is cracked, you can get a shell with: use exploit/multi/postgres/postgres_copy_from_program_cmd_exec";

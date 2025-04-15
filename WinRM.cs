@@ -5,10 +5,11 @@ using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Text;
+using static Reecon.Web;
 
 namespace Reecon
 {
-    class WinRM
+    class WinRM // 5985 / 5986
     {
         public static (string PortName, string PortData) GetInfo(string ip, int port)
         {
@@ -17,63 +18,73 @@ namespace Reecon
 
             string returnInfo = "";
 
-            // Yes = I know it's obsolete - Need to fix this some day...
-            WebClient wc = new();
-            wc.Headers.Add("Content-Type", "application/soap+xml;charset=UTF-8");
-            // Fix for invalid SSL Certs
-            ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(
-                delegate { return true; }
-            );
-            // Test: CSL Potato (CyberSecLabs no longer seems to exist, so...)
+            // Needs more testing
+            WebHeaderCollection requestHeaders = new WebHeaderCollection();
+            requestHeaders.Add("Content-Type", "application/soap+xml;charset=UTF-8");
+
+            // To Test: CSL Potato (CyberSecLabs no longer seems to exist, so...)
             Byte[] byteData = Encoding.ASCII.GetBytes("dsadsasa");
+
+            UploadDataResult result;
             try
             {
                 if (port == 5986)
                 {
-                    wc.UploadData("https://" + ip + ":" + port + "/wsman", byteData);
+                    result = Web.UploadData($"https://{ip}:{port}/wsman", byteData);
                 }
                 else
                 {
-                    wc.UploadData("http://" + ip + ":" + port + "/wsman", byteData);
+                    result = Web.UploadData($"http://{ip}:{port}/wsman", byteData);
                 }
-                returnInfo = "- wsman upload returned no error - Bug Reelix";
-            }
-            catch (WebException wex)
-            {
-                if (((HttpWebResponse)wex.Response).StatusCode == HttpStatusCode.Unauthorized)
+
+                // Parse the result
+                if (result.StatusCode == HttpStatusCode.Unauthorized)
                 {
-                    foreach (string item in wex.Response.Headers)
+                    // Remove some non-important ones
+                    result.ResponseHeaders.Remove("Date");
+                    result.ResponseHeaders.Remove("Connection");
+
+                    // Parse the existing ones
+                    if (result.ResponseHeaders.Server.Count != 0)
                     {
-                        string headerName = item;
-                        string headerValue = wex.Response.Headers[headerName];
-                        if (headerName == "Server")
+                        string headerValue = string.Join(", ", result.ResponseHeaders.Server);
+                        returnInfo += "- Server: " + headerValue + Environment.NewLine;
+
+                        // Should this even be in WinRM... ?
+                        // https://www.broadcom.com/support/security-center/attacksignatures/detail?asid=34561
+                        // Aiohttp versions from and including 1.0.5 and before 3.9.2
+                        // Eg: curl --path-as-is host.com/data/../../../../../../../../../../../etc/passwd
+                        // - Server: Python/3.9 aiohttp/3.9.1
+                        if (headerValue != "Microsoft-HTTPAPI/2.0")
                         {
-                            returnInfo += "- Server: " + headerValue + Environment.NewLine;
-                            // https://www.broadcom.com/support/security-center/attacksignatures/detail?asid=34561
-                            // Aiohttp versions from and including 1.0.5 and before 3.9.2
-                            // Eg: curl --path-as-is host.com/data/../../../../../../../../../../../etc/passwd
-                            // - Server: Python/3.9 aiohttp/3.9.1
                             returnInfo += "-- WinRM.cs Webclient Path - Bug Reelix!!!" + Environment.NewLine;
                         }
-                        else if (headerName == "WWW-Authenticate")
-                        {
-                            returnInfo += "- Authentication Methods: " + headerValue + Environment.NewLine;
-                            returnInfo += "-- WinRM.cs Webclient Path - Bug Reelix!!!" + Environment.NewLine;
-                        }
+                        result.ResponseHeaders.Remove("Server");
                     }
-                    if (returnInfo == "")
+                    if (result.ResponseHeaders.WwwAuthenticate.Count != 0)
                     {
-                        returnInfo = "- wsman found, but headers are weird - Bug Reelix";
+                        string headerValue = string.Join(", ", result.ResponseHeaders.WwwAuthenticate);
+                        returnInfo += "- Authentication Methods: " + headerValue + Environment.NewLine;
+                        result.ResponseHeaders.Remove("WWW-Authenticate");
+                    }
+
+                    if (result.ResponseHeaders.Any())
+                    {
+                        foreach (var item in result.ResponseHeaders)
+                        {
+                            Console.WriteLine(item.Key + " -> " + string.Join(", ", item.Value));
+                        }
+                        returnInfo += "- Weird WinRM Response Headers!";
                     }
                 }
-                else if (((HttpWebResponse)wex.Response).StatusCode == HttpStatusCode.NotFound)
+                else if (result.StatusCode == HttpStatusCode.NotFound)
                 {
                     bool isProbablyWinRM = false;
                     bool containsAuthentication = false;
-                    foreach (string item in wex.Response.Headers)
+                    foreach (var responseHeader in result.ResponseHeaders)
                     {
-                        string headerName = item;
-                        string headerValue = wex.Response.Headers[headerName];
+                        string headerName = responseHeader.Key;
+                        string headerValue = string.Join(',', responseHeader.Value);
                         if (headerName == "Server")
                         {
                             returnInfo += "- Server: " + headerValue + Environment.NewLine;
@@ -98,13 +109,24 @@ namespace Reecon
                         returnInfo += "- No wsman found - Probably not WinRM";
                     }
                 }
-                else if (((HttpWebResponse)wex.Response).StatusCode == HttpStatusCode.ServiceUnavailable)
+                else if (result.StatusCode == HttpStatusCode.ServiceUnavailable)
                 {
                     returnInfo += "- Service Unavailable (It's broken)";
                 }
                 else
                 {
-                    returnInfo += "- Unknown response: " + ((HttpWebResponse)wex.Response).StatusCode + " - Bug Reelix";
+                    returnInfo += $"- Unknown response: {result.StatusCode} - Bug Reelix!";
+                }
+            }
+            catch (Exception ex)
+            {
+                if (ex.Message.StartsWith("No connection could be made because the target machine actively refused it."))
+                {
+                    returnInfo += "- No connection could be made because the target machine actively refused it - The Port is probably Closed.";
+                }
+                else
+                {
+                    returnInfo += $"- Fatal Response in WinRM.cs: {ex.Message} - Bug Reelix!";
                 }
             }
 
@@ -165,7 +187,7 @@ namespace Reecon
                 foreach (string pass in passList)
                 {
                     Console.Write("Testing " + user + ":" + pass + " - ");
-                    List<string> processResult = General.GetProcessOutput("powershell", "$creds = New-Object System.Management.Automation.PSCredential -ArgumentList ('" + user + "', (ConvertTo-SecureString \"" + pass + "\" -AsPlainText -Force)); Test-WSMan -ComputerName " + ip + " -Credential $creds -Authentication Negotiate -erroraction SilentlyContinue");
+                    List<string> processResult = General.GetProcessOutput("powershell", $"$creds = New-Object System.Management.Automation.PSCredential -ArgumentList ('{user}', (ConvertTo-SecureString \"{pass}\" -AsPlainText -Force)); Test-WSMan -ComputerName {ip} -Credential $creds -Authentication Negotiate -erroraction SilentlyContinue");
                     if (processResult.Count != 0)
                     {
                         Console.ForegroundColor = ConsoleColor.Green;
@@ -187,10 +209,10 @@ namespace Reecon
         private static void WinRMBrute_Linux(string ip, string userFile, string passFile)
         {
             // This is currently just a nxc wrapper until I figure out a better way to do it.
-            if (General.IsInstalledOnLinux("nxc", ""))
+            if (General.IsInstalledOnLinux("nxc"))
             {
                 Console.WriteLine("Starting - Please wait...");
-                General.RunProcessWithOutput("nxc", "winrm " + ip + " -u " + userFile + " -p " + passFile);
+                General.RunProcessWithOutput("nxc", $"winrm {ip} -u {userFile} -p {passFile}");
             }
             else
             {

@@ -49,7 +49,11 @@ namespace Reecon
             sessionValue = sessionValue.Substring(0, sessionValue.IndexOf("\""));
 
             pageText = Web.DownloadString($"https://steamcommunity.com/search/SearchCommunityAjax?text={name}&filter=users&sessionid={sessionValue}", Cookie: $"sessionid={sessionValue}").Text;
-            OSINT_Steam_Search searchResults = JsonSerializer.Deserialize(pageText, OSINT_Steam_JsonContext.Default.OSINT_Steam_Search);
+            OSINT_Steam_Search? searchResults = JsonSerializer.Deserialize(pageText, OSINT_Steam_JsonContext.Default.OSINT_Steam_Search);
+            if (searchResults == null)
+            {
+                return "";
+            }
             string htmlResult = searchResults.html;
             if (htmlResult.Contains("There are no users that match your search"))
             {
@@ -105,6 +109,7 @@ namespace Reecon
 
     }
 
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
     public class OSINT_Steam_Search
     {
         public int success { get; set; }
@@ -114,6 +119,7 @@ namespace Reecon
         public int search_page { get; set; }
         public string html { get; set; }
     }
-        
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+
 
 }

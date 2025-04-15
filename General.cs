@@ -21,7 +21,7 @@ namespace Reecon
     {
         public static void ShowHelp()
         {
-            string reeconFileName = typeof(Program).Assembly.GetName().Name;
+            string reeconFileName = typeof(Program).Assembly.GetName().Name ?? "Filename Error in General.cs - Bug Reelix";
             Console.WriteLine("Usage");
             Console.WriteLine("-----");
             Console.WriteLine($"Basic Scan:\t{reeconFileName} IPHere (Optional: -noping to skip the online check)");
@@ -396,15 +396,15 @@ namespace Reecon
         public static List<string> GetProcessOutput(string processName, string arguments)
         {
             // Console.WriteLine("Running Process " + processName + " with args: " + arguments);
-            List<string> outputLines = new();
+            List<string> outputLines = new List<string>();
             Process p = new();
             p.StartInfo.UseShellExecute = false;
             p.StartInfo.RedirectStandardOutput = true;
             p.StartInfo.RedirectStandardError = true;
             p.StartInfo.FileName = processName;
             p.StartInfo.Arguments = arguments;
-            p.OutputDataReceived += (sender, e) => outputLines.Add(e.Data);
-            p.ErrorDataReceived += (sender, e) => outputLines.Add(e.Data);
+            p.OutputDataReceived += (sender, e) => outputLines.Add(e.Data ?? "");
+            p.ErrorDataReceived += (sender, e) => outputLines.Add(e.Data ?? "");
             p.Start();
             p.BeginOutputReadLine();
             p.BeginErrorReadLine();
@@ -449,18 +449,18 @@ namespace Reecon
 
         public static bool IsInstalledOnLinux(string app, string path = "")
         {
-            if (GetOS() != OS.Linux)
+            if (General.GetOS() != OS.Linux)
             {
                 throw new Exception("Error: General.IsInstallOnLinux called on a non-Linux environment - Bug Reelix!");
             }
-            // Console.WriteLine("Looking for: " + app);
+
             // Effectively replicating "which"
-            string pathValue = Environment.GetEnvironmentVariable("PATH");
+            string pathValue = Environment.GetEnvironmentVariable("PATH") ?? "";
             // Console.WriteLine("Linux PATH: " + pathValue);
             List<string> linuxPaths = pathValue.Split(":").ToList();
             foreach (string pathDirectory in linuxPaths)
             {
-                string directory = pathDirectory.EndsWith("/") ? pathDirectory : pathDirectory + "/";
+                string directory = pathDirectory.EndsWith('/') ? pathDirectory : pathDirectory + "/";
                 if (Directory.Exists(directory))
                 {
                     List<string> files = Directory.GetFiles(directory).ToList();
@@ -474,7 +474,7 @@ namespace Reecon
                     }
                     else
                     {
-                        if (files.Exists(x => x.Remove(0, x.LastIndexOf("/") + 1) == app))
+                        if (files.Exists(x => x.Remove(0, x.LastIndexOf('/') + 1) == app))
                         {
                             return true;
                         }
@@ -509,8 +509,8 @@ namespace Reecon
 
         public class IP
         {
-            public string Name;
-            public IPAddress Address;
+            public required string Name;
+            public required IPAddress Address;
         }
 
         public static List<IP> GetIPList()
@@ -525,7 +525,7 @@ namespace Reecon
                 {
                     if (ip.Address.AddressFamily == AddressFamily.InterNetwork)
                     {
-                        IP returnIP = new()
+                        IP returnIP = new IP
                         {
                             Name = ni.Name,
                             Address = ip.Address
@@ -547,17 +547,16 @@ namespace Reecon
         }
 
         // Maybe move these to Web or another class?
-        public static HttpStatusCode GetResponseCode(string url, string cookie = null)
+        public static HttpStatusCode GetResponseCode(string url, string? cookie = null)
         {
             // These 2 lines fix:
             // System.Net.Http.HttpRequestException: The SSL connection could not be established
-            HttpClientHandler clientHandler = new HttpClientHandler()
+            HttpClientHandler clientHandler = new HttpClientHandler
             {
-                UseCookies = false // Needed for a custom Cookie header
+                UseCookies = false, // Needed for a custom Cookie header
+                ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => { return true; }
             };
 
-            clientHandler.ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => { return true; };
-            
             HttpClient httpClient = new HttpClient(clientHandler);
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, url);
             if (cookie != null)
@@ -565,14 +564,14 @@ namespace Reecon
                 // Console.WriteLine("Setting cookie to " + cookie + " on the ResponseCode check");
                 request.Headers.Add("Cookie", cookie);
             }
-            HttpResponseMessage response = new HttpResponseMessage();
+            HttpResponseMessage response = new();
             try
             {
                 response = httpClient.Send(request);
             }
             catch (HttpRequestException hre)
             {
-                if (hre.InnerException.Message == "No such host is known.")
+                if (hre.InnerException?.Message == "No such host is known.")
                 {
                     Console.WriteLine("Error: " + hre.InnerException.Message);
                     Console.WriteLine($"You might have messed up the URL: {url}");
@@ -580,7 +579,7 @@ namespace Reecon
                 }
                 else
                 {
-                    Console.WriteLine("Fatal Error in General.GetResponseCode (Bug Reelix): " + hre.InnerException.Message);
+                    Console.WriteLine("Fatal Error in General.GetResponseCode (Bug Reelix): " + hre.InnerException?.Message);
                 }
             }
             return response.StatusCode;
@@ -591,7 +590,7 @@ namespace Reecon
         public static void DownloadFile(string uri, string outputPath)
         {
             HttpClient client = new HttpClient();
-            HttpRequestMessage message = new HttpRequestMessage(HttpMethod.Get, uri);
+            HttpRequestMessage message = new(HttpMethod.Get, uri);
             HttpResponseMessage response = client.Send(message);
             if (response.StatusCode == HttpStatusCode.OK)
             {
@@ -626,10 +625,15 @@ namespace Reecon
             // For using one of the 256 colors on the foreground (text color), the control sequence is “<Esc>[38;5;ColorNumberm” where ColorNumber is one of the following colors:
             string toReturn = "";
             string backToWhite = "\u001b[97m";
+            string Yellow = "\u001b[38;5;228m"; // 226/227 are too bright - Either 228/229 - Not sure...
             string Green = "\u001b[38;5;46m";
             string Orange = "\u001b[38;5;214m";
             string Red = "\u001b[38;5;9m";
-            if (color == Color.Green)
+            if (color == Color.Yellow)
+            {
+                toReturn = $"{Yellow}{input}{backToWhite}";
+            }
+            else if (color == Color.Green)
             {
                 // Console.WriteLine("Setting Green");
                 toReturn = $"{Green}{input}{backToWhite}";

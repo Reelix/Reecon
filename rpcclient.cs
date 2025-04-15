@@ -54,9 +54,9 @@ namespace Reecon
 
         public class LookupName
         {
-            public string Name;
-            public string SID;
-            public string Type;
+            public string Name = "";
+            public string SID = "";
+            public string Type = "";
         }
 
         public static List<LookupName> LookupNames(string ip, string namesList, bool signing)
@@ -65,10 +65,12 @@ namespace Reecon
             List<string> proccessOutput = GetLookupnamesOutput(ip, namesList, signing);
             foreach (string item in proccessOutput)
             {
-                LookupName lookupName = new LookupName();
-                lookupName.Name = item.Split(' ')[0];
-                lookupName.SID = item.Split(' ')[1];
-                lookupName.Type = item.Split(' ')[2];
+                LookupName lookupName = new LookupName
+                {
+                    Name = item.Split(' ')[0],
+                    SID = item.Split(' ')[1],
+                    Type = item.Split(' ')[2]
+                };
                 lookupList.Add(lookupName);
             }
             return lookupList;
@@ -92,9 +94,9 @@ namespace Reecon
 
         public class LookupSid
         {
-            public string SID;
-            public string Name;
-            public string Type;
+            public required string SID;
+            public required string Name;
+            public required string Type;
         }
 
         public static List<LookupSid> LookupSids(string ip, List<string> sidList, bool signing)
@@ -104,11 +106,16 @@ namespace Reecon
             foreach (string item in proccessOutput)
             {
                 // S-1-22-1-1000 Unix User\fox (1)
-                LookupSid lookupSid = new LookupSid();
-                lookupSid.SID = item.Split(' ')[0];
+                string SID = item.Split(' ')[0];
                 string name = item.Split(' ')[2];
-                lookupSid.Name = name.Remove(0, name.LastIndexOf("\\") + 1);
-                lookupSid.Type = item.Split(' ')[3].Replace("(", "").Replace(")", "");
+                name = name.Remove(0, name.LastIndexOf("\\") + 1);
+                string type = item.Split(' ')[3].Replace("(", "").Replace(")", "");
+                LookupSid lookupSid = new LookupSid
+                {
+                    SID = SID,
+                    Name = name,
+                    Type = type
+                };
                 lookupList.Add(lookupSid);
             }
             return lookupList;

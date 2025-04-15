@@ -95,17 +95,17 @@ namespace Reecon
 
     public class OSINT_Reddit_Comment
     {
-        public string Body;
+        public string Body = "";
         public DateTime Created_UTC;
-        public string Permalink;
+        public string Permalink = "";
     }
 
     public class OSINT_Reddit_Submission
     {
-        public string Subreddit;
-        public string Title;
-        public string Selftext;
-        public string URL;
-        public DateTime Created_UTC;
+        public string Subreddit = "";
+        public string Title = "";
+        public string Selftext = "";
+        public string URL = "";
+        public DateTime Created_UTC = new DateTime();
     }
 }

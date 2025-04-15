@@ -28,7 +28,7 @@ namespace Reecon
                         returnText += "- Windows Newline Characters Detected" + Environment.NewLine;
                         newlineChars = "\r\n";
                     }
-                    else if (bannerText.EndsWith("\n"))
+                    else if (bannerText.EndsWith('\n'))
                     {
                         returnText += "- Linux Newline Characters Detected" + Environment.NewLine;
                         newlineChars = "\n";
@@ -41,7 +41,7 @@ namespace Reecon
                     bytes = popSocket.Receive(buffer, buffer.Length, 0);
                     string responseText = Encoding.ASCII.GetString(buffer, 0, bytes);
                     List<string> capabilities = responseText.Split(newlineChars.ToCharArray()).ToList();
-                    if (capabilities.Any() && capabilities[0].StartsWith("+OK CAPA"))
+                    if (capabilities.Count != 0 && capabilities[0].StartsWith("+OK CAPA"))
                     {
                         // Remove the +OK CAPA
                         capabilities.RemoveAt(0);

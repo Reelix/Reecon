@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Threading;
 
@@ -14,10 +15,14 @@ namespace Reecon
 
         public static void Main(string[] args)
         {
+            // For timing
             DateTime startDate = DateTime.Now;
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Reecon - Version 0.35 ( https://github.com/Reelix/Reecon )");
+
+            // Stands out a bit more
             Console.ForegroundColor = ConsoleColor.White;
+
+            // And begin!
+            Console.WriteLine("Reecon - Version 0.36 ( https://github.com/Reelix/Reecon )".Recolor(Color.Yellow));
             if (args.Length == 0)
             {
                 General.ShowHelp();
@@ -40,8 +45,8 @@ namespace Reecon
             }
             else if (args.Contains("-ldap") || args.Contains("--ldap"))
             {
-                string reeconFileName = typeof(Program).Assembly.GetName().Name;
-                if (args.Count() != 5)
+                string reeconFileName = typeof(Program).Assembly.GetName().Name ?? "Filename Error in Program.cs - Bug Reelix";
+                if (args.Length != 5)
                 {
                     Console.WriteLine($"LDAP Auth Enum:\t{reeconFileName} -ldap IP port validUsername validPassword");
                 }
@@ -102,13 +107,15 @@ namespace Reecon
                 Console.ResetColor();
                 return;
             }
+            /*
             else if (args.Contains("-smb-eternalblue"))
             {
                 string ip = args[1];
                 Console.WriteLine($"Checking {ip}...");
-                SMB_MS17_010.IsVulnerable(ip, true);
+                //SMB_MS17_010.IsVulnerable(ip, true);
                 Console.WriteLine("Check Complete");
             }
+            */
             else if (args.Contains("-winrm-brute"))
             {
                 WinRM.WinRMBrute(args);
@@ -152,7 +159,7 @@ namespace Reecon
                 string fileName = args[0];
                 var (Target, Ports) = Nmap.ParseFile(fileName);
                 target = Target;
-                if (!Ports.Any())
+                if (Ports.Count == 0)
                 {
                     Console.WriteLine("Error: Empty file - Bug Reelix!");
                 }

@@ -56,7 +56,7 @@ namespace Reecon
         private static void View(string exploitId)
         {
             List<DatabaseItem> database = Database.Parse(dbPath);
-            DatabaseItem theItem = database.FirstOrDefault(x => x.ID == exploitId);
+            DatabaseItem? theItem = database.First(x => x.ID == exploitId) ?? null;
             if (theItem != null)
             {
                 Console.WriteLine("Exploit " + theItem.ID + ": " + theItem.Title);
@@ -113,7 +113,7 @@ namespace Reecon
                 foreach (string item in dbItems)
                 {
                     string[] itemData = item.Split(',');
-                    DatabaseItem dbItem = new()
+                    DatabaseItem dbItem = new DatabaseItem
                     {
                         ID = itemData[0],
                         Path = itemData[1],
@@ -132,13 +132,13 @@ namespace Reecon
 
         private class DatabaseItem
         {
-            public string ID;
-            public string Path;
-            public string Title;
-            public string ReleaseDate;
-            public string Author;
-            public string Type;
-            public string Platform;
+            public string ID = "";
+            public string Path = "";
+            public string Title = "";
+            public string ReleaseDate = "";
+            public string Author = "";
+            public string Type = "";
+            public string Platform = "";
         }
     }
 }

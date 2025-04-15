@@ -13,18 +13,28 @@ namespace Reecon
         {
             string toReturn = "";
             // Get basic info
-            (uint capabilitiesLower, byte protocol, string version) serverInfo = GetServerInfo(target, port);
-            toReturn += $"- Version: {serverInfo.version}" + Environment.NewLine;
-            toReturn += $"- Protocol: {serverInfo.protocol}" + Environment.NewLine;
+            (uint CapabilitiesLower, byte Protocol, string Version) serverInfo = GetServerInfo(target, port);
+            if (serverInfo.Protocol == 0xFF)
+            {
+                // An Error
+                int errorCode = int.Parse(serverInfo.Version.Split('|')[0]); // 1130 = // ER_HOST_NOT_PRIVILEGED
+                string errorMessage = serverInfo.Version.Split('|')[1];
+                toReturn += $"- Error - Cannot Connect: {errorMessage} (Error Code: {errorCode})";
+                return ("MySQL", toReturn);
+            }
+
+            // No errors - Carry on!
+            toReturn += $"- Version: {serverInfo.Version}" + Environment.NewLine;
+            toReturn += $"- Protocol: {serverInfo.Protocol}" + Environment.NewLine;
             // toReturn += $"- Capabilities flags: {serverInfo.capabilitiesLower}" + Environment.NewLine;
-            List<string> capabilities = ParseCapabilities(serverInfo.capabilitiesLower);
+            List<string> capabilities = ParseCapabilities(serverInfo.CapabilitiesLower);
             if (capabilities.Count > 0)
             {
                 toReturn += "- Capabilities: " + string.Join(", ", capabilities) + Environment.NewLine;
             }
 
             // https://github.com/danielmiessler/SecLists/blob/master/Passwords/Default-Credentials/mysql-betterdefaultpasslist.txt
-            List<(string username, string password)> credentials = new List<(string user, string password)>
+            List<(string Username, string Password)> credentials = new List<(string, string)>
             {
                 ("root", "mysql"),
                 ("root", "root"),
@@ -53,68 +63,69 @@ namespace Reecon
                 ("root", "123qweASD#"),
             };
             
-            foreach ((string username, string password) cred in credentials)
+            foreach ((string Username, string Password) cred in credentials)
             {
-                (bool result, string info) tested = TestCreds(target, port, cred.username, cred.password, serverInfo.capabilitiesLower);
-                if (tested.result == true)
+                try
                 {
-                    toReturn += tested.info;
-                    break;
+                    using (TcpClient client = new TcpClient(target, port) { ReceiveTimeout = 5000 })
+                    {
+                        using (NetworkStream stream = client.GetStream())
+                        {
+                            byte[] buffer = new byte[2048];
+                            int bytesRead = stream.Read(buffer, 0, buffer.Length);
+                            (bool IsAuthenticated, string Response) result = Authenticate(stream, buffer, bytesRead, cred.Username, cred.Password, serverInfo.CapabilitiesLower);
+                            if (result.IsAuthenticated == false)
+                            {
+                                if (result.Response == "")
+                                {
+                                    // Incorrect password, but no errors - Carry on
+                                    continue;
+                                }
+                                else
+                                {
+                                    // Something bad happened - Abort!
+                                    string errorCode = result.Response.Split('|')[0];
+                                    string errorMessage = result.Response.Split('|')[1];
+
+                                    toReturn += $"- Error {errorCode}: {errorMessage}";
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                toReturn += $"- Discovered Creds: {cred.Username} / {cred.Password}" + Environment.NewLine;
+                                // Console.WriteLine("Authentication successful!");
+                                // Send SELECT VERSION() query and display result
+                                SendQuery(stream, "SELECT User, authentication_string from mysql.user;");
+                                string QueryResponse = ReadQueryResponse(stream);
+                                if (QueryResponse.StartsWith("- Row"))
+                                {
+                                    toReturn += QueryResponse;
+                                    break;
+                                }
+                                else
+                                {
+                                    toReturn += "- User cannot read mysql.user";
+                                    break;
+                                }
+                                // Console.WriteLine($"Server version from query: {versionResult}");
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error: {ex.Message}");
+                    if (ex is IOException ioEx && ioEx.InnerException is SocketException sockEx)
+                    {
+                        Console.WriteLine($"Socket Error Code: {sockEx.ErrorCode}");
+                    }
                 }
             }
             return ("MySQL", toReturn);
         }
 
-        static (bool result, string info) TestCreds(string server, int port, string username, string password, uint capabilitiesLower)
-        {
-            string returnInfo = "";
-            // Console.WriteLine($"\nTesting credentials: User={user}, Password={password}");
-            try
-            {
-                using (TcpClient client = new TcpClient(server, port) { ReceiveTimeout = 5000 })
-                {
-                    using (NetworkStream stream = client.GetStream())
-                    {
-                        byte[] buffer = new byte[2048];
-                        int bytesRead = stream.Read(buffer, 0, buffer.Length);
-                        if (Authenticate(stream, buffer, bytesRead, username, password, capabilitiesLower))
-                        {
-                            returnInfo += $"- Discovered Creds: {username} / {password}" + Environment.NewLine;
-                            // Console.WriteLine("Authentication successful!");
-                            // Send SELECT VERSION() query and display result
-                            SendQuery(stream, "SELECT User, authentication_string from mysql.user;");
-                            string QueryResponse = ReadQueryResponse(stream);
-                            if (QueryResponse.StartsWith("- Row"))
-                            {
-                                returnInfo += QueryResponse;
-                                return (true, returnInfo);
-                            }
-                            else
-                            {
-                                returnInfo += "- User cannot read mysql.user";
-                                return (true, returnInfo);
-                            }
-                            // Console.WriteLine($"Server version from query: {versionResult}");
-                        }
-                        else
-                        {
-                            return (false, "");
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error: {ex.Message}");
-                if (ex is IOException ioEx && ioEx.InnerException is SocketException sockEx)
-                {
-                    Console.WriteLine($"Socket Error Code: {sockEx.ErrorCode}");
-                }
-            }
-            return (false, "Error");
-        }
-
-        static (uint capabilitiesLower, byte protocol, string version) GetServerInfo(string host, int port)
+        static (uint CapabilitiesLower, byte Protocol, string Version) GetServerInfo(string host, int port)
         {
             using (TcpClient client = new TcpClient(host, port))
             using (NetworkStream stream = client.GetStream())
@@ -125,6 +136,24 @@ namespace Reecon
                 {
                     ms.Seek(4, SeekOrigin.Begin);
                     byte protocol = (byte)ms.ReadByte(); // Capture protocol version
+                    if (protocol == 0xFF) // Error
+                    {
+                        if (bytesRead >= 7) // Enough for error code
+                        {
+                            int errorCode = (byte)ms.ReadByte() | ((byte)ms.ReadByte() << 8); // Little-endian
+                            if (errorCode == 1130) // ER_HOST_NOT_PRIVILEGED
+                            {
+                                string errorMessage = System.Text.Encoding.UTF8.GetString(buffer, 7, bytesRead - 7);
+                                return (0, protocol, errorCode + "|" + errorMessage);
+                            }
+                            Console.WriteLine($"Server returned unknown error code: {errorCode}");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Error packet too short to parse.");
+                        }
+                        return (0, protocol, "-1|Unknown");
+                    }
 
                     StringBuilder version = new StringBuilder();
                     int b;
@@ -147,7 +176,7 @@ namespace Reecon
         }
 
         // https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_connection_phase_packets_protocol_handshake_v10.html
-        static bool Authenticate(NetworkStream stream, byte[] packet, int length, string user, string password, uint serverCapabilities)
+        static (bool IsAuthed, string Message) Authenticate(NetworkStream stream, byte[] packet, int length, string user, string password, uint serverCapabilities)
         {
             byte sequenceNumber = packet[3];
             using (MemoryStream ms = new MemoryStream(packet, 0, length))
@@ -156,11 +185,37 @@ namespace Reecon
 
                 // protocol version	-> int<1>
                 int protocolVersion = ms.ReadByte();
-                if (protocolVersion != 0x0A) // Check for Handshake V10
+                if (protocolVersion == 0xFF)
+                {
+                    if (length >= 7) // Ensure enough bytes for header + 2-byte error code
+                    {
+                        int errorCode = packet[5] | (packet[6] << 8); // Little-endian: lower byte first
+                        Console.WriteLine($"Error Code: {errorCode}");
+                        string errorMessage = Encoding.UTF8.GetString(packet, 7, length - 7);
+                        if (errorCode == 1130) // ER_HOST_NOT_PRIVILEGED
+                        {
+                            Console.WriteLine($"Error Message: {errorMessage}");
+                            return (false, errorCode + "|" + errorMessage);
+                        }
+                        else
+                        {
+                            Console.WriteLine("Unknown Error Code: " + errorCode);
+                            Console.WriteLine($"Error Message: {errorMessage}");
+                            return (false, errorCode + "|" + errorMessage);
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("Received an error packet from the server.");
+                        Console.WriteLine($"Raw packet: {BitConverter.ToString(packet, 0, length)}");
+                        return (false, "-1|Unknown Error");
+                    }
+                }
+                else if (protocolVersion != 0x0A) // Check for Handshake V10
                 {
                     Console.WriteLine($"Unexpected protocol version: {protocolVersion:X2}");
                     Console.WriteLine("TODO: Implement support for non-Protocol 10 handshakes.");
-                    return false;
+                    return (false, "-1|Unexpected protocol version: {protocolVersion:X2}");
                 }
 
                 // Skip version info - We already got it in GetServerInfo
@@ -220,12 +275,12 @@ namespace Reecon
                 if (responseBytes > 0)
                 {
                     // Console.WriteLine($"Server response bytes: {BitConverter.ToString(responseBuffer, 0, responseBytes)}");
-                    return ParseServerResponse(responseBuffer, responseBytes);
+                    return (ParseServerResponse(responseBuffer, responseBytes), "");
                 }
                 else
                 {
                     Console.WriteLine("No response bytes read!");
-                    return false;
+                    return (false, "-1|No response bytes read!");
                 }
             }
         }
@@ -324,7 +379,9 @@ namespace Reecon
         static byte[] GenerateAuthResponse(string password, byte[] scramble)
         {
             if (string.IsNullOrEmpty(password))
+            {
                 return Array.Empty<byte>();
+            }
 
             using (SHA1 sha1 = SHA1.Create())
             {

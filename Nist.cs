@@ -24,7 +24,12 @@ namespace Reecon
             if (jsonPage.StatusCode == HttpStatusCode.OK)
             {
                 // Use the generated context for deserialization
-                Rootobject myObject = JsonSerializer.Deserialize(jsonPage.PageText, NistJsonContext.Default.Rootobject);
+                Rootobject? myObject = JsonSerializer.Deserialize(jsonPage.PageText, NistJsonContext.Default.Rootobject);
+                if (myObject == null)
+                {
+                    Console.WriteLine("Nist.cs - Some Weird Error :(");
+                    return;
+                }
 
                 List<Vulnerability> highVulns = myObject.vulnerabilities.Where(x =>
                     (x.cve.metrics.cvssMetricV31 != null && x.cve.metrics.cvssMetricV31.Any(x => x.cvssData.baseScore >= 6f)) ||
@@ -39,7 +44,7 @@ namespace Reecon
                         Cve cve = vuln.cve;
                         Console.WriteLine(cve.id.Recolor(Color.Green));
                         Console.WriteLine($"- Link: https://nvd.nist.gov/vuln/detail/{cve.id}");
-                        string description = cve.descriptions.Where(x => x.lang == "en").FirstOrDefault().value;
+                        string description = cve.descriptions.First(x => x.lang == "en").value;
                         Console.WriteLine("- Desc: " + description.Trim());
 
                         foreach (Reference reference in cve.references)
@@ -103,6 +108,7 @@ namespace Reecon
 
     }
 
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
     public class Rootobject
     {
         public int resultsPerPage { get; set; }
@@ -316,4 +322,5 @@ namespace Reecon
         public string source { get; set; }
         public string[] tags { get; set; }
     }
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 }

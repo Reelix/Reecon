@@ -26,9 +26,7 @@ namespace Reecon
             //GetInstagramInfo(username); - Broken - https://www.instagram.com/web/search/topsearch/?query=Reelix
             GetRedditInfo(username);
             GetSteamInfo(username);
-            //GetTwitterInfo(username);
-            // curl https://api.x.com/i/users/email_available.json?email=username@email.com
-            // curl https://api.x.com/i/users/username_available.json?username=usernameHere
+            GetTwitterInfo(username);
             GetYouTubeInfo(username);
             GetGithubInfo(username);
             GetPastebinInfo(username);
@@ -132,11 +130,16 @@ namespace Reecon
             }
         }
 
-        private static void GetTwitterInfo(string username)
+        public static void GetTwitterInfo(string username)
         {
+            // TODO
+            // curl https://api.x.com/i/users/email_available.json?email=username@email.com
+            // curl https://api.x.com/i/users/username_available.json?username=usernameHere
+
             // Twitter usernames don't have spaces
+
             username = username.Replace(" ", "");
-            var httpInfo = Web.GetHTTPInfo($"https://mobile.twitter.com/{username}", "Mozilla/5.0 (Linux; Android 10; SM-A205U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.5195.77 Mobile Safari/537.36");
+            var httpInfo = Web.GetHTTPInfo($"https://x.com/{username}", "Mozilla/5.0 (Linux; Android 10; SM-A205U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.5195.77 Mobile Safari/537.36");
             if (httpInfo.StatusCode == HttpStatusCode.NotFound)
             {
                 Console.WriteLine("- Twitter: Not Found");
@@ -144,7 +147,7 @@ namespace Reecon
             else if (httpInfo.StatusCode == HttpStatusCode.OK)
             {
                 Console.WriteLine("- Twitter: " + "Found".Recolor(Color.Green));
-                Console.WriteLine("-- Link: https://www.twitter.com/" + username);
+                Console.WriteLine("-- Link: https://x.com/" + username);
 
                 // Profile name
                 try
@@ -184,7 +187,7 @@ namespace Reecon
             }
             else if (httpInfo.StatusCode == HttpStatusCode.TemporaryRedirect)
             {
-                if (httpInfo.ResponseHeaders.Location != null && httpInfo.ResponseHeaders.Location.ToString() == "/account/suspended")
+                if (httpInfo.ResponseHeaders?.Location != null && httpInfo.ResponseHeaders.Location.ToString() == "/account/suspended")
                 {
                     Console.WriteLine("- Twitter: Account Suspended :<");
                 }

@@ -21,8 +21,12 @@ namespace Reecon
                 {
                     if (line.StartsWith("Server:"))
                     {
+                        string server = line.Replace("Server:  ", ""); // Why 2 spaces?
                         dnsInfo += $"- {line}" + Environment.NewLine;
-                        hasServer = true;
+                        if (server != "UnKnown")
+                        {
+                            hasServer = true;
+                        }
                     }
                     else if (line.StartsWith("Address:"))
                     {

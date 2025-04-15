@@ -18,7 +18,7 @@
 587|N/A|SMTP - Insecure Transport (New Port 25)
 593|N/A|Microsoft Windows RPC over HTTP
 631|HTTP|IPP (Internet Printing Protocol)
-636|N/A|LDAPSSL (LDAP over SSL)
+636|LDAP|LDAPSSL (LDAP over SSL)
 873|Rsync|Rsync (Remote Sync)
 993|N/A|IMAPS (IMAP over SSL)
 995|N/A|POP3s (POP3 over SSL)

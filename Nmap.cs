@@ -7,10 +7,9 @@ namespace Reecon
 {
     class Nmap
     {
+        // Does an optimised nmap scan of the host, and outputs it in a greppable format for processing
         public static string DefaultScan(string[] args, bool mustPing)
         {
-            // ip[0]
-            // outputfile[1]
             if (args.Length < 1)
             {
                 Console.WriteLine("Usage: ip outfile");
@@ -22,7 +21,7 @@ namespace Reecon
             {
                 target = args[0];
                 Console.WriteLine("Outfile name (1 word, no extension)");
-                fileName = Console.ReadLine();
+                fileName = Console.ReadLine() ?? "reecon";
             }
             else if (args.Length == 2)
             {
@@ -67,7 +66,7 @@ namespace Reecon
             }
             DateTime afterNmapDate = DateTime.Now;
             TimeSpan nmapScanDuration = afterNmapDate - beforeNmapDate;
-            Console.WriteLine("Scan complete in " + string.Format("{0:0.00}s", nmapScanDuration.TotalSeconds) + $" - {fileName}.nmap for reecon");
+            Console.WriteLine("Optimized Nmap Scan complete in " + string.Format("{0:0.00}s", nmapScanDuration.TotalSeconds) + $" - Created {fileName}.nmap for reecon");
             return fileName;
         }
 
@@ -84,7 +83,7 @@ namespace Reecon
             List<int> returnPorts = new();
 
             StreamReader sr1 = new(fileName);
-            string[] fileLines = sr1.ReadToEnd().Replace("\r", "").Split(new[] { "\n" }, StringSplitOptions.None);
+            string[] fileLines = sr1.ReadToEnd().Replace("\r", "").Split(["\n"], StringSplitOptions.None);
             sr1.Close();
             // fileLines[1]: Host: 10.10.10.175 ()   Status: Up
             string upLine = fileLines[1];
@@ -94,16 +93,11 @@ namespace Reecon
                 Console.WriteLine("Error - Host is down :(");
                 Environment.Exit(0);
             }
-            if (!fileLines[2].Contains("/open/"))
-            {
-                Console.WriteLine("No open ports found");
-                return (returnTarget, returnPorts);
-            }
             string portLine = fileLines[2];
             string[] portItems = portLine.Split('\t');
             string portSection = portItems[1];
             portSection = portSection.Replace("Ports: ", "");
-            foreach (string item in portSection.Split(new[] { ", " }, StringSplitOptions.None))
+            foreach (string item in portSection.Split([", "], StringSplitOptions.None))
             {
                 int port = int.Parse(item.Split('/')[0]);
                 string status = item.Split('/')[1];

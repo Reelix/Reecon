@@ -3,15 +3,19 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Sockets;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Reecon
 {
     public class Port
     {
-        public int Number;
-        public string FileName;
-        public string FriendlyName;
+        public int Number = -1;
+        public string FileName = "";
+        public string FriendlyName = "";
     }
 
     public class PortInfo
@@ -63,7 +67,11 @@ namespace Reecon
             string resource = assembly.GetManifestResourceNames().Single(str => str.EndsWith("Ports.txt"));
             if (!string.IsNullOrEmpty(resource))
             {
-                using Stream stream = assembly.GetManifestResourceStream(resource);
+                using Stream? stream = assembly.GetManifestResourceStream(resource);
+                if (stream == null)
+                {
+                    throw new Exception("Ports.txt is missing!");
+                }
                 using StreamReader reader = new(stream);
                 string portData = reader.ReadToEnd();
                 List<string> portItems = portData.Replace("\r\n", "\n").Split('\n').ToList(); // OS Friendly File Split
@@ -73,7 +81,7 @@ namespace Reecon
                     string portNumber = port.Split('|')[0];
                     string portFileName = port.Split('|')[1];
                     string portFriendlyName = port.Split('|')[2];
-                    if (portNumber.Contains("-"))
+                    if (portNumber.Contains('-'))
                     {
                         int lowPort = int.Parse(portNumber.Split('-')[0]);
                         int highPort = int.Parse(portNumber.Split('-')[1]);
@@ -102,6 +110,67 @@ namespace Reecon
             }
         }
 
+        public enum PortStatus
+        {
+            Open,
+            Closed,
+            TimedOut,
+            Error
+        }
+
+        public static async Task<(PortStatus Status, string Message)> CheckPortAsync(string ipAddress, int port)
+        {
+            int timeoutMilliseconds = 2000;
+            using (var tcpClient = new TcpClient())
+            {
+                // Use a CancellationTokenSource for timeout control
+                using (var cts = new CancellationTokenSource(timeoutMilliseconds))
+                {
+                    try
+                    {
+                        Task connectTask = tcpClient.ConnectAsync(ipAddress, port);
+                        await connectTask.WaitAsync(cts.Token);
+
+                        // If ConnectAsync completes without throwing (and wasn't cancelled), the port is open.
+                        // Console.WriteLine($"Connection to {ipAddress}:{port} successful.");
+                        tcpClient.Close(); // Close immediately as we just wanted to check
+                        return (PortStatus.Open, $"Open.");
+                    }
+                    catch (OperationCanceledException) // Catch cancellation specifically if using CancellationToken directly or WaitAsync
+                    {
+                        tcpClient.Close();
+                        // Console.WriteLine($"Connection to {ipAddress}:{port} explicitly cancelled (likely timeout).");
+                        return (PortStatus.TimedOut, $"Connection attempt timed out after {timeoutMilliseconds}ms");
+                    }
+                    catch (SocketException ex)
+                    {
+                        tcpClient.Close();
+                        // Analyze the SocketErrorCode to determine the status more precisely
+                        Console.WriteLine($"SocketException for {ipAddress}:{port}: {ex.SocketErrorCode} - {ex.Message}");
+                        switch (ex.SocketErrorCode)
+                        {
+                            case SocketError.ConnectionRefused:
+                                return (PortStatus.Closed, $"Closed (Connection Refused).");
+                            case SocketError.TimedOut: // This might still happen if OS timeout is shorter, but less likely with async control
+                                return (PortStatus.TimedOut, $"Filtered or Host Down (OS Timeout).");
+                            case SocketError.HostNotFound:
+                                return (PortStatus.Error, $"Host '{ipAddress}' not found.");
+                            case SocketError.HostUnreachable:
+                                return (PortStatus.Error, $"Host '{ipAddress}' unreachable (Network Error).");
+                            default:
+                                return (PortStatus.Error, $"Port {port} check error: {ex.SocketErrorCode}");
+                        }
+                    }
+                    catch (Exception ex) // Catch other potential exceptions
+                    {
+                        tcpClient.Close();
+                        Console.WriteLine($"Generic Exception for {ipAddress}:{port}: {ex.Message}");
+                        return (PortStatus.Error, $"Port {port} check failed: {ex.Message}");
+                    }
+                } // CancellationTokenSource disposed here
+            } // TcpClient disposed here
+        }
+
         public static string ScanPort(string target, int port)
         {
             string toReturn = "";
@@ -111,72 +180,84 @@ namespace Reecon
                 Port thePort = PortInfoList.First(x => x.Number == port);
                 string fileName = thePort.FileName;
                 (string PortName, string PortData) portInfo;
-                // No Custom File for it
-                if (fileName == "N/A")
+                // Make sure the port is open
+                (PortStatus Status, string Message) portStatus = CheckPortAsync(target, port).GetAwaiter().GetResult();
+                if (portStatus.Status == PortStatus.Open)
                 {
-                    string portHeader = $"Port {thePort.Number} - {thePort.FriendlyName}";
-                    Console.WriteLine(portHeader.Recolor(Color.Green) + Environment.NewLine + $"- Reecon currently lacks {thePort.FriendlyName} support" + Environment.NewLine);
-                    portInfo.PortName = thePort.FriendlyName;
+                    // No Custom File for it
+                    if (fileName == "N/A")
+                    {
+                        string portHeader = $"Port {thePort.Number} - {thePort.FriendlyName}";
+                        Console.WriteLine(portHeader.Recolor(Color.Green) + Environment.NewLine + $"- Reecon currently lacks {thePort.FriendlyName} support" + Environment.NewLine);
+                        portInfo.PortName = thePort.FriendlyName;
+                    }
+                    else
+                    {
+                        // This was previously done by reflection, but reflection freaks out with AoT / Trimming
+                        try
+                        {
+                            switch (fileName)
+                            {
+                                case "FTP": portInfo = FTP.GetInfo(target, port); break;
+                                case "SSH": portInfo = SSH.GetInfo(target, port); break;
+                                case "Telnet": portInfo = Telnet.GetInfo(target, port); break;
+                                case "SMTP": portInfo = SMTP.GetInfo(target, port); break;
+                                case "DNS": portInfo = DNS.GetInfo(target, port); break;
+                                case "HTTP": portInfo = HTTP.GetInfo(target, port); break;
+                                case "POP3": portInfo = POP3.GetInfo(target, port); break;
+                                case "RPCBind": portInfo = RPCBind.GetInfo(target, port); break;
+                                case "NETBIOS": portInfo = NETBIOS.GetInfo(target, port); break;
+                                case "IMAP": portInfo = IMAP.GetInfo(target, port); break;
+                                case "LDAP": portInfo = LDAP.GetInfo(target, port); break;
+                                case "HTTPS": portInfo = HTTPS.GetInfo(target, port); break;
+                                case "SMB": portInfo = SMB.GetInfo(target, port); break;
+                                case "Rsync": portInfo = Rsync.GetInfo(target, port); break;
+                                case "NFS": portInfo = NFS.GetInfo(target, port); break;
+                                case "Squid": portInfo = Squid.GetInfo(target, port); break;
+                                case "MySQL": portInfo = MySQL.GetInfo(target, port); break;
+                                case "SVN": portInfo = SVN.GetInfo(target, port); break;
+                                case "PostgreSQL": portInfo = PostgreSQL.GetInfo(target, port); break;
+                                case "VNC": portInfo = VNC.GetInfo(target, port); break;
+                                case "WinRM": portInfo = WinRM.GetInfo(target, port); break;
+                                case "Redis": portInfo = Redis.GetInfo(target, port); break;
+                                case "AJP13": portInfo = AJP13.GetInfo(target, port); break;
+                                case "Elasticsearch": portInfo = Elasticsearch.GetInfo(target, port); break;
+                                case "Minecraft": portInfo = Minecraft.GetInfo(target, port); break;
+
+                                default: portInfo = ("Unknown", $"- Error - Reecon has not yet implemented {fileName} - Bug Reelix!"); break;
+                            }
+
+                            // It apparently closed inbetween our first check and now - Weird!
+                            if (portInfo.PortName == "Closed")
+                            {
+                                Console.WriteLine($"Port {thePort.Number}".Recolor(Color.Green) + " - " + "Closed".Recolor(Color.Red) + Environment.NewLine);
+                            }
+                            else if (portInfo.PortName != "Done")
+                            {
+                                Console.WriteLine($"Port {thePort.Number} - {portInfo.PortName}".Recolor(Color.Green) + Environment.NewLine + portInfo.PortData + Environment.NewLine);
+
+                                // Regular scanning done - Now for the additional info
+                                try
+                                {
+                                    string additionalPortInfo = GetAdditionalPortInfo(target, portInfo.PortName, port);
+                                    toReturn += additionalPortInfo;
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine($"Fatal Error retreiving additional Info for port {port} - {ex.Message} - Bug Reelix ASAP!".Recolor(Color.Red));
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Fatal Error retreiving Info for port {port} - {ex.Message} - Bug Reelix ASAP!".Recolor(Color.Red));
+                        }
+                    }
                 }
+                // Port is not open :(
                 else
                 {
-                    // This was previously done by reflection, but reflection freaks out with AoT / Trimming
-                    try
-                    {
-                        switch (fileName)
-                        {
-                            case "FTP": portInfo = FTP.GetInfo(target, port); break;
-                            case "SSH": portInfo = SSH.GetInfo(target, port); break;
-                            case "Telnet": portInfo = Telnet.GetInfo(target, port); break;
-                            case "SMTP": portInfo = SMTP.GetInfo(target, port); break;
-                            case "DNS": portInfo = DNS.GetInfo(target, port); break;
-                            case "HTTP": portInfo = HTTP.GetInfo(target, port); break;
-                            case "POP3": portInfo = POP3.GetInfo(target, port); break;
-                            case "RPCBind": portInfo = RPCBind.GetInfo(target, port); break;
-                            case "NETBIOS": portInfo = NETBIOS.GetInfo(target, port); break;
-                            case "IMAP": portInfo = IMAP.GetInfo(target, port); break;
-                            case "LDAP": portInfo = LDAP.GetInfo(target, port); break;
-                            case "HTTPS": portInfo = HTTPS.GetInfo(target, port); break;
-                            case "SMB": portInfo = SMB.GetInfo(target, port); break;
-                            case "Rsync": portInfo = Rsync.GetInfo(target, port); break;
-                            case "NFS": portInfo = NFS.GetInfo(target, port); break;
-                            case "Squid": portInfo = Squid.GetInfo(target, port); break;
-                            case "MySQL": portInfo = MySQL.GetInfo(target, port); break;
-                            case "SVN": portInfo = SVN.GetInfo(target, port); break;
-                            case "PostgreSQL": portInfo = PostgreSQL.GetInfo(target, port); break;
-                            case "VNC": portInfo = VNC.GetInfo(target, port); break;
-                            case "WinRM": portInfo = WinRM.GetInfo(target, port); break;
-                            case "Redis": portInfo = Redis.GetInfo(target, port); break;
-                            case "AJP13": portInfo = AJP13.GetInfo(target, port); break;
-                            case "Elasticsearch": portInfo = Elasticsearch.GetInfo(target, port); break;
-                            case "Minecraft": portInfo = Minecraft.GetInfo(target, port); break;
-
-                            default: portInfo = ("Unknown", $"- Error - Reecon has not yet implemented {fileName} - Bug Reelix!"); break;
-                        }
-                        // If it's Done, it's done elsewhere since things were running on non-standard ports
-                        // This will probably be shifted here later for neatness so it's not in each file
-                        // Eg: If file can't verify the port, it kicks it back out here to look for info elsewhere
-                        if (portInfo.PortName != "Done")
-                        {
-                            Console.WriteLine($"Port {thePort.Number} - {portInfo.PortName}".Recolor(Color.Green) + Environment.NewLine + portInfo.PortData + Environment.NewLine);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Fatal Error retreiving Info for port {port} - {ex.Message} - Bug Reelix ASAP!".Recolor(Color.Red));
-                        portInfo.PortName = "ERROR";
-                    }
-                }
-
-                // Regular scanning done - Now for the additional info
-                try
-                {
-                    string additionalPortInfo = GetAdditionalPortInfo(target, portInfo.PortName, port);
-                    toReturn += additionalPortInfo;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Fatal Error retreiving additional Info for port {port} - {ex.Message} - Bug Reelix ASAP!".Recolor(Color.Red));
+                    Console.WriteLine($"Port {thePort.Number}".Recolor(Color.Green) + " - " + portStatus.Message.Recolor(Color.Red) + Environment.NewLine);
                 }
             }
             else
@@ -207,7 +288,7 @@ namespace Reecon
             string unknownPortResult = "";
 
             // No entries at all
-            if (!bannerList.Any())
+            if (bannerList.Count == 0)
             {
                 unknownPortResult += $"Port {port} - Empty".Recolor(Color.Green);
                 Console.WriteLine(unknownPortResult + Environment.NewLine + "- No Response" + Environment.NewLine);
@@ -264,7 +345,7 @@ namespace Reecon
                     if (theBanner.ToUpper().Contains("FTP"))
                     {
                         unknownPortResult += $"Port {port} - FTP".Recolor(Color.Green) + Environment.NewLine;
-                        unknownPortResult += FTP.GetInfo(target, port);
+                        unknownPortResult += FTP.GetInfo(target, port).PortData;
                     }
                     else if (theBanner.ToUpper().Contains("SMTP"))
                     {
@@ -278,7 +359,7 @@ namespace Reecon
                         {
                             unknownPortResult += "- Windows Newline Characters Detected" + Environment.NewLine;
                         }
-                        else if (theBanner.EndsWith("\n"))
+                        else if (theBanner.EndsWith('\n'))
                         {
                             unknownPortResult += "- Linux Newline Characters Detected" + Environment.NewLine;
                         }
@@ -288,10 +369,10 @@ namespace Reecon
                             return "";
                         }
                         unknownPortResult += "- Manual Enumeration Required: " + theBanner;
-                        
+
                         // Note: EHLO {IP} with \n for Linux or \r\n for Windows returns something
                     }
-                    
+
                     Console.WriteLine(unknownPortResult + Environment.NewLine);
                 }
                 // HTTPS
@@ -345,7 +426,7 @@ namespace Reecon
                     Minecraft.GetInfo(target, port);
                 }
                 // MySQL
-                else if (theBanner.StartsWith("c") && theBanner.Contains("\0mysql_native_password\0"))
+                else if (theBanner.StartsWith('c') && theBanner.Contains("\0mysql_native_password\0"))
                 {
                     (string PortName, string PortData) portInfo = MySQL.GetInfo(target, port);
                     unknownPortResult += $"Port {port} - {portInfo.PortName}".Recolor(Color.Green);
@@ -475,7 +556,7 @@ namespace Reecon
                     else
                     {
                         unknownPortResult += $"Port {port} - Unknown".Recolor(Color.Green) + Environment.NewLine;
-                        unknownPortResult += "- Unknown Response: -->" + theBanner + "<--" + Environment.NewLine;
+                        unknownPortResult += "- Unknown Single Response: -->" + theBanner + "<--" + Environment.NewLine;
                         unknownPortResult += $"- TODO: nmap -sC -sV {target} -p{port}" + Environment.NewLine;
                     }
                 }
@@ -541,11 +622,11 @@ namespace Reecon
                 try
                 {
                     // It's generally assumed that if 88 is up, 389 is up as well, although it could also be 3268
-                    defaultNamingContext = LDAP.GetDefaultNamingContext(target, port, true);
+                    defaultNamingContext = LDAP.GetDefaultNamingContext(target, port);
                 }
                 catch (Exception ex)
                 {
-                    if (ex.InnerException.ToString().StartsWith("System.DllNotFoundException: Unable to load shared library 'libldap-2.4.so.2'"))
+                    if (ex.InnerException != null && ex.InnerException.ToString().StartsWith("System.DllNotFoundException: Unable to load shared library 'libldap-2.4.so.2'"))
                     {
                         postScanActions += $"- Error: You need a third-party DLL to run LDAP stuff on Linux. Download + dpkg -i https://packages.ubuntu.com/focal-updates/amd64/libldap-2.4-2/download" + Environment.NewLine;
                         postScanActions += $"-- Note: If you're currently an ARM user, you're a bit out of luck: https://github.com/dotnet/runtime/issues/69456" + Environment.NewLine;

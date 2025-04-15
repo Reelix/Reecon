@@ -10,7 +10,11 @@ namespace Reecon
     {
         public static (string PortName, string PortInfo) GetInfo(string ip, int port)
         {
-            string sshVersion = "- SSH Version: " + SSH.GetVersion(ip, port);
+            string sshVersion = SSH.GetVersion(ip, port);
+            if (sshVersion == "Closed")
+            {
+                return ("Closed", "");
+            }
             string authMethods = "- Authentication Methods: " + SSH.GetAuthMethods(ip, port);
             string returnInfo = sshVersion + Environment.NewLine + authMethods;
             return ("SSH", returnInfo);
@@ -147,6 +151,8 @@ namespace Reecon
             returnString = outputLines.First(x => x.Contains("Permission denied"));
             returnString = returnString.Remove(0, returnString.IndexOf("("));
             returnString = returnString.Replace("(", "").Replace(")", "");
+            returnString = returnString.Replace(",", ", ");
+            returnString = returnString.Trim('.');  
             // ssh - oPreferredAuthentications = none - oStrictHostKeyChecking = no 10.10.10.147
 
             // reelix@10.10.10.147: Permission denied(publickey, password).

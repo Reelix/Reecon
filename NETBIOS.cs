@@ -200,7 +200,7 @@ namespace Reecon
             nameEndIndex = Array.IndexOf(responsePacket, (byte)0x00, nameStartIndex);
             if (nameEndIndex == -1) nameEndIndex = responsePacket.Length;
             string secondName = Encoding.ASCII.GetString(responsePacket, nameStartIndex, nameEndIndex - nameStartIndex);
-            if (secondName.EndsWith("D"))
+            if (secondName.EndsWith('D'))
             {
                 secondName = secondName.Substring(0, secondName.Length - 1);
             }
@@ -210,7 +210,7 @@ namespace Reecon
             nameEndIndex = Array.IndexOf(responsePacket, (byte)0x00, nameStartIndex);
             if (nameEndIndex == -1) nameEndIndex = responsePacket.Length;
             string thirdName = Encoding.ASCII.GetString(responsePacket, nameStartIndex, nameEndIndex - nameStartIndex);
-            if (thirdName.EndsWith("D"))
+            if (thirdName.EndsWith('D'))
             {
                 thirdName = thirdName.Substring(0, secondName.Length - 1);
             }
@@ -375,7 +375,7 @@ namespace Reecon
                                 if (!sidList.Contains(sneakySID))
                                 {
                                     // Just add the base - We lookup later
-                                    string sneakySIDBase = sneakySID.Substring(0, sneakySID.LastIndexOf("-") + 1);
+                                    string sneakySIDBase = sneakySID.Substring(0, sneakySID.LastIndexOf('-') + 1);
                                     if (!sneakySIDBaseList.Contains(sneakySIDBase))
                                     {
                                         sneakySIDBaseList.Add(sneakySIDBase);
@@ -386,7 +386,7 @@ namespace Reecon
                             // Needs the base SID to enumerate
                             if (sneakySIDBaseList.Count != 0)
                             {
-                                List<string> sneakySIDList = new();
+                                List<string> sneakySIDList = new List<string>();
                                 foreach (string sneakyBase in sneakySIDBaseList)
                                 {
                                     // Low ones are just system names - Can ignore them - Proper ones start from 1000
@@ -408,7 +408,7 @@ namespace Reecon
                                         {
                                             string name = lookupResult.Substring(0, lookupResult.LastIndexOf(" (1)"));
 
-                                            name = name.Remove(0, name.LastIndexOf("\\") + 1);
+                                            name = name.Remove(0, name.LastIndexOf('\\') + 1);
 
                                             // Some invalid ones simply have the number itself instead of the name
                                             // A bit hacky, but it works
@@ -437,8 +437,8 @@ namespace Reecon
                             foreach (string user in enumdomusersList)
                             {
                                 // user:[fox] rid:[0x3e8]
-                                string username = user.Remove(0, user.IndexOf("[") + 1);
-                                username = username.Substring(0, username.IndexOf("]"));
+                                string username = user.Remove(0, user.IndexOf('[') + 1);
+                                username = username.Substring(0, username.IndexOf(']'));
                                 usernames.Add(username);
                                 rpcInfo += RPCClient.GetQueryuserInfo(ip, username);
                             }
@@ -487,6 +487,10 @@ namespace Reecon
                         else if (firstItem.Contains("was NT_STATUS_LOGON_FAILURE"))
                         {
                             rpcInfo = "- Unable to log on at all - Possibly a timeout :(" + Environment.NewLine;
+                        }
+                        else if (firstItem.Contains("was NT_STATUS_NOT_SUPPORTED")) // Cannot connect to server.  Error was NT_STATUS_NOT_SUPPORTED
+                        {
+                            rpcInfo = "- Cannot connect to server (NT_STATUS_NOT_SUPPORTED) - Not sure how to fix this :(" + Environment.NewLine;
                         }
                         else
                         {

@@ -46,6 +46,7 @@ namespace Reecon
     }
 
 #pragma warning disable IDE1006 // Naming Styles are supressed since these are case sensitive
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
     public class ElasticSearchObject
     {
         public string name { get; set; }
@@ -67,5 +68,6 @@ namespace Reecon
         public string minimum_wire_compatibility_version { get; set; }
         public string minimum_index_compatibility_version { get; set; }
     }
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 #pragma warning restore IDE1006 // Naming Styles
 }

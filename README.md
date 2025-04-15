@@ -2,12 +2,12 @@
 
 Reelix's Recon - A small program for network recon.  
 This program is still in early stages of development and should probably not be used by anyone.
-* Version: 0.35
+* Version: 0.36
 * Build Status: <img src="https://img.shields.io/github/actions/workflow/status/Reelix/Reecon/dotnet-publish.yml" valign="middle" />
 * Requirements: [NMap 7.95+](https://nmap.org/download.html)
   * LDAP Enumeration on Ubuntu 22.04: Download + dpkg -i [this](https://packages.ubuntu.com/focal-updates/amd64/libldap-2.4-2/download)
 * Recommended (It won't run these, but it will suggest that you do):
-  * Manual HTTP/S Enumeration: [Gobuster](https://github.com/OJ/gobuster) / [ffuf](https://github.com/ffuf/ffuf)
+  * Manual HTTP/S Enumeration: [ffuf](https://github.com/ffuf/ffuf) / [Gobuster](https://github.com/OJ/gobuster)
   * SMB Enumeration: [smbclient](https://github.com/SecureAuthCorp/impacket/blob/master/examples/smbclient.py)
   * Kerberos Enumeration: [Kerbrute](https://github.com/ropnop/kerbrute), [GetNPUsers](https://github.com/fortra/impacket/blob/master/examples/GetNPUsers.py), [secretsdump](https://github.com/fortra/impacket/blob/master/examples/secretsdump.py)
   * Multiple Enumerations: [NetExec](https://github.com/Pennyw0rth/NetExec)
@@ -36,9 +36,9 @@ If it sounds cool, I'll try :)
 ### Linux (Ubuntu 22.10 and above)
 sudo apt update  
 sudo apt upgrade  
-sudo apt install dotnet-sdk-8.0 -y
+sudo apt install dotnet-sdk-9.0 -y
 ### Linux (Other)
-If you're running this, you probably know how to get the dotnet SDK installed. If not, start [here](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) (SDK 8.0.100)
+If you're running this, you probably know how to get the dotnet SDK installed. If not, start [here](https://dotnet.microsoft.com/en-us/download/dotnet/9.0) (SDK 9.0.x)
 
 ## Build Instructions
 1.) Clone the repo: `git clone https://github.com/Reelix/Reecon.git`  
@@ -55,14 +55,11 @@ If you're running this, you probably know how to get the dotnet SDK installed. I
 5.) Optional: You can remove the `Reecon` folder if you want - The binary is standalone
 
 ## To Do (No specific order)
-- Fix the usage of WebClient in WinRM.cs to remove obsoletion errors
 - Raw nslookup in DNS.cs (Better cross platform / How does it work on a lower level?)
 - Raw RPC info (rpcinfo on for port 111, find service / version on ports) - https://svn.nmap.org/nmap/scripts/rpcinfo.nse - Oh gawd
 - Remove reliance on OS-specific tooling (showmount, smbclient, rpcinfo (111) / rpcclient (lol), etc.)
 - Fix rare instances of accessing broken https:// pages (Invalid cert?)
 - Fix broken OSINT scripts (Twitter?)
-- Split OSINT into more files for cleaner code
-- Raw MySQL connection to replace reliance on the MySqlConnector Lib (Only basic auth is fine for now - Don't need the entire framework!)
 - MSSQL handshake for version retrieval
 - Retrieve RDP Info (See nmap -sC -sV output)
 - Implement basic MQTT handlers (Enough to get enough info to solve https://tryhackme.com/room/bugged)

@@ -11,8 +11,8 @@ namespace Reecon
     class Log4j
     {
         public static HttpClient httpClient = new HttpClient();
-        private static CancellationTokenSource _cancellationTokenSource;
-        private static Thread _thread;
+        private static CancellationTokenSource? _cancellationTokenSource;
+        private static Thread? _thread;
 
         public static void Woof()
         {
@@ -40,12 +40,19 @@ namespace Reecon
             Console.WriteLine("Killed thread");
         }
 
-        private static void MyThread(object message)
+        private static void MyThread(object? message)
         {
+            if (_cancellationTokenSource == null)
+            {
+                return;
+            }
             while (!_cancellationTokenSource.Token.IsCancellationRequested)
             {
-
-                string strMessage = message as string;
+                if (message == null)
+                {
+                    return;
+                }
+                string strMessage = (string)message; // as string;
 
                 int port = 1389;
                 IPAddress localAddr = IPAddress.Parse("10.8.26.200");

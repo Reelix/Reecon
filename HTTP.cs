@@ -1,4 +1,5 @@
 ﻿using System;
+using static Reecon.Web;
 
 namespace Reecon
 {
@@ -44,7 +45,7 @@ namespace Reecon
                         url = $"http://{target}:{port}/";
                     }
                 }
-                var httpInfo = Web.GetHTTPInfo(url);
+                HttpInfo httpInfo = Web.GetHTTPInfo(url);
                 if (httpInfo.AdditionalInfo == "Timeout")
                 {
                     return "- Timeout";
@@ -57,11 +58,11 @@ namespace Reecon
                 {
                     return $"- The url {url} does not exist - Maybe fix your /etc/hosts file?";
                 }
-                else if (httpInfo == (0, null, null, null, null, null, null, null, null))
+                else if (httpInfo.StatusCode == null)
                 {
                     return "";
                 }
-                string portData = Web.ParseHTTPInfo(httpInfo.StatusCode, httpInfo.PageTitle, httpInfo.PageText, httpInfo.DNS, httpInfo.ResponseHeaders, httpInfo.ContentHeaders, httpInfo.SSLCert, httpInfo.URL);
+                string portData = Web.ParseHTTPInfo(httpInfo);
 
                 // The final Environment.NewLine is stripped from portData, so we need to re-add it
                 if (httpInfo.StatusCode == System.Net.HttpStatusCode.Unauthorized)
@@ -90,7 +91,8 @@ namespace Reecon
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Critical HTTP.GetInfo Error: " + ex.Message);
+                string exType = ex.GetType().ToString();
+                Console.WriteLine("Critical HTTP.GetInfo Error (Type: " + exType + ": " + ex.Message);
                 return "";
             }
         }
