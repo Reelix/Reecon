@@ -1,28 +1,25 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-   <PropertyGroup>
-      <OutputType>Exe</OutputType>
-      <TargetFramework>net9.0</TargetFramework>
-      <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-      <StartupObject>Reecon.Program</StartupObject>
-      <SignAssembly>true</SignAssembly>
-      <SelfContained>true</SelfContained>
-      <Platforms>arm64</Platforms>
-      <PlatformTarget>AnyCPU</PlatformTarget>
-      <!-- This will create a lot of warnings, but it makes code easier to read -->
-      <Nullable>enable</Nullable>
-      <AnalysisLevel>latest</AnalysisLevel>
-      <PackageProjectUrl>https://github.com/Reelix/reecon</PackageProjectUrl>
-   </PropertyGroup>
+<Project Sdk="Microsoft.NET.Sdk">
 
-   <ItemGroup>
-      <!-- FTP - To find hidden folders (Named .) and to read text in files -->
-      <PackageReference Include="FluentFTP" Version="52.0.0" />
-      <!-- To access PostgreSQL servers - To examine later -->
-      <PackageReference Include="Npgsql" Version="9.0.3" />
-      <!-- LDAP - This is tiny, and manual is hell -->
-      <PackageReference Include="System.DirectoryServices.Protocols" Version="9.0.4" />
-      <!-- A list of ports and their descriptions -->
-      <EmbeddedResource Include="Ports.txt" />
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+	  <TargetFramework>net9.0</TargetFramework>
+	  <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+	  <StartupObject>Reecon.Program</StartupObject>
+	  <SignAssembly>true</SignAssembly>
+	  <SelfContained>true</SelfContained>
+	  <Platforms>arm64</Platforms>
+  	<PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+		<!-- FTP - To find hidden folders (Named .) and to read text in files -->
+		<PackageReference Include="FluentFTP" Version="52.1.0" />
+		<!-- To access PostgreSQL servers -->
+	  <PackageReference Include="Npgsql" Version="9.0.3" />
+		<!-- LDAP -->
+	  <PackageReference Include="System.DirectoryServices.Protocols" Version="9.0.4" />
+		<!-- A list of ports and their descriptions -->
+		<EmbeddedResource Include="Ports.txt" />
   </ItemGroup>
 
 </Project>  
