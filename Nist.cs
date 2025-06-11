@@ -39,7 +39,7 @@ namespace Reecon
                 highVulns = highVulns.OrderByDescending(x => x.cve.id).ToList();
                 if (highVulns.Count > 0)
                 {
-                    foreach (var vuln in highVulns)
+                    foreach (Vulnerability vuln in highVulns)
                     {
                         Cve cve = vuln.cve;
                         Console.WriteLine(cve.id.Recolor(Color.Green));
@@ -47,24 +47,55 @@ namespace Reecon
                         string description = cve.descriptions.First(x => x.lang == "en").value;
                         Console.WriteLine("- Desc: " + description.Trim());
 
+                        if (cve.configurations != null)
+                        {
+                            foreach (Configuration config in cve.configurations)
+                            {
+                                foreach (var node in config.nodes)
+                                {
+                                    foreach (var cpeMatch in node.cpeMatch)
+                                    {
+                                        string criteria = cpeMatch.criteria;
+                                        criteria = criteria.Replace("cpe:2.3:a:", "");
+                                        criteria = criteria.Replace(":*", "");
+
+                                        string versionStartIncluding = cpeMatch.versionStartIncluding;
+                                        string versionEndIncluding = cpeMatch.versionEndIncluding;
+                                        string versionEndExcluding = cpeMatch.versionEndExcluding;
+
+                                        string affected = "";
+                                        if (versionStartIncluding == "" && versionEndIncluding == "" && versionEndExcluding != "")
+                                        {
+                                            affected = "All versions before " + versionEndExcluding;
+                                        }
+                                        else if (versionStartIncluding != "" && versionEndIncluding != "" &&
+                                                 versionEndExcluding == "")
+                                        {
+                                            affected = $"From {versionStartIncluding} to {versionEndIncluding}";
+                                        }
+                                        
+                                        Console.WriteLine(
+                                            $"- Affected Version: {criteria}{(affected != "" ? $" ({affected})" : "")}");
+                                    }
+                                }
+                            }
+                        }
+
                         foreach (Reference reference in cve.references)
                         {
-                            string tags = "";
                             if (reference.tags != null)
                             {
-                                tags = string.Join(',', reference.tags);
+                                string tags = string.Join(',', reference.tags);
                                 if (reference.tags.Contains("Exploit"))
                                 {
-                                    Console.WriteLine("- Ref: " + $"{reference.url} - {reference.source}".Recolor(Color.Red) + $" ({tags})");
+                                    Console.WriteLine("- Ref: " +
+                                                      $"{reference.url} - {reference.source}".Recolor(Color.Red) +
+                                                      $" ({tags})");
                                 }
                                 else
                                 {
                                     Console.WriteLine($"- Ref: {reference.url} - {reference.source} ({tags})");
                                 }
-                            }
-                            else
-                            {
-                                Console.WriteLine($"- Ref: {reference.url} - {reference.source}");
                             }
                         }
                         Console.WriteLine();
@@ -83,7 +114,7 @@ namespace Reecon
     }
 
     // Define the JSON context with source generation
-    [JsonSourceGenerationOptions(WriteIndented = true)] // Optional: Makes JSON output readable
+    [JsonSourceGenerationOptions(WriteIndented = true)]
     [JsonSerializable(typeof(Rootobject))]
     [JsonSerializable(typeof(Vulnerability))]
     [JsonSerializable(typeof(Cve))]
@@ -320,7 +351,7 @@ namespace Reecon
     {
         public string url { get; set; }
         public string source { get; set; }
-        public string[] tags { get; set; }
+        public string[]? tags { get; set; }
     }
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 }

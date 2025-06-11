@@ -200,13 +200,13 @@ namespace Reecon
             {
                 // padding1[0..7]...
                 // logon_hrs[0..21]..
-                if (!info.Contains(":"))
+                if (!info.Contains(':'))
                 {
                     return returnInfo;
                 }
-                string description = info.Substring(0, info.IndexOf(":"));
+                string description = info.Substring(0, info.IndexOf(':'));
                 description = description.Trim();
-                string value = info.Remove(0, info.IndexOf(":") + 1);
+                string value = info.Remove(0, info.IndexOf(':') + 1);
                 value = value.Trim();
                 if (description == "Full Name" || description == "Home Drive" || description == "Comment" || description == "Description")
                 {

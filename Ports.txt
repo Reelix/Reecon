@@ -31,7 +31,7 @@
 3389|N/A|Remote Desktop
 3632|N/A|Distributed Compiler (distcc)
 3690|SVN|SVN (Subversion)
-4369|N/A|Erlang Port Mapper Daemon (EPMD)
+4369|EPMD|Erlang Port Mapper Daemon (EPMD)
 5222|N/A|Jabber
 5269|N/A|xmpp-server
 5432|PostgreSQL|PostgreSQL

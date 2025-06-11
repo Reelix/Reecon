@@ -12,9 +12,9 @@ namespace Reecon
             // Get the version
             if (bannerResult.Contains("Server: squid"))
             {
-                string versionInfo = bannerResult.Remove(0, bannerResult.IndexOf("Server: "));
+                string versionInfo = bannerResult.Remove(0, bannerResult.IndexOf("Server: ", StringComparison.Ordinal));
                 // Some use \r\n, Some just use \n
-                versionInfo = versionInfo.Substring(0, versionInfo.IndexOf("\n")).Replace("\r", "").Remove(0, 8);
+                versionInfo = versionInfo.Substring(0, versionInfo.IndexOf('\n')).Replace("\r", "").Remove(0, 8);
                 returnInfo += "- Version: " + versionInfo + Environment.NewLine;
             }
             else

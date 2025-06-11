@@ -78,7 +78,7 @@ namespace Reecon
                 Console.WriteLine("Error - Cannot find file: " + fileName);
                 Environment.Exit(0);
             }
-            string returnTarget;
+
             List<int> allPorts = new();
             List<int> returnPorts = new();
 
@@ -87,7 +87,7 @@ namespace Reecon
             sr1.Close();
             // fileLines[1]: Host: 10.10.10.175 ()   Status: Up
             string upLine = fileLines[1];
-            returnTarget = upLine.Split(' ')[1];
+            string returnTarget = upLine.Split(' ')[1];
             if (fileLines[1].Contains("0 hosts up"))
             {
                 Console.WriteLine("Error - Host is down :(");

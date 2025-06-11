@@ -37,15 +37,15 @@ namespace Reecon
                         string hostName = "";
                         string nameAndDate = "";
                         // SMTP OR ESMTP
-                        if (smtpBanner.ToUpper().IndexOf("ESMTP") != -1)
+                        if (smtpBanner.ToUpper().IndexOf("ESMTP", StringComparison.Ordinal) != -1)
                         {
-                            int esmtpIndex = smtpBanner.ToUpper().IndexOf("ESMTP");
+                            int esmtpIndex = smtpBanner.ToUpper().IndexOf("ESMTP", StringComparison.Ordinal);
                             hostName = smtpBanner.Substring(0, esmtpIndex);
                             nameAndDate = smtpBanner.Remove(0, esmtpIndex + 6);
                         }
-                        else if (smtpBanner.ToUpper().IndexOf("SMTP") != -1)
+                        else if (smtpBanner.ToUpper().IndexOf("SMTP", StringComparison.Ordinal) != -1)
                         {
-                            int smtpIndex = smtpBanner.ToUpper().IndexOf("SMTP");
+                            int smtpIndex = smtpBanner.ToUpper().IndexOf("SMTP", StringComparison.Ordinal);
                             hostName = smtpBanner.Substring(0, smtpIndex);
                             nameAndDate = smtpBanner.Remove(0, smtpIndex + 5);
                         }

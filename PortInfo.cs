@@ -222,6 +222,7 @@ namespace Reecon
                                 case "Redis": portInfo = Redis.GetInfo(target, port); break;
                                 case "AJP13": portInfo = AJP13.GetInfo(target, port); break;
                                 case "Elasticsearch": portInfo = Elasticsearch.GetInfo(target, port); break;
+                                case "EPMD" : portInfo = EPMD.GetInfo(target, port); break;
                                 case "Minecraft": portInfo = Minecraft.GetInfo(target, port); break;
 
                                 default: portInfo = ("Unknown", $"- Error - Reecon has not yet implemented {fileName} - Bug Reelix!"); break;

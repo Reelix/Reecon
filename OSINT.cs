@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Net;
-using System.Reflection;
 using System.Text.Json;
 
 namespace Reecon
@@ -58,9 +57,9 @@ namespace Reecon
         }
         */
 
-        public static void GetRedditInfo(string username)
+        private static void GetRedditInfo(string username)
         {
-            var redditInfo = OSINT_Reddit.GetInfo(username);
+            RedditInfo redditInfo = OSINT_Reddit.GetInfo(username);
             if (redditInfo.Exists)
             {
                 Console.WriteLine("- Reddit: " + "Found".Recolor(Color.Green));
@@ -74,7 +73,7 @@ namespace Reecon
                 else
                 {
                     Console.WriteLine("-- " + $"Listing {redditInfo.CommentList.Count} comments".Recolor(Color.Green));
-                    foreach (var comment in redditInfo.CommentList)
+                    foreach (OSINT_Reddit_Comment comment in redditInfo.CommentList)
                     {
                         Console.WriteLine($"-- Comment Link: https://www.reddit.com{comment.Permalink} from {comment.Created_UTC} UTC");
                         string shorterComment = new string(comment.Body.Take(250).ToArray());
@@ -94,7 +93,7 @@ namespace Reecon
                 else
                 {
                     Console.WriteLine("-- " + $"Listing {redditInfo.SubmissionList.Count} submissions".Recolor(Color.Green));
-                    foreach (var submission in redditInfo.SubmissionList)
+                    foreach (OSINT_Reddit_Submission submission in redditInfo.SubmissionList)
                     {
                         Console.WriteLine($"-- Submission: {submission.Title} at {submission.URL} from {submission.Created_UTC} UTC");
                         if (submission.Selftext != "")
@@ -113,7 +112,7 @@ namespace Reecon
             }
         }
 
-        public static void GetSteamInfo(string username)
+        private static void GetSteamInfo(string username)
         {
             string result = OSINT_Steam.GetInfo(username);
             if (result == "")
@@ -130,7 +129,7 @@ namespace Reecon
             }
         }
 
-        public static void GetTwitterInfo(string username)
+        private static void GetTwitterInfo(string username)
         {
             // TODO
             // curl https://api.x.com/i/users/email_available.json?email=username@email.com
@@ -139,7 +138,7 @@ namespace Reecon
             // Twitter usernames don't have spaces
 
             username = username.Replace(" ", "");
-            var httpInfo = Web.GetHTTPInfo($"https://x.com/{username}", "Mozilla/5.0 (Linux; Android 10; SM-A205U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.5195.77 Mobile Safari/537.36");
+            Web.HttpInfo httpInfo = Web.GetHTTPInfo($"https://x.com/{username}", "Mozilla/5.0 (Linux; Android 10; SM-A205U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.5195.77 Mobile Safari/537.36");
             if (httpInfo.StatusCode == HttpStatusCode.NotFound)
             {
                 Console.WriteLine("- Twitter: Not Found");
@@ -161,8 +160,8 @@ namespace Reecon
 
                     // Find Bio
                     string profileInfo = tableList.First(x => x.Trim().StartsWith("class=\"profile-details\">"));
-                    string bio = profileInfo.Remove(0, profileInfo.IndexOf("<div class=\"bio\">") + 58);
-                    bio = bio.Substring(0, bio.IndexOf("</div>")).Trim();
+                    string bio = profileInfo.Remove(0, profileInfo.IndexOf("<div class=\"bio\">", StringComparison.Ordinal) + 58);
+                    bio = bio.Substring(0, bio.IndexOf("</div>", StringComparison.Ordinal)).Trim();
                     if (bio.Trim() != "")
                     {
                         Console.WriteLine("-- Bio: " + bio);
@@ -172,8 +171,8 @@ namespace Reecon
                     string profileStats = tableList.First(x => x.Trim().StartsWith("class=\"profile-stats\">"));
                     List<string> statList = profileStats.Split("<td", StringSplitOptions.RemoveEmptyEntries).ToList();
                     // 0 = N/A, 1 = Tweets, 2 = Following, 3 = Followers
-                    string tweetCount = statList[1].Remove(0, statList[1].IndexOf("statnum") + 9);
-                    tweetCount = tweetCount.Substring(0, tweetCount.IndexOf("<"));
+                    string tweetCount = statList[1].Remove(0, statList[1].IndexOf("statnum", StringComparison.Ordinal) + 9);
+                    tweetCount = tweetCount.Substring(0, tweetCount.IndexOf('<'));
                     Console.WriteLine("-- Tweets: " + tweetCount);
 
                     // Tweets - To do
@@ -187,7 +186,7 @@ namespace Reecon
             }
             else if (httpInfo.StatusCode == HttpStatusCode.TemporaryRedirect)
             {
-                if (httpInfo.ResponseHeaders?.Location != null && httpInfo.ResponseHeaders.Location.ToString() == "/account/suspended")
+                if (httpInfo.ResponseHeaders.Location != null && httpInfo.ResponseHeaders.Location.ToString() == "/account/suspended")
                 {
                     Console.WriteLine("- Twitter: Account Suspended :<");
                 }
@@ -201,7 +200,7 @@ namespace Reecon
         private static void GetYouTubeInfo(string username)
         {
             // YouTube usernames CAN have spaces - Oh gawd
-            var httpInfo = Web.GetHTTPInfo("https://www.youtube.com/" + username);
+            Web.HttpInfo httpInfo = Web.GetHTTPInfo("https://www.youtube.com/" + username);
             if (httpInfo.StatusCode == HttpStatusCode.OK)
             {
                 string youtubeUsername = httpInfo.PageTitle.Replace(" - YouTube", "");
@@ -210,12 +209,12 @@ namespace Reecon
                 Console.WriteLine("-- Name: " + youtubeUsername);
 
                 // About page
-                var aboutPage = Web.GetHTTPInfo("https://www.youtube.com/c/" + username + "/about");
+                Web.HttpInfo aboutPage = Web.GetHTTPInfo("https://www.youtube.com/c/" + username + "/about");
 
                 // Description
                 string description = aboutPage.PageText;
-                description = description.Remove(0, description.IndexOf("og:description") + 25);
-                description = description.Substring(0, description.IndexOf("\">"));
+                description = description.Remove(0, description.IndexOf("og:description", StringComparison.Ordinal) + 25);
+                description = description.Substring(0, description.IndexOf("\">", StringComparison.Ordinal));
                 if (description.Trim() != "")
                 {
                     Console.WriteLine("-- Description: " + description);
@@ -235,7 +234,7 @@ namespace Reecon
                     string location = httpInfo.ResponseHeaders.Location.ToString();
                     if (location.Contains("/user/"))
                     {
-                        var userInfo = Web.GetHTTPInfo(location);
+                        Web.HttpInfo userInfo = Web.GetHTTPInfo(location);
                         Console.WriteLine("- YouTube: " + "Found".Recolor(Color.Green));
                         Console.WriteLine("-- User Profile: " + location);
                         Console.WriteLine("-- Name: " + userInfo.PageTitle.Replace(" - YouTube", ""));
@@ -245,7 +244,7 @@ namespace Reecon
                     }
                     else
                     {
-                        Console.WriteLine("- YouTube: Unknown Moved to " + httpInfo.ResponseHeaders.Location.ToString());
+                        Console.WriteLine("- YouTube: Unknown Moved to " + httpInfo.ResponseHeaders.Location);
                     }
                 }
             }
@@ -255,13 +254,13 @@ namespace Reecon
             }
         }
 
-        public static void GetGithubInfo(string username)
+        private static void GetGithubInfo(string username)
         {
-            var httpInfo = Web.GetHTTPInfo($"https://api.github.com/users/{username}", "Reecon");
+            Web.HttpInfo httpInfo = Web.GetHTTPInfo($"https://api.github.com/users/{username}", "Reecon");
             if (httpInfo.StatusCode != HttpStatusCode.NotFound)
             {
                 Console.WriteLine("- Github: " + "Found".Recolor(Color.Green));
-                var githubInfo = JsonDocument.Parse(httpInfo.PageText);
+                JsonDocument githubInfo = JsonDocument.Parse(httpInfo.PageText);
 
                 JsonElement login = githubInfo.RootElement.GetProperty("login");
                 Console.WriteLine("-- Login: " + login);
@@ -296,9 +295,9 @@ namespace Reecon
             }
         }
 
-        public static void GetPastebinInfo(string username)
+        private static void GetPastebinInfo(string username)
         {
-            var httpInfo = Web.GetHTTPInfo($"https://pastebin.com/u/{username}");
+            Web.HttpInfo httpInfo = Web.GetHTTPInfo($"https://pastebin.com/u/{username}");
             if (httpInfo.StatusCode != HttpStatusCode.NotFound)
             {
                 Console.WriteLine("- Pastebin: Found");

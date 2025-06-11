@@ -113,14 +113,14 @@ namespace Reecon
             if (outputLines.Any(x => x.Contains("no matching key exchange method found. Their offer:")))
             {
                 string theLine = outputLines.First(x => x.Contains("no matching key exchange method found. Their offer:"));
-                string authMethods = theLine.Remove(0, theLine.IndexOf("Their offer: ") + 13);
+                string authMethods = theLine.Remove(0, theLine.IndexOf("Their offer: ", StringComparison.Ordinal) + 13);
                 return "Unknown - Weird Auth Algos: " + authMethods + Environment.NewLine + $"--> ssh {ip} -p {port} -o PreferredAuthentications=none -o StrictHostKeyChecking=no -o ConnectTimeout=5 -oHostKeyAlgorithms=ABOVE";
             }
             // Similar
             if (outputLines.Any(x => x.Contains("no matching host key type found. Their offer")))
             {
                 string theLine = outputLines.First(x => x.Contains("no matching host key type found. Their offer"));
-                string authMethods = theLine.Remove(0, theLine.IndexOf("Their offer: ") + 13);
+                string authMethods = theLine.Remove(0, theLine.IndexOf("Their offer: ", StringComparison.Ordinal) + 13);
                 return "Unknown - Weird Auth Algos: " + authMethods + Environment.NewLine + $"--> ssh {ip} -p {port} -o PreferredAuthentications=none -o StrictHostKeyChecking=no -o ConnectTimeout=5 -oHostKeyAlgorithms=ABOVE";
             }
             if (outputLines.Count == 1 && outputLines[0].Trim() == "kex_exchange_identification: Connection closed by remote host")
@@ -149,7 +149,7 @@ namespace Reecon
                 }
             }
             returnString = outputLines.First(x => x.Contains("Permission denied"));
-            returnString = returnString.Remove(0, returnString.IndexOf("("));
+            returnString = returnString.Remove(0, returnString.IndexOf("(", StringComparison.Ordinal));
             returnString = returnString.Replace("(", "").Replace(")", "");
             returnString = returnString.Replace(",", ", ");
             returnString = returnString.Trim('.');  

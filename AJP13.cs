@@ -29,13 +29,13 @@ namespace Reecon
                     return false;
                 }
             }
-            string pageTitle = httpInfo.PageTitle;
+            string? pageTitle = httpInfo.PageTitle;
             // Apache Tomcat/9.0.30
-            if (!pageTitle.StartsWith("Apache Tomcat/"))
+            if (pageTitle != null && !pageTitle.StartsWith("Apache Tomcat/"))
             {
                 return false;
             }
-            pageTitle = pageTitle.Replace("Apache Tomcat/", "");
+            pageTitle = pageTitle?.Replace("Apache Tomcat/", "");
             System.Version theVersion = System.Version.Parse(pageTitle);
 
 

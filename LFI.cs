@@ -495,7 +495,7 @@ namespace Reecon
             {
                 if (pageText.Contains("root:x:0:0:root:/root"))
                 {
-                    string passwdText = pageText.Remove(0, pageText.IndexOf("root:x:0:0:root:/root"));
+                    string passwdText = pageText.Remove(0, pageText.IndexOf("root:x:0:0:root:/root", StringComparison.Ordinal));
                     List<string> pageLines = passwdText.Replace("\r", "").Split('\n').ToList();
                     foreach (string line in pageLines)
                     {
@@ -517,14 +517,14 @@ namespace Reecon
             {
                 if (pageText.Contains("DB_USER'") && pageText.Contains("DB_PASSWORD'"))
                 {
-                    string userText = pageText.Remove(0, pageText.IndexOf("DB_USER'") + 8);
+                    string userText = pageText.Remove(0, pageText.IndexOf("DB_USER'", StringComparison.Ordinal) + 8);
                     userText = userText.Remove(0, (userText.IndexOf('\'') + 1));
-                    userText = userText.Substring(0, userText.IndexOf("' );"));
+                    userText = userText.Substring(0, userText.IndexOf("' );", StringComparison.Ordinal));
                     Console.WriteLine("----> Wordpress Database Username: " + userText);
 
-                    string passText = pageText.Remove(0, pageText.IndexOf("DB_PASSWORD'") + 12);
+                    string passText = pageText.Remove(0, pageText.IndexOf("DB_PASSWORD'", StringComparison.Ordinal) + 12);
                     passText = passText.Remove(0, passText.IndexOf('\'') + 1);
-                    passText = passText.Substring(0, passText.IndexOf("' );"));
+                    passText = passText.Substring(0, passText.IndexOf("' );", StringComparison.Ordinal));
                     Console.WriteLine("----> Wordpress Database Password: " + passText);
                 }
             }

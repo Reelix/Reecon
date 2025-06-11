@@ -51,7 +51,7 @@ namespace Reecon
                         if (item.Contains(fileName.TrimStart("./".ToCharArray())) && item.Contains("segfault at "))
                         {
                             // Console.WriteLine("-- Item: " + item);
-                            string segfaultHex = item.Remove(0, item.IndexOf("segfault at ") + 12).Substring(0, 9).Trim();
+                            string segfaultHex = item.Remove(0, item.IndexOf("segfault at ", StringComparison.Ordinal) + 12).Substring(0, 9).Trim();
                             // Console.WriteLine("-- segfaultHex: " + segfaultHex);
                             string pwntoolsSearch = (new string(HEX2ASCII(segfaultHex).Reverse().ToArray()));
                             // Console.WriteLine("-- pwntoolsSearch: " + segfaultHex);
@@ -258,7 +258,7 @@ namespace Reecon
                     if (item.Trim().EndsWith(" <main>:"))
                     {
                         hasMain = true;
-                        Console.WriteLine("- <main> Address: " + item.Substring(0, item.IndexOf(" ")));
+                        Console.WriteLine("- <main> Address: " + item.Substring(0, item.IndexOf(" ", StringComparison.Ordinal)));
                     }
                 }
 

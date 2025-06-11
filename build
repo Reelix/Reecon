@@ -4,12 +4,12 @@
 arch=$(uname -m)
 case "$arch" in
     x86_64*)
-        echo "Found an x64 Architecture - Publishing for that"
-        dotnet publish Reecon -r linux-x64 --self-contained true --property:PublishDir=assemblyname=reecon,PublishTrimmed=true -o ./Reecon/bin/ && mv ./Reecon/bin/Reecon ./reecon
+        echo "Found x64 Architecture - Publishing for that..."
+        dotnet publish -r linux-x64 --self-contained true --property:PublishDir=bin/linux-x64/,assemblyname=reecon,PublishSingleFile=True,EnableCompressionInSingleFile=true,PublishTrimmed=true --configuration=Release
         ;;
     aarch64)
-        echo "Found an ARM64 Architecture - Publishing for that"
-        dotnet publish Reecon -r linux-arm64 --self-contained true --property:PublishDir=assemblyname=reecon,PublishTrimmed=true -o ./Reecon/bin/ && mv ./Reecon/bin/Reecon ./reecon
+        echo "Found ARM64 Architecture - Publishing for that..."
+        dotnet publish -r linux-arm64 --self-contained true --property:PublishDir=bin/linux-arm64/,assemblyname=reecon,PublishSingleFile=True,EnableCompressionInSingleFile=true,PublishTrimmed=true --configuration=Release
         ;;
     *)
         echo "Unknown CPU Architecture - Bug Reelix!"

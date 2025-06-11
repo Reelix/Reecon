@@ -20,10 +20,10 @@ namespace Reecon
                 if (bannerInfo.Substring(0, 12) == "[CAPABILITY ")
                 {
                     // It has capabilities!
-                    string capabilities = bannerInfo.Remove(0, bannerInfo.IndexOf("[CAPABILITY ") + 12);
-                    capabilities = capabilities.Substring(0, capabilities.IndexOf("] "));
+                    string capabilities = bannerInfo.Remove(0, bannerInfo.IndexOf("[CAPABILITY ", StringComparison.Ordinal) + 12);
+                    capabilities = capabilities.Substring(0, capabilities.IndexOf("] ", StringComparison.Ordinal));
 
-                    bannerInfo = bannerInfo.Remove(0, bannerInfo.IndexOf("] ") + 2);
+                    bannerInfo = bannerInfo.Remove(0, bannerInfo.IndexOf("] ", StringComparison.Ordinal) + 2);
                     returnInfo = "- Version: " + bannerInfo + Environment.NewLine;
                     returnInfo += "- Capabilities: " + capabilities;
 

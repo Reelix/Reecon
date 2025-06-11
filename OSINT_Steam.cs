@@ -33,8 +33,8 @@ namespace Reecon
             string profileText = Web.DownloadString($"https://steamcommunity.com/id/{name}").Text;
             if (profileText.Contains("<bdi>") && !profileText.Contains("<bdi></bdi>"))
             {
-                string profileName = profileText.Remove(0, profileText.IndexOf("<bdi>") + 5);
-                profileName = profileName.Substring(0, profileName.IndexOf("</bdi>"));
+                string profileName = profileText.Remove(0, profileText.IndexOf("<bdi>", StringComparison.Ordinal) + 5);
+                profileName = profileName.Substring(0, profileName.IndexOf("</bdi>", StringComparison.Ordinal));
                 return $"-- Profile: https://steamcommunity.com/id/{name}" + Environment.NewLine + "-- Real Name: " + profileName;
             }
             return "";
@@ -45,8 +45,8 @@ namespace Reecon
             string toReturn = "";
             // Get the session value for Steam profile searching
             string pageText = Web.DownloadString("https://steamcommunity.com/search/users/").Text;
-            string sessionValue = pageText.Remove(0, pageText.IndexOf("g_sessionID = \"") + 15);
-            sessionValue = sessionValue.Substring(0, sessionValue.IndexOf("\""));
+            string sessionValue = pageText.Remove(0, pageText.IndexOf("g_sessionID = \"", StringComparison.Ordinal) + 15);
+            sessionValue = sessionValue.Substring(0, sessionValue.IndexOf("\"", StringComparison.Ordinal));
 
             pageText = Web.DownloadString($"https://steamcommunity.com/search/SearchCommunityAjax?text={name}&filter=users&sessionid={sessionValue}", Cookie: $"sessionid={sessionValue}").Text;
             OSINT_Steam_Search? searchResults = JsonSerializer.Deserialize(pageText, OSINT_Steam_JsonContext.Default.OSINT_Steam_Search);
@@ -59,7 +59,7 @@ namespace Reecon
             {
                 return "";
             }
-            htmlResult = htmlResult.Remove(0, htmlResult.IndexOf("<a class=\"searchPersonaName\""));
+            htmlResult = htmlResult.Remove(0, htmlResult.IndexOf("<a class=\"searchPersonaName\"", StringComparison.Ordinal));
             List<string> resultList = htmlResult.Split("<a class=\"searchPersonaName\"", StringSplitOptions.RemoveEmptyEntries).ToList();
             foreach (string result in resultList)
             {
@@ -68,31 +68,31 @@ namespace Reecon
                 string profileLink = "";
                 if (result.Substring(0, 50).Contains("https://steamcommunity.com/id/"))
                 {
-                    profileLink = result.Remove(0, result.IndexOf("https://steamcommunity.com/id/"));
+                    profileLink = result.Remove(0, result.IndexOf("https://steamcommunity.com/id/", StringComparison.Ordinal));
                 }
                 else if (result.Substring(0, 50).Contains("https://steamcommunity.com/profiles/"))
                 {
-                    profileLink = result.Remove(0, result.IndexOf("https://steamcommunity.com/profiles/"));
+                    profileLink = result.Remove(0, result.IndexOf("https://steamcommunity.com/profiles/", StringComparison.Ordinal));
                 }
                 else
                 {
                     Console.WriteLine("Error in OSINT_Steam.GetSearchInfo - Bug Reelix!");
                     return "";
                 }
-                string steamLink = profileLink.Substring(0, profileLink.IndexOf("\""));
+                string steamLink = profileLink.Substring(0, profileLink.IndexOf("\"", StringComparison.Ordinal));
                 if (steamLink == $"https://steamcommunity.com/id/{name}")
                 {
                     // Match of the first - Ignore it
                     continue;
                 }
-                string steamName = profileLink.Remove(0, profileLink.IndexOf(">") + 1);
-                steamName = steamName.Substring(0, steamName.IndexOf("<")); // Hope we don't have anyone with a > in their name
+                string steamName = profileLink.Remove(0, profileLink.IndexOf(">", StringComparison.Ordinal) + 1);
+                steamName = steamName.Substring(0, steamName.IndexOf("<", StringComparison.Ordinal)); // Hope we don't have anyone with a > in their name
                 toReturn += $"-- Possible Match: {steamName} -> {steamLink}" + Environment.NewLine;
 
                 // This can be a bit messy - Might clean up later.
-                string steamCountry = profileLink.Remove(0, profileLink.IndexOf(steamName) + steamName.Length);
+                string steamCountry = profileLink.Remove(0, profileLink.IndexOf(steamName, StringComparison.Ordinal) + steamName.Length);
                 steamCountry = steamCountry.Remove(0, 10);
-                steamCountry = steamCountry.Substring(0, steamCountry.IndexOf("&nbsp;"));
+                steamCountry = steamCountry.Substring(0, steamCountry.IndexOf("&nbsp;", StringComparison.Ordinal));
                 steamCountry = steamCountry.Trim('\n').Trim('\t');
                 if (steamCountry.Length > 0)
                 {

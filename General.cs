@@ -78,7 +78,7 @@ namespace Reecon
         public static string BannerGrab(string ip, int port, string initialText = "", int bufferSize = 512, int timeout = 10000)
         {
             string bannerText = "";
-            Byte[] buffer = new Byte[bufferSize];
+            byte[] buffer = new byte[bufferSize];
             using (Socket bannerGrabSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
                 bannerGrabSocket.ReceiveTimeout = timeout;
@@ -167,14 +167,14 @@ namespace Reecon
         private static string BannerGrabThread(string ip, int port, string initialText = "", int bufferSize = 512, int timeout = 10000)
         {
             string bannerText = "";
-            Byte[] buffer = new Byte[bufferSize];
+            byte[] buffer = new byte[bufferSize];
             using (Socket bannerGrabSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
                 bannerGrabSocket.ReceiveTimeout = timeout;
                 bannerGrabSocket.SendTimeout = timeout;
                 try
                 {
-                    var result = bannerGrabSocket.BeginConnect(ip, port, null, null); // Error if an invalid IP
+                    IAsyncResult result = bannerGrabSocket.BeginConnect(ip, port, null, null); // Error if an invalid IP
                     bool success = result.AsyncWaitHandle.WaitOne(timeout, true);
                     if (success)
                     {
@@ -260,7 +260,6 @@ namespace Reecon
         // This is for custom requests where you know the actual bytes to send
         public static byte[] BannerGrabBytes(string ip, int port, List<byte[]> bytesToSend, int bufferSize = 1024)
         {
-            byte[] returBuffer = Array.Empty<byte>();
             byte[] buffer = new byte[bufferSize];
             using Socket bannerGrabSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             bannerGrabSocket.ReceiveTimeout = 10000;
@@ -276,13 +275,31 @@ namespace Reecon
                         bannerGrabSocket.Close();
                         return Encoding.ASCII.GetBytes("Reecon - Closed");
                     }
+                    
+                    List<byte> accumulatedData = new List<byte>();
                     foreach (byte[] cmdBytes in bytesToSend)
                     {
                         bannerGrabSocket.Send(cmdBytes);
-                        int receivedBytes = bannerGrabSocket.Receive(buffer);
-                        returBuffer = buffer.Take(receivedBytes).ToArray();
+                        
+                        // Loop indefinately until we receive no more bytes
+                        // There's a bug on some services that they send data in segments
+                        // Was previously sleeping and waiting for everything, but this is better
+
+                        while (true)
+                        {
+                            int receivedBytes = bannerGrabSocket.Receive(buffer);
+                            // Console.WriteLine("Received: " + receivedBytes);
+                            if (receivedBytes > 0)
+                            {
+                                accumulatedData.AddRange(buffer.Take(receivedBytes));
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        }
                     }
-                    return returBuffer;
+                    return accumulatedData.ToArray();
                 }
                 else
                 {
@@ -301,15 +318,10 @@ namespace Reecon
             using Ping myPing = new();
             try
             {
-                PingOptions myOptions = new();
                 try
                 {
                     PingReply reply = myPing.Send(ip, 1000);
-                    if (reply.Status == IPStatus.Success)
-                    {
-                        return true;
-                    }
-                    return false;
+                    return reply.Status == IPStatus.Success;
                 }
                 catch (PingException pex)
                 {
@@ -317,11 +329,8 @@ namespace Reecon
                     {
                         return null;
                     }
-                    else
-                    {
-                        Console.WriteLine("General.cs->IsUp - Unknown pex.Message: " + pex.Message);
-                        return false;
-                    }
+                    Console.WriteLine("General.cs->IsUp - Unknown pex.Message: " + pex.Message);
+                    return false;
                 }
             }
             catch (SocketException ex)
@@ -372,6 +381,7 @@ namespace Reecon
         /// </summary>
         /// <param name="processName"></param>
         /// <param name="arguments"></param>
+        /// <param name="waitForExitSeconds"></param>
         public static void RunProcess(string processName, string arguments, int waitForExitSeconds = 500)
         {
             // Console.WriteLine("Running Process " + processName + " with args: " + arguments);
@@ -396,7 +406,7 @@ namespace Reecon
         public static List<string> GetProcessOutput(string processName, string arguments)
         {
             // Console.WriteLine("Running Process " + processName + " with args: " + arguments);
-            List<string> outputLines = new List<string>();
+            List<string> outputLines = [];
             Process p = new();
             p.StartInfo.UseShellExecute = false;
             p.StartInfo.RedirectStandardOutput = true;
@@ -520,7 +530,6 @@ namespace Reecon
             networkInterfaces = networkInterfaces.Where(x => x.Name != "lo").ToList(); // Remove Loopback
             foreach (NetworkInterface ni in networkInterfaces)
             {
-                IPInterfaceProperties properties = ni.GetIPProperties();
                 foreach (UnicastIPAddressInformation ip in ni.GetIPProperties().UnicastAddresses)
                 {
                     if (ip.Address.AddressFamily == AddressFamily.InterNetwork)
@@ -653,7 +662,7 @@ namespace Reecon
             }
             else
             {
-                Console.WriteLine("Unknown Color: " + color.Name.ToString());
+                Console.WriteLine("Unknown Color: " + color.Name);
             }
             return toReturn;
         }

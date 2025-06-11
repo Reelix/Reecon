@@ -1,13 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.DirectoryServices.Protocols;
 using System.Drawing;
-using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
-using System.Security.AccessControl;
 using System.Security.Cryptography.X509Certificates;
-using System.Security.Principal;
 using System.Text;
 
 namespace Reecon
@@ -63,12 +59,17 @@ namespace Reecon
                 {
                     if (dex.Message.StartsWith("Unable to load shared library '"))
                     {
-                        string missingLib = dex.Message.Remove(0, dex.Message.IndexOf("Unable to load shared library '") + "Unable to load shared library '".Length);
+                        string missingLib = dex.Message.Remove(0, dex.Message.IndexOf("Unable to load shared library '", StringComparison.Ordinal) + "Unable to load shared library '".Length);
                         missingLib = missingLib.Substring(0, missingLib.IndexOf('\''));
                         toReturn = "- LDAP.GetInfo - Cannot run without DLL: " + missingLib + Environment.NewLine;
                         if (RuntimeInformation.ProcessArchitecture.ToString() == "Arm64")
                         {
                             toReturn += "-- Detected Arm64 - Download + Install: http://ports.ubuntu.com/pool/main/o/openldap/libldap-2.4-2_2.4.49+dfsg-2ubuntu1_arm64.deb";
+                            return toReturn;
+                        }
+                        else if (RuntimeInformation.ProcessArchitecture.ToString() == "X64")
+                        {
+                            toReturn += "-- Detected X64 - Download + Install: http://archive.ubuntu.com/ubuntu/pool/main/o/openldap/libldap-2.5-0_2.5.11+dfsg-1~exp1ubuntu3_amd64.deb";
                             return toReturn;
                         }
                         else
@@ -229,6 +230,7 @@ namespace Reecon
 
         public static string GetAccountInfo(string ip, int port, string? username = null, string? password = null)
         {
+            // string? checkCanRun = CanLDAPRun();
             string ldapInfo = string.Empty;
             LdapDirectoryIdentifier identifier = new LdapDirectoryIdentifier(ip, port);
             if (rootDseString == "")
@@ -258,7 +260,7 @@ namespace Reecon
 
             if (port == 389)
             {
-                connection.AuthType = AuthType.Basic;
+                connection.AuthType = AuthType.Negotiate;
             }
             else
             {
@@ -383,7 +385,7 @@ namespace Reecon
                     entryCount++;
                 }
 
-                // If the server doesn't support paging or it's the last page
+                // If the server doesn't support paging, or it's the last page
                 if (pageResponseControl == null || pageResponseControl.Cookie.Length == 0)
                 {
                     break;

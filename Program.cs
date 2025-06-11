@@ -17,12 +17,12 @@ namespace Reecon
         {
             // For timing
             DateTime startDate = DateTime.Now;
-
+            
             // Stands out a bit more
-            Console.ForegroundColor = ConsoleColor.White;
-
+            Console.ForegroundColor = ConsoleColor.White; // Rider issue - Change back to White
+            
             // And begin!
-            Console.WriteLine("Reecon - Version 0.36 ( https://github.com/Reelix/Reecon )".Recolor(Color.Yellow));
+            Console.WriteLine("Reecon - Version 0.37 ( https://github.com/Reelix/Reecon )".Recolor(Color.Yellow));
             if (args.Length == 0)
             {
                 General.ShowHelp();
@@ -31,7 +31,11 @@ namespace Reecon
             }
 
             // Check if it's anything custom
-            if (args.Contains("-h") || args.Contains("--help") || args.Contains("--version") || args.Contains("-v") || args.Contains("-V") || args.Contains("--v")) // Any others? :p
+
+            string reeconFileName = typeof(Program).Assembly.GetName().Name ?? "Filename Error in Program.cs - Bug Reelix";
+
+            if (args.Contains("-h") || args.Contains("--help") || args.Contains("--version") || args.Contains("-v") ||
+                args.Contains("-V") || args.Contains("--v")) // Any others? :p
             {
                 General.ShowHelp();
                 Console.ResetColor();
@@ -43,13 +47,34 @@ namespace Reecon
                 Console.ResetColor();
                 return;
             }
+            else if (args[0] == "-bloodhound" || args[0] == "--bloodhound")
+            {
+                if (args.Length == 1)
+                {
+                    Console.WriteLine($"Usage: {reeconFileName} -bloodhound -ingest");
+                    Console.WriteLine($"Usage: {reeconFileName} -bloodhound username@domain.com");
+                }
+                else if (args.Length == 2)
+                {
+                    if (args[1] == "--ingest")
+                    {
+                        Bloodhound.Ingest();
+                    }
+                    else if (args[1].Contains('@'))
+                    {
+                        string username = args[1];
+                        Bloodhound.GetInfo(username);
+                        return;
+                    }
+                }
+            }
             else if (args.Contains("-ldap") || args.Contains("--ldap"))
             {
-                string reeconFileName = typeof(Program).Assembly.GetName().Name ?? "Filename Error in Program.cs - Bug Reelix";
                 if (args.Length != 5)
                 {
                     Console.WriteLine($"LDAP Auth Enum:\t{reeconFileName} -ldap IP port validUsername validPassword");
                 }
+
                 string ip = args[1];
                 string port = args[2];
                 if (!int.TryParse(port, out _))
@@ -59,6 +84,7 @@ namespace Reecon
                     Console.ResetColor();
                     return;
                 }
+
                 string username = args[3];
                 string password = args[4];
                 string accountInfo = LDAP.GetAccountInfo(ip, int.Parse(port), username, password);
@@ -136,6 +162,7 @@ namespace Reecon
                 mustPing = false;
                 args = args.Where(x => !x.Contains("-noping")).ToArray();
             }
+
             // A common typo
             if (args.Contains("-nopign"))
             {
@@ -206,6 +233,7 @@ namespace Reecon
                     Console.WriteLine($"Invalid target: {target}");
                     return;
                 }
+
                 if (!isHostOnline.Value)
                 {
                     Console.WriteLine($"Host {target} is not responding to pings :(");
@@ -266,6 +294,7 @@ namespace Reecon
             {
                 Console.Write("s");
             }
+
             Console.WriteLine(": " + string.Join(",", portList) + ")");
 
             // Multi-threaded scan
@@ -295,7 +324,9 @@ namespace Reecon
             }
             else
             {
-                postScanList.Add($"- Nmap Script+Version Scan: sudo nmap -sC -sV -p{string.Join(",", portList)} {target} -oN nmap.txt" + Environment.NewLine);
+                postScanList.Add(
+                    $"- Nmap Script+Version Scan: sudo nmap -sC -sV -p{string.Join(",", portList)} {target} -oN nmap.txt" +
+                    Environment.NewLine);
                 postScanList.Add($"- Nmap UDP Scan: sudo nmap -sU {target} (-F for top 100)" + Environment.NewLine);
                 foreach (string item in postScanList)
                 {
