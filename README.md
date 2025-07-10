@@ -33,7 +33,7 @@ If it sounds cool, I'll try :)
 - Download + Run https://github.com/Reelix/Reecon/releases/download/latest/reecon-linux-arm64
 
 ## Build Setup
-### Linux (Ubuntu 22.10 and above) https://github.com/SpecterOps/BloodHound/issues/1505
+### Linux (Ubuntu 22.10 and above)
 sudo apt update  
 sudo apt upgrade  
 sudo apt install dotnet-sdk-9.0 -y
