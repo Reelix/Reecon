@@ -10,11 +10,11 @@ namespace Reecon
     {
         private static string baseURL = "";
         private static string baseLocation = "";
-        private static int notFoundLength = 0;
-        private static int notFoundLength2 = 0;
-        private static int notFoundLength3 = 0;
+        private static int notFoundLength;
+        private static int notFoundLength2;
+        private static int notFoundLength3;
         private static int bypassMethod = -1;
-        private static string? cookie = null;
+        private static string? cookie;
 
         public static void Scan(string[] args)
         {
@@ -190,7 +190,7 @@ namespace Reecon
             Console.WriteLine("Determining invalid path results...");
 
             // NFL1 - A regular invalid path
-            string result = Web.GetHTTPInfo(baseURL + "Reelix", Cookie: cookie).PageText;
+            string result = Web.GetHTTPInfo(baseURL + "Reelix", Cookie: cookie).PageText ?? "";
             notFoundLength = result.Length; // Check for cases where the page text contains the URL?
             // Some not-found pages can be blank
             if (notFoundLength < 0)
@@ -200,7 +200,7 @@ namespace Reecon
             Console.WriteLine("Invalid Path 1/3 Length: " + notFoundLength);
 
             // NFL2 - An invalid path with 2 dots
-            result = Web.GetHTTPInfo(baseURL + "Ree..lix", Cookie: cookie).PageText;
+            result = Web.GetHTTPInfo(baseURL + "Ree..lix", Cookie: cookie).PageText ?? "";
             notFoundLength2 = result.Length;
             if (notFoundLength2 < 0)
             {
@@ -209,7 +209,7 @@ namespace Reecon
             Console.WriteLine("Invalid Path 2/3 Length: " + notFoundLength2);
 
             // NFL3 - An invalid path, but the error message contains the path itself
-            result = Web.GetHTTPInfo(baseURL + "/some/file/name.txt", Cookie: cookie).PageText;
+            result = Web.GetHTTPInfo(baseURL + "/some/file/name.txt", Cookie: cookie).PageText ?? "";
             notFoundLength3 = result.Replace("/some/file/name.txt", "").Length;
             if (notFoundLength3 < 0)
             {
@@ -446,7 +446,7 @@ namespace Reecon
                     int bypassLength = "php://filter/convert.iconv.UTF8.CSISO2022KR|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.SE2.UTF-16|convert.iconv.CSIBM921.NAPLPS|convert.iconv.855.CP936|convert.iconv.IBM-932.UTF-8|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.SE2.UTF-16|convert.iconv.CSIBM1161.IBM-932|convert.iconv.MS932.MS936|convert.iconv.BIG5.JOHAB|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.IBM869.UTF16|convert.iconv.L3.CSISO90|convert.iconv.UCS2.UTF-8|convert.iconv.CSISOLATIN6.UCS-4|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.8859_3.UTF16|convert.iconv.863.SHIFT_JISX0213|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.851.UTF-16|convert.iconv.L1.T.618BIT|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.CSA_T500.UTF-32|convert.iconv.CP857.ISO-2022-JP-3|convert.iconv.ISO2022JP2.CP775|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.IBM891.CSUNICODE|convert.iconv.ISO8859-14.ISO6937|convert.iconv.BIG-FIVE.UCS-4|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.SE2.UTF-16|convert.iconv.CSIBM921.NAPLPS|convert.iconv.855.CP936|convert.iconv.IBM-932.UTF-8|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.851.UTF-16|convert.iconv.L1.T.618BIT|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.JS.UNICODE|convert.iconv.L4.UCS2|convert.iconv.UCS-2.OSF00030010|convert.iconv.CSIBM1008.UTF32BE|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.SE2.UTF-16|convert.iconv.CSIBM921.NAPLPS|convert.iconv.CP1163.CSA_T500|convert.iconv.UCS-2.MSCP949|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.UTF8.UTF16LE|convert.iconv.UTF8.CSISO2022KR|convert.iconv.UTF16.EUCTW|convert.iconv.8859_3.UCS2|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.SE2.UTF-16|convert.iconv.CSIBM1161.IBM-932|convert.iconv.MS932.MS936|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.CP1046.UTF32|convert.iconv.L6.UCS-2|convert.iconv.UTF-16LE.T.61-8BIT|convert.iconv.865.UCS-4LE|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.MAC.UTF16|convert.iconv.L8.UTF16BE|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.CSGB2312.UTF-32|convert.iconv.IBM-1161.IBM932|convert.iconv.GB13000.UTF16BE|convert.iconv.864.UTF-32LE|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.L6.UNICODE|convert.iconv.CP1282.ISO-IR-90|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.L4.UTF32|convert.iconv.CP1250.UCS-2|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.SE2.UTF-16|convert.iconv.CSIBM921.NAPLPS|convert.iconv.855.CP936|convert.iconv.IBM-932.UTF-8|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.8859_3.UTF16|convert.iconv.863.SHIFT_JISX0213|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.CP1046.UTF16|convert.iconv.ISO6937.SHIFT_JISX0213|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.CP1046.UTF32|convert.iconv.L6.UCS-2|convert.iconv.UTF-16LE.T.61-8BIT|convert.iconv.865.UCS-4LE|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.MAC.UTF16|convert.iconv.L8.UTF16BE|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.CSIBM1161.UNICODE|convert.iconv.ISO-IR-156.JOHAB|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.INIS.UTF16|convert.iconv.CSIBM1133.IBM943|convert.iconv.IBM932.SHIFT_JISX0213|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.iconv.SE2.UTF-16|convert.iconv.CSIBM1161.IBM-932|convert.iconv.MS932.MS936|convert.iconv.BIG5.JOHAB|convert.base64-decode|convert.base64-encode|convert.iconv.UTF8.UTF7|convert.base64-decode/resource=php://temp".Length;
 
                     // Relevancy is checked elsewhere
-                    bool isLFI = TestLFI(toCheck, check, bypassLength);
+                    TestLFI(toCheck, check, bypassLength);
                 }
             }
             return hasResult;
@@ -462,7 +462,7 @@ namespace Reecon
                     Console.WriteLine("- " + fullPath + " -- Timeout :(");
                     return false;
                 }
-                string result = requestResult.PageText;
+                string result = requestResult.PageText ?? "";
                 int resultLength = result.Length;
                 if (
                     // NFL 1

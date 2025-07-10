@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Security.Cryptography;
+using System.Text;
 
 namespace Reecon
 {
@@ -18,275 +19,268 @@ namespace Reecon
         private static readonly byte[] ZERO_BYTES_8 = Enumerable.Repeat((byte)0x00, 8).ToArray();
         private static readonly byte[] ZERO_BYTES_16 = Enumerable.Repeat((byte)0x00, 16).ToArray();
 
-        // 2.2.1 SMB2 Packet Header
-        // https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/5cd64522-60b3-4f3e-a157-fe66f1228052
+        // --- SMB2 Command Codes ---
+        public const ushort SMB2_COMMAND_NEGOTIATE = 0x0000;
+        public const ushort SMB2_COMMAND_SESSION_SETUP = 0x0001;
+        public const ushort SMB2_COMMAND_LOGOFF = 0x0002;
+        public const ushort SMB2_COMMAND_TREE_CONNECT = 0x0003;
+        public const ushort SMB2_COMMAND_TREE_DISCONNECT = 0x0004;
+        public const ushort SMB2_COMMAND_CREATE = 0x0005;
+        public const ushort SMB2_COMMAND_CLOSE = 0x0006;
+        public const ushort SMB2_COMMAND_READ = 0x0008;
+        public const ushort SMB2_COMMAND_WRITE = 0x0009;
 
 
         // [MS-SMB2] 2.2.1.2 SMB2 Packet Header - SYNC
         // https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/fb188936-5050-48d3-b350-dc43059638a4
-        public static byte[] CreateHeader()
+        public static byte[] CreateHeader(ushort command, ulong messageId, uint treeId = 0, ulong sessionId = 0)
         {
-            List<byte> smb2MessageHeader = new List<byte>();
-            // ProtocolId
-            smb2MessageHeader.AddRange(new byte[] { 0xFE, (byte)'S', (byte)'M', (byte)'B' });
-            // StructureSize
-            ushort SMB2_HEADER_SIZE = 64;
-            smb2MessageHeader.AddRange(BitConverter.GetBytes(SMB2_HEADER_SIZE));
-            // CreditCharge
-            smb2MessageHeader.AddRange(ZERO_BYTES_2);
-            // Status/ChannelSequence/Reserved
-            smb2MessageHeader.AddRange(ZERO_BYTES_4);
-
-            // Command
-            ushort SMB2_COMMAND_NEGOTIATE = 0x0000;
-            smb2MessageHeader.AddRange(BitConverter.GetBytes(SMB2_COMMAND_NEGOTIATE));
-            smb2MessageHeader.AddRange(BitConverter.GetBytes((ushort)1));                   // Credits Requested
-            smb2MessageHeader.AddRange(ZERO_BYTES_4);                                        // Flags
-            smb2MessageHeader.AddRange(ZERO_BYTES_4);                                        // NextCommand
-
-            // MessageID (set to 0 initially)
-            smb2MessageHeader.AddRange(ZERO_BYTES_8);
-
-            // Reserved (PID High) / AsyncId[0-3]
-            smb2MessageHeader.AddRange(ZERO_BYTES_4);
-
-            // TreeId / AsyncId[4-7]
-            smb2MessageHeader.AddRange(ZERO_BYTES_4);
-
-            // SessionId
-            smb2MessageHeader.AddRange(ZERO_BYTES_8);
-
-            // Signature
-            smb2MessageHeader.AddRange(ZERO_BYTES_16);
-
-            if (smb2MessageHeader.Count != SMB2_HEADER_SIZE)
-            {
-                Console.WriteLine($"WARN: Header size mismatch. Expected {SMB2_HEADER_SIZE}, got {smb2MessageHeader.Count}");
-            }
-            byte[] returnBytes = smb2MessageHeader.ToArray();
-            return returnBytes;
+            List<byte> header = new List<byte>();
+            header.AddRange(new byte[] { 0xFE, (byte)'S', (byte)'M', (byte)'B' }); // ProtocolId
+            header.AddRange(BitConverter.GetBytes((ushort)64)); // StructureSize
+            header.AddRange(ZERO_BYTES_2); // CreditCharge
+            header.AddRange(ZERO_BYTES_4); // Status/ChannelSequence/Reserved
+            header.AddRange(BitConverter.GetBytes(command)); // Command
+            header.AddRange(BitConverter.GetBytes((ushort)1)); // Credits Requested
+            header.AddRange(ZERO_BYTES_4); // Flags
+            header.AddRange(ZERO_BYTES_4); // NextCommand
+            header.AddRange(BitConverter.GetBytes(messageId)); // MessageID
+            header.AddRange(ZERO_BYTES_4); // Reserved (PID High) / AsyncId[0-3]
+            header.AddRange(BitConverter.GetBytes(treeId)); // TreeId
+            header.AddRange(BitConverter.GetBytes(sessionId)); // SessionId
+            header.AddRange(ZERO_BYTES_16); // Signature
+            return header.ToArray();
         }
 
-        public static void ParseSMBHeader(byte[] response)
+        public static (uint status, ulong sessionId, uint treeId, byte[] data) ParseHeaderAndGetData(byte[] response)
         {
-            // This response is composed of an SMB2 header, as specified in section 2.2.1, followed by this response structure.
-            // Log the Protocol ID (first 4 bytes)
-            // Console.WriteLine("Protocol ID: " + BitConverter.ToString(response, 0, 4));
-
-            // Check for SMB1 response
-            if (response[0] == 0xFF)
-            {
-                Console.WriteLine("Server responded with SMB1.");
-                throw new Exception("SMB1 response received");
-            }
-
-            // Verify SMB2 / SMB3 Protocol ID
+            if (response.Length < 64) throw new InvalidDataException("Response too short for an SMB2 header.");
             if (response[0] != 0xFE || response[1] != 'S' || response[2] != 'M' || response[3] != 'B')
-            {
-                Console.WriteLine("Invalid SMB2 protocol ID.");
-                throw new Exception("Invalid SMB2 Negotiate Response");
-            }
+                throw new InvalidDataException("Invalid SMB2 protocol ID in response.");
 
-            // Log and check StructureSize (offset 4, 2 bytes)
-            ushort structureSize = BitConverter.ToUInt16(response, 4);
-            Console.WriteLine("StructureSize: " + structureSize);
-            if (structureSize != 64)
-            {
-                Console.WriteLine("Invalid StructureSize: " + structureSize);
-                throw new Exception("Invalid SMB2 Negotiate Response");
-            }
-
-            // Log and check Status (offset 8, 4 bytes)
             uint status = BitConverter.ToUInt32(response, 8);
-            Console.WriteLine("Status: 0x" + status.ToString("X8"));
-            if (status != 0)
-            {
-                Console.WriteLine("SMB2 Error: Status = 0x" + status.ToString("X8"));
-                throw new Exception("SMB2 Negotiate failed with status " + status);
-            }
-
-            // Log and check Command (offset 12, 2 bytes)
-            ushort command = BitConverter.ToUInt16(response, 12);
-            // Console.WriteLine("Command: " + command);
-            if (command != 0)
-            {
-                Console.WriteLine("Invalid Command: " + command);
-                throw new Exception("Invalid SMB2 Negotiate Response");
-            }
-
+            ulong sessionId = BitConverter.ToUInt64(response, 44);
+            uint treeId = BitConverter.ToUInt32(response, 52);
+            byte[] data = response.Skip(64).ToArray();
+            return (status, sessionId, treeId, data);
         }
 
-        // 2.2.3 SMB2 NEGOTIATE Request - Creates a complete SMB2 NEGOTIATE request packet including Direct TCP framing.
-        // https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/e14db7ff-763a-4263-8b10-0c3944f52fc5
+        private static byte[] PrependDirectTCPHeader(byte[] smbMessage)
+        {
+            uint streamLength = (uint)smbMessage.Length;
+            byte[] packet = new byte[4 + streamLength];
+            packet[0] = 0x00;
+            packet[1] = (byte)(streamLength >> 16);
+            packet[2] = (byte)(streamLength >> 8);
+            packet[3] = (byte)streamLength;
+            Buffer.BlockCopy(smbMessage, 0, packet, 4, (int)streamLength);
+            return packet;
+        }
+
+        // 2.2.3 SMB2 NEGOTIATE Request
         public static byte[] CreateNegotiateRequest()
         {
-            // Initialize with a reasonable capacity
-            List<byte> smb2MessageList = new List<byte>(200);
+            // SMB2 Header
+            byte[] headerBytes = CreateHeader(SMB2_COMMAND_NEGOTIATE, 0);
+            var smb2MessageList = new List<byte>(headerBytes);
 
-            // Header
-            byte[] headerBytes = CreateHeader();
-            smb2MessageList.AddRange(headerBytes);
-            // [MS-SMB2] Section 2.2.3 - SMB2 NEGOTIATE Request
-
-            // 1. StructureSize (2 bytes): MUST be 36
-            ushort SMB2_NEGOTIATE_STRUCTURE_SIZE = 36;
-            smb2MessageList.AddRange(BitConverter.GetBytes(SMB2_NEGOTIATE_STRUCTURE_SIZE));
-
-            // 2. DialectCount (2 bytes)
-            // TODO: 1.0... (3.1.1 was hell - Will that be any easaier? :p)
+            // Negotiate Request Body (fixed part)
             ushort[] SUPPORTED_DIALECTS = { 0x0202, 0x0210, 0x0300, 0x0302, 0x0311 };
-            smb2MessageList.AddRange(BitConverter.GetBytes((ushort)SUPPORTED_DIALECTS.Length));
 
-            // 3. SecurityMode (2 bytes)
-            ushort SMB2_NEGOTIATE_SIGNING_ENABLED = 0x0001;
-            smb2MessageList.AddRange(BitConverter.GetBytes(SMB2_NEGOTIATE_SIGNING_ENABLED));
+            smb2MessageList.AddRange(BitConverter.GetBytes((ushort)36)); // StructureSize
+            smb2MessageList.AddRange(BitConverter.GetBytes((ushort)SUPPORTED_DIALECTS.Length)); // DialectCount
+            smb2MessageList.AddRange(BitConverter.GetBytes((ushort)0x0001)); // SecurityMode: Signing Enabled
+            smb2MessageList.AddRange(ZERO_BYTES_2); // Reserved
 
-            // 4. Reserved (2 bytes): MUST be 0
-            smb2MessageList.AddRange(ZERO_BYTES_2);
-
-            // 5. Capabilities (4 bytes)
-            uint SMB2_GLOBAL_CAP_DFS = 0x00000001;
-            // uint SMB2_GLOBAL_CAP_LEASING = 0x00000002;
-            uint SMB2_GLOBAL_CAP_LARGE_MTU = 0x00000004;
-            uint SMB2_GLOBAL_CAP_MULTI_CHANNEL = 0x00000008;
-            uint SMB2_GLOBAL_CAP_ENCRYPTION = 0x00000040;
-            uint clientCapabilities = SMB2_GLOBAL_CAP_DFS | SMB2_GLOBAL_CAP_LARGE_MTU | SMB2_GLOBAL_CAP_MULTI_CHANNEL | SMB2_GLOBAL_CAP_ENCRYPTION;
+            // Capabilities for SMB 3.1.1. The presence of a NegotiateContextList allows advertising these.
+            uint clientCapabilities = 0x00000001; // DFS
+            clientCapabilities |= 0x00000040; // Encryption
             smb2MessageList.AddRange(BitConverter.GetBytes(clientCapabilities));
+            smb2MessageList.AddRange(Guid.NewGuid().ToByteArray()); // ClientGuid
 
-            // 6. ClientGuid (16 bytes)
-            Guid clientGuid = Guid.NewGuid();
-            smb2MessageList.AddRange(clientGuid.ToByteArray());
-
-            // 7. (NegotiateContextOffset, NegotiateContextCount, Reserved2) (8 bytes) - For SMB 3.1.1
-            // --- Write Placeholders ---
-            int negotiateContextOffsetIndex = smb2MessageList.Count; // Store index for later update
+            // Placeholders for Negotiate Contexts. Offset is calculated after dialects are added.
+            int negotiateContextOffsetIndex = smb2MessageList.Count;
             smb2MessageList.AddRange(ZERO_BYTES_4); // Placeholder for NegotiateContextOffset
-            int negotiateContextCountIndex = smb2MessageList.Count; // Store index for later update
-            smb2MessageList.AddRange(ZERO_BYTES_2); // Placeholder for NegotiateContextCount
+            smb2MessageList.AddRange(BitConverter.GetBytes((ushort)2)); // NegotiateContextCount = 2
             smb2MessageList.AddRange(ZERO_BYTES_2); // Reserved2
 
-            // --> End of fixed 36 bytes of Negotiate data (smb2MessageList.Count should be 64+36=100 here)
-
-            // 8. Dialects (variable)
+            // Dialects array
             foreach (var dialect in SUPPORTED_DIALECTS)
             {
                 smb2MessageList.AddRange(BitConverter.GetBytes(dialect));
             }
 
-            // 9. Padding (variable) - Align context list start
-            int currentSizeBeforePadding = smb2MessageList.Count;
-            int paddingSizeAfterDialects = (8 - (currentSizeBeforePadding % 8)) % 8;
-            if (paddingSizeAfterDialects > 0)
+            // Padding to align NegotiateContextList to an 8-byte boundary
+            int paddingSize = (8 - (smb2MessageList.Count % 8)) % 8;
+            smb2MessageList.AddRange(new byte[paddingSize]);
+
+            // Now, calculate and write the real offset
+            uint negotiateContextOffset = (uint)smb2MessageList.Count;
+            byte[] offsetBytes = BitConverter.GetBytes(negotiateContextOffset);
+            for (int i = 0; i < 4; i++) smb2MessageList[negotiateContextOffsetIndex + i] = offsetBytes[i];
+
+            // --- NegotiateContextList ---
+
+            // Context 1: Preauthentication Integrity
             {
-                smb2MessageList.AddRange(new byte[paddingSizeAfterDialects]);
-            }
+                var contextData = new List<byte>();
+                contextData.AddRange(BitConverter.GetBytes((ushort)1)); // HashAlgorithmCount = 1
+                contextData.AddRange(BitConverter.GetBytes((ushort)32)); // SaltLength = 32
+                contextData.AddRange(BitConverter.GetBytes((ushort)0x0001)); // HashAlgorithm: SHA-512
+                contextData.AddRange(RandomNumberGenerator.GetBytes(32)); // Salt
 
-            // --> Context list starts here. Record the offset relative to HEADER start.
-            uint calculatedContextOffsetValue = (uint)smb2MessageList.Count; // Offset is current size
-
-            // Console.WriteLine($"Negotiate Data: ContextListStartsAt offset {calculatedContextOffsetValue} (0x{calculatedContextOffsetValue:X}) relative to header");
-
-            // 10. NegotiateContextList (variable) [MS-SMB2] Section 2.2.3.1
-            // --- Generate and Add Contexts Inline ---
-
-            // Final context count
-            ushort actualContextCount = 0;
-
-            // Context 1: Preauthentication Integrity Capabilities
-            {
-                actualContextCount++;
-                byte[] salt = RandomNumberGenerator.GetBytes(32);
-                ushort hashCount = 1;
-                ushort saltLength = (ushort)salt.Length;
-                ushort SMB2_PREAUTH_INTEGRITY_HASH_ID_SHA512 = 0x0001;
-                ushort[] hashes = { SMB2_PREAUTH_INTEGRITY_HASH_ID_SHA512 };
-
-                List<byte> contextData = new List<byte>();
-                contextData.AddRange(BitConverter.GetBytes(hashCount));
-                contextData.AddRange(BitConverter.GetBytes(saltLength));
-                foreach (var hash in hashes) { contextData.AddRange(BitConverter.GetBytes(hash)); }
-                contextData.AddRange(salt);
-                byte[] contextDataBytes = contextData.ToArray();
-
-                int contextHeaderSize = 8;
-                int totalContextSize = contextHeaderSize + contextDataBytes.Length;
-                int paddingForThisContext = (8 - (totalContextSize % 8)) % 8;
-
-                ushort SMB2_PREAUTH_INTEGRITY_CAPABILITIES = 0x0001;
-                smb2MessageList.AddRange(BitConverter.GetBytes(SMB2_PREAUTH_INTEGRITY_CAPABILITIES));
-                smb2MessageList.AddRange(BitConverter.GetBytes((ushort)contextDataBytes.Length));
+                smb2MessageList.AddRange(BitConverter.GetBytes((ushort)0x0001)); // ContextType: Preauth
+                smb2MessageList.AddRange(BitConverter.GetBytes((ushort)contextData.Count)); // DataLength
                 smb2MessageList.AddRange(ZERO_BYTES_4); // Reserved
-                smb2MessageList.AddRange(contextDataBytes);
-                if (paddingForThisContext > 0)
-                {
-                    smb2MessageList.AddRange(new byte[paddingForThisContext]);
-                }
+                smb2MessageList.AddRange(contextData);
+
+                // Pad to next 8-byte boundary
+                paddingSize = (8 - (smb2MessageList.Count % 8)) % 8;
+                smb2MessageList.AddRange(new byte[paddingSize]);
             }
 
             // Context 2: Encryption Capabilities
             {
-                actualContextCount++;
-                ushort SMB2_ENCRYPTION_CIPHER_ID_AES128_GCM = 0x0002;
-                ushort SMB2_ENCRYPTION_CIPHER_ID_AES128_CCM = 0x0001;
-                ushort[] ciphers = { SMB2_ENCRYPTION_CIPHER_ID_AES128_GCM, SMB2_ENCRYPTION_CIPHER_ID_AES128_CCM };
-                ushort cipherCount = (ushort)ciphers.Length;
+                var contextData = new List<byte>();
+                contextData.AddRange(BitConverter.GetBytes((ushort)2)); // CipherCount = 2
+                contextData.AddRange(BitConverter.GetBytes((ushort)0x0002)); // Cipher: AES-128-GCM
+                contextData.AddRange(BitConverter.GetBytes((ushort)0x0001)); // Cipher: AES-128-CCM
 
-                List<byte> contextData = new List<byte>();
-                contextData.AddRange(BitConverter.GetBytes(cipherCount));
-                foreach (var cipher in ciphers)
-                {
-                    contextData.AddRange(BitConverter.GetBytes(cipher));
-                }
-                byte[] contextDataBytes = contextData.ToArray();
-
-                int contextHeaderSize = 8;
-                int totalContextSize = contextHeaderSize + contextDataBytes.Length;
-                int paddingForThisContext = (8 - (totalContextSize % 8)) % 8;
-
-                ushort SMB2_ENCRYPTION_CAPABILITIES = 0x0002;
-                smb2MessageList.AddRange(BitConverter.GetBytes(SMB2_ENCRYPTION_CAPABILITIES));
-                smb2MessageList.AddRange(BitConverter.GetBytes((ushort)contextDataBytes.Length));
+                smb2MessageList.AddRange(BitConverter.GetBytes((ushort)0x0002)); // ContextType: Encryption
+                smb2MessageList.AddRange(BitConverter.GetBytes((ushort)contextData.Count)); // DataLength
                 smb2MessageList.AddRange(ZERO_BYTES_4); // Reserved
-                smb2MessageList.AddRange(contextDataBytes);
-                if (paddingForThisContext > 0)
-                {
-                    smb2MessageList.AddRange(new byte[paddingForThisContext]);
-                }
+                smb2MessageList.AddRange(contextData);
+
+                // Pad to next 8-byte boundary
+                paddingSize = (8 - (smb2MessageList.Count % 8)) % 8;
+                smb2MessageList.AddRange(new byte[paddingSize]);
             }
 
-            // --- Update Placeholders in the List ---
-            // Note: Need to get bytes for the values first
-            byte[] offsetBytes = BitConverter.GetBytes(calculatedContextOffsetValue);
-            byte[] countBytes = BitConverter.GetBytes(actualContextCount);
+            return PrependDirectTCPHeader(smb2MessageList.ToArray());
+        }
 
-            // Overwrite the bytes in the list
-            for (int i = 0; i < 4; i++)
+        // 2.2.5 SMB2 SESSION_SETUP Request
+        public static byte[] CreateSessionSetupRequest(ulong messageId, string dialect)
+        {
+            byte[] headerBytes = CreateHeader(SMB2_COMMAND_SESSION_SETUP, messageId);
+            var message = new List<byte>(headerBytes);
+
+            byte flags = 0;
+            // For dialect 3.1.1, the BINDING flag is required for a new session setup.
+            if (dialect == "3.1.1")
             {
-                smb2MessageList[negotiateContextOffsetIndex + i] = offsetBytes[i];
-            }
-            for (int i = 0; i < 2; i++)
-            {
-                smb2MessageList[negotiateContextCountIndex + i] = countBytes[i];
+                flags = 0x01; // SMB2_SESSION_FLAG_BINDING
             }
 
-            // --- Convert List to final byte array ---
-            byte[] smb2Message = smb2MessageList.ToArray();
-            int smbMessageLength = smb2Message.Length;
-            // Console.WriteLine($"Final SMB Message Length: {smbMessageLength} (0x{smbMessageLength:X})");
+            // For anonymous/null session, we send an empty security blob.
+            message.AddRange(BitConverter.GetBytes((ushort)25)); // StructureSize
+            message.Add(flags); // Flags
+            message.Add(1); // SecurityMode: SMB2_NEGOTIATE_SIGNING_ENABLED
+            message.AddRange(BitConverter.GetBytes((uint)0)); // Capabilities
+            message.AddRange(BitConverter.GetBytes((uint)0)); // Channel
+            message.AddRange(BitConverter.GetBytes((ushort)(64 + 24))); // SecurityBufferOffset
+            message.AddRange(BitConverter.GetBytes((ushort)0)); // SecurityBufferLength
+            message.AddRange(ZERO_BYTES_8); // PreviousSessionId
 
-            // --- Prepend Direct TCP Transport Header ---
-            uint streamLength = (uint)smbMessageLength;
-            byte[] packet = new byte[4 + streamLength];
-            packet[0] = 0x00; // Direct TCP marker
-            packet[1] = (byte)(streamLength >> 16);
-            packet[2] = (byte)(streamLength >> 8);
-            packet[3] = (byte)streamLength;
-            Buffer.BlockCopy(smb2Message, 0, packet, 4, smbMessageLength);
+            return PrependDirectTCPHeader(message.ToArray());
+        }
 
-            // Console.WriteLine($"Final Packet Length: {packet.Length} bytes (Direct TCP Header: {ToHexString(packet, 4)}, Declared SMB Length: {streamLength})");
-            // Console.WriteLine($"Full Request Hex Dump:\n{ToHexString(packet)}");
+        // 2.2.9 SMB2 TREE_CONNECT Request
+        public static byte[] CreateTreeConnectRequest(string target, ulong messageId, ulong sessionId)
+        {
+            byte[] headerBytes = CreateHeader(SMB2_COMMAND_TREE_CONNECT, messageId, 0, sessionId);
+            var message = new List<byte>(headerBytes);
 
-            return packet;
+            string path = $@"\\{target}\IPC$";
+            byte[] pathBytes = Encoding.Unicode.GetBytes(path);
+
+            message.AddRange(BitConverter.GetBytes((ushort)9)); // StructureSize
+            message.AddRange(ZERO_BYTES_2); // Reserved
+            message.AddRange(BitConverter.GetBytes((ushort)(64 + 8))); // PathOffset
+            message.AddRange(BitConverter.GetBytes((ushort)pathBytes.Length)); // PathLength
+            message.AddRange(pathBytes);
+
+            return PrependDirectTCPHeader(message.ToArray());
+        }
+
+        // 2.2.13 SMB2 CREATE Request
+        public static byte[] CreateCreateRequest(string pipeName, ulong messageId, uint treeId, ulong sessionId)
+        {
+            byte[] headerBytes = CreateHeader(SMB2_COMMAND_CREATE, messageId, treeId, sessionId);
+            var message = new List<byte>(headerBytes);
+
+            byte[] nameBytes = Encoding.Unicode.GetBytes(pipeName);
+
+            message.AddRange(BitConverter.GetBytes((ushort)57)); // StructureSize
+            message.Add(0); // SecurityFlags
+            message.Add(0); // RequestedOplock
+            message.AddRange(BitConverter.GetBytes((uint)0x0012019F)); // Desired Access (Generic All)
+            message.AddRange(BitConverter.GetBytes((ulong)0)); // File Attributes
+            message.AddRange(BitConverter.GetBytes((uint)0x00000007)); // Share Access (Read, Write, Delete)
+            message.AddRange(BitConverter.GetBytes((uint)1)); // Create Disposition (FILE_OPEN)
+            message.AddRange(BitConverter.GetBytes((uint)0)); // Create Options
+            message.AddRange(BitConverter.GetBytes((ushort)(64 + 56))); // NameOffset
+            message.AddRange(BitConverter.GetBytes((ushort)nameBytes.Length)); // NameLength
+            message.AddRange(BitConverter.GetBytes((uint)0)); // CreateContextsOffset
+            message.AddRange(BitConverter.GetBytes((uint)0)); // CreateContextsLength
+            message.AddRange(nameBytes);
+
+            return PrependDirectTCPHeader(message.ToArray());
+        }
+
+        public static byte[] ParseCreateResponse(byte[] data)
+        {
+            // The FileId is a 16-byte GUID-like structure
+            return data.Skip(48).Take(16).ToArray();
+        }
+
+        // 2.2.19 SMB2 WRITE Request
+        public static byte[] CreateWriteRequest(byte[] payload, byte[] fileId, ulong messageId, uint treeId, ulong sessionId)
+        {
+            byte[] headerBytes = CreateHeader(SMB2_COMMAND_WRITE, messageId, treeId, sessionId);
+            var message = new List<byte>(headerBytes);
+
+            message.AddRange(BitConverter.GetBytes((ushort)49)); // StructureSize
+            message.AddRange(BitConverter.GetBytes((ushort)(64 + 48))); // DataOffset
+            message.AddRange(BitConverter.GetBytes((uint)payload.Length)); // Length
+            message.AddRange(BitConverter.GetBytes((ulong)0)); // Offset
+            message.AddRange(fileId); // FileId
+            message.AddRange(ZERO_BYTES_4); // Channel
+            message.AddRange(ZERO_BYTES_4); // RemainingBytes
+            message.AddRange(ZERO_BYTES_2); // WriteChannelInfoOffset
+            message.AddRange(ZERO_BYTES_2); // WriteChannelInfoLength
+            message.Add(0); // Flags
+            message.AddRange(payload);
+
+            return PrependDirectTCPHeader(message.ToArray());
+        }
+
+        // 2.2.15 SMB2 READ Request
+        public static byte[] CreateReadRequest(byte[] fileId, ulong messageId, uint treeId, ulong sessionId)
+        {
+            byte[] headerBytes = CreateHeader(SMB2_COMMAND_READ, messageId, treeId, sessionId);
+            var message = new List<byte>(headerBytes);
+
+            message.AddRange(BitConverter.GetBytes((ushort)49)); // StructureSize
+            message.Add(8); // Padding
+            message.Add(0); // Reserved
+            message.AddRange(BitConverter.GetBytes((uint)0x1000)); // Length to read
+            message.AddRange(BitConverter.GetBytes((ulong)0)); // Offset
+            message.AddRange(fileId); // FileId
+            message.AddRange(BitConverter.GetBytes((uint)1)); // MinimumCount
+            message.AddRange(ZERO_BYTES_4); // Channel
+            message.AddRange(ZERO_BYTES_4); // RemainingBytes
+            message.AddRange(ZERO_BYTES_2); // ReadChannelInfoOffset
+            message.AddRange(ZERO_BYTES_2); // ReadChannelInfoLength
+
+            return PrependDirectTCPHeader(message.ToArray());
+        }
+
+        public static byte[] ParseReadResponse(byte[] data)
+        {
+            ushort dataOffset = BitConverter.ToUInt16(data, 0);
+            uint dataLength = BitConverter.ToUInt32(data, 4);
+            return data.Skip(dataOffset - 64).Take((int)dataLength).ToArray();
         }
 
         public class NegotiateResponse()
@@ -299,16 +293,15 @@ namespace Reecon
         }
 
         // 2.2.4 SMB2 NEGOTIATE Response
-        // https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/63abf97c-0d09-47e2-88d6-6bfa552949a5
         public static NegotiateResponse ParseNegotiateResponse(byte[] data)
         {
             // This response is composed of an SMB2 header, as specified in section 2.2.1, followed by this response structure.
-
             if (data.Length < 64)
             {
                 Console.WriteLine("Response too short: " + data.Length + " bytes.");
                 throw new Exception("Invalid SMB2 response");
             }
+            
             // Don't really need to parse the header right now
             // List<byte> responseHeader = data.Take(64).ToList();
             // ParseSMBHeader(responseHeader.ToArray());
@@ -317,27 +310,18 @@ namespace Reecon
             // SMB2 NEGOTIATE Response
             // Check response data StructureSize (should be 65 for Negotiate Response)
             ushort dataStructureSize = BitConverter.ToUInt16(data, 0);
-            // Console.WriteLine("Response Data StructureSize: " + dataStructureSize);
             if (dataStructureSize != 65)
             {
                 Console.WriteLine("Invalid response structure size: " + dataStructureSize);
-                throw new Exception("Invalid SMB2 Negotiate Response");
+                throw new Exception("Invalid SMB2 Negotiate Response structure size.");
             }
 
             // Extract and log fields
             ushort securityMode = BitConverter.ToUInt16(data, 2);
-            // Console.WriteLine("SecurityMode: 0x" + securityMode.ToString("X4"));
-
             ushort dialectRevision = BitConverter.ToUInt16(data, 4);
-            // Console.WriteLine("DialectRevision: 0x" + dialectRevision.ToString("X4"));
-
             long systemTimeFileTime = BitConverter.ToInt64(data, 40);
-            // Console.WriteLine("SystemTime (FILETIME): " + systemTimeFileTime);
-
             long serverStartTimeFileTime = BitConverter.ToInt64(data, 48);
-            // Console.WriteLine("ServerStartTime (FILETIME): " + serverStartTimeFileTime);
 
-            // Process times
             DateTime systemTime = DateTime.FromFileTimeUtc(systemTimeFileTime);
             string startDate = serverStartTimeFileTime == 0 ? "N/A" :
                               DateTime.FromFileTimeUtc(serverStartTimeFileTime).ToString("yyyy-MM-ddTHH:mm:ss");
@@ -348,42 +332,29 @@ namespace Reecon
                                            Math.Abs(skew.Days * 24 + skew.Hours),
                                            Math.Abs(skew.Minutes),
                                            Math.Abs(skew.Seconds));
-
-            // Process dialect
-            string dialectStr;
-            switch (dialectRevision)
+            string dialectStr = dialectRevision switch
             {
-                case 0x0202:
-                    dialectStr = "2:0:2";
-                    break;
-                case 0x0210:
-                    dialectStr = "2:1";
-                    break;
-                case 0x0300:
-                    dialectStr = "3:0";
-                    break;
-                case 0x0302:
-                    dialectStr = "3:0:2";
-                    break;
-                case 0x0311:
-                    dialectStr = "3:1:1";
-                    break;
-                default:
-                    dialectStr = "Unknown";
-                    break;
-            }
-
+                0x0202 => "2.0.2",
+                0x0210 => "2.1",
+                0x0300 => "3.0",
+                0x0302 => "3.0.2",
+                0x0311 => "3.1.1",
+                _ => "Unknown"
+            };
+            
             // Process security mode
             string signingStatus = (securityMode & 0x0002) != 0 ? "Message signing enabled and required" :
                                   (securityMode & 0x0001) != 0 ? "Message signing enabled but not required" :
                                   "Message signing not enabled";
 
-            NegotiateResponse response = new NegotiateResponse();
-            response.ClockSkew = skewStr;
-            response.DialectStr = dialectStr;
-            response.SystemTime = systemTime;
-            response.StartDate = startDate;
-            response.SigningStatus = signingStatus;
+            NegotiateResponse response = new NegotiateResponse
+            {
+                ClockSkew = skewStr,
+                DialectStr = dialectStr,
+                SystemTime = systemTime,
+                StartDate = startDate,
+                SigningStatus = signingStatus
+            };
             return response;
         }
 
@@ -399,17 +370,21 @@ namespace Reecon
                 throw new Exception("Connection closed");
             }
 
+            if (lengthBytes[0] != 0)
+            {
+                throw new InvalidDataException("Not a Direct TCP packet.");
+            }
+            
             // :|
-            uint length = (uint)((lengthBytes[0] << 24) | (lengthBytes[1] << 16) | (lengthBytes[2] << 8) | lengthBytes[3]);
+            uint length = (uint)((lengthBytes[1] << 16) | (lengthBytes[2] << 8) | lengthBytes[3]);
 
             byte[] response = new byte[length];
-            try
+            int totalRead = 0;
+            while (totalRead < length)
             {
-                stream.ReadExactly(response, 0, (int)length);
-            }
-            catch (EndOfStreamException)
-            {
-                throw new Exception("Connection closed");
+                int read = stream.Read(response, totalRead, (int)length - totalRead);
+                if (read == 0) throw new EndOfStreamException("Connection closed while reading response body.");
+                totalRead += read;
             }
             return response;
         }

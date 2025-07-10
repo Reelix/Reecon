@@ -6,7 +6,7 @@ using System.Text;
 
 namespace Reecon
 {
-    class SSH // Commonly Port 22 or 2222
+    internal class SSH // Commonly Port 22 or 2222
     {
         public static (string PortName, string PortInfo) GetInfo(string ip, int port)
         {

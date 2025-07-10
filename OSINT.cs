@@ -7,7 +7,7 @@ using System.Text.Json;
 
 namespace Reecon
 {
-    class OSINT
+    internal static class OSINT
     {
         // This module is completely broken from the in-progress trimming.
         public static void GetInfo(string[] args)
@@ -143,7 +143,7 @@ namespace Reecon
             {
                 Console.WriteLine("- Twitter: Not Found");
             }
-            else if (httpInfo.StatusCode == HttpStatusCode.OK)
+            else if (httpInfo.StatusCode == HttpStatusCode.OK && httpInfo.PageTitle != null && httpInfo.PageText != null)
             {
                 Console.WriteLine("- Twitter: " + "Found".Recolor(Color.Green));
                 Console.WriteLine("-- Link: https://x.com/" + username);
@@ -201,7 +201,7 @@ namespace Reecon
         {
             // YouTube usernames CAN have spaces - Oh gawd
             Web.HttpInfo httpInfo = Web.GetHTTPInfo("https://www.youtube.com/" + username);
-            if (httpInfo.StatusCode == HttpStatusCode.OK)
+            if (httpInfo.StatusCode == HttpStatusCode.OK && httpInfo.PageTitle != null)
             {
                 string youtubeUsername = httpInfo.PageTitle.Replace(" - YouTube", "");
                 Console.WriteLine("- YouTube: " + "Found".Recolor(Color.Green));
@@ -210,14 +210,16 @@ namespace Reecon
 
                 // About page
                 Web.HttpInfo aboutPage = Web.GetHTTPInfo("https://www.youtube.com/c/" + username + "/about");
-
-                // Description
-                string description = aboutPage.PageText;
-                description = description.Remove(0, description.IndexOf("og:description", StringComparison.Ordinal) + 25);
-                description = description.Substring(0, description.IndexOf("\">", StringComparison.Ordinal));
-                if (description.Trim() != "")
+                if (aboutPage.StatusCode == HttpStatusCode.OK && aboutPage.PageText != null)
                 {
-                    Console.WriteLine("-- Description: " + description);
+                    // Description
+                    string description = aboutPage.PageText;
+                    description = description.Remove(0, description.IndexOf("og:description", StringComparison.Ordinal) + 25);
+                    description = description.Substring(0, description.IndexOf("\">", StringComparison.Ordinal));
+                    if (description.Trim() != "")
+                    {
+                        Console.WriteLine("-- Description: " + description);
+                    }
                 }
 
                 // New line break at the end
@@ -235,9 +237,12 @@ namespace Reecon
                     if (location.Contains("/user/"))
                     {
                         Web.HttpInfo userInfo = Web.GetHTTPInfo(location);
-                        Console.WriteLine("- YouTube: " + "Found".Recolor(Color.Green));
-                        Console.WriteLine("-- User Profile: " + location);
-                        Console.WriteLine("-- Name: " + userInfo.PageTitle.Replace(" - YouTube", ""));
+                        if (userInfo.StatusCode == HttpStatusCode.OK && userInfo.PageTitle != null)
+                        {
+                            Console.WriteLine("- YouTube: " + "Found".Recolor(Color.Green));
+                            Console.WriteLine("-- User Profile: " + location);
+                            Console.WriteLine("-- Name: " + userInfo.PageTitle.Replace(" - YouTube", ""));
+                        }
 
                         // New line break at the end
                         Console.WriteLine();
@@ -257,7 +262,7 @@ namespace Reecon
         private static void GetGithubInfo(string username)
         {
             Web.HttpInfo httpInfo = Web.GetHTTPInfo($"https://api.github.com/users/{username}", "Reecon");
-            if (httpInfo.StatusCode != HttpStatusCode.NotFound)
+            if (httpInfo.StatusCode != HttpStatusCode.NotFound && httpInfo.PageText != null)
             {
                 Console.WriteLine("- Github: " + "Found".Recolor(Color.Green));
                 JsonDocument githubInfo = JsonDocument.Parse(httpInfo.PageText);

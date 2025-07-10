@@ -20,6 +20,7 @@ namespace Reecon
     {
         static string scanURL = "";
         static List<string> fullPageList = [];
+
         public static void GetInfo(string[] args)
         {
             if (args.Length != 2)
@@ -27,6 +28,7 @@ namespace Reecon
                 Console.WriteLine("Web Usage: reecon -web http://site.com/");
                 return;
             }
+
             scanURL = args[1];
             if (!scanURL.StartsWith("http"))
             {
@@ -56,7 +58,7 @@ namespace Reecon
                     pageInfo += FindLinks(pageText); // Todo: Recursive
                     // TODO: Auto SQLi - Web.GetInfo(new[] { "-web", "http://testphp.vulnweb.com/" });
                 }
-                
+
                 Console.WriteLine(parsedHTTPInfo);
                 if (pageInfo.Trim() != "")
                 {
@@ -64,7 +66,7 @@ namespace Reecon
                 }
 
                 // Then find common files
-                Console.WriteLine("Searching for common files...");
+                Console.WriteLine("Searching for common files - This may take awhile...");
 
                 string commonFiles = FindCommonFiles(scanURL);
                 if (commonFiles.Trim() != String.Empty)
@@ -80,8 +82,8 @@ namespace Reecon
                     Console.WriteLine("- Subdomains Discovered! Need to add them to your hosts file.");
                     Console.WriteLine(subDomains);
                 }
-
             }
+
             Console.WriteLine("Web Info Scan Finished");
         }
 
@@ -93,12 +95,14 @@ namespace Reecon
                 Console.WriteLine("ReeDebug - Web.FindInfo - pageText is null - WTF?");
                 return "";
             }
+
             if (pageText.Trim() != "")
             {
                 foundInfo += FindFormData(pageText);
                 foundInfo += FindEmails(pageText, doubleDash);
                 return foundInfo.Trim(Environment.NewLine.ToCharArray());
             }
+
             return "";
         }
 
@@ -126,6 +130,7 @@ namespace Reecon
                             formMethod = formMethod.Substring(0, formMethod.IndexOf('"'));
                             returnText += "-- Method: " + formMethod + Environment.NewLine;
                         }
+
                         string formAction = "";
                         if (formHeader.Replace(" ", "").Contains("action=\""))
                         {
@@ -182,6 +187,7 @@ namespace Reecon
                                     hiddenItemName = hiddenItemName.Substring(0, hiddenItemName.IndexOf('"'));
                                     returnText += $"--- Hidden Item Name: {hiddenItemName}" + Environment.NewLine;
                                 }
+
                                 if (item.Contains(" value=\""))
                                 {
                                     string hiddenItemValue = item.Remove(0, item.IndexOf("value", StringComparison.Ordinal));
@@ -198,7 +204,8 @@ namespace Reecon
                         submitButtons = submitButtons.Where(x => x.Contains("\"submit\"") || x.Contains(">Login</button>")).ToList();
 
                         // This will only work in the best of cases
-                        if ((inputs.Count >= 3 || (inputs.Count >= 2 && submitButtons.Count == 1)) && username != null && password != null)
+                        if ((inputs.Count >= 3 || (inputs.Count >= 2 && submitButtons.Count == 1)) &&
+                            username != null && password != null)
                         {
                             returnText += "-- " + "Possible Login Form Found".Recolor(Color.Orange) + Environment.NewLine;
                             returnText += "--- " + $"hydra -L logins.txt -P passwords.txt 127.0.0.1 http-form-post \"{formAction}:{username}=^USER^&{password}=^PASS^:Invalid password error here\"".Recolor(Color.Orange) + Environment.NewLine;
@@ -210,6 +217,7 @@ namespace Reecon
             {
                 Console.WriteLine($"Rare NRE in Web.FindFormData with text: {text} - Bug Reelix");
             }
+
             return returnText;
         }
 
@@ -232,6 +240,7 @@ namespace Reecon
                     returnInfo += "- EMail: " + match + Environment.NewLine;
                 }
             }
+
             return returnInfo;
         }
 
@@ -268,6 +277,7 @@ namespace Reecon
                         }
                     }
                 }
+
                 if (href.Length > 1 && !href.StartsWith('#')) // Section - Not actual URL
                 {
                     string info = doubleDash ? "-- " : "- ";
@@ -291,14 +301,15 @@ namespace Reecon
                         }
                     }
                 }
-
             }
+
             // Convert to a nice string to return
             string returnInfo = "";
             foreach (string page in currentPageList)
             {
                 returnInfo += page + Environment.NewLine;
             }
+
             return returnInfo.Trim(Environment.NewLine.ToCharArray());
         }
 
@@ -417,9 +428,8 @@ namespace Reecon
             }
 
             // Mini gobuster / ffuf :p
-            List<string> commonFiles = new()
-            {
-                // robots.txt - Of course
+            List<string> commonFiles =
+            [
                 "robots.txt",
                 // Most likely invalid folder for test purposes
                 "woof/",
@@ -429,12 +439,17 @@ namespace Reecon
                 "backup/",
                 "backups/",
                 "dev/",
-                "development/", 
+                "development/",
                 // Common Index files
                 "index.php",
                 "index.html",
                 "index.jsp",
                 "index.nginx-debian.html", // If they didn't remove the default nginx config file
+                // Login pages
+                "login",
+                "login.html",
+                "login.php",
+                "login/",
                 // Common upload paths
                 "upload/",
                 "uploads/",
@@ -480,10 +495,10 @@ namespace Reecon
                 // Bolt CMS
                 "bolt-public/img/bolt-logo.png",
                 // Shellshock and co
-                "cgi-bin/", 
+                "cgi-bin/",
                 // Well-Known
                 ".well-known/",
-                ".well-known/security.txt",  // https://www.google.com/.well-known/security.txt
+                ".well-known/security.txt", // https://www.google.com/.well-known/security.txt
                 // Docker and other common versions
                 "version",
                 "version.txt",
@@ -494,6 +509,8 @@ namespace Reecon
                 "functionRouter",
                 // APIs
                 "api",
+                // GraphQL
+                "graphql",
                 // A bit CTFy
                 "server-status",
                 "LICENSE",
@@ -501,12 +518,13 @@ namespace Reecon
                 "info",
                 "files/",
                 "console"
-            };
+            ];
 
             if (ignorePHP)
             {
                 commonFiles.RemoveAll(x => x.EndsWith(".php"));
             }
+
             // returnText += "NFL Len 1: " + notFoundLength + Environment.NewLine;
             // returnText += "NFL Len 2: " + notFoundLength2 + Environment.NewLine;
             foreach (string file in commonFiles)
@@ -644,6 +662,7 @@ namespace Reecon
                                             returnText += "--- " + traversalPath.Recolor(Color.Orange) + Environment.NewLine;
                                         }
                                     }
+
                                     nginxAliasTraversalChecked = true;
                                 }
                             }
@@ -657,7 +676,6 @@ namespace Reecon
                                 }
                             }
                         }
-
                     }
                     catch (Exception ex)
                     {
@@ -686,10 +704,12 @@ namespace Reecon
                     {
                         continue;
                     }
+
                     if (file.EndsWith(".php") && ignorePHPRedirect)
                     {
                         continue;
                     }
+
                     returnText += $"- Common Path redirects: {url}{file}" + Environment.NewLine;
                     if (response.ResponseHeaders != null && response.ResponseHeaders.Location != null)
                     {
@@ -761,6 +781,7 @@ namespace Reecon
                                     // /v2/cmnatic/myapp1/tags/list
                                     // --> /cmnatic/myapp1/manifests/notsecure
                                 }
+
                                 // Every notfound will be the same
                                 break;
                             }
@@ -770,6 +791,7 @@ namespace Reecon
                                 break;
                             }
                         }
+
                         returnText += repoText;
                     }
                     else
@@ -779,15 +801,16 @@ namespace Reecon
                 }
                 // It's a 404, but not a native 404
                 else if (response.StatusCode == HttpStatusCode.NotFound &&
-                    !ignoreNotFound && response.PageText != null &&
-                    response.PageText.Length != notFoundLength &&
-                    response.PageText.Replace(file, "").Length != notFoundLength2)
+                         !ignoreNotFound && response.PageText != null &&
+                         response.PageText.Length != notFoundLength &&
+                         response.PageText.Replace(file, "").Length != notFoundLength2)
                 {
                     if (file.EndsWith(".php") && response.PageText.Length == notFoundLengthPHP ||
-                    response.PageText.Replace(file, "").Length == notFoundLengthPHP2)
+                        response.PageText.Replace(file, "").Length == notFoundLengthPHP2)
                     {
                         continue;
                     }
+
                     returnText += $"-- Maybe, Maybe Not (Non-Native 404): {url}{file}" + Environment.NewLine;
                     // returnText += "-- Page Len: " + response.PageText.Length + Environment.NewLine;
                     // returnText += "-- Page Len Repl: " + response.PageText.ToLower().Replace(file.ToLower(), "").Length + Environment.NewLine;
@@ -795,11 +818,18 @@ namespace Reecon
                     pageText = pageText.Length > 250 ? string.Concat(pageText.AsSpan(0, 250), "...") : pageText;
                     returnText += $"--- {pageText}" + Environment.NewLine;
                 }
+                else if (response.StatusCode == HttpStatusCode.MethodNotAllowed)
+                {
+                    string pageText = response.PageText ?? "";
+                    returnText += "- " +
+                                  $"Common Path does not support GET: {url}{file} (Len: {pageText.Length})".Recolor(
+                                      Color.Orange) + Environment.NewLine;
+                }
                 // Something else - Just print the response
                 else if (response.StatusCode != HttpStatusCode.NotFound &&
-                    response.StatusCode != HttpStatusCode.TooManyRequests &&
-                    response.StatusCode != HttpStatusCode.ServiceUnavailable &&
-                    response.StatusCode != HttpStatusCode.SeeOther) // A weird one
+                         response.StatusCode != HttpStatusCode.TooManyRequests &&
+                         response.StatusCode != HttpStatusCode.ServiceUnavailable &&
+                         response.StatusCode != HttpStatusCode.SeeOther) // A weird one
                 {
                     if (response.PageText != "")
                     {
@@ -807,6 +837,7 @@ namespace Reecon
                     }
                 }
             }
+
             return returnText.Trim(Environment.NewLine.ToArray());
         }
 
@@ -831,6 +862,7 @@ namespace Reecon
             {
                 return "";
             }
+
             int baseLen = pageInfo.PageText.Length;
             // Get the content length of the default page (baseLen) as well as a known invalid to compare against (invalidBaseLen)
             // There's also a case where an invalid page can contain the subdomain name which throws off the length which we need to account for (invalidBaseLen2)
@@ -856,6 +888,7 @@ namespace Reecon
                 {
                     continue;
                 }
+
                 // Might as well check this before else it gets complicated
                 int checkLen2 = -1;
                 if (invalidBaseLen2 != -1) // Something special
@@ -863,19 +896,22 @@ namespace Reecon
                     if (pageInfo.PageText.Contains(subdomain + "." + baseHost))
                     {
                         checkLen2 = pageInfo.PageText.Replace(subdomain + "." + authority, "").Length;
-
                     }
                 }
+
                 // If it's a valid subdomain...
                 if (pageInfo.StatusCode != HttpStatusCode.Moved // Should these be valid... ?
                     && pageInfo.PageText.Length != baseLen // Not a duplicate of the base page - That would mean that subdomains don't lead anywhere
                     && pageInfo.PageText.Length != invalidBaseLen // Or a duplicate of the invalid subdomain
                     && checkLen2 != invalidBaseLen2 // Contains the domain in the text
-                    )
+                   )
                 {
-                    toReturn += "-- Subdomain Discovered: " + (scheme + "://" + subdomain + "." + authority + "/").Recolor(Color.Orange) + Environment.NewLine;
+                    toReturn += "-- Subdomain Discovered: " +
+                                (scheme + "://" + subdomain + "." + authority + "/").Recolor(Color.Orange) +
+                                Environment.NewLine;
                 }
             }
+
             return toReturn;
         }
 
@@ -886,7 +922,9 @@ namespace Reecon
             public string? PageText;
             public string DNS = "";
             public HttpResponseHeaders ResponseHeaders = new HttpResponseMessage().Headers;
+
             public HttpContentHeaders ContentHeaders = new HttpResponseMessage().Content.Headers;
+
             // On certain codes it has an additional message
             public HttpRequestMessage RequestMessage = new HttpRequestMessage();
             public X509Certificate2? SSLCert { get; set; }
@@ -894,7 +932,8 @@ namespace Reecon
             public string? AdditionalInfo { get; set; }
         }
 
-        public static HttpInfo GetHTTPInfo(string url, string? UserAgent = null, string? Cookie = null, string? HostHeader = null, int Timeout = 5)
+        public static HttpInfo GetHTTPInfo(string url, string? UserAgent = null, string? Cookie = null,
+            string? HostHeader = null, int Timeout = 5)
         {
             HttpInfo toReturn = new();
             HttpStatusCode statusCode = new();
@@ -904,14 +943,16 @@ namespace Reecon
             {
                 UseCookies = false // Needed for a custom Cookie header
             };
-            httpClientHandler.ServerCertificateCustomValidationCallback += (sender, certificate, chain, sslPolicyErrors) =>
-            {
-                if (certificate != null)
+            httpClientHandler.ServerCertificateCustomValidationCallback +=
+                (sender, certificate, chain, sslPolicyErrors) =>
                 {
-                    toReturn.SSLCert = new X509Certificate2(certificate);
-                }
-                return true;
-            };
+                    if (certificate != null)
+                    {
+                        toReturn.SSLCert = new X509Certificate2(certificate);
+                    }
+
+                    return true;
+                };
             httpClientHandler.AllowAutoRedirect = false;
 
             HttpClient httpClient = new HttpClient(httpClientHandler);
@@ -922,15 +963,18 @@ namespace Reecon
             {
                 httpClientRequest.Headers.UserAgent.TryParseAdd(UserAgent);
             }
+
             if (Cookie != null)
             {
                 // Console.WriteLine("Web.cs Debug - Setting Cookie to " +  cookie);
                 httpClientRequest.Headers.Add("Cookie", Cookie);
             }
+
             if (HostHeader != null)
             {
                 httpClientRequest.Headers.Add("Host", HostHeader);
             }
+
             try
             {
                 httpClient.Timeout = TimeSpan.FromSeconds(Timeout);
@@ -962,7 +1006,7 @@ namespace Reecon
                     return toReturn;
                 }
 
-                toReturn.AdditionalInfo = "Unknown hrex error in Web.cs: " + hrex.Message + " - Bug Reelix!".Recolor(Color.Red);
+                toReturn.AdditionalInfo = $"Unknown hrex error in Web.cs: {hrex.Message} - Bug Reelix!".Recolor(Color.Red);
                 return toReturn;
             }
             catch (TaskCanceledException tcex)
@@ -976,6 +1020,7 @@ namespace Reecon
                     Console.WriteLine("- Unknown Error in Web.cs - tcex: " + tcex.Message);
                     toReturn.AdditionalInfo = tcex.Message;
                 }
+
                 return toReturn;
             }
             catch (TimeoutException ex)
@@ -1046,6 +1091,7 @@ namespace Reecon
                     Console.WriteLine("HttpClient rewrite had an error: " + ex.Message + ex.InnerException);
                 }
             }
+
             // Returns nothing on some site (Eg: Twitter (X)) since they set their titles weirdly
             string pageText = toReturn.PageText ?? "";
             if (pageText.Contains("<title>") && pageText.Contains("</title>"))
@@ -1150,6 +1196,7 @@ namespace Reecon
                     {
                         toReturn += "- Fatally Unknown Status Code: " + " " + StatusCode + Environment.NewLine;
                     }
+
                     if (ResponseHeaders.Location != null)
                     {
                         toReturn += "-> Location: " + ResponseHeaders.Location + Environment.NewLine;
@@ -1173,7 +1220,6 @@ namespace Reecon
                 // Apache Tomcat
                 if (httpInfo.PageTitle.StartsWith("Apache Tomcat"))
                 {
-
                     // Sanitize URL
                     if (!httpInfo.URL.EndsWith('/'))
                     {
@@ -1238,6 +1284,7 @@ namespace Reecon
                                         break;
                                     }
                                 }
+
                                 if (!found)
                                 {
                                     toReturn += "-- No Creds found - You can try more over at: /auxiliary/scanner/http/tomcat_mgr_login" + Environment.NewLine;
@@ -1312,6 +1359,7 @@ namespace Reecon
                         {
                             toReturn += "--- " + $"Web Admin Tool Found: {utilsPage.URL}".Recolor(Color.Orange) + Environment.NewLine;
                         }
+
                         var allDBsPage = GetHTTPInfo($"{urlWithSlash}_all_dbs");
                         if (allDBsPage.StatusCode == HttpStatusCode.OK && allDBsPage.PageText != null)
                         {
@@ -1322,7 +1370,6 @@ namespace Reecon
                             toReturn += $"--- Enumeration: {urlWithSlash}dbNameHere/idHere" + Environment.NewLine;
                         }
                     }
-
 
                     // Fortinet
                     else if (serverText == "xxxxxxxx-xxxxx" && httpInfo.PageText != null && httpInfo.PageText.Contains("top.location=\"/remote/login\""))
@@ -1434,6 +1481,7 @@ namespace Reecon
                                     toReturn += "--- " + "Vulnerable to CVE-2024-36991!".Recolor(Color.Orange) + Environment.NewLine;
                                     toReturn += $"--- {cveCheckPath}" + Environment.NewLine;
                                     toReturn += $"---- " + cveCheck.PageText.Recolor(Color.Orange).Trim(Environment.NewLine.ToCharArray()) + Environment.NewLine;
+                                    toReturn += $"--- Also check: /etc/auth/splunk.secret, /etc/system/local/authentication.conf, /etc/system/local/server.conf (Hash is reversable)" + Environment.NewLine;
                                 }
                             }
                         }
@@ -1499,6 +1547,7 @@ namespace Reecon
                             toReturn += "--- " + "Vulnerable PHP Version (PHP/8.1.0-dev) Detected - https://www.exploit-db.com/raw/49933 <-----".Recolor(Color.Orange) + Environment.NewLine;
                         }
                     }
+
                     // JBoss
                     if (poweredBy.Contains("JBoss"))
                     {
@@ -1548,7 +1597,8 @@ namespace Reecon
                 }
 
                 // Elasticsearch
-                if (ResponseHeaders.Any(x => x.Key == "X-Found-Handling-Cluster") && ResponseHeaders.Any(x => x.Key == "X-Found-Handling-Instance"))
+                if (ResponseHeaders.Any(x => x.Key == "X-Found-Handling-Cluster") &&
+                    ResponseHeaders.Any(x => x.Key == "X-Found-Handling-Instance"))
                 {
                     toReturn += "-- " + "Elasticsearch Detected".Recolor(Color.Orange) + Environment.NewLine;
 
@@ -1605,6 +1655,11 @@ namespace Reecon
                     toReturn += "--- " + "Try get /run/secrets/kubernetes.io/serviceaccount/token" + Environment.NewLine;
                     toReturn += "--- " + "If you do, read: https://www.cyberark.com/resources/threat-research-blog/kubernetes-pentest-methodology-part-3" + Environment.NewLine;
 
+                    toReturn += "--- " + "Try get /run/secrets/kubernetes.io/serviceaccount/token" +
+                                Environment.NewLine;
+                    toReturn += "--- " +
+                                "If you do, read: https://www.cyberark.com/resources/threat-research-blog/kubernetes-pentest-methodology-part-3" +
+                                Environment.NewLine;
                 }
 
                 // Vercel
@@ -1649,6 +1704,7 @@ namespace Reecon
                     toReturn += "- kbn-name: " + kbnName + Environment.NewLine;
                     toReturn += "-- You should get more kibana-based info further down" + Environment.NewLine;
                 }
+
                 if (ResponseHeaders.Any(x => x.Key == "kbn-version"))
                 {
                     string kbnVersion = ResponseHeaders.GetValues("kbn-version").First();
@@ -1693,6 +1749,7 @@ namespace Reecon
                         toReturn += "--- " + $"If before 4.1.12, 4.2.9, 4.3.6, 4.4.2 -> https://blog.redteam-pentesting.de/2024/moodle-rce/".Recolor(Color.Orange) + Environment.NewLine;
                     }
                 }
+
                 // Fun content types
                 if (ResponseHeaders.Any(x => x.Key == "Content-Type"))
                 {
@@ -1731,6 +1788,7 @@ namespace Reecon
                         toReturn += "- Content Type: " + contentType + Environment.NewLine;
                     }
                 }
+
                 if (ResponseHeaders.Date != null && ResponseHeaders.Date.HasValue)
                 {
                     string date = ResponseHeaders.Date.ToString() ?? "";
@@ -1749,6 +1807,7 @@ namespace Reecon
                 {
                     toReturn += "- Other Response Headers: " + string.Join(", ", ResponseHeaders.Select(x => x.Key)) + Environment.NewLine;
                 }
+
                 if (ContentHeaders.Any())
                 {
                     toReturn += "- Other Content Headers: " + string.Join(", ", ContentHeaders.Select(x => x.Key)) + Environment.NewLine;
@@ -1803,7 +1862,8 @@ namespace Reecon
                 }
 
                 // Confluence
-                if (PageText.Contains("Printed by Atlassian Confluence") || PageText.Contains("Powered by Atlassian Confluence"))
+                if (PageText.Contains("Printed by Atlassian Confluence") ||
+                    PageText.Contains("Powered by Atlassian Confluence"))
                 {
                     toReturn += "- " + "Confluence detected!".Recolor(Color.Orange) + Environment.NewLine;
                     toReturn += "-- " + "See if you can access /setup/".Recolor(Color.Orange) + Environment.NewLine; // Maybe automate this?
@@ -1868,6 +1928,7 @@ namespace Reecon
                     {
                         toReturn += "-- " + $"Vulnerable Confluence Version Detected {confluenceVersionText} -> https://github.com/Nwqda/CVE-2022-26134".Recolor(Color.Orange) + Environment.NewLine;
                     }
+
                     isVulnerable = false;
 
                     // CVE-2023-22515
@@ -1904,6 +1965,7 @@ namespace Reecon
                         toReturn += "--- " + $"1.) Proceed to {baseURL}/server-info.action?bootstrapStatusProvider.applicationConfig.setupComplete=false".Recolor(Color.Orange) + Environment.NewLine;
                         toReturn += "--- " + $"2.) Proceed to {baseURL}/setup/setupadministrator-start.action and create a new admin user (Choose Different username).".Recolor(Color.Orange) + Environment.NewLine;
                     }
+
                     isVulnerable = false;
 
                     // CVE-2023-22518
@@ -1935,7 +1997,6 @@ namespace Reecon
                         toReturn += "-- " + $"Vulnerable Confluence Version Detected {confluenceVersionText} (CVE-2023-22518)".Recolor(Color.Orange) + Environment.NewLine;
                         toReturn += "--- No PoC yet - Check Github maybe." + Environment.NewLine;
                     }
-
                 }
 
                 // Gitea
@@ -1945,7 +2006,8 @@ namespace Reecon
                     toReturn += "- " + "Gitea detected!".Recolor(Color.Orange) + Environment.NewLine;
 
                     // Version Check
-                    if (PageText.Contains("appver: '", StringComparison.CurrentCultureIgnoreCase) && PageText.Contains("appsuburl: '", StringComparison.CurrentCultureIgnoreCase)) // appUrl
+                    if (PageText.Contains("appver: '", StringComparison.CurrentCultureIgnoreCase) &&
+                        PageText.Contains("appsuburl: '", StringComparison.CurrentCultureIgnoreCase)) // appUrl
                     {
                         string giteaVersion = PageText.Remove(0, PageText.IndexOf("appver: '", StringComparison.CurrentCultureIgnoreCase) + 9);
                         giteaVersion = giteaVersion.Substring(0, giteaVersion.IndexOf('\''));
@@ -2043,6 +2105,7 @@ namespace Reecon
                     toReturn += "--- Version: " + versionText + Environment.NewLine;
                     toReturn += "---- Kibana versions before 5.6.15 and 6.6.1 -> CVE-2019-7609 -> https://github.com/mpgn/CVE-2019-7609" + Environment.NewLine;
                 }
+
                 // Wordpress
                 // TODO: /?rest_route=/ - REF: https://github.com/Chocapikk/wpprobe
                 //if (PageText.Contains("/wp-content/themes/") && (PageText.Contains("/wp-includes/") || PageText.Contains("/wp-includes\\")))
@@ -2108,6 +2171,7 @@ namespace Reecon
                         {
                             pluginSearcher.RemoveAt(0);
                         }
+
                         List<string> pluginList = new List<string>();
                         foreach (string plugin in pluginSearcher)
                         {
@@ -2171,7 +2235,6 @@ namespace Reecon
                                         }
                                     }
                                 }
-
                             }
                         }
                     }
@@ -2182,6 +2245,7 @@ namespace Reecon
                     {
                         toReturn += "-- " + $"{urlWithSlash}wp-content/ is public".Recolor(Color.Orange) + Environment.NewLine;
                     }
+
                     var pluginsDir = Web.GetHTTPInfo($"{urlWithSlash}wp-content/plugins/");
                     if (pluginsDir.StatusCode == HttpStatusCode.OK && pluginsDir.PageText?.Length != 0)
                     {
@@ -2279,6 +2343,7 @@ namespace Reecon
                                     itemList += theItem + ",";
                                 }
                             }
+
                             itemList = itemList.Trim(',');
                             toReturn += "- Subject Alternative Name: " + itemList + Environment.NewLine;
                         }
@@ -2299,20 +2364,22 @@ namespace Reecon
             {
                 return "- /etc/passwd File Found VIA Base LFI! --> GET /../../../../../../etc/passwd" + Environment.NewLine + result;
                 // Need to format this better...
-
             }
+
             // Windows 1 (Windows app running on Windows)
             result = General.BannerGrab(ip, port, "GET /../../../../../../windows/win.ini HTTP/1.1\r\nHost: " + ip + "\r\n\r\n", 2500);
             if (result.Contains("for 16-bit app support"))
             {
                 return "- /windows/win.ini File Found VIA Base LFI! --> GET /../../../../../../windows/win.ini" + Environment.NewLine + result;
             }
+
             // Windows 2 (Linux app running on Windows)
             result = General.BannerGrab(ip, port, "GET /../../../../../../windows/win.ini HTTP/1.1\nHost: " + ip + "\n\n", 2500);
             if (result.Contains("for 16-bit app support"))
             {
                 return "- /windows/win.ini File Found VIA Base LFI! --> GET /../../../../../../windows/win.ini" + Environment.NewLine + result;
             }
+
             return "";
         }
 
@@ -2331,6 +2398,7 @@ namespace Reecon
                 {
                     Console.WriteLine("In nope with: " + ex.Message);
                 }
+
                 // This sometimes reaches here on actual https sites - Need to investigate...
                 // Either a non-accessable HEAD request or an invalid SSL Cert (Doesn't my Web class handle that... ?)
                 return false;
@@ -2392,6 +2460,7 @@ namespace Reecon
                     toReturn = readStream.ReadToEnd();
                 }
             }
+
             return (toReturn, statusCode);
         }
 
@@ -2423,10 +2492,10 @@ namespace Reecon
                     request.Headers.Add(header.Key, header.Value);
                 }
             }
-            
+
             ByteArrayContent content = new ByteArrayContent(PostContent);
             request.Content = content;
-            
+
             // Add Content Headers
             if (ContentHeaders != null)
             {
@@ -2436,18 +2505,36 @@ namespace Reecon
                 }
             }
 
-            using (HttpResponseMessage response = httpClient.Send(request))
+            try
             {
-                toReturn.StatusCode = response.StatusCode;
-                toReturn.ResponseHeaders = response.Headers;
-                using (StreamReader readStream = new(response.Content.ReadAsStream()))
+                using (HttpResponseMessage response = httpClient.Send(request))
                 {
-                    toReturn.Text = readStream.ReadToEnd();
+                    toReturn.StatusCode = response.StatusCode;
+                    toReturn.ResponseHeaders = response.Headers;
+                    using (StreamReader readStream = new(response.Content.ReadAsStream()))
+                    {
+                        toReturn.Text = readStream.ReadToEnd();
+                    }
                 }
+            }
+            catch (HttpRequestException hrex)
+            {
+                if (hrex.Message.StartsWith("Connection refused"))
+                {
+                    return toReturn;
+                }
+                else
+                {
+                    Console.WriteLine("Unknown HttpRequestException error in Web.UploadDataResult: " + hrex.Message + " - Bug Reelix!");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Unknown error in Web.UploadDataResult: " + ex.Message + " - Bug Reelix!");
+                Console.WriteLine(ex.Message);
             }
 
             return toReturn;
-
         }
 
         [GeneratedRegex(@"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", RegexOptions.IgnoreCase, "en-ZA")]

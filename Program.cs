@@ -6,12 +6,12 @@ using System.Threading;
 
 namespace Reecon
 {
-    class Program
+    internal class Program
     {
-        static string target = "";
-        static readonly List<int> portList = new();
-        static readonly List<Thread> threadList = new();
-        static readonly List<string> postScanList = new();
+        private static readonly List<int> portList = [];
+        private static string target = "";
+        private static readonly List<Thread> threadList = [];
+        private static readonly List<string> postScanList = [];
 
         public static void Main(string[] args)
         {
@@ -19,10 +19,10 @@ namespace Reecon
             DateTime startDate = DateTime.Now;
             
             // Stands out a bit more
-            Console.ForegroundColor = ConsoleColor.White; // Rider issue - Change back to White
-            
+            Console.ForegroundColor = ConsoleColor.White;
+
             // And begin!
-            Console.WriteLine("Reecon - Version 0.37 ( https://github.com/Reelix/Reecon )".Recolor(Color.Yellow));
+            Console.WriteLine("Reecon - Version 0.38 ( https://github.com/Reelix/Reecon )".Recolor(Color.Yellow));
             if (args.Length == 0)
             {
                 General.ShowHelp();
@@ -32,8 +32,6 @@ namespace Reecon
 
             // Check if it's anything custom
 
-            string reeconFileName = typeof(Program).Assembly.GetName().Name ?? "Filename Error in Program.cs - Bug Reelix";
-
             if (args.Contains("-h") || args.Contains("--help") || args.Contains("--version") || args.Contains("-v") ||
                 args.Contains("-V") || args.Contains("--v")) // Any others? :p
             {
@@ -41,54 +39,22 @@ namespace Reecon
                 Console.ResetColor();
                 return;
             }
-            else if (args.Contains("-ip") || args.Contains("--ip"))
+            else if (args[0].Contains("-ip"))
             {
                 General.PrintIPList();
                 Console.ResetColor();
                 return;
             }
-            else if (args[0] == "-bloodhound" || args[0] == "--bloodhound")
+            else if (args[0].Contains("-bloodhound"))
             {
-                if (args.Length == 1)
-                {
-                    Console.WriteLine($"Usage: {reeconFileName} -bloodhound -ingest");
-                    Console.WriteLine($"Usage: {reeconFileName} -bloodhound username@domain.com");
-                }
-                else if (args.Length == 2)
-                {
-                    if (args[1] == "--ingest")
-                    {
-                        Bloodhound.Ingest();
-                    }
-                    else if (args[1].Contains('@'))
-                    {
-                        string username = args[1];
-                        Bloodhound.GetInfo(username);
-                        return;
-                    }
-                }
+                Bloodhound.Run(args);
+                Console.ResetColor();
+                return;
             }
-            else if (args.Contains("-ldap") || args.Contains("--ldap"))
+            else if (args[0].Contains("-ldap"))
             {
-                if (args.Length != 5)
-                {
-                    Console.WriteLine($"LDAP Auth Enum:\t{reeconFileName} -ldap IP port validUsername validPassword");
-                }
-
-                string ip = args[1];
-                string port = args[2];
-                if (!int.TryParse(port, out _))
-                {
-                    Console.WriteLine($"Invalid Port: {port}");
-                    Console.WriteLine($"LDAP Auth Enum:\t{reeconFileName} -ldap IP port validUsername validPassword");
-                    Console.ResetColor();
-                    return;
-                }
-
-                string username = args[3];
-                string password = args[4];
-                string accountInfo = LDAP.GetAccountInfo(ip, int.Parse(port), username, password);
-                Console.WriteLine(accountInfo);
+                LDAP.Run(args);
+                Console.ResetColor();
                 return;
             }
             else if (args.Contains("-lfi") || args.Contains("--lfi"))
@@ -154,13 +120,22 @@ namespace Reecon
                 Console.ResetColor();
                 return;
             }
-
+            
             // Check if you should check if the target is up
             bool mustPing = true;
             if (args.Contains("-noping") || args.Contains("--noping"))
             {
                 mustPing = false;
                 args = args.Where(x => !x.Contains("-noping")).ToArray();
+                args = args.Where(x => !x.Contains("--noping")).ToArray();
+            }
+            
+            // Check if we must include SMBv1 Lookups
+            if (args.Contains("-nosmbv1") || args.Contains("--nosmbv1"))
+            {
+                General.SMBv1 = false;
+                args = args.Where(x => !x.Contains("-nosmbv1")).ToArray();
+                args = args.Where(x => !x.Contains("--nosmbv1")).ToArray();
             }
 
             // A common typo
@@ -213,7 +188,7 @@ namespace Reecon
                 string portArg = args[1];
                 try
                 {
-                    portList.AddRange(portArg.Split(',').ToList().Select(x => int.Parse(x)));
+                    portList.AddRange(portArg.Split(',').ToList().Select(int.Parse));
                 }
                 catch
                 {
@@ -269,7 +244,7 @@ namespace Reecon
             // All done - Output stats
             DateTime endDate = DateTime.Now;
             TimeSpan t = endDate - startDate;
-            Console.WriteLine("Done in " + string.Format("{0:0.00}s", t.TotalSeconds) + " - Have fun :)");
+            Console.WriteLine($"Done in {t.TotalSeconds:0.00}s - Have fun :)");
             Console.ResetColor();
         }
 
@@ -284,21 +259,21 @@ namespace Reecon
             Environment.Exit(0);
         }
 
-        static void ScanPorts(List<int> portList)
+        static void ScanPorts(List<int> portsToScan)
         {
             PortInfo.LoadPortInfo();
 
             Console.Write("Scanning: " + target);
             Console.Write(" (Port");
-            if (portList.Count > 1)
+            if (portsToScan.Count > 1)
             {
                 Console.Write("s");
             }
 
-            Console.WriteLine(": " + string.Join(",", portList) + ")");
+            Console.WriteLine(": " + string.Join(",", portsToScan) + ")");
 
             // Multi-threaded scan
-            foreach (int port in portList)
+            foreach (int port in portsToScan)
             {
                 Thread myThread = new(() => ScanPort(port));
                 threadList.Add(myThread);
@@ -316,7 +291,7 @@ namespace Reecon
 
             // Everything done - Now for some helpful info!
             Console.WriteLine("Finished - Some things you probably want to do: ");
-            if (portList.Count == 0)
+            if (portsToScan.Count == 0)
             {
                 // Something broke, or there are only UDP Ports :|
                 Console.WriteLine($"- nmap -sC -sV -p- {target} -oN nmap.txt");
@@ -325,7 +300,7 @@ namespace Reecon
             else
             {
                 postScanList.Add(
-                    $"- Nmap Script+Version Scan: sudo nmap -sC -sV -p{string.Join(",", portList)} {target} -oN nmap.txt" +
+                    $"- Nmap Script+Version Scan: sudo nmap -sC -sV -p{string.Join(",", portsToScan)} {target} -oN nmap.txt" +
                     Environment.NewLine);
                 postScanList.Add($"- Nmap UDP Scan: sudo nmap -sU {target} (-F for top 100)" + Environment.NewLine);
                 foreach (string item in postScanList)

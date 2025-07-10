@@ -19,23 +19,25 @@ namespace Reecon
 {
     static class General
     {
+        public static string ProgramName => typeof(Program).Assembly.GetName().Name ?? "Filename Error in Program.cs - Bug Reelix";
+
+        public static bool SMBv1 { get; set; } = false;
         public static void ShowHelp()
         {
-            string reeconFileName = typeof(Program).Assembly.GetName().Name ?? "Filename Error in General.cs - Bug Reelix";
             Console.WriteLine("Usage");
             Console.WriteLine("-----");
-            Console.WriteLine($"Basic Scan:\t{reeconFileName} IPHere (Optional: -noping to skip the online check)");
-            Console.WriteLine($"Display IP:\t{reeconFileName} -ip");
-            Console.WriteLine($"NMap-Load Scan:\t{reeconFileName} outfile.nmap (Requires -oG on a regular nmap scan)");
-            Console.WriteLine($"Binary Pwn:\t{reeconFileName} -pwn FileName (Very buggy)");
-            Console.WriteLine($"LDAP Auth Enum:\t{reeconFileName} -ldap IP port validUsername validPassword");
-            Console.WriteLine($"Nist Search:\t{reeconFileName} -search nameHere (Only 6/10+ results)");
-            Console.WriteLine($"Searchsploit:\t{reeconFileName} -searchsploit nameHere (Beta)");
-            Console.WriteLine($"Shell Gen:\t{reeconFileName} -shell");
-            Console.WriteLine($"SMB Brute:\t{reeconFileName} -smb-brute (Linux Only)");
-            Console.WriteLine($"WinRM Brute:\t{reeconFileName} -winrm-brute IP UserList PassList");
-            Console.WriteLine($"LFI Test:\t{reeconFileName} -lfi (Very buggy)");
-            Console.WriteLine($"Web Info:\t{reeconFileName} -web url (Very buggy)");
+            Console.WriteLine($"Basic Scan:\t{ProgramName} IPHere (Optional: -noping to skip the online check)");
+            Console.WriteLine($"Display IP:\t{ProgramName} -ip");
+            Console.WriteLine($"NMap-Load Scan:\t{ProgramName} outfile.nmap (Requires -oG on a regular nmap scan)");
+            Console.WriteLine($"Binary Pwn:\t{ProgramName} -pwn FileName (Very buggy)");
+            Console.WriteLine($"LDAP Auth Enum:\t{ProgramName} -ldap IP port validUsername validPassword (NTLM Auth Only)");
+            Console.WriteLine($"Nist Search:\t{ProgramName} -search nameHere (Only 6/10+ results)");
+            Console.WriteLine($"Searchsploit:\t{ProgramName} -searchsploit nameHere (Beta)");
+            Console.WriteLine($"Shell Gen:\t{ProgramName} -shell");
+            Console.WriteLine($"SMB Brute:\t{ProgramName} -smb-brute (Linux Only)");
+            Console.WriteLine($"WinRM Brute:\t{ProgramName} -winrm-brute IP UserList PassList");
+            Console.WriteLine($"LFI Test:\t{ProgramName} -lfi (Very buggy)");
+            Console.WriteLine($"Web Info:\t{ProgramName} -web url (Very buggy)");
         }
 
         // Fingerprinting service
@@ -304,6 +306,7 @@ namespace Reecon
                 else
                 {
                     bannerGrabSocket.Close();
+                    // Test
                     return Encoding.ASCII.GetBytes("Reecon - Closed");
                 }
             }
@@ -413,8 +416,8 @@ namespace Reecon
             p.StartInfo.RedirectStandardError = true;
             p.StartInfo.FileName = processName;
             p.StartInfo.Arguments = arguments;
-            p.OutputDataReceived += (sender, e) => outputLines.Add(e.Data ?? "");
-            p.ErrorDataReceived += (sender, e) => outputLines.Add(e.Data ?? "");
+            p.OutputDataReceived += (_, e) => outputLines.Add(e.Data ?? "");
+            p.ErrorDataReceived += (_, e) => outputLines.Add(e.Data ?? "");
             p.Start();
             p.BeginOutputReadLine();
             p.BeginErrorReadLine();
@@ -563,11 +566,11 @@ namespace Reecon
             HttpClientHandler clientHandler = new HttpClientHandler
             {
                 UseCookies = false, // Needed for a custom Cookie header
-                ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => { return true; }
+                ServerCertificateCustomValidationCallback = (_, _, _, _) => true
             };
 
-            HttpClient httpClient = new HttpClient(clientHandler);
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, url);
+            HttpClient httpClient = new(clientHandler);
+            HttpRequestMessage request = new(HttpMethod.Get, url);
             if (cookie != null)
             {
                 // Console.WriteLine("Setting cookie to " + cookie + " on the ResponseCode check");
@@ -628,7 +631,7 @@ namespace Reecon
 
         // Changes the color of a specific string in a line of text, then everything after is white
         // Whilst colour is technically correct for EU-based, color is more often used in software development
-        public static string Recolor(this string input, Color color)
+        public static string Recolor(this string? input, Color color)
         {
             // https://misc.flogisoft.com/bash/tip_colors_and_formatting
             // For using one of the 256 colors on the foreground (text color), the control sequence is “<Esc>[38;5;ColorNumberm” where ColorNumber is one of the following colors:

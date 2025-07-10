@@ -8,7 +8,7 @@ using System.Text.Json.Serialization;
 
 namespace Reecon
 {
-    class Nist
+    internal static class Nist
     {
         public static void Search(string[] args)
         {
@@ -20,8 +20,8 @@ namespace Reecon
             string programName = string.Join('+', args.Skip(1)).Trim();
             Console.WriteLine($"Searching for CVE's for {programName}...");
             string URL = $"https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch={programName}&resultsPerPage=250";
-            var jsonPage = Web.GetHTTPInfo(URL, "Reecon (https://github.com/Reelix/reecon)", Timeout: 15);
-            if (jsonPage.StatusCode == HttpStatusCode.OK)
+            Web.HttpInfo jsonPage = Web.GetHTTPInfo(URL, "Reecon (https://github.com/Reelix/reecon)", Timeout: 15);
+            if (jsonPage.StatusCode == HttpStatusCode.OK && jsonPage.PageText != null)
             {
                 // Use the generated context for deserialization
                 Rootobject? myObject = JsonSerializer.Deserialize(jsonPage.PageText, NistJsonContext.Default.Rootobject);
@@ -32,8 +32,8 @@ namespace Reecon
                 }
 
                 List<Vulnerability> highVulns = myObject.vulnerabilities.Where(x =>
-                    (x.cve.metrics.cvssMetricV31 != null && x.cve.metrics.cvssMetricV31.Any(x => x.cvssData.baseScore >= 6f)) ||
-                    (x.cve.metrics.cvssMetricV40 != null && x.cve.metrics.cvssMetricV40.Any(x => x.cvssData.baseScore >= 6f))
+                    (x.cve.metrics.cvssMetricV31 != null && x.cve.metrics.cvssMetricV31.Any(y => y.cvssData.baseScore >= 6f)) ||
+                    (x.cve.metrics.cvssMetricV40 != null && x.cve.metrics.cvssMetricV40.Any(y => y.cvssData.baseScore >= 6f))
                 ).ToList();
 
                 highVulns = highVulns.OrderByDescending(x => x.cve.id).ToList();
@@ -51,31 +51,41 @@ namespace Reecon
                         {
                             foreach (Configuration config in cve.configurations)
                             {
-                                foreach (var node in config.nodes)
+                                foreach (Node node in config.nodes)
                                 {
-                                    foreach (var cpeMatch in node.cpeMatch)
+                                    foreach (Cpematch cpeMatch in node.cpeMatch)
                                     {
                                         string criteria = cpeMatch.criteria;
                                         criteria = criteria.Replace("cpe:2.3:a:", "");
                                         criteria = criteria.Replace(":*", "");
 
-                                        string versionStartIncluding = cpeMatch.versionStartIncluding;
-                                        string versionEndIncluding = cpeMatch.versionEndIncluding;
-                                        string versionEndExcluding = cpeMatch.versionEndExcluding;
+                                        string? versionStartIncluding = cpeMatch.versionStartIncluding;
+                                        string? versionEndIncluding = cpeMatch.versionEndIncluding;
+                                        string? versionEndExcluding = cpeMatch.versionEndExcluding;
 
                                         string affected = "";
-                                        if (versionStartIncluding == "" && versionEndIncluding == "" && versionEndExcluding != "")
+                                        if (versionStartIncluding == null && versionEndIncluding == null && versionEndExcluding != null)
                                         {
                                             affected = "All versions before " + versionEndExcluding;
                                         }
-                                        else if (versionStartIncluding != "" && versionEndIncluding != "" &&
-                                                 versionEndExcluding == "")
+                                        else if (versionStartIncluding == null && versionEndIncluding != null && versionEndExcluding == null)
                                         {
-                                            affected = $"From {versionStartIncluding} to {versionEndIncluding}";
+                                            affected = "All versions up to, and including " + versionEndIncluding;
+                                        }
+                                        else if (versionStartIncluding != null && versionEndIncluding != null && versionEndExcluding == null)
+                                        {
+                                            affected = $"From {versionStartIncluding} to {versionEndIncluding} (Including)";
+                                        }
+                                        else if (versionStartIncluding != null && versionEndIncluding == null && versionEndExcluding != null)
+                                        {
+                                            affected = $"From {versionStartIncluding} to {versionEndIncluding} (Excluding)";
+                                        }
+                                        else
+                                        {
+                                            Console.WriteLine("Woof");
                                         }
                                         
-                                        Console.WriteLine(
-                                            $"- Affected Version: {criteria}{(affected != "" ? $" ({affected})" : "")}");
+                                        Console.WriteLine($"- Affected Version: {criteria}{(affected != "" ? $" ({affected})" : "")}");
                                     }
                                 }
                             }
@@ -167,17 +177,17 @@ namespace Reecon
         public Description[] descriptions { get; set; }
         public Metrics metrics { get; set; }
         public Weakness[] weaknesses { get; set; }
-        public Configuration[] configurations { get; set; }
+        public Configuration[]? configurations { get; set; }
         public Reference[] references { get; set; }
         public string evaluatorComment { get; set; }
     }
 
     public class Metrics
     {
-        public Cvssmetricv2[] cvssMetricV2 { get; set; }
-        public Cvssmetricv31[] cvssMetricV31 { get; set; }
-        public Cvssmetricv30[] cvssMetricV30 { get; set; }
-        public Cvssmetricv40[] cvssMetricV40 { get; set; }
+        public Cvssmetricv2[]? cvssMetricV2 { get; set; }
+        public Cvssmetricv31[]? cvssMetricV31 { get; set; }
+        public Cvssmetricv30[]? cvssMetricV30 { get; set; }
+        public Cvssmetricv40[]? cvssMetricV40 { get; set; }
     }
 
     public class Cvssmetricv2
@@ -341,10 +351,10 @@ namespace Reecon
     {
         public bool vulnerable { get; set; }
         public string criteria { get; set; }
-        public string versionEndIncluding { get; set; }
+        public string? versionEndIncluding { get; set; }
         public string matchCriteriaId { get; set; }
-        public string versionEndExcluding { get; set; }
-        public string versionStartIncluding { get; set; }
+        public string? versionEndExcluding { get; set; }
+        public string? versionStartIncluding { get; set; }
     }
 
     public class Reference

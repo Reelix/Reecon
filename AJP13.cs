@@ -2,7 +2,7 @@
 
 namespace Reecon
 {
-    class AJP13 // 8009 - Just AJP?
+    internal static class AJP13 // 8009 - Just AJP?
     {
         public static (string PortName, string PortData) GetInfo(string target, int port)
         {
@@ -20,7 +20,7 @@ namespace Reecon
 
         private static bool CheckGhostcat(string target)
         {
-            var httpInfo = Web.GetHTTPInfo($"http://{target}/");
+            Web.HttpInfo httpInfo = Web.GetHTTPInfo($"http://{target}/");
             if (httpInfo.StatusCode == 0)
             {
                 httpInfo = Web.GetHTTPInfo($"http://{target}:8080/");
@@ -29,13 +29,13 @@ namespace Reecon
                     return false;
                 }
             }
-            string? pageTitle = httpInfo.PageTitle;
+            string pageTitle = httpInfo.PageTitle ?? "";
             // Apache Tomcat/9.0.30
-            if (pageTitle != null && !pageTitle.StartsWith("Apache Tomcat/"))
+            if (!pageTitle.StartsWith("Apache Tomcat/"))
             {
                 return false;
             }
-            pageTitle = pageTitle?.Replace("Apache Tomcat/", "");
+            pageTitle = pageTitle.Replace("Apache Tomcat/", "");
             System.Version theVersion = System.Version.Parse(pageTitle);
 
 

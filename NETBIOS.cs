@@ -49,7 +49,7 @@ namespace Reecon
                 server.ReceiveTimeout = 5000;
                 receive = server.ReceiveFrom(Buf, ref Remote);
                 server.Close();
-                string buffStr = ASCIIEncoding.ASCII.GetString(Buf);
+                string buffStr = Encoding.ASCII.GetString(Buf);
                 int tem = 0, num = 0;
                 bool bAdd = true;
                 for (int i = 57; i < 500; i++) //57-72   
@@ -231,29 +231,32 @@ namespace Reecon
             // TODO: https://dzone.com/articles/practical-fun-with-netbios-name-service-and-comput
             try
             {
+                // If it's invalid it will fall through to the catch. Not ideal :(
                 IPHostEntry entry = Dns.GetHostEntry(ip);
-                if (entry != null)
+
+                if (!string.IsNullOrEmpty(entry.HostName))
                 {
-                    if (!string.IsNullOrEmpty(entry.HostName))
-                    {
-                        dnsInfo = "- HostName: " + entry.HostName + Environment.NewLine;
-                    }
-                    else
-                    {
-                        dnsInfo = "- Unknown Path GetDNSHostEntry.emptyHostName - Bug Reelix";
-                    }
+                    dnsInfo = "- HostName: " + entry.HostName + Environment.NewLine;
                 }
                 else
                 {
-                    dnsInfo = "- Unknown Path GetDNSHostEntry.nullEntry - Bug Reelix";
+                    dnsInfo = "- Unknown Path GetDNSHostEntry.emptyHostName - Bug Reelix";
+                }
+            }
+            catch (SocketException sex)
+            {
+                if (sex.Message == "Name or service not known")
+                {
+                    dnsInfo += $"- Unable to get DNS Host Entry: {sex.Message}" + Environment.NewLine;
+                }
+                else
+                {
+                    dnsInfo += $"- Weird SocketException: {sex.Message} - Bug Reelix!" + Environment.NewLine;
                 }
             }
             catch (Exception ex)
             {
-                if (ex.Message != "Name or service not known")
-                {
-                    dnsInfo += "- Unable to get DNS Host Entry: " + ex.Message + Environment.NewLine;
-                }
+                dnsInfo += "- Unable to get DNS Host Entry: " + ex.Message + " - Weird Type - Bug Reelix!" + Environment.NewLine;
             }
             return dnsInfo;
         }
@@ -340,13 +343,24 @@ namespace Reecon
 
                     // Console.WriteLine("RPC - enumdomusers");
                     List<string> enumdomusersList = RPCClient.GetEnumdomusersOutput(ip, signing);
-                    if (enumdomusersList.Count == 0 // Allowed - But no results
-                        || enumdomusersList.Count == 1 && enumdomusersList[0].Contains("NT_STATUS_ACCESS_DENIED"))
+                    
+                    // First get rid of the errors
+                    if (enumdomusersList.Count == 1 && enumdomusersList[0].Contains("NT_STATUS_ACCESS_DENIED"))
+                    {
+                        anonAccess = false;
+                        rpcInfo = "- - enumdomusers is denied - Probably can't get anything useful" + Environment.NewLine;
+                    }
+                    else if (enumdomusersList.Count == 1 && enumdomusersList[0].Contains("NT_STATUS_NOT_SUPPORTED"))
+                    {
+                        anonAccess = false;
+                        rpcInfo = "- Cannot connect to server (NT_STATUS_NOT_SUPPORTED) - Not sure how to fix this :(" + Environment.NewLine;
+                    }
+                    else if (enumdomusersList.Count == 0) // Allowed - But no results
                     {
                         // Find public SIDs with lsaenumsid
                         // Console.WriteLine("RPC - lsaenumid");
                         List<string> sidList = RPCClient.GetLsaenumsidOutput(ip, signing);
-                        if (sidList.Count != 0 && !sidList[0].Contains("NT_STATUS_ACCESS_DENIED"))
+                        if (sidList.Count != 0 && !sidList[0].Contains("NT_STATUS_ACCESS_DENIED")) // Can you have enumdomusers denied, but lsaenumsid permitted... ?
                         {
                             anonAccess = true;
                             rpcInfo += "- Found SIDs" + Environment.NewLine;
@@ -406,13 +420,13 @@ namespace Reecon
                                         sneakySIDLookup.RemoveAll(x => !x.Trim().EndsWith("(1)"));
                                         foreach (string lookupResult in sneakySIDLookup)
                                         {
-                                            string name = lookupResult.Substring(0, lookupResult.LastIndexOf(" (1)"));
+                                            string name = lookupResult.Substring(0, lookupResult.LastIndexOf(" (1)", StringComparison.Ordinal));
 
                                             name = name.Remove(0, name.LastIndexOf('\\') + 1);
 
                                             // Some invalid ones simply have the number itself instead of the name
                                             // A bit hacky, but it works
-                                            if (!int.TryParse(name, out int toIgnore))
+                                            if (!int.TryParse(name, out _))
                                             {
                                                 rpcInfo += "-- " + $"Sneaky Username Found: {name}".Recolor(Color.Orange) + Environment.NewLine;
                                             }
@@ -422,7 +436,9 @@ namespace Reecon
                             }
                         }
                     }
-                    else // Count > 0
+                    // enumdomusersList.Count > 0, and not denied / not "NOT SUPPORTED"
+                    // So, we parse the results
+                    else
                     {
                         string firstItem = enumdomusersList[0];
                         if (firstItem.Contains("user:") && firstItem.Contains("rid:"))
@@ -468,6 +484,7 @@ namespace Reecon
                             // 23 -> https://room362.com/post/2017/reset-ad-user-password-with-linux/
                             rpcInfo += "--> rpcclient -> setuserinfo2 userNameHere 23 'newPasswordHere'" + Environment.NewLine;
                         }
+                        // Will probably need to move a few of these up later with the refactor
                         else if (firstItem == "Cannot connect to server.  Error was NT_STATUS_RESOURCE_NAME_NOT_FOUND")
                         {
                             rpcInfo = "- Cannot connect - Are you sure it's up?" + Environment.NewLine;
@@ -480,17 +497,9 @@ namespace Reecon
                         {
                             rpcInfo = "- Cannot connect - It kicks you out instantly" + Environment.NewLine;
                         }
-                        else if (firstItem.Contains("was NT_STATUS_ACCESS_DENIED"))
-                        {
-                            rpcInfo = "- enumdomusers is denied - Probably can't get anything useful" + Environment.NewLine;
-                        }
                         else if (firstItem.Contains("was NT_STATUS_LOGON_FAILURE"))
                         {
                             rpcInfo = "- Unable to log on at all - Possibly a timeout :(" + Environment.NewLine;
-                        }
-                        else if (firstItem.Contains("was NT_STATUS_NOT_SUPPORTED")) // Cannot connect to server.  Error was NT_STATUS_NOT_SUPPORTED
-                        {
-                            rpcInfo = "- Cannot connect to server (NT_STATUS_NOT_SUPPORTED) - Not sure how to fix this :(" + Environment.NewLine;
                         }
                         else
                         {
@@ -501,7 +510,7 @@ namespace Reecon
                             rpcInfo = "- Unknown items in NETBIOS.GetRPCInfo - Bug Reelix (Check Debug Info Item output)" + Environment.NewLine;
                         }
                     }
-                    if (anonAccess == true)
+                    if (anonAccess)
                     {
                         rpcInfo += "- " + $"Anonymous access permitted! -> rpcclient -U \"\"%\"\" {ip}".Recolor(Color.Orange) + Environment.NewLine;
                     }

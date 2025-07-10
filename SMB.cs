@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 namespace Reecon
 {
-    class SMB //445
+    internal static class SMB //445
     {
         public static (string PortName, string PortData) GetInfo(string target, int port)
         {
@@ -19,120 +19,133 @@ namespace Reecon
             string toReturn = "";
 
             // SMB1
-            try
+            if (General.SMBv1)
             {
-                toReturn += "- SMBv1 Response" + Environment.NewLine;
-                NetworkStream? stream = null;
-                // Console.WriteLine($"Attempting to connect to {target}:{port}...");
-                using (TcpClient client = new TcpClient())
+                try
                 {
-                    client.SendTimeout = 5000;
-                    client.ReceiveTimeout = 15000;
-                    var cT = client.ConnectAsync(target, 445);
-                    if (!cT.Wait(TimeSpan.FromSeconds(5)))
-                    { /* Timeout */ }
-                    cT.GetAwaiter().GetResult();
-                    // Console.WriteLine("Connection successful.");
-                    stream = client.GetStream();
-
-                    // --- Stage 1: Negotiate ---
-                    // Console.WriteLine("\n--- Stage 1: Sending Negotiate Request ---");
-                    byte[] negReq = SMB1_Protocol.CreateNegotiateRequest();
-                    stream.Write(negReq, 0, negReq.Length);
-                    stream.Flush();
-                    // Console.WriteLine("Negotiate request sent.");
-                    // Console.WriteLine("Waiting for Negotiate response...");
-                    byte[] negotiateResponse = SMB1_Protocol.ReadResponse(stream);
-                    if (negotiateResponse.Length < 32)
+                    toReturn += "- SMBv1 Response" + Environment.NewLine;
+                    // Console.WriteLine($"Attempting to connect to {target}:{port}...");
+                    using (TcpClient client = new())
                     {
-                        throw new InvalidDataException("Negotiate response too short.");
-                    }
-                    if (!(negotiateResponse[4] == 0x72 && negotiateResponse[5] == 0))
-                    {
-                        uint s = BitConverter.ToUInt32(negotiateResponse, 5);
-                        throw new InvalidOperationException($"Negotiate failed: 0x{s:X8}");
-                    }
-                    // Console.WriteLine("Negotiate successful (basic check).");
-                    // Console.WriteLine("---------------------------------");
-                    // Console.WriteLine("\n--- PARSED NEGOTIATE RESPONSE (Info Mode) ---");
-                    // toReturn += $"-- Negotiate Response Hex ({negotiateResponse.Length} bytes): {BitConverter.ToString(negotiateResponse).Replace("-", "")}" + Environment.NewLine;
-                    SMB1_Protocol.NegotiateResponse pResp = SMB1_Protocol.ParseNegotiateResponse(negotiateResponse, SMB1_Protocol.DIALECTS);
-
-                    // Display pResp fields...
-                    // toReturn += $"-- MID: {pResp.Mid}" + Environment.NewLine;
-                    toReturn += $"-- NTStatus: 0x{pResp.NTStatus:X8} ({(pResp.IsSuccessNegotiation ? "Success/MoreProcessing" : "Failure")})" + Environment.NewLine;
-                    toReturn += $"-- Selected Dialect: {pResp.SelectedDialect} (Index: {(pResp.DialectIndex == 0xFFFF ? "N/A" : pResp.DialectIndex.ToString())})" + Environment.NewLine;
-                    // toReturn += $"-- Server Flags2: 0x{pResp.SmbFlags2:X4} (Unicode Supported by Server: {pResp.SupportsUnicode})" + Environment.NewLine; // Use property here
-                    toReturn += $"-- Security Mode: {pResp.GetSecurityModeDescription()} (Raw: {pResp.SecurityMode?.ToString("X2") ?? "N/A"})" + Environment.NewLine;
-                    // toReturn += $"-- Capabilities: Raw=0x{pResp.Capabilities ?? 0:X8}, ExtSec={pResp.SupportsExtendedSecurity}" + Environment.NewLine;
-                    var caps = pResp.GetCapabilityList();
-                    if (caps.Count > 0)
-                    {
-                        toReturn += $"-- Capabilities List: {string.Join(", ", caps)}" + Environment.NewLine;
-                    }
-                    if (pResp.MaxBufferSize.HasValue)
-                    {
-                        // toReturn += $"-- Max Buffer Size: {pResp.MaxBufferSize}" + Environment.NewLine;
-                    }
-                    if (pResp.MaxMpxCount.HasValue)
-                    {
-                        // toReturn += $"-- Max Mpx Count: {pResp.MaxMpxCount}" + Environment.NewLine;
-                    }
-                    if (pResp.Challenge != null)
-                    {
-                        if (pResp.Challenge.Length != 8)
+                        client.SendTimeout = 5000;
+                        client.ReceiveTimeout = 15000;
+                        Task cT = client.ConnectAsync(target, 445);
+                        if (!cT.Wait(TimeSpan.FromSeconds(5)))
                         {
-                            toReturn += $"-- Challenge Length: {pResp.Challenge.Length} (Assumed 8 bytes... But it's not?)" + Environment.NewLine;
+                            /* Timeout */
+                        }
+
+                        cT.GetAwaiter().GetResult();
+                        // Console.WriteLine("Connection successful.");
+                        NetworkStream stream = client.GetStream();
+
+                        // --- Stage 1: Negotiate ---
+                        // Console.WriteLine("\n--- Stage 1: Sending Negotiate Request ---");
+                        byte[] negReq = SMB1_Protocol.CreateNegotiateRequest();
+                        stream.Write(negReq, 0, negReq.Length);
+                        stream.Flush();
+                        // Console.WriteLine("Negotiate request sent.");
+                        // Console.WriteLine("Waiting for Negotiate response...");
+                        byte[] negotiateResponse = SMB1_Protocol.ReadResponse(stream);
+                        if (negotiateResponse.Length < 32)
+                        {
+                            throw new InvalidDataException("Negotiate response too short.");
+                        }
+
+                        if (!(negotiateResponse[4] == 0x72 && negotiateResponse[5] == 0))
+                        {
+                            uint s = BitConverter.ToUInt32(negotiateResponse, 5);
+                            throw new InvalidOperationException($"Negotiate failed: 0x{s:X8}");
+                        }
+
+                        // Console.WriteLine("Negotiate successful (basic check).");
+                        // Console.WriteLine("---------------------------------");
+                        // Console.WriteLine("\n--- PARSED NEGOTIATE RESPONSE (Info Mode) ---");
+                        // toReturn += $"-- Negotiate Response Hex ({negotiateResponse.Length} bytes): {BitConverter.ToString(negotiateResponse).Replace("-", "")}" + Environment.NewLine;
+                        SMB1_Protocol.NegotiateResponse pResp = SMB1_Protocol.ParseNegotiateResponse(negotiateResponse, SMB1_Protocol.DIALECTS);
+
+                        // Display pResp fields...
+                        // toReturn += $"-- MID: {pResp.Mid}" + Environment.NewLine;
+                        toReturn += $"-- NTStatus: 0x{pResp.NTStatus:X8} ({(pResp.IsSuccessNegotiation ? "Success/MoreProcessing" : "Failure")})" + Environment.NewLine;
+                        toReturn += $"-- Selected Dialect: {pResp.SelectedDialect} (Index: {(pResp.DialectIndex == 0xFFFF ? "N/A" : pResp.DialectIndex.ToString())})" +
+                                    Environment.NewLine;
+                        // toReturn += $"-- Server Flags2: 0x{pResp.SmbFlags2:X4} (Unicode Supported by Server: {pResp.SupportsUnicode})" + Environment.NewLine; // Use property here
+                        toReturn += $"-- Security Mode: {pResp.GetSecurityModeDescription()} (Raw: {pResp.SecurityMode?.ToString("X2") ?? "N/A"})" + Environment.NewLine;
+                        // toReturn += $"-- Capabilities: Raw=0x{pResp.Capabilities ?? 0:X8}, ExtSec={pResp.SupportsExtendedSecurity}" + Environment.NewLine;
+                        var caps = pResp.GetCapabilityList();
+                        if (caps.Count > 0)
+                        {
+                            toReturn += $"-- Capabilities List: {string.Join(", ", caps)}" + Environment.NewLine;
+                        }
+
+                        if (pResp.MaxBufferSize.HasValue)
+                        {
+                            // toReturn += $"-- Max Buffer Size: {pResp.MaxBufferSize}" + Environment.NewLine;
+                        }
+
+                        if (pResp.MaxMpxCount.HasValue)
+                        {
+                            // toReturn += $"-- Max Mpx Count: {pResp.MaxMpxCount}" + Environment.NewLine;
+                        }
+
+                        if (pResp.Challenge != null)
+                        {
+                            if (pResp.Challenge.Length != 8)
+                            {
+                                toReturn += $"-- Challenge Length: {pResp.Challenge.Length} (Assumed 8 bytes... But it's not?)" + Environment.NewLine;
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Challenge: Not Present");
+                        }
+
+                        if (!string.IsNullOrEmpty(pResp.DomainName))
+                        {
+                            toReturn += $"-- " + $"Domain Name: {pResp.DomainName}".Recolor(Color.Orange) + Environment.NewLine;
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Domain Name: Not Found");
+                        }
+
+                        if (!string.IsNullOrEmpty(pResp.ServerName))
+                        {
+                            toReturn += "-- " + $"Server Name: {pResp.ServerName}".Recolor(Color.Orange) + Environment.NewLine;
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Server Name: Not Found");
+                        }
+
+                        SMB1_MS17_010.MS17010CheckResult checkResult = SMB1_MS17_010.CheckIfVulnerable(negotiateResponse, stream, target);
+                        if (checkResult == SMB1_MS17_010.MS17010CheckResult.LikelyVulnerable)
+                        {
+                            toReturn += "-- " + "Vulnerable to MS17-010 (Eternal Blue) !".Recolor(Color.Orange) + Environment.NewLine;
+                        }
+                        else
+                        {
+                            toReturn += "-- MS17-010 (Eternal Blue) (Nope): " + nameof(SMB1_MS17_010.MS17010CheckResult) + Environment.NewLine;
                         }
                     }
-                    else
-                    {
-                        Console.WriteLine($"Challenge: Not Present");
-                    }
-
-                    if (!string.IsNullOrEmpty(pResp.DomainName))
-                    {
-                        toReturn += $"-- " + $"Domain Name: {pResp.DomainName}".Recolor(Color.Orange) + Environment.NewLine;
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Domain Name: Not Found");
-                    }
-                    if (!string.IsNullOrEmpty(pResp.ServerName))
-                    {
-                        toReturn += "-- " + $"Server Name: {pResp.ServerName}".Recolor(Color.Orange) + Environment.NewLine;
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Server Name: Not Found");
-                    }   
-                    SMB1_MS17_010.MS17010CheckResult checkResult = SMB1_MS17_010.CheckIfVulnerable(negotiateResponse, stream, target);
-                    if (checkResult == SMB1_MS17_010.MS17010CheckResult.LikelyVulnerable)
-                    {
-                        toReturn += "-- " + "Vulnerable to MS17-010 (Eternal Blue) !".Recolor(Color.Orange) + Environment.NewLine;
-                    }
-                    else
-                    {
-                        toReturn += "-- MS17-010 (Eternal Blue) (Nope): " + nameof(SMB1_MS17_010.MS17010CheckResult) + Environment.NewLine;
-                    }
                 }
-            }
-            catch (TimeoutException tex)
-            {
-                if (tex.Message == "Parsing an SMB1 Header" || tex.Message.StartsWith("Timeout waiting for NBSS header"))
+                catch (TimeoutException tex)
                 {
-                    toReturn += "-- SMBv1 Timed Out" + Environment.NewLine;
+                    if (tex.Message == "Parsing an SMB1 Header" || tex.Message.StartsWith("Timeout waiting for NBSS header"))
+                    {
+                        toReturn += "-- SMBv1 Timed Out" + Environment.NewLine;
+                    }
+                    else
+                    {
+                        toReturn += "-- SMBv1 Timed Out in a weird placed: " + tex.Message + Environment.NewLine;
+                    }
+                    //Console.WriteLine("Error in SMB.cs (Parsing an SMB1 Header): " + ex.Message + "(" + exType + ")");
                 }
-                else
+                catch (Exception ex)
                 {
-                    toReturn += "-- SMBv1 Timed Out in a weird placed: " + tex.Message + Environment.NewLine;
+                    string exType = ex.GetType().Name;
+                    Console.WriteLine("Error in SMB.cs (Parsing an SMBv1 Header?): " + ex.Message + "(" + exType + ")");
                 }
-                //Console.WriteLine("Error in SMB.cs (Parsing an SMB1 Header): " + ex.Message + "(" + exType + ")");
-            }
-            catch (Exception ex)
-            {
-                string exType = ex.GetType().Name;
-                Console.WriteLine("Error in SMB.cs (Parsing an SMBv1 Header?): " + ex.Message + "(" + exType + ")");
             }
 
             // SMB2
@@ -146,11 +159,35 @@ namespace Reecon
                     byte[] response = SMB2_Protocol.ReadResponse(stream);
 
                     SMB2_Protocol.NegotiateResponse negotiateResponse = SMB2_Protocol.ParseNegotiateResponse(response.ToArray());
+                    
+                    // For a nice faketime layout
+                    string clockSkew = negotiateResponse.ClockSkew;
+                    TimeSpan skewedTimeSpan;
+                    bool negativeSkew = clockSkew.StartsWith('-');
+                    if (negativeSkew)
+                    {
+                        // Remove the '-' sign for parsing, then apply it to the TimeSpan
+                        string positiveTimeString = clockSkew.Substring(1);
+                        // The format still needs to match the structure after the sign
+                        string format = @"h\hmm\ms\s";
+                        TimeSpan parsedPositive = TimeSpan.ParseExact(positiveTimeString, format, null);
+                        skewedTimeSpan = -parsedPositive; // Apply the negative sign
+                    }
+                    else
+                    {
+                        // For positive strings, parse directly
+                        string format = @"h\hmm\ms\s";
+                        skewedTimeSpan = TimeSpan.ParseExact(clockSkew, format, null);
+                    }
 
+                    DateTime skewAdjustedDate = DateTime.Now + skewedTimeSpan;
+                    
+                    
                     // Output format as per nmap :p
                     toReturn += "- SMBv2 Response" + Environment.NewLine;
                     toReturn += "-- Clock Skew: " + negotiateResponse.ClockSkew + Environment.NewLine;
                     toReturn += "-- Date: " + negotiateResponse.SystemTime.ToString("yyyy-MM-ddTHH:mm:ss") + Environment.NewLine;
+                    toReturn += "-- Skew Adjusted Date (faketime): " + skewAdjustedDate.ToString("yyyy-MM-ddTHH:mm:ss") + Environment.NewLine;
                     toReturn += "-- Start Date: " + negotiateResponse.StartDate + Environment.NewLine;
                     toReturn += "-- Dialect (Mode): " + negotiateResponse.DialectStr + Environment.NewLine;
                     toReturn += "-- Security Signing: " + negotiateResponse.SigningStatus + Environment.NewLine;
@@ -186,7 +223,7 @@ namespace Reecon
                 }
                 else if (processResults.Count == 1 && processResults[0].Contains("session setup failed: NT_STATUS_NOT_SUPPORTED"))
                 {
-                    return "- NT_STATUS_NOT_SUPPORTED - Not exactly sure what to do about this one...";
+                    return "- NTLM Authentication not supported (Probably need some Kerberos Authentication later)";
                 }
                 else if (processResults.Count == 1 && processResults[0].Contains("NT_STATUS_CONNECTION_DISCONNECTED"))
                 {

@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Xml.Linq;
 
 namespace Reecon
 {
@@ -13,10 +11,10 @@ namespace Reecon
         {
             RedditInfo redditInfo = new() { Exists = false };
             var aboutPage = Web.GetHTTPInfo($"https://www.reddit.com/user/{name}/about.json", "Reecon (https://github.com/Reelix/reecon)");
-            if (aboutPage.StatusCode == HttpStatusCode.OK)
+            if (aboutPage.StatusCode == HttpStatusCode.OK && aboutPage.PageText != null)
             {
                 redditInfo.Exists = true;
-                var redditProfileInfo = JsonDocument.Parse(aboutPage.PageText);
+                JsonDocument redditProfileInfo = JsonDocument.Parse(aboutPage.PageText);
                 JsonElement creationDate = redditProfileInfo.RootElement.GetProperty("data").GetProperty("created_utc");
                 JsonElement commentKarma = redditProfileInfo.RootElement.GetProperty("data").GetProperty("comment_karma");
                 redditInfo.CreationDate = DateTimeOffset.FromUnixTimeSeconds(long.Parse(creationDate.ToString().Replace(".0", ""))).LocalDateTime;
@@ -25,7 +23,7 @@ namespace Reecon
                 // Get Comments
                 List<OSINT_Reddit_Comment> commentList = new List<OSINT_Reddit_Comment>();
                 var commentsPage = Web.GetHTTPInfo($"https://www.reddit.com/user/{name}/comments.json", "Reecon (https://github.com/Reelix/reecon)");
-                if (commentsPage.StatusCode == HttpStatusCode.OK)
+                if (commentsPage.StatusCode == HttpStatusCode.OK && commentsPage.PageText != null)
                 {
                     var commentInfo = JsonDocument.Parse(commentsPage.PageText);
                     JsonElement commentChildren = commentInfo.RootElement.GetProperty("data").GetProperty("children");
@@ -47,7 +45,7 @@ namespace Reecon
                 try
                 {
                     var submissionsPage = Web.GetHTTPInfo($"https://www.reddit.com/user/{name}/submitted.json", "Reecon (https://github.com/Reelix/reecon)");
-                    if (submissionsPage.StatusCode == HttpStatusCode.OK)
+                    if (submissionsPage.StatusCode == HttpStatusCode.OK && submissionsPage.PageText != null)
                     {
                         var submissionInfo = JsonDocument.Parse(submissionsPage.PageText);
                         JsonElement submissionChildren = submissionInfo.RootElement.GetProperty("data").GetProperty("children");
@@ -85,7 +83,7 @@ namespace Reecon
 
     public class RedditInfo
     {
-        public bool Exists = false;
+        public bool Exists;
         public DateTime CreationDate;
         public long CommentKarma;
         public List<OSINT_Reddit_Comment> CommentList = new();
@@ -106,6 +104,6 @@ namespace Reecon
         public string Title = "";
         public string Selftext = "";
         public string URL = "";
-        public DateTime Created_UTC = new DateTime();
+        public DateTime Created_UTC;
     }
 }

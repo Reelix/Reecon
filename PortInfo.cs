@@ -146,7 +146,7 @@ namespace Reecon
                     {
                         tcpClient.Close();
                         // Analyze the SocketErrorCode to determine the status more precisely
-                        Console.WriteLine($"SocketException for {ipAddress}:{port}: {ex.SocketErrorCode} - {ex.Message}");
+                        // Console.WriteLine($"SocketException for {ipAddress}:{port}: {ex.SocketErrorCode} - {ex.Message}");
                         switch (ex.SocketErrorCode)
                         {
                             case SocketError.ConnectionRefused:
@@ -623,7 +623,7 @@ namespace Reecon
                 try
                 {
                     // It's generally assumed that if 88 is up, 389 is up as well, although it could also be 3268
-                    defaultNamingContext = LDAP.GetDefaultNamingContext(target, port);
+                    defaultNamingContext = LDAP.GetPlainDefaultNamingContext(target, port);
                 }
                 catch (Exception ex)
                 {
@@ -637,8 +637,10 @@ namespace Reecon
                         postScanActions += $"- Error: Unable to retrieve DefaultNamingContext: " + ex.Message + " <--> " + ex.InnerException + Environment.NewLine;
                     }
                 }
-                defaultNamingContext = defaultNamingContext.Replace("DC=", "").Replace("dc=", "").Replace(",", ".");
 
+                // Bloodhound Collection
+                postScanActions += $"- Bloodhound Collection: nxc ldap {target} -u 'USERNAME' -p 'PASSWORD' --bloodhound --collection All --dns-server {target}" + Environment.NewLine;
+                
                 // Username enum
                 postScanActions += $"- Kerberos Username Enum: kerbrute userenum --dc {target} -d {defaultNamingContext} users.txt (Very very fast - Use xato and wait 10 minutes)" + Environment.NewLine;
 
@@ -670,7 +672,9 @@ namespace Reecon
                 {
                     postScanActions += $"- Port 445 - Linux (SMBClient) has better info on this: smbclient -L {target} --no-pass" + Environment.NewLine;
                 }
+
                 postScanActions += $"- Port 445 - I miss a lot: nmap -sC -sV -p445 {target}" + Environment.NewLine;
+                postScanActions += $"- Port 445 - Timeroast: nxc smb {target} -M timeroast (Hashcat -m 31300)" + Environment.NewLine;
                 postScanActions += $"- Port 445 - Unauthenticated SID (Username) Lookup: lookupsid.py anonymous@{target} -no-pass | grep -e \"Brute forcing\" -e SidTypeUser -e STATUS_LOGON_FAILURE" + Environment.NewLine;
                 postScanActions += $"- Port 445 - Authenticated SID Lookup: lookupsid.py DOMAIN/Username:password@{target}" + Environment.NewLine;
                 postScanActions += $"- Port 445 - Testing passwords: nxc smb {target} -u users.txt -p passwords.txt" + Environment.NewLine;
