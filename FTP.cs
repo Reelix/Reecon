@@ -22,6 +22,7 @@ namespace Reecon
             catch (Exception ex)
             {
                 Console.WriteLine("Rewrite Error: " + ex.Message);
+                General.HandleUnknownException(ex);
             }
             ftpLoginInfo = ftpLoginInfo.Trim(Environment.NewLine.ToCharArray());
             return ("FTP", ftpLoginInfo);
@@ -165,7 +166,7 @@ namespace Reecon
                 {
                     string banner = ftpClient.LastReplies.First(x => x.Code == "220").Message;
                     ftpLoginResult += "- Banner: " + banner + Environment.NewLine;
-                    ftpLoginResult += "- Ftp.cs - Unknown Exception - Bug Reelix: " + ex.Message; ;
+                    General.HandleUnknownException(ex);
                 }
             }
             return ftpLoginResult;
@@ -227,16 +228,16 @@ namespace Reecon
                 }
                 return ftpLoginResult.Trim(Environment.NewLine.ToCharArray());
             }
-            catch (WebException ex)
+            catch (WebException wex)
             {
-                if (ex.Message == "Unable to connect to the remote server")
+                if (wex.Message == "Unable to connect to the remote server")
                 {
                     return "- Unable to connect :<";
                 }
 
-                if (ex.Response != null)
+                if (wex.Response != null)
                 {
-                    FtpWebResponse response = (FtpWebResponse)ex.Response;
+                    FtpWebResponse response = (FtpWebResponse)wex.Response;
                     if (response != null)
                     {
                         if (response.BannerMessage != null && response.StatusDescription != null)
@@ -247,34 +248,36 @@ namespace Reecon
                         }
                         else
                         {
-                            ftpLoginResult += "- Unable to get any FTP response: " + ex.Message + Environment.NewLine;
+                            ftpLoginResult += "- Unable to get any FTP response: " + wex.Message + Environment.NewLine;
                             try
                             {
                                 ftpLoginResult += "- Banner: " + General.BannerGrab(target, port);
                             }
-                            catch (Exception iex)
+                            catch (Exception ex)
                             {
-                                ftpLoginResult += "- Unable to get any banner response: " + iex.Message;
+                                string exType = ex.GetType().Name;
+                                ftpLoginResult += $"- Unable to get any banner response - {exType}: " + ex.Message;
                             }
                         }
                     }
                     else
                     {
-                        ftpLoginResult += "- Unable to get FTP response: " + ex.Message + Environment.NewLine;
+                        ftpLoginResult += "- Unable to get FTP response: " + wex.Message + Environment.NewLine;
                         try
                         {
                             ftpLoginResult += "- Banner: " + General.BannerGrab(target, port);
                         }
-                        catch (Exception iex)
+                        catch (Exception ex)
                         {
-                            ftpLoginResult += "- Unable to get any banner response: " + iex.Message;
+                            ftpLoginResult += "- Unable to get any banner response: " + ex.Message + " - Bug Reelix";
+                            General.HandleUnknownException(ex);
                         }
                     }
                     return ftpLoginResult.Trim(Environment.NewLine.ToCharArray());
                 }
                 else
                 {
-                    ftpLoginResult += "- Unable to get any any response: " + ex.Message;
+                    ftpLoginResult += "- Unable to get any any response: " + wex.Message;
                     return ftpLoginResult;
                 }
             }

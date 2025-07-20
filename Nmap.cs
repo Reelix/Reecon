@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 
 namespace Reecon
 {
@@ -99,6 +100,10 @@ namespace Reecon
             portSection = portSection.Replace("Ports: ", "");
             foreach (string item in portSection.Split([", "], StringSplitOptions.None))
             {
+                if (item == "")
+                {
+                    continue;
+                }
                 int port = int.Parse(item.Split('/')[0]);
                 string status = item.Split('/')[1];
                 if (status == "open")

@@ -29,6 +29,7 @@ namespace Reecon
             GetYouTubeInfo(username);
             GetGithubInfo(username);
             GetPastebinInfo(username);
+            GetRecRoomInfo(username);
             // Pastebin - https://pastebin.com/u/rzsdw2iwug77eda
             // TODO: Disqus - https://disqus.com/by/soremanzo/about/ (Comment count + About page)
             // Google Storage: https://storage.googleapis.com/erg1erh315ezf5zev (Note: Malware link - Need a better valid test case)
@@ -182,6 +183,7 @@ namespace Reecon
                 catch (Exception ex)
                 {
                     Console.WriteLine("Twitter OSINT is currently broken - " + ex.Message + " - Bug Reelix!");
+                    General.HandleUnknownException(ex);
                 }
             }
             else if (httpInfo.StatusCode == HttpStatusCode.TemporaryRedirect)
@@ -311,6 +313,20 @@ namespace Reecon
             else
             {
                 Console.WriteLine("- Pastebin: Not Found");
+            }
+        }
+
+        private static void GetRecRoomInfo(string username)
+        {
+            Web.HttpInfo httpInfo = Web.GetHTTPInfo($"https://apim.rec.net/accounts/account?username{username}");
+            if (httpInfo.StatusCode != HttpStatusCode.NotFound && httpInfo.PageText != null)
+            {
+                Console.WriteLine("- Rec Room Found");
+                Console.WriteLine($"-- Link: https://rec.net/user/{username}");
+            }
+            else
+            {
+                Console.WriteLine("- Rec Room: Not Found");
             }
         }
     }

@@ -17,11 +17,11 @@ using System.Threading.Tasks;
 
 namespace Reecon
 {
-    static class General
+    internal static class General
     {
         public static string ProgramName => typeof(Program).Assembly.GetName().Name ?? "Filename Error in Program.cs - Bug Reelix";
 
-        public static bool SMBv1 { get; set; } = false;
+        public static bool SMBv1 { get; set; }
         public static void ShowHelp()
         {
             Console.WriteLine("Usage");
@@ -45,19 +45,18 @@ namespace Reecon
         {
             List<string> returnList = new();
             ConcurrentBag<string> resultCollection = new();
-            List<string> toTest = new()
-            {
-                // General
+            List<string> toTest =
+            [
                 "",
                 "Woof\r\n\r\n",
                 // HTTP (Windows)
                 "HEAD / HTTP/1.1\r\nHost: " + ip + "\r\n\r\n",
                 // Minecraft
-                "0xFE, 0x01",
+                "0xFE, 0x01"
                 // TLS
                 // "0x16, 0x03, 0x01, 0x00, 0xa5, 0x01, 0x00, 0x00, 0xa1, 0x03, 0x03, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x00, 0x00, 0x20, 0xcc, 0xa8, 0xcc, 0xa9, 0xc0, 0x2f, 0xc0, 0x30, 0xc0, 0x2b, 0xc0, 0x2c, 0xc0, 0x13, 0xc0, 0x09, 0xc0, 0x14, 0xc0, 0x0a, 0x00, 0x9c, 0x00, 0x9d, 0x00, 0x2f, 0x00, 0x35, 0xc0, 0x12, 0x00, 0x0a, 0x01, 0x00, 0x00, 0x58, 0x00, 0x00, 0x00, 0x18, 0x00, 0x16, 0x00, 0x00, 0x13, 0x65, 0x78, 0x61, 0x6d, 0x70, 0x6c, 0x65, 0x2e, 0x75, 0x6c, 0x66, 0x68, 0x65, 0x69, 0x6d, 0x2e, 0x6e, 0x65, 0x74, 0x00, 0x05, 0x00, 0x05, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x0a, 0x00, 0x08, 0x00, 0x1d, 0x00, 0x17, 0x00, 0x18, 0x00, 0x19, 0x00, 0x0b, 0x00, 0x02, 0x01, 0x00, 0x00, 0x0d, 0x00, 0x12, 0x00, 0x10, 0x04, 0x01, 0x04, 0x03, 0x05, 0x01, 0x05, 0x03, 0x06, 0x01, 0x06, 0x03, 0x02, 0x01, 0x02, 0x03, 0xff, 0x01, 0x00, 0x01, 0x00, 0x00, 0x12, 0x00, 0x00"
-            };
-            Parallel.ForEach(toTest, theBanner => resultCollection.Add(BannerGrabThread(ip, port, theBanner, bufferSize = 512, timeout)));
+            ];
+            Parallel.ForEach(toTest, theBanner => resultCollection.Add(BannerGrabThread(ip, port, theBanner, bufferSize, timeout)));
             returnList.AddRange(resultCollection.ToList());
             if (returnList.Any(x => x == "Reecon - Connection reset"))
             {
@@ -87,7 +86,7 @@ namespace Reecon
                 bannerGrabSocket.SendTimeout = timeout;
                 try
                 {
-                    var result = bannerGrabSocket.BeginConnect(ip, port, null, null); // Error if an invalid IP
+                    IAsyncResult result = bannerGrabSocket.BeginConnect(ip, port, null, null); // Error if an invalid IP
                     bool success = result.AsyncWaitHandle.WaitOne(timeout, true);
                     if (success)
                     {
@@ -147,7 +146,7 @@ namespace Reecon
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error in General.BannerGrab ({ip}:{port} - {ex.Message})");
+                    HandleUnknownException(ex);
                     return "";
                 }
             }
@@ -187,7 +186,7 @@ namespace Reecon
                         }
                         if (initialText.Length != 0)
                         {
-                            Byte[] cmdBytes;
+                            byte[] cmdBytes;
 
                             // Check if it's a hex input instead of just a regular banner string
                             if (initialText.StartsWith("0x") && initialText.Contains(", "))
@@ -252,7 +251,9 @@ namespace Reecon
                 }
                 catch (Exception ex)
                 {
+                    
                     Console.WriteLine($"Error in General.BannerGrab ({ip}:{port} - {ex.Message})");
+                    HandleUnknownException(ex);
                     return "";
                 }
             }
@@ -268,7 +269,7 @@ namespace Reecon
             bannerGrabSocket.SendTimeout = 10000;
             try
             {
-                var result = bannerGrabSocket.BeginConnect(ip, port, null, null); // Error if an invalid IP
+                IAsyncResult result = bannerGrabSocket.BeginConnect(ip, port, null, null); // Error if an invalid IP
                 bool success = result.AsyncWaitHandle.WaitOne(10000, true);
                 if (success)
                 {
@@ -483,7 +484,6 @@ namespace Reecon
                         {
                             return true;
                         }
-                        continue;
                     }
                     else
                     {
@@ -495,7 +495,7 @@ namespace Reecon
                 }
                 else
                 {
-                    Console.WriteLine($"Error - Directory ${pathDirectory} does not exist. Your PATH variable might be broken");
+                    Console.WriteLine($"Error - Directory ${pathDirectory} does not exist for app {app}. Your PATH variable might be broken");
                 }
             }
             return false;
@@ -668,6 +668,27 @@ namespace Reecon
                 Console.WriteLine("Unknown Color: " + color.Name);
             }
             return toReturn;
+        }
+        
+        public static void HandleUnknownException(Exception ex)
+        {
+            string exType = ex.GetType().Name;
+            StackTrace trace = new StackTrace(ex, true);
+            StackFrame frame = trace.GetFrames().Last();
+            int lineNumber = frame.GetFileLineNumber();
+            string? fileName = frame.GetFileName();
+            string? iEX = ex.InnerException?.Message;
+            Console.WriteLine($"- Unhandled Error in {fileName} of type {exType} on Line {lineNumber} - Bug Reelix!");
+            if (iEX != null)
+            {
+                Console.WriteLine("-- Inner Exception: " + iEX);
+            }
+        }
+        
+        public static string ConvertToBase64(string plainText) 
+        {
+            byte[] plainTextBytes = Encoding.UTF8.GetBytes(plainText);
+            return Convert.ToBase64String(plainTextBytes);
         }
     }
 }
