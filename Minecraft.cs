@@ -7,12 +7,12 @@ using System.Text;
 namespace Reecon
 {
     // Port 25565
-    class Minecraft
+    internal static class Minecraft
     {
         public static (string PortName, string PortData) GetInfo(string ip, int port)
         {
             string returnText = "";
-            Byte[] buffer = new Byte[5000];
+            byte[] buffer = new byte[5000];
             using (Socket minecraftSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
                 // https://wiki.vg/Server_List_Ping#1.6

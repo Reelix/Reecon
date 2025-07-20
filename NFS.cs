@@ -54,12 +54,13 @@ namespace Reecon
                             fileList += "-- NFSV1 -> " + $"sudo mount -t nfs {target}:/mountNameHere /tmp/mount/ -nolock".Recolor(Color.Orange) + Environment.NewLine;
                             fileList += "--- " + "Try copy over a version of bash onto the share, +s +x it, then ./bash -p".Recolor(Color.Orange) + Environment.NewLine;
                         }
-                        // NFS V2
+                        // NFS V2,V3,V4, ?
                         else if (line.Contains(" (everyone)"))
                         {
                             fileList += "- " + line.Recolor(Color.Orange) + Environment.NewLine;
-                            fileList += "-- NFSV2 -> " + $"sudo mount -t nfs -o vers=2 {target}:/mountNameHere /mnt".Recolor(Color.Orange) + Environment.NewLine;
+                            fileList += "-- NFSV -> " + $"sudo mount -t nfs {target}:/mountNameHere /mnt/mountNameHere".Recolor(Color.Orange) + Environment.NewLine;
                             fileList += "--- " + "Try copy over a version of bash onto the share, +s +x it, then ./bash -p".Recolor(Color.Orange) + Environment.NewLine;
+                            fileList += "--- sudo umount /mnt/mountNameHere".Recolor(Color.Orange) + Environment.NewLine;
                         }
                         // This took me far too long to figure out
                         else if (line.Contains("clnt_create: RPC: Program not registered"))

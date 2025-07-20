@@ -1,6 +1,6 @@
 ﻿namespace Reecon
 {
-    class HTTPS // 443
+    internal static class HTTPS // 443
     {
         public static (string PortName, string PortData) GetInfo(string target, int port)
         {

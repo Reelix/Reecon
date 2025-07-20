@@ -604,11 +604,13 @@ namespace Reecon
                 postScanActions += "- Telnet: Just telnet in - Bug Reelix to update this though..." + Environment.NewLine;
             }
             // Need to convert the rest of these from numbers to names at some point...
-            else if (port == 53)
+            else if (portName == "DNS")
             {
                 // TODO: https://svn.nmap.org/nmap/scripts/dns-nsid.nse
                 postScanActions += $"- Try a reverse lookup (Linux): dig @{target} -x {target}" + Environment.NewLine;
                 postScanActions += $"- Try a zone transfer (Linux): dig axfr domain.com @{target}" + Environment.NewLine;
+                postScanActions += $@"- Try add a custom record: echo -e 'server {target}\nzone domain.com\nupdate add custom-subdomain.domain.com 600 IN A YOUR_IP\nsend' | nsupdate" + Environment.NewLine;
+                postScanActions += $"-- Check if it worked: dig +noall +answer @{target} custom-subdomain.domain.com ANY" + Environment.NewLine;
             }
             else if (portName == "HTTP")
             {
@@ -616,7 +618,7 @@ namespace Reecon
                 postScanActions += $"- gobuster dir -u http://{target}/ -w ~/wordlists/common.txt -t 25 -o gobuster-http-common.txt -x.php,.txt" + Environment.NewLine;
 
             }
-            else if (port == 88 || port == 3268)
+            else if (portName == "Microsoft Windows Kerberos" || portName == "LDAP")
             {
                 // Post Scan
                 string defaultNamingContext = "Unknown";
@@ -657,29 +659,29 @@ namespace Reecon
                 // Post exploitation
                 postScanActions += $"- If you get details: python3 secretsdump.py usernameHere:\"passwordHere\"@{target} | grep :" + Environment.NewLine;
             }
-            else if (port == 139)
+            else if (portName == "NETBIOS")
             {
-                postScanActions += $"- Port 139 - rpcdump.py @{target} (Probably egrep for 'MS-RPRN|MS-PAR' for the PrintSpooler exploits)" + Environment.NewLine;
+                postScanActions += $"- NETBIOS - rpcdump.py @{target} (Probably egrep for 'MS-RPRN|MS-PAR' for the PrintSpooler exploits)" + Environment.NewLine;
             }
             else if (port == 443)
             {
                 postScanActions += $"- gobuster dir -u https://{target}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-https-medium.txt -x.php,.txt" + Environment.NewLine;
                 postScanActions += $"- gobuster dir -u https://{target}/ -w ~/wordlists/common -t 25 -o gobuster-https-common.txt -x.php,.txt" + Environment.NewLine;
             }
-            else if (port == 445)
+            else if (portName == "SMB")
             {
                 if (General.GetOS() == General.OS.Windows)
                 {
-                    postScanActions += $"- Port 445 - Linux (SMBClient) has better info on this: smbclient -L {target} --no-pass" + Environment.NewLine;
+                    postScanActions += $"- SMB - Linux (SMBClient) has better info on this: smbclient -L {target} --no-pass" + Environment.NewLine;
                 }
 
-                postScanActions += $"- Port 445 - I miss a lot: nmap -sC -sV -p445 {target}" + Environment.NewLine;
-                postScanActions += $"- Port 445 - Timeroast: nxc smb {target} -M timeroast (Hashcat -m 31300)" + Environment.NewLine;
-                postScanActions += $"- Port 445 - Unauthenticated SID (Username) Lookup: lookupsid.py anonymous@{target} -no-pass | grep -e \"Brute forcing\" -e SidTypeUser -e STATUS_LOGON_FAILURE" + Environment.NewLine;
-                postScanActions += $"- Port 445 - Authenticated SID Lookup: lookupsid.py DOMAIN/Username:password@{target}" + Environment.NewLine;
-                postScanActions += $"- Port 445 - Testing passwords: nxc smb {target} -u users.txt -p passwords.txt" + Environment.NewLine;
-                postScanActions += $"- Port 445 - List Shares: smbclient -U validusername%validpass -L //{target}" + Environment.NewLine;
-                postScanActions += $"- Port 445 - Connect Share: smbclient -U validusername%validpass //{target}/shareName" + Environment.NewLine;
+                postScanActions += $"- SMB - I miss a lot: nmap -sC -sV -p445 {target}" + Environment.NewLine;
+                postScanActions += $"- SMB - Timeroast: nxc smb {target} -M timeroast (Hashcat -m 31300)" + Environment.NewLine;
+                postScanActions += $"- SMB - Unauthenticated SID (Username) Lookup: lookupsid.py anonymous@{target} -no-pass | grep -e \"Brute forcing\" -e SidTypeUser -e STATUS_LOGON_FAILURE" + Environment.NewLine;
+                postScanActions += $"- SMB - Authenticated SID Lookup: lookupsid.py DOMAIN/Username:password@{target}" + Environment.NewLine;
+                postScanActions += $"- SMB - Testing passwords: nxc smb {target} -u users.txt -p passwords.txt" + Environment.NewLine;
+                postScanActions += $"- SMB - List Shares: smbclient -U validusername%validpass -L //{target}" + Environment.NewLine;
+                postScanActions += $"- SMB - Connect Share: smbclient -U validusername%validpass //{target}/shareName" + Environment.NewLine;
             }
             else if (port == 1433)
             {

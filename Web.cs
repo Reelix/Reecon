@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace Reecon
 {
-    partial class Web
+    static partial class Web
     {
         static string scanURL = "";
         static List<string> fullPageList = [];
@@ -612,7 +612,6 @@ namespace Reecon
                                 returnText += "-- Kibana!" + Environment.NewLine;
                                 try
                                 {
-                                    string toCheck = $"{url}{file}";
                                     string pageData = DownloadString($"{url}{file}").Text;
                                     if (pageData.Contains("&quot;version&quot;:&quot;"))
                                     {
@@ -1113,7 +1112,7 @@ namespace Reecon
             string? PageTitle = httpInfo.PageTitle;
             string? PageText = httpInfo.PageText;
             string DNS = httpInfo.DNS;
-            HttpRequestMessage requestMessage = httpInfo.RequestMessage;
+            // HttpRequestMessage requestMessage = httpInfo.RequestMessage;
             HttpResponseHeaders ResponseHeaders = httpInfo.ResponseHeaders;
             HttpContentHeaders ContentHeaders = httpInfo.ContentHeaders;
             X509Certificate2? SSLCert = httpInfo.SSLCert;
@@ -1724,7 +1723,7 @@ namespace Reecon
                         toReturn += "- " + "Cacti detected".Recolor(Color.Orange) + Environment.NewLine;
                         if (PageText != null && PageText.Contains("Version 1.2.22"))
                         {
-                            toReturn += "-- " + "Vulnerable version 1.2.22 detected - CVE-2022-46169" + Environment.NewLine; ;
+                            toReturn += "-- " + "Vulnerable version 1.2.22 detected - CVE-2022-46169" + Environment.NewLine;
                         }
                         else
                         {

@@ -3,7 +3,7 @@ using static Reecon.Web;
 
 namespace Reecon
 {
-    class HTTP //80 / 8080 / 8000 (Also used for 443, HTTPS)
+    internal static class HTTP //80 / 8080 / 8000 (Also used for 443, HTTPS)
     {
         public static (string PortName, string PortData) GetInfo(string target, int port)
         {
@@ -91,8 +91,7 @@ namespace Reecon
             }
             catch (Exception ex)
             {
-                string exType = ex.GetType().ToString();
-                Console.WriteLine("Critical HTTP.GetInfo Error (Type: " + exType + ": " + ex.Message);
+                General.HandleUnknownException(ex);
                 return "";
             }
         }

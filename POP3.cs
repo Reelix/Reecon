@@ -6,7 +6,7 @@ using System.Text;
 
 namespace Reecon
 {
-    class POP3 // Port 110 by default
+    internal static class POP3 // Port 110 by default
     {
         public static (string PortName, string PortData) GetInfo(string ip, int port)
         {

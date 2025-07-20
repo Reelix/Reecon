@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Reecon
 {
-    class DNS // Port 53
+    internal static class DNS // Port 53
     {
         public static (string PortName, string PortData) GetInfo(string ip, int port)
         {
@@ -21,8 +21,8 @@ namespace Reecon
                 {
                     if (line.StartsWith("Server:"))
                     {
-                        string server = line.Replace("Server:  ", ""); // Why 2 spaces?
-                        dnsInfo += $"- {line}" + Environment.NewLine;
+                        string server = line.Replace("Server:", "").Trim();
+                        dnsInfo += $"- Server: {server}" + Environment.NewLine;
                         if (server != "UnKnown")
                         {
                             hasServer = true;
@@ -30,13 +30,15 @@ namespace Reecon
                     }
                     else if (line.StartsWith("Address:"))
                     {
-                        dnsInfo += $"- {line}" + Environment.NewLine;
+                        string address = line.Replace("Address:", "").Trim();
+                        dnsInfo += $"- Address: {address}" + Environment.NewLine;
                     }
                     else if (
                         // Terrible formatting, I know
                         !(line.Trim().Equals("DNS request timed out."))
                         && !(line.Trim().Contains("timeout was") && line.Trim().Contains("seconds"))
                         && !(line.StartsWith("*** Request to") && line.Trim().EndsWith("timed-out"))
+                        && !(line.Trim().Equals("** server can't find version.bind: NOTIMP"))
                         )
                     {
                         dnsInfo += $"- {line}" + Environment.NewLine;

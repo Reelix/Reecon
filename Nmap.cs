@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace Reecon
 {
-    class Nmap
+    internal static class Nmap
     {
         // Does an optimised nmap scan of the host, and outputs it in a greppable format for processing
         public static string DefaultScan(string[] args, bool mustPing)

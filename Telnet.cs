@@ -4,14 +4,14 @@ using System.Text;
 
 namespace Reecon
 {
-    class Telnet // Port 23
+    internal static class Telnet // Port 23
     {
         public static (string PortName, string PortInfo) GetInfo(string ip, int port)
         {
             Console.OutputEncoding = Encoding.UTF8;
             int timeout = 5000; // ms
-            string bannerText = "";
-            Byte[] buffer = new Byte[512];
+            // string bannerText = "";
+            byte[] buffer = new byte[512];
             using (Socket telnetSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
                 telnetSocket.ReceiveTimeout = timeout;
@@ -85,7 +85,8 @@ namespace Reecon
                         }
 
                     }
-                    bannerText = bannerText.Trim();
+                    
+                    // bannerText = bannerText.Trim();
                 }
                 catch (Exception ex)
                 {

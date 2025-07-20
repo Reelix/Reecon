@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace Reecon
 {
-    class SVN // 3690
+    internal static class SVN // 3690
     {
         public static (string PortName, string PortData) GetInfo(string ip, int port)
         {
@@ -31,8 +31,8 @@ namespace Reecon
                             string commitRevision = splitItems[0].Trim();
                             int commitDiff = int.Parse(commitRevision.Replace("r", "")) - 1; // Indexes - How do they work!
                             string commitName = splitItems[1].Trim();
-                            string commitDate = splitItems[2];
-                            string commitLines = splitItems[3];
+                            // string commitDate = splitItems[2];
+                            // string commitLines = splitItems[3];
                             string commitComments = splitItems[4];
                             string commitInfo = "- Commit " + commitRevision + " by " + commitName + " - " + commitComments + " ( svn diff -r" + commitDiff + " svn://" + ip + " )";
                             toReturn += commitInfo + Environment.NewLine;

@@ -8,7 +8,7 @@ using System.Text;
 
 namespace Reecon
 {
-    class NETBIOS // TCP 139
+    internal static class NETBIOS // TCP 139
     {
         public static (string PortName, string PortData) GetInfo(string target, int port)
         {
@@ -129,14 +129,14 @@ namespace Reecon
         private static byte[] CreateNetbiosRequestPacket()
         {
             byte[] packet = new byte[50];
-            Random rand = new Random();
+            Random rand = new();
             rand.NextBytes(packet);
 
             // https://datatracker.ietf.org/doc/html/rfc1002#section-4.2.1
 
             // Header
-            packet[0] = (byte)rand.Next(0, 256); ; // Transaction ID
-            packet[1] = (byte)rand.Next(0, 256); ; // Transaction ID
+            packet[0] = (byte)rand.Next(0, 256); // Transaction ID
+            packet[1] = (byte)rand.Next(0, 256); // Transaction ID
 
             // Flags: set query flags (standard query)
             packet[2] = 0x01; // QR=0, Opcode=0 (Query), AA=0, TC=0, RD=1 (Recursion Desired)

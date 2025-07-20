@@ -6,10 +6,10 @@ using System.Linq;
 namespace Reecon
 {
     // https://github.com/offensive-security/exploitdb/blob/master/searchsploit
-    class Searchsploit
+    internal static class Searchsploit
     {
-        static string dbPath = Directory.GetCurrentDirectory() + @"/files_exploits.csv";
-        static string updatePath = "https://gitlab.com/exploit-database/exploitdb/raw/main/files_exploits.csv";
+        private static readonly string dbPath = Directory.GetCurrentDirectory() + @"/files_exploits.csv";
+        private static readonly string updatePath = "https://gitlab.com/exploit-database/exploitdb/raw/main/files_exploits.csv";
 
         public static void Search(string[] args)
         {
@@ -50,13 +50,12 @@ namespace Reecon
             Console.WriteLine($"Downloading update from {updatePath}...");
             General.DownloadFile(updatePath, dbPath);
             Console.WriteLine("Update complete!");
-            return;
         }
 
         private static void View(string exploitId)
         {
             List<DatabaseItem> database = Database.Parse(dbPath);
-            DatabaseItem? theItem = database.First(x => x.ID == exploitId) ?? null;
+            DatabaseItem? theItem = database.First(x => x.ID == exploitId);
             if (theItem != null)
             {
                 Console.WriteLine("Exploit " + theItem.ID + ": " + theItem.Title);
@@ -69,7 +68,6 @@ namespace Reecon
             {
                 Console.WriteLine("Error - Invalid Item Id: " + exploitId);
             }
-            return;
         }
 
         private static void Search(string searchCommand)
@@ -109,7 +107,7 @@ namespace Reecon
             public static List<DatabaseItem> Parse(string dbFile)
             {
                 List<string> dbItems = File.ReadAllLines(dbFile).ToList();
-                List<DatabaseItem> database = new();
+                List<DatabaseItem> database = [];
                 foreach (string item in dbItems)
                 {
                     string[] itemData = item.Split(',');

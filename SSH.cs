@@ -6,7 +6,7 @@ using System.Text;
 
 namespace Reecon
 {
-    internal class SSH // Commonly Port 22 or 2222
+    internal static class SSH // Commonly Port 22 or 2222
     {
         public static (string PortName, string PortInfo) GetInfo(string ip, int port)
         {
@@ -23,7 +23,7 @@ namespace Reecon
         public static string GetVersion(string ip, int port)
         {
             int timeout = 10000;
-            Byte[] buffer = new Byte[512];
+            byte[] buffer = new byte[512];
             using (Socket sshSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
                 sshSocket.ReceiveTimeout = timeout; // ms
@@ -38,8 +38,8 @@ namespace Reecon
                         string responseMessage = Encoding.ASCII.GetString(buffer, 0, bytes);
                         responseMessage = responseMessage.Trim();
                         
-                        string versionMessage = "";
-                        if (responseMessage.Contains("\r"))
+                        string versionMessage;
+                        if (responseMessage.Contains('\r'))
                         {
                             versionMessage = responseMessage.Split("\r")[0].Trim('\n');
                         }
@@ -96,9 +96,9 @@ namespace Reecon
         }
 
         // Get Auth Methods
-        public static string GetAuthMethods(string ip, int port)
+        private static string GetAuthMethods(string ip, int port)
         {
-            string returnString = "";
+            string returnString;
             if (string.IsNullOrEmpty(ip))
             {
                 Console.WriteLine("Error in ssh.GetAuthMethods - Missing IP");

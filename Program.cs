@@ -22,7 +22,7 @@ namespace Reecon
             Console.ForegroundColor = ConsoleColor.White;
 
             // And begin!
-            Console.WriteLine("Reecon - Version 0.38 ( https://github.com/Reelix/Reecon )".Recolor(Color.Yellow));
+            Console.WriteLine("Reecon - Version 0.38a ( https://github.com/Reelix/Reecon )".Recolor(Color.Yellow));
             if (args.Length == 0)
             {
                 General.ShowHelp();
@@ -248,18 +248,7 @@ namespace Reecon
             Console.ResetColor();
         }
 
-        static void LocalDebug(string ip, int port)
-        {
-            Console.WriteLine("-- Debug Start --");
-            target = ip;
-            PortInfo.LoadPortInfo();
-            ScanPort(port);
-            Console.WriteLine("-- Debug Ended --");
-            Console.ReadLine();
-            Environment.Exit(0);
-        }
-
-        static void ScanPorts(List<int> portsToScan)
+        private static void ScanPorts(List<int> portsToScan)
         {
             PortInfo.LoadPortInfo();
 

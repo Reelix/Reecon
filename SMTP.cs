@@ -7,13 +7,12 @@ using System.Text;
 
 namespace Reecon
 {
-    class SMTP // Generally Port 25
+    internal static class SMTP // Generally Port 25
     {
         public static (string PortName, string PortData) GetInfo(string ip, int port)
         {
             string returnText = "";
-            string smtpBanner = "";
-            Byte[] buffer = new Byte[5000];
+            byte[] buffer = new byte[5000];
             using (Socket smtpSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
                 smtpSocket.ReceiveTimeout = 5000;
@@ -24,7 +23,7 @@ namespace Reecon
                     smtpSocket.Connect(ip, port);
                     // Wait for info
                     int bytes = smtpSocket.Receive(buffer, buffer.Length, 0);
-                    smtpBanner = Encoding.ASCII.GetString(buffer, 0, bytes);
+                    string smtpBanner = Encoding.ASCII.GetString(buffer, 0, bytes);
                     if (smtpBanner.StartsWith("220 ")) // Most, but not all SMTP banners contain the text smtp - But all contains a 220 followed by a space
                     {
                         // We got a valid response! Let's do some parsing!
@@ -49,7 +48,7 @@ namespace Reecon
                             hostName = smtpBanner.Substring(0, smtpIndex);
                             nameAndDate = smtpBanner.Remove(0, smtpIndex + 5);
                         }
-                        string newlineChars = "";
+                        string newlineChars;
                         if (nameAndDate.EndsWith("\r\n"))
                         {
                             returnText += "- Windows Newline Characters Detected" + Environment.NewLine;

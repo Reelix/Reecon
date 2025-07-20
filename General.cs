@@ -97,7 +97,7 @@ namespace Reecon
                         }
                         if (initialText.Length != 0)
                         {
-                            Byte[] cmdBytes = Encoding.ASCII.GetBytes(initialText.ToCharArray());
+                            byte[] cmdBytes = Encoding.ASCII.GetBytes(initialText.ToCharArray());
                             bannerGrabSocket.Send(cmdBytes, cmdBytes.Length, 0);
                         }
                         int bytes = bannerGrabSocket.Receive(buffer, buffer.Length, 0);
@@ -683,12 +683,6 @@ namespace Reecon
             {
                 Console.WriteLine("-- Inner Exception: " + iEX);
             }
-        }
-        
-        public static string ConvertToBase64(string plainText) 
-        {
-            byte[] plainTextBytes = Encoding.UTF8.GetBytes(plainText);
-            return Convert.ToBase64String(plainTextBytes);
         }
     }
 }
