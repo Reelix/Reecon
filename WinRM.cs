@@ -3,13 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Security;
 using System.Text;
 using static Reecon.Web;
 
 namespace Reecon
 {
-    class WinRM // 5985 / 5986
+    internal static class WinRM // 5985 / 5986
     {
         public static (string PortName, string PortData) GetInfo(string ip, int port)
         {
@@ -19,23 +18,15 @@ namespace Reecon
             string returnInfo = "";
 
             // Needs more testing
-            WebHeaderCollection requestHeaders = new WebHeaderCollection();
+            WebHeaderCollection requestHeaders = new();
             requestHeaders.Add("Content-Type", "application/soap+xml;charset=UTF-8");
 
             // To Test: CSL Potato (CyberSecLabs no longer seems to exist, so...)
             Byte[] byteData = Encoding.ASCII.GetBytes("dsadsasa");
 
-            UploadDataResult result;
             try
             {
-                if (port == 5986)
-                {
-                    result = Web.UploadData($"https://{ip}:{port}/wsman", byteData);
-                }
-                else
-                {
-                    result = Web.UploadData($"http://{ip}:{port}/wsman", byteData);
-                }
+                UploadDataResult result = UploadData(port == 5986 ? $"https://{ip}:{port}/wsman" : $"http://{ip}:{port}/wsman", byteData);
 
                 // Parse the result
                 if (result.StatusCode == HttpStatusCode.Unauthorized)
@@ -120,13 +111,15 @@ namespace Reecon
             }
             catch (Exception ex)
             {
+                string exType = ex.GetType().Name;
                 if (ex.Message.StartsWith("No connection could be made because the target machine actively refused it."))
                 {
                     returnInfo += "- No connection could be made because the target machine actively refused it - The Port is probably Closed.";
                 }
                 else
                 {
-                    returnInfo += $"- Fatal Response in WinRM.cs: {ex.Message} - Bug Reelix!";
+                    returnInfo += $"- Fatal Response in WinRM.cs of type {exType}: {ex.Message} - Bug Reelix!";
+                    General.HandleUnknownException(ex);
                 }
             }
 
@@ -192,15 +185,13 @@ namespace Reecon
                     {
                         Console.ForegroundColor = ConsoleColor.Green;
                         Console.WriteLine("Success!");
-                        Console.ForegroundColor = ConsoleColor.White;
                     }
                     else
                     {
                         Console.ForegroundColor = ConsoleColor.Red;
                         Console.WriteLine("Failed");
-                        Console.ForegroundColor = ConsoleColor.White;
-
                     }
+                    Console.ForegroundColor = ConsoleColor.White;
                 }
             }
             General.RunProcess("powershell", @"Set-Item WSMan:\localhost\Client\TrustedHosts '' -Force");
