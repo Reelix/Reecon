@@ -27,10 +27,10 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Install .NET Core
+    - name: Install .NET 9
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '9.0.200'
+        dotnet-version: '9.0.x'
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
