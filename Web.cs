@@ -867,7 +867,7 @@ namespace Reecon
             // There's also a case where an invalid page can contain the subdomain name which throws off the length which we need to account for (invalidBaseLen2)
             HttpInfo invalidBase = GetHTTPInfo(domainToCheck, HostHeader: "reelix." + authority);
             int invalidBaseLen = -1;
-            int invalidBaseLen2 = -1;
+            int invalidBaseLen2 = -2;
             if (invalidBase.PageText != null)
             {
                 invalidBaseLen = invalidBase.PageText.Length;
@@ -890,7 +890,7 @@ namespace Reecon
 
                 // Might as well check this before else it gets complicated
                 int checkLen2 = -1;
-                if (invalidBaseLen2 != -1) // Something special
+                if (invalidBaseLen2 != -2) // Something special
                 {
                     if (pageInfo.PageText.Contains(subdomain + "." + baseHost))
                     {
@@ -957,15 +957,14 @@ namespace Reecon
             HttpClient httpClient = new HttpClient(httpClientHandler);
             Uri theURL = new Uri(url);
             HttpRequestMessage httpClientRequest = new HttpRequestMessage(HttpMethod.Get, theURL);
-            // Optional params
-            if (UserAgent != null)
-            {
-                httpClientRequest.Headers.UserAgent.TryParseAdd(UserAgent);
-            }
+            
+            // Now for the optional parameters
+            
+            // Set the UA. If it's null, use the signifier. We're a good bot, after all :) 
+            httpClientRequest.Headers.UserAgent.TryParseAdd(UserAgent ?? "Reecon (https://github.com/Reelix/reecon)");
 
             if (Cookie != null)
             {
-                // Console.WriteLine("Web.cs Debug - Setting Cookie to " +  cookie);
                 httpClientRequest.Headers.Add("Cookie", Cookie);
             }
 

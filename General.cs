@@ -26,18 +26,19 @@ namespace Reecon
         {
             Console.WriteLine("Usage");
             Console.WriteLine("-----");
-            Console.WriteLine($"Basic Scan:\t{ProgramName} IPHere (Optional: -noping to skip the online check)");
+            Console.WriteLine($"Basic Scan:\t{ProgramName} IP OutputName (Optional: -noping to skip the online check)");
+            Console.WriteLine($"Parse Nmap:\t{ProgramName} outfile.nmap (Requires -oG on a regular nmap scan)");
             Console.WriteLine($"Display IP:\t{ProgramName} -ip");
-            Console.WriteLine($"NMap-Load Scan:\t{ProgramName} outfile.nmap (Requires -oG on a regular nmap scan)");
             Console.WriteLine($"Binary Pwn:\t{ProgramName} -pwn FileName (Very buggy)");
             Console.WriteLine($"LDAP Auth Enum:\t{ProgramName} -ldap IP port validUsername validPassword (NTLM Auth Only)");
-            Console.WriteLine($"Nist Search:\t{ProgramName} -search nameHere (Only 6/10+ results)");
-            Console.WriteLine($"Searchsploit:\t{ProgramName} -searchsploit nameHere (Beta)");
+            Console.WriteLine($"Nist Search:\t{ProgramName} -search NameHere (Only 6/10+ results)");
+            Console.WriteLine($"Searchsploit:\t{ProgramName} -searchsploit NameHere (Beta)");
             Console.WriteLine($"Shell Gen:\t{ProgramName} -shell");
             Console.WriteLine($"SMB Brute:\t{ProgramName} -smb-brute (Linux Only)");
             Console.WriteLine($"WinRM Brute:\t{ProgramName} -winrm-brute IP UserList PassList");
             Console.WriteLine($"LFI Test:\t{ProgramName} -lfi (Very buggy)");
             Console.WriteLine($"Web Info:\t{ProgramName} -web url (Very buggy)");
+            Console.WriteLine($"IP Lookup:\t{ProgramName} -lookup IP");
         }
 
         // Fingerprinting service

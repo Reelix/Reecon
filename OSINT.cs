@@ -21,7 +21,7 @@ namespace Reecon
             Console.OutputEncoding = System.Text.Encoding.UTF8;
             Console.WriteLine("Warning: The OSINT Module is still in early development and will probably break / give incorrect information".Recolor(Color.Red));
             string username = args[1];
-            Console.WriteLine("Searching for " + username + "...");
+            Console.WriteLine($"Searching for {username}...");
             //GetInstagramInfo(username); - Broken - https://www.instagram.com/web/search/topsearch/?query=Reelix
             GetRedditInfo(username);
             GetSteamInfo(username);
@@ -318,7 +318,7 @@ namespace Reecon
 
         private static void GetRecRoomInfo(string username)
         {
-            Web.HttpInfo httpInfo = Web.GetHTTPInfo($"https://apim.rec.net/accounts/account?username{username}");
+            Web.HttpInfo httpInfo = Web.GetHTTPInfo($"https://apim.rec.net/accounts/account?username={username}");
             if (httpInfo.StatusCode != HttpStatusCode.NotFound && httpInfo.PageText != null)
             {
                 Console.WriteLine("- Rec Room Found");

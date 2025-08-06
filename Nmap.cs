@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
-using System.Linq;
 
 namespace Reecon
 {
@@ -67,7 +66,7 @@ namespace Reecon
             }
             DateTime afterNmapDate = DateTime.Now;
             TimeSpan nmapScanDuration = afterNmapDate - beforeNmapDate;
-            Console.WriteLine("Optimized Nmap Scan complete in " + string.Format("{0:0.00}s", nmapScanDuration.TotalSeconds) + $" - Created {fileName}.nmap for reecon");
+            Console.WriteLine("Optimized Nmap Scan complete in " + $"{nmapScanDuration.TotalSeconds:0.00}s" + $" - Created {fileName}.nmap for reecon");
             return fileName;
         }
 

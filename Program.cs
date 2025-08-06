@@ -8,10 +8,10 @@ namespace Reecon
 {
     internal class Program
     {
-        private static readonly List<int> portList = [];
+        private static readonly List<int> PortList = [];
         private static string target = "";
-        private static readonly List<Thread> threadList = [];
-        private static readonly List<string> postScanList = [];
+        private static readonly List<Thread> ThreadList = [];
+        private static readonly List<string> PostScanList = [];
 
         public static void Main(string[] args)
         {
@@ -22,7 +22,7 @@ namespace Reecon
             Console.ForegroundColor = ConsoleColor.White;
 
             // And begin!
-            Console.WriteLine("Reecon - Version 0.38a ( https://github.com/Reelix/Reecon )".Recolor(Color.Yellow));
+            Console.WriteLine("Reecon - Version 0.38b ( https://github.com/Reelix/Reecon )".Recolor(Color.Yellow));
             if (args.Length == 0)
             {
                 General.ShowHelp();
@@ -60,6 +60,12 @@ namespace Reecon
             else if (args.Contains("-lfi") || args.Contains("--lfi"))
             {
                 LFI.Scan(args);
+                Console.ResetColor();
+                return;
+            }
+            else if (args.Contains("-lookup") || args.Contains("--lookup"))
+            {
+                Lookup.Scan(args);
                 Console.ResetColor();
                 return;
             }
@@ -159,15 +165,16 @@ namespace Reecon
             {
                 Console.WriteLine("Parsing file...");
                 string fileName = args[0];
-                var (Target, Ports) = Nmap.ParseFile(fileName);
-                target = Target;
-                if (Ports.Count == 0)
+                var nmapResult = Nmap.ParseFile(fileName);
+                target = nmapResult.Target;
+                List<int> ports = nmapResult.Ports;
+                if (ports.Count == 0)
                 {
                     Console.WriteLine("Error: Empty file - Bug Reelix!");
                 }
                 else
                 {
-                    portList.AddRange(Ports);
+                    PortList.AddRange(ports);
                 }
             }
             else
@@ -188,7 +195,7 @@ namespace Reecon
                 string portArg = args[1];
                 try
                 {
-                    portList.AddRange(portArg.Split(',').ToList().Select(int.Parse));
+                    PortList.AddRange(portArg.Split(',').ToList().Select(int.Parse));
                 }
                 catch
                 {
@@ -217,22 +224,22 @@ namespace Reecon
                 }
             }
 
-            if (portList.Count == 0)
+            if (PortList.Count == 0)
             {
                 // Scan the target
                 string fileName = Nmap.DefaultScan(args, mustPing);
                 fileName += ".nmap";
 
                 // Parse the ports
-                var (Target, Ports) = Nmap.ParseFile(fileName);
-                target = Target;
-                portList.AddRange(Ports);
+                var nmapResult = Nmap.ParseFile(fileName);
+                target = nmapResult.Target;
+                PortList.AddRange(nmapResult.Ports);
             }
 
             // Ports have been defined (Either nmap or custom)
-            if (portList.Count != 0)
+            if (PortList.Count != 0)
             {
-                ScanPorts(portList);
+                ScanPorts(PortList);
             }
             else
             {
@@ -265,18 +272,18 @@ namespace Reecon
             foreach (int port in portsToScan)
             {
                 Thread myThread = new(() => ScanPort(port));
-                threadList.Add(myThread);
+                ThreadList.Add(myThread);
                 myThread.Start();
             }
 
             // Wait for the scans to finish
-            foreach (Thread theThread in threadList)
+            foreach (Thread theThread in ThreadList)
             {
                 theThread.Join();
             }
 
             // And clear the thread list
-            threadList.Clear();
+            ThreadList.Clear();
 
             // Everything done - Now for some helpful info!
             Console.WriteLine("Finished - Some things you probably want to do: ");
@@ -288,11 +295,11 @@ namespace Reecon
             }
             else
             {
-                postScanList.Add(
+                PostScanList.Add(
                     $"- Nmap Script+Version Scan: sudo nmap -sC -sV -p{string.Join(",", portsToScan)} {target} -oN nmap.txt" +
                     Environment.NewLine);
-                postScanList.Add($"- Nmap UDP Scan: sudo nmap -sU {target} (-F for top 100)" + Environment.NewLine);
-                foreach (string item in postScanList)
+                PostScanList.Add($"- Nmap UDP Scan: sudo nmap -sU {target} (-F for top 100)" + Environment.NewLine);
+                foreach (string item in PostScanList)
                 {
                     // They already have newlines in them
                     Console.Write(item);
@@ -305,7 +312,7 @@ namespace Reecon
             string toDo = PortInfo.ScanPort(target, port);
             if (toDo != "")
             {
-                postScanList.Add(toDo);
+                PostScanList.Add(toDo);
             }
         }
     }
