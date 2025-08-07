@@ -256,7 +256,7 @@ namespace Reecon
             string mainDomain = node1Name.Split('@')[1];
             try
             {
-                IP = Dns.GetHostEntry(mainDomain).AddressList.First().ToString();
+                IP = System.Net.Dns.GetHostEntry(mainDomain).AddressList.First().ToString();
             }
             catch (Exception ex)
             {

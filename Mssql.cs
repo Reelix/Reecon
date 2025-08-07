@@ -1,6 +1,6 @@
 ﻿namespace Reecon
 {
-    class MSSQL
+    class Mssql // Microsoft SQL Server
     {
         public static (string PortName, string PortData) GetInfo(string target, int port)
         {

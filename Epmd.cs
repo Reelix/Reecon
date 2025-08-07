@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Reecon;
 
-internal static class EPMD // Erlang Port Mapper Daemon - 4369
+internal static class Epmd // Erlang Port Mapper Daemon - 4369
 {
     public static (string PortName, string PortData) GetInfo(string ip, int port)
     {

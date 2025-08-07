@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 
 namespace Reecon
 {
-    class OSINT_Steam
+    class Osint_Steam
     {
         public static string GetInfo(string name)
         {

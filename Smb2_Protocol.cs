@@ -12,7 +12,7 @@ namespace Reecon
     // https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/
 
     // Technically SMB2 AND SMB3 (They both have the same ProtocolID... Weird)
-    public class SMB2_Protocol
+    public class Smb2_Protocol
     {
         private static readonly byte[] ZERO_BYTES_2 = { 0x00, 0x00 };
         private static readonly byte[] ZERO_BYTES_4 = Enumerable.Repeat((byte)0x00, 4).ToArray();

@@ -9,7 +9,7 @@ namespace Reecon
 {
     // Beware
     // https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-smb/
-    public class SMB1_Protocol
+    public class Smb1_Protocol
     {
         public const int SMB1_HEADER_SIZE = 32;
         private static readonly byte[] ZERO_BYTES_2 = { 0, 0 };

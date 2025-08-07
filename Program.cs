@@ -20,9 +20,9 @@ namespace Reecon
             
             // Stands out a bit more
             Console.ForegroundColor = ConsoleColor.White;
-
+            
             // And begin!
-            Console.WriteLine("Reecon - Version 0.38b ( https://github.com/Reelix/Reecon )".Recolor(Color.Yellow));
+            Console.WriteLine("Reecon - Version 0.39 ( https://github.com/Reelix/Reecon )".Recolor(Color.Yellow));
             if (args.Length == 0)
             {
                 General.ShowHelp();
@@ -53,13 +53,13 @@ namespace Reecon
             }
             else if (args[0].Contains("-ldap"))
             {
-                LDAP.Run(args);
+                Ldap.Run(args);
                 Console.ResetColor();
                 return;
             }
             else if (args.Contains("-lfi") || args.Contains("--lfi"))
             {
-                LFI.Scan(args);
+                Lfi.Scan(args);
                 Console.ResetColor();
                 return;
             }
@@ -71,7 +71,7 @@ namespace Reecon
             }
             else if (args.Contains("-osint") || args.Contains("--osint"))
             {
-                OSINT.GetInfo(args);
+                Osint.GetInfo(args);
                 Console.ResetColor();
                 return;
             }
@@ -101,7 +101,7 @@ namespace Reecon
             }
             else if (args.Contains("-smb-brute"))
             {
-                SMB.SMBBrute(args);
+                Smb.SMBBrute(args);
                 Console.ResetColor();
                 return;
             }
@@ -116,7 +116,7 @@ namespace Reecon
             */
             else if (args.Contains("-winrm-brute"))
             {
-                WinRM.WinRMBrute(args);
+                WinRm.WinRmBrute(args);
                 Console.ResetColor();
                 return;
             }

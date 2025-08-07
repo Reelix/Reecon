@@ -42,10 +42,10 @@ namespace Reecon
         }
 
         // Fingerprinting service
-        public static List<string> MultiBannerGrab(string ip, int port, int bufferSize = 512, int timeout = 5000)
+        public static List<List<byte>> MultiBannerGrab(string ip, int port, int bufferSize = 512, int timeout = 5000)
         {
-            List<string> returnList = new();
-            ConcurrentBag<string> resultCollection = new();
+            List<List<byte>> returnList = new();
+            ConcurrentBag<List<byte>> resultCollection = new();
             List<string> toTest =
             [
                 "",
@@ -59,18 +59,18 @@ namespace Reecon
             ];
             Parallel.ForEach(toTest, theBanner => resultCollection.Add(BannerGrabThread(ip, port, theBanner, bufferSize, timeout)));
             returnList.AddRange(resultCollection.ToList());
-            if (returnList.Any(x => x == "Reecon - Connection reset"))
+            if (returnList.Any(x => Encoding.UTF8.GetString(x.ToArray()) == "Reecon - Connection reset"))
             {
                 if (Web.BasicHTTPSTest(ip, port))
                 {
-                    returnList.Add("Reecon - HTTPS");
+                    returnList.Add(Encoding.UTF8.GetBytes("Reecon - HTTPS").ToList());
                 }
             }
-            if (returnList.Any(x => x.Contains("Client sent an HTTP request to an HTTPS server")))
+            if (returnList.Any(x => Encoding.UTF8.GetString(x.ToArray()).Contains("Client sent an HTTP request to an HTTPS server")))
             {
                 // Whoops - It's an https that got caught by an http!
-                returnList.RemoveAll(x => x.Contains("Client sent an HTTP request to an HTTPS server"));
-                returnList.Add("Reecon - HTTPS");
+                returnList.RemoveAll(x => Encoding.UTF8.GetString(x.ToArray()).Contains("Client sent an HTTP request to an HTTPS server"));
+                returnList.Add(Encoding.UTF8.GetBytes("Reecon - HTTPS").ToList());
             }
             // if (result.Contains("Page Text: Client sent an HTTP request to an HTTPS server."))
             // Remove it, HTTPS instead.
@@ -98,7 +98,7 @@ namespace Reecon
                         }
                         if (initialText.Length != 0)
                         {
-                            byte[] cmdBytes = Encoding.ASCII.GetBytes(initialText.ToCharArray());
+                            byte[] cmdBytes = Encoding.UTF8.GetBytes(initialText.ToCharArray());
                             bannerGrabSocket.Send(cmdBytes, cmdBytes.Length, 0);
                         }
                         int bytes = bannerGrabSocket.Receive(buffer, buffer.Length, 0);
@@ -107,13 +107,13 @@ namespace Reecon
                             // Streaming result
                             while (bytes != 0)
                             {
-                                bannerText += Encoding.ASCII.GetString(buffer, 0, bytes);
+                                bannerText += Encoding.UTF8.GetString(buffer, 0, bytes);
                                 bytes = bannerGrabSocket.Receive(buffer, buffer.Length, 0);
                             }
                         }
                         else
                         {
-                            bannerText += Encoding.ASCII.GetString(buffer, 0, bytes);
+                            bannerText += Encoding.UTF8.GetString(buffer, 0, bytes);
                         }
                         bannerText = bannerText.Trim();
                     }
@@ -166,9 +166,9 @@ namespace Reecon
             return bannerText;
         }
 
-        private static string BannerGrabThread(string ip, int port, string initialText = "", int bufferSize = 512, int timeout = 10000)
+        private static List<byte> BannerGrabThread(string ip, int port, string initialText = "", int bufferSize = 512, int timeout = 10000)
         {
-            string bannerText = "";
+            List<byte> bannerBytes = new List<byte>();
             byte[] buffer = new byte[bufferSize];
             using (Socket bannerGrabSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
@@ -183,7 +183,7 @@ namespace Reecon
                         if (!bannerGrabSocket.Connected)
                         {
                             bannerGrabSocket.Close();
-                            return "Reecon - Closed";
+                            return Encoding.UTF8.GetBytes("Reecon - Closed").ToList();
                         }
                         if (initialText.Length != 0)
                         {
@@ -202,7 +202,7 @@ namespace Reecon
                             }
                             else
                             {
-                                cmdBytes = Encoding.ASCII.GetBytes(initialText.ToCharArray());
+                                cmdBytes = Encoding.UTF8.GetBytes(initialText.ToCharArray());
                             }
                             bannerGrabSocket.Send(cmdBytes, cmdBytes.Length, 0);
                         }
@@ -212,20 +212,19 @@ namespace Reecon
                             // Streaming result
                             while (bytes != 0)
                             {
-                                bannerText += Encoding.ASCII.GetString(buffer, 0, bytes);
+                                bannerBytes.AddRange(buffer.Take(bytes));
                                 bytes = bannerGrabSocket.Receive(buffer, buffer.Length, 0);
                             }
                         }
                         else
                         {
-                            bannerText += Encoding.ASCII.GetString(buffer, 0, bytes);
+                            bannerBytes.AddRange(buffer.Take(bytes));
                         }
-                        bannerText = bannerText.Trim();
                     }
                     else
                     {
                         bannerGrabSocket.Close();
-                        return "Reecon - Closed";
+                        return Encoding.UTF8.GetBytes("Reecon - Closed").ToList();
                     }
                 }
                 catch (SocketException ex)
@@ -237,17 +236,18 @@ namespace Reecon
                     }
                     else if (ex.SocketErrorCode == SocketError.ConnectionRefused)
                     {
-                        bannerText = "Reecon - Connection refused";
+                        bannerBytes = Encoding.UTF8.GetBytes("Reecon - Connection refused").ToList();
                     }
                     // Connection reset by peer
                     else if (ex.SocketErrorCode == SocketError.ConnectionReset)
                     {
-                        bannerText = "Reecon - Connection reset";
+                        bannerBytes = Encoding.UTF8.GetBytes("Reecon - Connection reset").ToList();
                     }
                     else
                     {
                         Console.WriteLine($"Error in BannerGrab with SocketErrorCode code: {ex.SocketErrorCode}");
-                        return "";
+                        bannerBytes = Encoding.UTF8.GetBytes("").ToList();
+                        return bannerBytes;
                     }
                 }
                 catch (Exception ex)
@@ -255,10 +255,12 @@ namespace Reecon
                     
                     Console.WriteLine($"Error in General.BannerGrab ({ip}:{port} - {ex.Message})");
                     HandleUnknownException(ex);
-                    return "";
+                    bannerBytes = Encoding.UTF8.GetBytes("").ToList();
+                    return bannerBytes;
                 }
             }
-            return bannerText;
+            // Console.WriteLine("Buffer Bytes: " + bannerBytes.Count);
+            return bannerBytes;
         }
 
         // This is for custom requests where you know the actual bytes to send
@@ -277,7 +279,7 @@ namespace Reecon
                     if (!bannerGrabSocket.Connected)
                     {
                         bannerGrabSocket.Close();
-                        return Encoding.ASCII.GetBytes("Reecon - Closed");
+                        return Encoding.UTF8.GetBytes("Reecon - Closed");
                     }
                     
                     List<byte> accumulatedData = new List<byte>();
@@ -309,12 +311,12 @@ namespace Reecon
                 {
                     bannerGrabSocket.Close();
                     // Test
-                    return Encoding.ASCII.GetBytes("Reecon - Closed");
+                    return Encoding.UTF8.GetBytes("Reecon - Closed");
                 }
             }
             catch (SocketException ex)
             {
-                return Encoding.ASCII.GetBytes($"General.BannerGrabBytes Error: {ex.Message}");
+                return Encoding.UTF8.GetBytes($"General.BannerGrabBytes Error: {ex.Message}");
             }
         }
 
@@ -504,7 +506,7 @@ namespace Reecon
 
         public static byte[] GetBytes(string inputString)
         {
-            return Encoding.ASCII.GetBytes(inputString);
+            return Encoding.UTF8.GetBytes(inputString);
         }
 
         public static List<string> MatchCollectionToList(MatchCollection matchCollection)

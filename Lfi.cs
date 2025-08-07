@@ -6,7 +6,7 @@ using System.Drawing;
 
 namespace Reecon
 {
-    internal static class LFI
+    internal static class Lfi // Local File Inclusion
     {
         private static string baseURL = "";
         private static string baseLocation = "";

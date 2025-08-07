@@ -5,7 +5,7 @@ using System.Text.Json;
 
 namespace Reecon
 {
-    class OSINT_Instagram
+    class Osint_Instagram
     {
         public static InstagramInfo GetInfo(string username)
         {

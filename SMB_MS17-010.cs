@@ -22,12 +22,12 @@ namespace Reecon
             stream.Flush();
             // Console.WriteLine("Session Setup request sent.");
             // Console.WriteLine("Waiting for Session Setup response...");
-            byte[] sessRespSmb = SMB1_Protocol.ReadResponse(stream);
+            byte[] sessRespSmb = Smb1_Protocol.ReadResponse(stream);
             if (sessRespSmb.Length < 32)
             {
                 throw new InvalidDataException("Session Setup response too short.");
             }
-            if (!SMB1_Protocol.TryParseSmbHeader(sessRespSmb, out uint ssStat, out _, out _, out _, out _, out _))
+            if (!Smb1_Protocol.TryParseSmbHeader(sessRespSmb, out uint ssStat, out _, out _, out _, out _, out _))
             {
                 throw new InvalidDataException("Failed parse Session Setup resp hdr.");
             }
@@ -40,17 +40,17 @@ namespace Reecon
             // Console.WriteLine("---------------------------------");
             // --- Stage 3: Tree Connect ---
             // Console.WriteLine("\n--- Stage 3: Sending Tree Connect AndX Request (IPC$) ---");
-            byte[] treeReq = SMB1_Protocol.CreateTreeConnect(sessRespSmb, target);
+            byte[] treeReq = Smb1_Protocol.CreateTreeConnect(sessRespSmb, target);
             stream.Write(treeReq, 0, treeReq.Length);
             stream.Flush();
             // Console.WriteLine("Tree Connect request sent.");
             // Console.WriteLine("Waiting for Tree Connect response...");
-            byte[] treeRespSmb = SMB1_Protocol.ReadResponse(stream);
+            byte[] treeRespSmb = Smb1_Protocol.ReadResponse(stream);
             if (treeRespSmb.Length < 32)
             {
                 throw new InvalidDataException("Tree Connect response too short.");
             }
-            if (!SMB1_Protocol.TryParseSmbHeader(treeRespSmb, out uint tcStat, out _, out _, out _, out _, out _))
+            if (!Smb1_Protocol.TryParseSmbHeader(treeRespSmb, out uint tcStat, out _, out _, out _, out _, out _))
             {
                 throw new InvalidDataException("Failed parse Tree Connect resp hdr.");
             }
@@ -74,10 +74,10 @@ namespace Reecon
             try
             {
                 /* ReadResponse */
-                checkRespSmb = SMB1_Protocol.ReadResponse(stream);
+                checkRespSmb = Smb1_Protocol.ReadResponse(stream);
                 if (checkRespSmb != null && checkRespSmb.Length >= 32)
                 {
-                    if (SMB1_Protocol.TryParseSmbHeader(checkRespSmb, out checkNtStatus, out _, out _, out _, out _, out _))
+                    if (Smb1_Protocol.TryParseSmbHeader(checkRespSmb, out checkNtStatus, out _, out _, out _, out _, out _))
                     {
                         // Nadda - All good!
                     }
@@ -146,14 +146,14 @@ namespace Reecon
         public static byte[] CreateSessionSetup(byte[] negotiateResponseSmb)
         {
             // 1. Determine header fields needed (Flags2 is fixed, others from response)
-            SMB1_Protocol.TryParseSmbHeader(negotiateResponseSmb, out _, out _, out ushort respMid, out ushort respUid, out ushort respTid, out _);
+            Smb1_Protocol.TryParseSmbHeader(negotiateResponseSmb, out _, out _, out ushort respMid, out ushort respUid, out ushort respTid, out _);
             ushort pidLow = 27972; // Keep fixed PID from example? Or copy respPid? PC code copied respPid.
             ushort treeId = respTid; // Will be 0 from negotiate response, but copy anyway
             ushort userId = respUid;
 
             // 2. Create the header dynamically 
             byte SMB1_COMMAND_SESSION_SETUP_ANDX = 0x73;
-            byte[] header = SMB1_Protocol.CreateSmbHeader(SMB1_COMMAND_SESSION_SETUP_ANDX, userId, treeId);
+            byte[] header = Smb1_Protocol.CreateSmbHeader(SMB1_COMMAND_SESSION_SETUP_ANDX, userId, treeId);
 
             // Set PID Low (if needed, or if CreateSmbHeader doesn't handle it)
             byte[] pidBytes = BitConverter.GetBytes(pidLow);
@@ -190,7 +190,7 @@ namespace Reecon
             message.AddRange(parametersAndData);
 
             // 5. Prepend NBSS header
-            return SMB1_Protocol.PrependNbssHeader(message.ToArray());
+            return Smb1_Protocol.PrependNbssHeader(message.ToArray());
         }
 
         /// <summary>
@@ -209,7 +209,7 @@ namespace Reecon
             // 1. Extract necessary header fields from the Tree Connect response
             // The PID, MID, TID, and UID MUST be the same for all requests and responses that are part of the same transaction.
             // Really need to create a class for this....
-            if (!SMB1_Protocol.TryParseSmbHeader(treeConnectResponseSmb, out _, out _, out ushort respMid, out ushort responseUserId, out ushort responseTreeId, out ushort respFlags2))
+            if (!Smb1_Protocol.TryParseSmbHeader(treeConnectResponseSmb, out _, out _, out ushort respMid, out ushort responseUserId, out ushort responseTreeId, out ushort respFlags2))
             {
                 // Use defaults/fixed if parsing fails, though this indicates a problem
                 Console.WriteLine("WARN: Failed to parse TreeConnect response header for PeekNamedPipe request. Using defaults/fixed values.");
@@ -227,7 +227,7 @@ namespace Reecon
             // 2. Create the header dynamically
             // 2.2.4.33.1 - SMB_COM_TRANSACTION Request - https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-cifs/57bfc115-fe29-4482-a0fe-a935757e0a4f
             byte SMB1_COMMAND_TRANS = 0x25;
-            byte[] header = SMB1_Protocol.CreateSmbHeader(SMB1_COMMAND_TRANS, userId, treeId);
+            byte[] header = Smb1_Protocol.CreateSmbHeader(SMB1_COMMAND_TRANS, userId, treeId);
             // Set the specific PID Low copied from the response
             byte[] pidBytes = BitConverter.GetBytes(pidLow);
             header[26] = pidBytes[0];
@@ -270,7 +270,7 @@ namespace Reecon
             message.AddRange(parametersAndData);
 
             // 5. Prepend NBSS header
-            return SMB1_Protocol.PrependNbssHeader(message.ToArray());
+            return Smb1_Protocol.PrependNbssHeader(message.ToArray());
         }
     }
 }
