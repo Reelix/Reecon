@@ -199,7 +199,7 @@ namespace Reecon
                 toReturn += $"- Error in SMB.cs ({exType}): {ex.Message}" + Environment.NewLine;
             }
 
-            if (General.GetOS() == General.OS.Linux)
+            if (General.GetOperatingSystem() == General.OperatingSystem.Linux)
             {
                 toReturn += Smb.TestAnonymousAccess_Linux(target);
             }

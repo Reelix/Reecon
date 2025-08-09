@@ -22,8 +22,14 @@ namespace Reecon
         public static string ProgramName => typeof(Program).Assembly.GetName().Name ?? "Filename Error in Program.cs - Bug Reelix";
 
         public static bool SMBv1 { get; set; }
+
+        public static void ShowBanner()
+        {
+            Console.WriteLine("Reecon - Version 0.39a ( https://github.com/Reelix/Reecon )".Recolor(Color.Yellow));
+        }
         public static void ShowHelp()
         {
+            ShowBanner();
             Console.WriteLine("Usage");
             Console.WriteLine("-----");
             Console.WriteLine($"Basic Scan:\t{ProgramName} IP OutputName (Optional: -noping to skip the online check)");
@@ -61,7 +67,7 @@ namespace Reecon
             returnList.AddRange(resultCollection.ToList());
             if (returnList.Any(x => Encoding.UTF8.GetString(x.ToArray()) == "Reecon - Connection reset"))
             {
-                if (Web.BasicHTTPSTest(ip, port))
+                if (Web.BasicHttpsTest(ip, port))
                 {
                     returnList.Add(Encoding.UTF8.GetBytes("Reecon - HTTPS").ToList());
                 }
@@ -435,7 +441,7 @@ namespace Reecon
             return outputLines;
         }
 
-        public enum OS
+        public enum OperatingSystem
         {
             Windows,
             Linux,
@@ -443,30 +449,30 @@ namespace Reecon
             Unknown
         }
 
-        public static OS GetOS()
+        public static OperatingSystem GetOperatingSystem()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                return OS.Windows;
+                return OperatingSystem.Windows;
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                return OS.Linux;
+                return OperatingSystem.Linux;
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
-                return OS.Mac;
+                return OperatingSystem.Mac;
             }
             else
             {
                 // I can get others, but they're not really supported yet
-                return OS.Unknown;
+                return OperatingSystem.Unknown;
             }
         }
 
         public static bool IsInstalledOnLinux(string app, string path = "")
         {
-            if (General.GetOS() != OS.Linux)
+            if (General.GetOperatingSystem() != OperatingSystem.Linux)
             {
                 throw new Exception("Error: General.IsInstallOnLinux called on a non-Linux environment - Bug Reelix!");
             }
@@ -529,7 +535,7 @@ namespace Reecon
             public required IPAddress Address;
         }
 
-        public static List<IP> GetIPList()
+        public static List<IP> GetIpList()
         {
             List<IP> ipList = new List<IP>();
             List<NetworkInterface> networkInterfaces = NetworkInterface.GetAllNetworkInterfaces().ToList();
@@ -540,21 +546,21 @@ namespace Reecon
                 {
                     if (ip.Address.AddressFamily == AddressFamily.InterNetwork)
                     {
-                        IP returnIP = new IP
+                        IP returnIp = new IP
                         {
                             Name = ni.Name,
                             Address = ip.Address
                         };
-                        ipList.Add(returnIP);
+                        ipList.Add(returnIp);
                     }
                 }
             }
             return ipList;
         }
 
-        public static void PrintIPList()
+        public static void PrintIpList()
         {
-            List<IP> ipList = GetIPList();
+            List<IP> ipList = GetIpList();
             foreach (IP ip in ipList)
             {
                 Console.WriteLine($"{ip.Name}: {ip.Address}");
@@ -640,27 +646,27 @@ namespace Reecon
             // For using one of the 256 colors on the foreground (text color), the control sequence is “<Esc>[38;5;ColorNumberm” where ColorNumber is one of the following colors:
             string toReturn = "";
             string backToWhite = "\u001b[97m";
-            string Yellow = "\u001b[38;5;228m"; // 226/227 are too bright - Either 228/229 - Not sure...
-            string Green = "\u001b[38;5;46m";
-            string Orange = "\u001b[38;5;214m";
-            string Red = "\u001b[38;5;9m";
+            string yellow = "\u001b[38;5;228m"; // 226/227 are too bright - Either 228/229 - Not sure...
+            string green = "\u001b[38;5;46m";
+            string orange = "\u001b[38;5;214m";
+            string red = "\u001b[38;5;9m";
             if (color == Color.Yellow)
             {
-                toReturn = $"{Yellow}{input}{backToWhite}";
+                toReturn = $"{yellow}{input}{backToWhite}";
             }
             else if (color == Color.Green)
             {
                 // Console.WriteLine("Setting Green");
-                toReturn = $"{Green}{input}{backToWhite}";
+                toReturn = $"{green}{input}{backToWhite}";
             }
             else if (color == Color.Orange)
             {
                 // Console.WriteLine("Setting Orange");
-                toReturn = $"{Orange}{input}{backToWhite}";
+                toReturn = $"{orange}{input}{backToWhite}";
             }
             else if (color == Color.Red)
             {
-                toReturn = $"{Red}{input}{backToWhite}";
+                toReturn = $"{red}{input}{backToWhite}";
             }
             else if (color == Color.White)
             {
@@ -680,11 +686,15 @@ namespace Reecon
             StackFrame frame = trace.GetFrames().Last();
             int lineNumber = frame.GetFileLineNumber();
             string? fileName = frame.GetFileName();
-            string? iEX = ex.InnerException?.Message;
-            Console.WriteLine($"- Unhandled Error in {fileName} of type {exType} on Line {lineNumber} - Bug Reelix!");
-            if (iEX != null)
+            Console.WriteLine($"- Unhandled Error in {fileName} of type {exType} on Line {lineNumber} - Bug Reelix!".Recolor(Color.Red));
+            if (ex.InnerException != null)
             {
-                Console.WriteLine("-- Inner Exception: " + iEX);
+                Console.WriteLine("-- Inner Exception: " + ex.InnerException.Message);
+                if (ex.InnerException.InnerException != null)
+                {
+                    // Now we're going deep!
+                    Console.WriteLine("--- Inner INNER Exception: " + ex.InnerException.InnerException.Message);
+                }
             }
         }
     }

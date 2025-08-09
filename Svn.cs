@@ -9,7 +9,7 @@ namespace Reecon
         public static (string PortName, string PortData) GetInfo(string ip, int port)
         {
             string toReturn = "";
-            if (General.GetOS() == General.OS.Linux)
+            if (General.GetOperatingSystem() == General.OperatingSystem.Linux)
             {
                 if (General.IsInstalledOnLinux("svn"))
                 {

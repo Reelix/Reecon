@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using System.Threading;
 
@@ -21,8 +20,10 @@ namespace Reecon
             // Stands out a bit more
             Console.ForegroundColor = ConsoleColor.White;
             
+            // Show the banner (Rather self-explanatory :p)
+            General.ShowBanner();
+
             // And begin!
-            Console.WriteLine("Reecon - Version 0.39 ( https://github.com/Reelix/Reecon )".Recolor(Color.Yellow));
             if (args.Length == 0)
             {
                 General.ShowHelp();
@@ -41,7 +42,7 @@ namespace Reecon
             }
             else if (args[0].Contains("-ip"))
             {
-                General.PrintIPList();
+                General.PrintIpList();
                 Console.ResetColor();
                 return;
             }
@@ -295,13 +296,10 @@ namespace Reecon
             }
             else
             {
-                PostScanList.Add(
-                    $"- Nmap Script+Version Scan: sudo nmap -sC -sV -p{string.Join(",", portsToScan)} {target} -oN nmap.txt" +
-                    Environment.NewLine);
+                PostScanList.Add($"- Nmap Script+Version Scan: sudo nmap -sC -sV -p{string.Join(",", portsToScan)} {target} -oN nmap.txt" + Environment.NewLine);
                 PostScanList.Add($"- Nmap UDP Scan: sudo nmap -sU {target} (-F for top 100)" + Environment.NewLine);
                 foreach (string item in PostScanList)
                 {
-                    // They already have newlines in them
                     Console.Write(item);
                 }
             }
@@ -310,7 +308,9 @@ namespace Reecon
         static void ScanPort(int port)
         {
             string toDo = PortInfo.ScanPort(target, port);
-            if (toDo != "")
+            // If there's something to do (Additional info on a port)
+            // And it's not a dupe (2+ ports with identical info - LDAP is a big offender here)
+            if (toDo != "" && !PostScanList.Contains(toDo))
             {
                 PostScanList.Add(toDo);
             }

@@ -139,7 +139,7 @@ namespace Reecon
             // Twitter usernames don't have spaces
 
             username = username.Replace(" ", "");
-            Web.HttpInfo httpInfo = Web.GetHTTPInfo($"https://x.com/{username}", "Mozilla/5.0 (Linux; Android 10; SM-A205U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.5195.77 Mobile Safari/537.36");
+            Web.HttpInfo httpInfo = Web.GetHttpInfo($"https://x.com/{username}", "Mozilla/5.0 (Linux; Android 10; SM-A205U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.5195.77 Mobile Safari/537.36");
             if (httpInfo.StatusCode == HttpStatusCode.NotFound)
             {
                 Console.WriteLine("- Twitter: Not Found");
@@ -202,7 +202,7 @@ namespace Reecon
         private static void GetYouTubeInfo(string username)
         {
             // YouTube usernames CAN have spaces - Oh gawd
-            Web.HttpInfo httpInfo = Web.GetHTTPInfo("https://www.youtube.com/" + username);
+            Web.HttpInfo httpInfo = Web.GetHttpInfo("https://www.youtube.com/" + username);
             if (httpInfo.StatusCode == HttpStatusCode.OK && httpInfo.PageTitle != null)
             {
                 string youtubeUsername = httpInfo.PageTitle.Replace(" - YouTube", "");
@@ -211,7 +211,7 @@ namespace Reecon
                 Console.WriteLine("-- Name: " + youtubeUsername);
 
                 // About page
-                Web.HttpInfo aboutPage = Web.GetHTTPInfo("https://www.youtube.com/c/" + username + "/about");
+                Web.HttpInfo aboutPage = Web.GetHttpInfo("https://www.youtube.com/c/" + username + "/about");
                 if (aboutPage.StatusCode == HttpStatusCode.OK && aboutPage.PageText != null)
                 {
                     // Description
@@ -238,7 +238,7 @@ namespace Reecon
                     string location = httpInfo.ResponseHeaders.Location.ToString();
                     if (location.Contains("/user/"))
                     {
-                        Web.HttpInfo userInfo = Web.GetHTTPInfo(location);
+                        Web.HttpInfo userInfo = Web.GetHttpInfo(location);
                         if (userInfo.StatusCode == HttpStatusCode.OK && userInfo.PageTitle != null)
                         {
                             Console.WriteLine("- YouTube: " + "Found".Recolor(Color.Green));
@@ -263,7 +263,7 @@ namespace Reecon
 
         private static void GetGithubInfo(string username)
         {
-            Web.HttpInfo httpInfo = Web.GetHTTPInfo($"https://api.github.com/users/{username}", "Reecon");
+            Web.HttpInfo httpInfo = Web.GetHttpInfo($"https://api.github.com/users/{username}", "Reecon");
             if (httpInfo.StatusCode != HttpStatusCode.NotFound && httpInfo.PageText != null)
             {
                 Console.WriteLine("- Github: " + "Found".Recolor(Color.Green));
@@ -285,8 +285,8 @@ namespace Reecon
                 {
                     Console.WriteLine("-- Avatar Picture: " + avatar);
                 }
-                JsonElement created_at = githubInfo.RootElement.GetProperty("created_at");
-                Console.WriteLine("-- Account Created At: " + created_at);
+                JsonElement createdAt = githubInfo.RootElement.GetProperty("created_at");
+                Console.WriteLine("-- Account Created At: " + createdAt);
                 JsonElement blog = githubInfo.RootElement.GetProperty("blog");
                 if (blog.ToString() != "")
                 {
@@ -304,7 +304,7 @@ namespace Reecon
 
         private static void GetPastebinInfo(string username)
         {
-            Web.HttpInfo httpInfo = Web.GetHTTPInfo($"https://pastebin.com/u/{username}");
+            Web.HttpInfo httpInfo = Web.GetHttpInfo($"https://pastebin.com/u/{username}");
             if (httpInfo.StatusCode != HttpStatusCode.NotFound)
             {
                 Console.WriteLine("- Pastebin: Found");
@@ -318,7 +318,7 @@ namespace Reecon
 
         private static void GetRecRoomInfo(string username)
         {
-            Web.HttpInfo httpInfo = Web.GetHTTPInfo($"https://apim.rec.net/accounts/account?username={username}");
+            Web.HttpInfo httpInfo = Web.GetHttpInfo($"https://apim.rec.net/accounts/account?username={username}");
             if (httpInfo.StatusCode != HttpStatusCode.NotFound && httpInfo.PageText != null)
             {
                 Console.WriteLine("- Rec Room Found");

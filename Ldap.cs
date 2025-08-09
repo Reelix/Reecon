@@ -5,21 +5,20 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Reecon
 {
     internal static class Ldap // Lightweight Directory Access Protocol - Port 389 / 636 (LDAPS)
     {
-        // Linux requires: https://packages.ubuntu.com/focal-updates/amd64/libldap-2.4-2/download
-        private static LdapConnection? connection;
-
         // OID required to view deleted objects
         private const string LDAP_SERVER_SHOW_DELETED_OID = "1.2.840.113556.1.4.417";
-        
-        public static (string PortName, string PortData) GetInfo(string ip, int port)
+
+        public static async Task<(string PortName, string PortData)> GetInfoAsync(string ip, int port)
         {
             string returnInfo = "";
+            LdapConnection? connection = null;
             /*
             if (checkCanRun != null)
             {
@@ -27,8 +26,41 @@ namespace Reecon
                 return ("LDAP", checkCanRun);
             }
             */
-            string? namingContext = ConnectAndDiscoverNamingContextAsync(ip, port).GetAwaiter().GetResult().NamingContext;
-            returnInfo += "- " + namingContext + Environment.NewLine;
+            try
+            {
+                (connection, string? namingContext) = await ConnectAndDiscoverNamingContextAsync(ip, port);
+                if (!string.IsNullOrEmpty(namingContext))
+                {
+                    returnInfo = "- " + namingContext;
+                }
+                else
+                {
+                    // Handle the case where the connection or discovery failed
+                    returnInfo = "- Error: Could not retrieve Naming Context.";
+                }
+            }
+            catch (LdapException lex)
+            {
+                if (port == 636 || port == 3269)
+                {
+                    // Return a specific, user-friendly message for this known issue.
+                    returnInfo = "- LDAPS (SSL) connection failed. The server may have strict security policies or require a client certificate.";
+                }
+                else
+                {
+                    General.HandleUnknownException(lex);
+                }
+            }
+            catch (Exception ex)
+            {
+                General.HandleUnknownException(ex);
+                returnInfo = $"- Error: {ex.Message}";
+            }
+            finally
+            {
+                // CRITICAL: Ensure the connection is always disconnected
+                connection?.Disconnect();
+            }
 
             // We're currently going to assume that getting additional info actually requires auth
             // If this changes, very changes with HTB/Haze
@@ -59,9 +91,9 @@ namespace Reecon
 
             string username = args[3];
             string password = args[4];
-            int intPort = int.Parse(port); 
+            int intPort = int.Parse(port);
             // Standard user enumeration
-            string accountInfo = Ldap.GetAccountInfo(ip, intPort, username, password);
+            string accountInfo = GetAccountInfo(ip, intPort, username, password);
             Console.WriteLine(accountInfo);
             if (!accountInfo.Contains("Invalid Credentials"))
             {
@@ -80,7 +112,7 @@ namespace Reecon
         {
             return GetAccountInfoAsync(ip, port, userName, password).GetAwaiter().GetResult();
         }
-        
+
         private static async Task<string> GetAccountInfoAsync(string ip, int port, string userName, string password)
         {
             StringBuilder result = new();
@@ -89,33 +121,32 @@ namespace Reecon
             string allUsersSearchFilter = "(&(objectCategory=person)(objectClass=user))";
             string[] attributesToReturn = ["sAMAccountName", "cn", "description", "lastLogon", "userPrincipalName", "memberOf", "distinguishedName", "objectCategory", "objectClass"];
 
+            LdapConnection? localConnection = null;
             LdapConnection? referralConnection = null;
 
             try
             {
                 // 1. Connect anonymously and discover the domain's naming context (search base).
-                // Console.WriteLine($"\nAttempting to connect to {ip}:{port}...");
-                (connection, string? searchBase) = await ConnectAndDiscoverNamingContextAsync(ip, port);
+                (localConnection, string? searchBase) = await ConnectAndDiscoverNamingContextAsync(ip, port);
+                if (string.IsNullOrEmpty(searchBase))
+                {
+                    return "- Error: Could not connect or discover Naming Context.";
+                }
 
-                // Console.WriteLine($" -> Connection successful.");
-                // Console.WriteLine($" -> Discovered Search Base: {searchBase}");
                 // 2. Convert naming context to a domain and construct the User Principal Name (UPN).
-                // Console.WriteLine("\nConstructing User Principal Name (UPN)...");
                 string domainName = ConvertNamingContextToDomain(searchBase);
                 userPrincipalName = $"{userName}@{domainName}";
-                // Console.WriteLine($" -> Constructed UPN: {userPrincipalName}");
 
                 // 3. Bind (authenticate) using the constructed UPN and the provided password.
-                // Console.WriteLine("\nAttempting to bind with constructed UPN...");
-                await connection.BindAsync(userPrincipalName, password).ConfigureAwait(false);
+                await localConnection.BindAsync(userPrincipalName, password).ConfigureAwait(false);
                 // Console.WriteLine(" -> Authentication successful.");
 
                 // 4. Search for all user accounts.
                 LdapSearchConstraints searchConstraints = new LdapSearchConstraints { ReferralFollowing = false };
                 // Console.WriteLine("\nSearching for all user accounts...");
-                ILdapSearchResults? searchResults = await connection.SearchAsync(searchBase, LdapConnection.ScopeSub, allUsersSearchFilter, attributesToReturn, false, searchConstraints
+                ILdapSearchResults? searchResults = await localConnection.SearchAsync(searchBase, LdapConnection.ScopeSub, allUsersSearchFilter, attributesToReturn, false, searchConstraints
                 ).ConfigureAwait(false);
-                
+
                 await ProcessSearchResults(searchResults, result);
             }
             catch (LdapReferralException refEx)
@@ -189,16 +220,10 @@ namespace Reecon
             finally
             {
                 // Clean up - Disconnect from any servers
-                if (connection != null && connection.Connected)
-                {
-                    connection.Disconnect();
-                }
-
-                if (referralConnection != null && referralConnection.Connected)
-                {
-                    referralConnection.Disconnect();
-                }
+                localConnection?.Disconnect();
+                referralConnection?.Disconnect();
             }
+
             return result.ToString();
         }
 
@@ -226,10 +251,10 @@ namespace Reecon
                 // 2. Authenticate. Querying deleted objects requires credentials.
                 string domainName = ConvertNamingContextToDomain(searchBase);
                 string userPrincipalName = $"{userName}@{domainName}";
-                await ldapConnection.BindAsync(userPrincipalName, password).ConfigureAwait(false);
+                await ldapConnection.BindAsync(userPrincipalName, password);
 
                 // 3. Define the Deleted Objects container DN.
-                string deletedObjectsDN = "CN=Deleted Objects," + searchBase;
+                string deletedObjectsDn = "CN=Deleted Objects," + searchBase;
 
                 // 4. Set up the LDAP Control (LDAP_SERVER_SHOW_DELETED_OID).
                 // OID, Criticality=True, Value=null
@@ -238,14 +263,14 @@ namespace Reecon
                 // Configure search constraints and add the control.
                 LdapSearchConstraints searchConstraints = new();
                 searchConstraints.SetControls(showDeletedControl);
-                
+
                 // 5. Define search parameters.
                 string filter = "(isDeleted=TRUE)";
                 string[] attributesToReturn = ["sAMAccountName", "distinguishedName", "isDeleted", "lastKnownParent", "name", "whenChanged", "objectClass"];
 
                 // 6. Perform the search.
                 ILdapSearchResults? searchResults = await ldapConnection.SearchAsync(
-                    deletedObjectsDN,
+                    deletedObjectsDn,
                     LdapConnection.ScopeSub,
                     filter,
                     attributesToReturn,
@@ -255,7 +280,6 @@ namespace Reecon
 
                 // 7. Process the results.
                 await ProcessDeletedObjectResults(searchResults, result);
-
             }
             catch (LdapException lex)
             {
@@ -295,7 +319,7 @@ namespace Reecon
 
             return result.ToString();
         }
-        
+
         /// <summary>
         /// Converts an LDAP naming context (e.g., "DC=voleur,DC=htb")
         /// into a standard DNS domain name (e.g., "voleur.htb").
@@ -307,49 +331,62 @@ namespace Reecon
                 .Select(part => part.Trim().Substring(3)) ?? []);
         }
 
-        public static string GetPlainDefaultNamingContext(string ip, int port)
+        public static async Task<string> GetPlainDefaultNamingContextAsync(string ip, int port)
         {
-            string? namingContext = ConnectAndDiscoverNamingContext(ip, port).NamingContext;
-            string fixedNamingContext = ConvertNamingContextToDomain(namingContext);
-            return fixedNamingContext;
-        }
-
-        private static (LdapConnection Connection, string? NamingContext) ConnectAndDiscoverNamingContext(string server, int port)
-        {
-            return ConnectAndDiscoverNamingContextAsync(server, port).GetAwaiter().GetResult();
+            LdapConnection? connection = null;
+            try
+            {
+                // Assign the returned connection to a variable so we can manage it
+                (connection, string? namingContext) = await ConnectAndDiscoverNamingContextAsync(ip, port);
+                string fixedNamingContext = ConvertNamingContextToDomain(namingContext);
+                return fixedNamingContext;
+            }
+            finally
+            {
+                connection?.Disconnect();
+            }
         }
 
         private static async Task<(LdapConnection Connection, string? NamingContext)> ConnectAndDiscoverNamingContextAsync(string server, int port)
         {
-            connection = new LdapConnection();
-            string namingContext;
-            try
+            LdapConnection connection;
+            if (port == 636 || port == 3269)
             {
-                await connection.ConnectAsync(server, port).ConfigureAwait(false);
-                namingContext = await DiscoverNamingContextAsync(connection).ConfigureAwait(false);
+                var options = new LdapConnectionOptions().UseSsl();
+                connection = new LdapConnection(options);
             }
-            catch (Exception ex)
+            else
             {
-                General.HandleUnknownException(ex);
-                namingContext = "Unknown";
+                // Otherwise, create a standard plain-text connection.
+                connection = new LdapConnection();
             }
-            connection.Dispose();
+
+            await connection.ConnectAsync(server, port).ConfigureAwait(false);
+            string namingContext = await DiscoverNamingContextAsync(connection).ConfigureAwait(false);
             return (connection, namingContext);
         }
 
         private static async Task<string> DiscoverNamingContextAsync(LdapConnection? conn)
         {
-            if (conn != null)
+            try
             {
-                ILdapSearchResults? searchResults = await conn.SearchAsync("", LdapConnection.ScopeBase, "(objectClass=*)", ["defaultNamingContext"], false).ConfigureAwait(false);
-                await foreach (LdapEntry entry in searchResults)
+                if (conn != null)
                 {
-                    LdapAttributeSet attributeSet = entry.GetAttributeSet();
-                    if (attributeSet.GetAttribute("defaultNamingContext") != null)
+                    ILdapSearchResults? searchResults = await conn.SearchAsync("", LdapConnection.ScopeBase, "(objectClass=*)", ["defaultNamingContext"], false).ConfigureAwait(false);
+                    await foreach (LdapEntry entry in searchResults)
                     {
-                        return attributeSet.GetAttribute("defaultNamingContext").StringValue;
+                        LdapAttributeSet attributeSet = entry.GetAttributeSet();
+                        if (attributeSet.GetAttribute("defaultNamingContext") != null)
+                        {
+                            return attributeSet.GetAttribute("defaultNamingContext").StringValue;
+                        }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Crash in DiscoverNamingContextAsync");
+                General.HandleUnknownException(ex);
             }
 
             throw new LdapException("Could not find the 'defaultNamingContext' attribute in the Root DSE.");
@@ -360,7 +397,7 @@ namespace Reecon
         {
             return attributeSet.ContainsKey(attributeName) ? attributeSet.GetAttribute(attributeName).StringValue : "N/A";
         }
-        
+
         // Helper function to get multi-valued attributes (like objectClass)
         private static string[] GetAttributeValues(LdapAttributeSet attributeSet, string attributeName)
         {
@@ -369,10 +406,11 @@ namespace Reecon
                 var attribute = attributeSet.GetAttribute(attributeName);
                 return attribute.StringValueArray;
             }
+
             return [];
         }
-        
-          // Processes results for deleted objects (AD Recycle Bin)
+
+        // Processes results for deleted objects (AD Recycle Bin)
         private static async Task ProcessDeletedObjectResults(ILdapSearchResults searchResults, StringBuilder output)
         {
             await foreach (LdapEntry entry in searchResults)
@@ -394,7 +432,7 @@ namespace Reecon
                 string[] objectClasses = GetAttributeValues(attributeSet, "objectClass");
 
                 output.AppendLine($"- Name: {name}");
-                
+
                 if (sAMAccountName != "N/A")
                 {
                     output.AppendLine($"-- sAMAccountName: {sAMAccountName.Recolor(Color.Orange)}");
@@ -403,7 +441,7 @@ namespace Reecon
                 output.AppendLine($"-- DN: {dName}");
                 output.AppendLine($"-- isDeleted: {isDeleted}");
                 output.AppendLine($"-- Last Known Parent: {lastKnownParent.Recolor(Color.Orange)}");
-                
+
                 if (objectClasses.Length > 0)
                 {
                     output.AppendLine($"-- Object Class: {string.Join(", ", objectClasses)}");
@@ -425,7 +463,7 @@ namespace Reecon
             }
         }
 
-        
+
         // Currently this is for user enum specifically - Need to make it more generic later on
         private static async Task ProcessSearchResults(ILdapSearchResults searchResults, StringBuilder output)
         {
@@ -437,7 +475,7 @@ namespace Reecon
 
                 string? description = attributeSet.ContainsKey("description") ? attributeSet.GetAttribute("description").StringValue : null;
 
-                string? memberOf = attributeSet.ContainsKey("memberOf") ? attributeSet.GetAttribute("memberOf").StringValue : null; 
+                string? memberOf = attributeSet.ContainsKey("memberOf") ? attributeSet.GetAttribute("memberOf").StringValue : null;
                 string? dName = attributeSet.ContainsKey("distinguishedName") ? attributeSet.GetAttribute("distinguishedName").StringValue : null;
                 string? lastLogonTimestamp = attributeSet.ContainsKey("lastLogin") ? attributeSet.GetAttribute("lastLogon").StringValue : null; // Note: This is not replicated, lastLogonTimestamp is better but needs conversion
                 string? userPrincipalName = attributeSet.ContainsKey("userPrincipalName") ? attributeSet.GetAttribute("userPrincipalName").StringValue : null;
@@ -478,12 +516,12 @@ namespace Reecon
                         output.AppendLine("-- Description: " + description);
                     }
                 }
-                
+
                 if (memberOf != null && memberOf.Contains("CN=REMOTE DESKTOP USERS", StringComparison.InvariantCultureIgnoreCase))
                 {
                     output.AppendLine("-- " + "Member of Remote Desktop Users Group (Can RDP)".Recolor(Color.Orange));
                 }
-                
+
                 if (!string.IsNullOrEmpty(lastLogonTimestamp) && lastLogonTimestamp != "0")
                 {
                     try

@@ -6,11 +6,10 @@ using System.Text.Json.Serialization;
 
 namespace Reecon
 {
-    class Osint_Steam
+    internal static class Osint_Steam
     {
         public static string GetInfo(string name)
         {
-            // TODO: Fix layout bug - ChuckLephuck
             // Direct profile
             string profileName = GetProfileName(name);
             if (profileName != "")
@@ -20,12 +19,12 @@ namespace Reecon
 
             // Search
             string searchResult = GetSearchInfo(name);
-            return profileName + searchResult;
+            return profileName + searchResult.Trim(Environment.NewLine.ToCharArray());
         }
 
         private static string GetProfileName(string name)
         {
-            if (name.Contains(" "))
+            if (name.Contains(' '))
             {
                 // Steam usernames cannot contain spaces
                 return "";
@@ -46,21 +45,23 @@ namespace Reecon
             // Get the session value for Steam profile searching
             string pageText = Web.DownloadString("https://steamcommunity.com/search/users/").Text;
             string sessionValue = pageText.Remove(0, pageText.IndexOf("g_sessionID = \"", StringComparison.Ordinal) + 15);
-            sessionValue = sessionValue.Substring(0, sessionValue.IndexOf("\"", StringComparison.Ordinal));
+            sessionValue = sessionValue.Substring(0, sessionValue.IndexOf('"'));
 
             pageText = Web.DownloadString($"https://steamcommunity.com/search/SearchCommunityAjax?text={name}&filter=users&sessionid={sessionValue}", Cookie: $"sessionid={sessionValue}").Text;
-            OSINT_Steam_Search? searchResults = JsonSerializer.Deserialize(pageText, OSINT_Steam_JsonContext.Default.OSINT_Steam_Search);
-            if (searchResults == null)
+            JsonDocument document = JsonDocument.Parse(pageText);
+            document.RootElement.TryGetProperty("html", out JsonElement htmlElement);
+            string? htmlText = null;
+            if (htmlElement.ValueKind == JsonValueKind.String)
+            {
+                htmlText = htmlElement.GetString();
+            }
+            if (htmlText == null || htmlText.Contains("There are no users that match your search"))
             {
                 return "";
             }
-            string htmlResult = searchResults.html;
-            if (htmlResult.Contains("There are no users that match your search"))
-            {
-                return "";
-            }
-            htmlResult = htmlResult.Remove(0, htmlResult.IndexOf("<a class=\"searchPersonaName\"", StringComparison.Ordinal));
-            List<string> resultList = htmlResult.Split("<a class=\"searchPersonaName\"", StringSplitOptions.RemoveEmptyEntries).ToList();
+            
+            htmlText = htmlText.Remove(0, htmlText.IndexOf("<a class=\"searchPersonaName\"", StringComparison.Ordinal));
+            List<string> resultList = htmlText.Split("<a class=\"searchPersonaName\"", StringSplitOptions.RemoveEmptyEntries).ToList();
             foreach (string result in resultList)
             {
                 // We also have their country - We can ignore that for now - Maybe later
@@ -79,7 +80,7 @@ namespace Reecon
                     Console.WriteLine("Error in OSINT_Steam.GetSearchInfo - Bug Reelix!");
                     return "";
                 }
-                string steamLink = profileLink.Substring(0, profileLink.IndexOf("\"", StringComparison.Ordinal));
+                string steamLink = profileLink.Substring(0, profileLink.IndexOf('"'));
                 if (steamLink == $"https://steamcommunity.com/id/{name}")
                 {
                     // Match of the first - Ignore it
@@ -102,24 +103,4 @@ namespace Reecon
             return toReturn.Trim(Environment.NewLine.ToCharArray());
         }
     }
-
-    [JsonSerializable(typeof(OSINT_Steam_Search))]
-    public partial class OSINT_Steam_JsonContext : JsonSerializerContext
-    {
-
-    }
-
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
-    public class OSINT_Steam_Search
-    {
-        public int success { get; set; }
-        public string search_text { get; set; }
-        public int search_result_count { get; set; }
-        public string search_filter { get; set; }
-        public int search_page { get; set; }
-        public string html { get; set; }
-    }
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
-
-
 }

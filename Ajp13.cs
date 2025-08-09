@@ -20,10 +20,10 @@ namespace Reecon
 
         private static bool CheckGhostcat(string target)
         {
-            Web.HttpInfo httpInfo = Web.GetHTTPInfo($"http://{target}/");
+            Web.HttpInfo httpInfo = Web.GetHttpInfo($"http://{target}/");
             if (httpInfo.StatusCode == 0)
             {
-                httpInfo = Web.GetHTTPInfo($"http://{target}:8080/");
+                httpInfo = Web.GetHttpInfo($"http://{target}:8080/");
                 if (httpInfo.StatusCode == 0)
                 {
                     return false;

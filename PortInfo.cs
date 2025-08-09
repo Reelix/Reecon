@@ -208,7 +208,7 @@ namespace Reecon
                                 case "RPCBind": portInfo = RPCBind.GetInfo(target, port); break;
                                 case "NETBIOS": portInfo = NetBios.GetInfo(target, port); break;
                                 case "IMAP": portInfo = Imap.GetInfo(target, port); break;
-                                case "LDAP": portInfo = Ldap.GetInfo(target, port); break;
+                                case "LDAP": portInfo = Ldap.GetInfoAsync(target, port).GetAwaiter().GetResult(); break;
                                 case "HTTPS": portInfo = Https.GetInfo(target, port); break;
                                 case "SMB": portInfo = Smb.GetInfo(target, port); break;
                                 case "Rsync": portInfo = Rsync.GetInfo(target, port); break;
@@ -390,6 +390,11 @@ namespace Reecon
                         postScanActions += $"- gobuster dir -u https://{target}:{port}/ -w ~/wordlists/directory-list-2.3-medium.txt -t 25 -o gobuster-{port}-medium.txt -x.php,.txt" + Environment.NewLine;
                         postScanActions += $"- gobuster dir -u https://{target}:{port}/ -w ~/wordlists/common.txt -t 25 -o gobuster-{port}-common.txt -x.php,.txt" + Environment.NewLine;
                     }
+                    else
+                    {
+                        Console.WriteLine(unknownPortResult += $"Port {port} - HTTPS".Recolor(Color.Green) + Environment.NewLine + httpsData + Environment.NewLine);
+                        Console.WriteLine("- No Data Returned? Bug Reelix!");
+                    }
                 }
                 // Probably a general HTTP or HTTPS web server
                 else if (
@@ -412,7 +417,7 @@ namespace Reecon
                     }
                     else
                     {
-                        bool isHttps = Web.BasicHTTPSTest(target, port);
+                        bool isHttps = Web.BasicHttpsTest(target, port);
                         string httpData = isHttps ? Https.GetInfo(target, port).Item2 : Http.GetInfo(target, port).Item2;
                         if (httpData != "")
                         {
@@ -573,7 +578,7 @@ namespace Reecon
                         unknownPortResult += $"- Unknown Single Response: -->{bannerString}<-- (Len: {bannerBytes.Count})" + Environment.NewLine;
                         if (bannerBytes.Count < 25)
                         {
-                            unknownPortResult += $"- Numeric Bytes: -->{string.Join(",", bannerBytes)}";
+                            unknownPortResult += $"- Numeric Bytes: {string.Join(",", bannerBytes)}" + Environment.NewLine;
                         }
                         unknownPortResult += $"- TODO: nmap -sC -sV {target} -p{port}" + Environment.NewLine;
                     }
@@ -638,44 +643,53 @@ namespace Reecon
             }
             else if (portName == "Microsoft Windows Kerberos" || portName == "LDAP")
             {
-                // Post Scan
-                string defaultNamingContext = "Unknown";
-                try
+                if (port == 636)
                 {
-                    // It's generally assumed that if 88 is up, 389 is up as well, although it could also be 3268
-                    defaultNamingContext = Ldap.GetPlainDefaultNamingContext(target, port);
+                    // LDAPS doesn't give proper naming contexts
+                    postScanActions = "";
                 }
-                catch (Exception ex)
+                else
                 {
-                    if (ex.InnerException != null && ex.InnerException.ToString().StartsWith("System.DllNotFoundException: Unable to load shared library 'libldap-2.4.so.2'"))
+                    // Post Scan
+                    string defaultNamingContext = "Unknown";
+                    try
                     {
-                        postScanActions += $"- Error: You need a third-party DLL to run LDAP stuff on Linux. Download + dpkg -i https://packages.ubuntu.com/focal-updates/amd64/libldap-2.4-2/download" + Environment.NewLine;
-                        postScanActions += $"-- Note: If you're currently an ARM user, you're a bit out of luck: https://github.com/dotnet/runtime/issues/69456" + Environment.NewLine;
+                        // It's generally assumed that if 88 is up, 389 is up as well, although it could also be 3268
+                        defaultNamingContext = Ldap.GetPlainDefaultNamingContextAsync(target, port).GetAwaiter().GetResult();
+                        ;
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        postScanActions += $"- Error: Unable to retrieve DefaultNamingContext: " + ex.Message + " <--> " + ex.InnerException + Environment.NewLine;
+                        if (ex.InnerException != null && ex.InnerException.ToString().StartsWith("System.DllNotFoundException: Unable to load shared library 'libldap-2.4.so.2'"))
+                        {
+                            postScanActions += $"- Error: You need a third-party DLL to run LDAP stuff on Linux. Download + dpkg -i https://packages.ubuntu.com/focal-updates/amd64/libldap-2.4-2/download" + Environment.NewLine;
+                            postScanActions += $"-- Note: If you're currently an ARM user, you're a bit out of luck: https://github.com/dotnet/runtime/issues/69456" + Environment.NewLine;
+                        }
+                        else
+                        {
+                            postScanActions += $"- Error: Unable to retrieve DefaultNamingContext: " + ex.Message + " <--> " + ex.InnerException + Environment.NewLine;
+                        }
                     }
+
+                    // Bloodhound Collection
+                    postScanActions += $"- Bloodhound Collection: nxc ldap {target} -u 'USERNAME' -p 'PASSWORD' --bloodhound --collection All --dns-server {target}" + Environment.NewLine;
+
+                    // Username enum
+                    postScanActions += $"- Kerberos Username Enum: kerbrute userenum --dc {target} -d {defaultNamingContext} users.txt (Very very fast - Use xato and wait 10 minutes)" + Environment.NewLine;
+
+                    // Requests TGT (Ticket Granting Tickets) for users
+                    postScanActions += $"- Kerberos TGT Request: GetNPUsers.py {defaultNamingContext}/ -dc-ip {target} -request" + Environment.NewLine;
+
+                    // Test for users with 'Do not require Kerberos preauthentication'
+                    // The / at the end of defaultNamingContext is not a typo and is required
+                    postScanActions += $"- Kerberos non-preauth: GetNPUsers.py {defaultNamingContext}/ -usersfile users.txt -dc-ip {target}" + Environment.NewLine;
+
+                    // Try to find Service Principal Names that are associated with normal user account.
+                    postScanActions += $"- Kerberos Associated SPNs (Auth'd): GetUserSPNs.py {defaultNamingContext}/username:\"password\" -request" + Environment.NewLine;
+
+                    // Post exploitation
+                    postScanActions += $"- If you get details: python3 secretsdump.py usernameHere:\"passwordHere\"@{target} | grep :" + Environment.NewLine;
                 }
-
-                // Bloodhound Collection
-                postScanActions += $"- Bloodhound Collection: nxc ldap {target} -u 'USERNAME' -p 'PASSWORD' --bloodhound --collection All --dns-server {target}" + Environment.NewLine;
-                
-                // Username enum
-                postScanActions += $"- Kerberos Username Enum: kerbrute userenum --dc {target} -d {defaultNamingContext} users.txt (Very very fast - Use xato and wait 10 minutes)" + Environment.NewLine;
-
-                // Requests TGT (Ticket Granting Tickets) for users
-                postScanActions += $"- Kerberos TGT Request: GetNPUsers.py {defaultNamingContext}/ -dc-ip {target} -request" + Environment.NewLine;
-
-                // Test for users with 'Do not require Kerberos preauthentication'
-                // The / at the end of defaultNamingContext is not a typo and is required
-                postScanActions += $"- Kerberos non-preauth: GetNPUsers.py {defaultNamingContext}/ -usersfile users.txt -dc-ip {target}" + Environment.NewLine;
-
-                // Try to find Service Principal Names that are associated with normal user account.
-                postScanActions += $"- Kerberos Associated SPNs (Auth'd): GetUserSPNs.py {defaultNamingContext}/username:\"password\" -request" + Environment.NewLine;
-
-                // Post exploitation
-                postScanActions += $"- If you get details: python3 secretsdump.py usernameHere:\"passwordHere\"@{target} | grep :" + Environment.NewLine;
             }
             else if (portName == "NETBIOS")
             {
@@ -688,7 +702,7 @@ namespace Reecon
             }
             else if (portName == "SMB")
             {
-                if (General.GetOS() == General.OS.Windows)
+                if (General.GetOperatingSystem() == General.OperatingSystem.Windows)
                 {
                     postScanActions += $"- SMB - Linux (SMBClient) has better info on this: smbclient -L {target} --no-pass" + Environment.NewLine;
                 }

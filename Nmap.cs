@@ -29,7 +29,7 @@ namespace Reecon
                 fileName = args[1];
             }
 
-            if (General.GetOS() == General.OS.Windows)
+            if (General.GetOperatingSystem() == General.OperatingSystem.Windows)
             {
                 List<string> nmapOutput = General.GetProcessOutput("nmap", "-V");
                 if (nmapOutput.Count == 0 || !nmapOutput[0].Contains("https://nmap.org"))
@@ -39,7 +39,7 @@ namespace Reecon
                 }
             }
             // Check if nmap is installed
-            else if (General.GetOS() == General.OS.Linux)
+            else if (General.GetOperatingSystem() == General.OperatingSystem.Linux)
             {
                 if (!General.IsInstalledOnLinux("nmap"))
                 {
@@ -56,7 +56,7 @@ namespace Reecon
             DateTime beforeNmapDate = DateTime.Now;
             Console.WriteLine($"Doing an optimized Nmap scan on {target} - This may take awhile...");
             string noPing = mustPing ? "" : " -Pn ";
-            if (General.GetOS() == General.OS.Linux)
+            if (General.GetOperatingSystem() == General.OperatingSystem.Linux)
             {
                 General.RunProcess($"sudo", $"nmap -sS -p- {noPing} --min-rate=5000 {target} -oG {fileName}.nmap");
             }

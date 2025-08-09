@@ -267,7 +267,7 @@ namespace Reecon
             string rpcInfo = "";
             bool anonAccess = false;
             bool signing = true;
-            if (General.GetOS() == General.OS.Linux)
+            if (General.GetOperatingSystem() == General.OperatingSystem.Linux)
             {
                 if (General.IsInstalledOnLinux("rpcclient", "/usr/bin/rpcclient"))
                 {

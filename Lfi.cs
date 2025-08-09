@@ -45,7 +45,7 @@ namespace Reecon
             // Find OS
             var OS = GetOS();
 
-            if (OS == General.OS.Linux)
+            if (OS == General.OperatingSystem.Linux)
             {
                 Console.WriteLine("OS Detected as: " + "Linux".Recolor(Color.Green));
                 Console.WriteLine("Running additional checks - Please wait...");
@@ -145,7 +145,7 @@ namespace Reecon
                 DoLFI(["phpinfo();"]);
                 bypassMethod = actualBypassMethod;
             }
-            else if (OS == General.OS.Windows)
+            else if (OS == General.OperatingSystem.Windows)
             {
                 Console.WriteLine("OS Detected as: Windows");
                 // Do IIS Checks
@@ -157,7 +157,7 @@ namespace Reecon
                 // Unknown - Do All Checks
             }
             Console.WriteLine("All Checks Done!");
-            if (OS == General.OS.Linux)
+            if (OS == General.OperatingSystem.Linux)
             {
                 Console.WriteLine("Note: If you can create sessions, they can be stored in /tmp/ses_SESSID");
             }
@@ -184,7 +184,7 @@ namespace Reecon
             Console.WriteLine("Determining invalid path results...");
 
             // NFL1 - A regular invalid path
-            string result = Web.GetHTTPInfo(baseURL + "Reelix", Cookie: cookie).PageText ?? "";
+            string result = Web.GetHttpInfo(baseURL + "Reelix", Cookie: cookie).PageText ?? "";
             notFoundLength = result.Length; // Check for cases where the page text contains the URL?
             // Some not-found pages can be blank
             if (notFoundLength < 0)
@@ -194,7 +194,7 @@ namespace Reecon
             Console.WriteLine("Invalid Path 1/3 Length: " + notFoundLength);
 
             // NFL2 - An invalid path with 2 dots
-            result = Web.GetHTTPInfo(baseURL + "Ree..lix", Cookie: cookie).PageText ?? "";
+            result = Web.GetHttpInfo(baseURL + "Ree..lix", Cookie: cookie).PageText ?? "";
             notFoundLength2 = result.Length;
             if (notFoundLength2 < 0)
             {
@@ -203,7 +203,7 @@ namespace Reecon
             Console.WriteLine("Invalid Path 2/3 Length: " + notFoundLength2);
 
             // NFL3 - An invalid path, but the error message contains the path itself
-            result = Web.GetHTTPInfo(baseURL + "/some/file/name.txt", Cookie: cookie).PageText ?? "";
+            result = Web.GetHttpInfo(baseURL + "/some/file/name.txt", Cookie: cookie).PageText ?? "";
             notFoundLength3 = result.Replace("/some/file/name.txt", "").Length;
             if (notFoundLength3 < 0)
             {
@@ -212,7 +212,7 @@ namespace Reecon
             Console.WriteLine("Invalid Path 3/3 Length: " + notFoundLength3);
         }
 
-        private static General.OS GetOS()
+        private static General.OperatingSystem GetOS()
         {
             Console.WriteLine("Running OS Checks...");
             // Linux
@@ -232,7 +232,7 @@ namespace Reecon
             bool hasResult = DoLFI(linuxChecks);
             if (hasResult)
             {
-                return General.OS.Linux;
+                return General.OperatingSystem.Linux;
             }
 
             // Windows
@@ -248,10 +248,10 @@ namespace Reecon
             hasResult = DoLFI(windowsChecks);
             if (hasResult)
             {
-                return General.OS.Windows;
+                return General.OperatingSystem.Windows;
             }
 
-            return General.OS.Unknown;
+            return General.OperatingSystem.Unknown;
         }
 
         private static bool DoLFI(List<string> lfiChecks)
@@ -448,7 +448,7 @@ namespace Reecon
         {
             try
             {
-                Web.HttpInfo requestResult = Web.GetHTTPInfo(fullPath, Cookie: cookie);
+                Web.HttpInfo requestResult = Web.GetHttpInfo(fullPath, Cookie: cookie);
                 if (requestResult.AdditionalInfo == "Timeout")
                 {
                     Console.WriteLine("- " + fullPath + " -- Timeout :(");

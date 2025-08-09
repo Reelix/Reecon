@@ -12,7 +12,7 @@ namespace Reecon
             // TODO: https://svn.nmap.org/nmap/scripts/nfs-ls.nse
 
             string fileList = "";
-            if (General.GetOS() == General.OS.Windows)
+            if (General.GetOperatingSystem() == General.OperatingSystem.Windows)
             {
                 if (File.Exists(@"C:\Windows\System32\showmount.exe"))
                 {
@@ -37,7 +37,7 @@ namespace Reecon
                     return ("NFS", fileList);
                 }
             }
-            else if (General.GetOS() == General.OS.Linux)
+            else if (General.GetOperatingSystem() == General.OperatingSystem.Linux)
             {
                 if (General.IsInstalledOnLinux("showmount")) // "/sbin/showmount" OR "/usr/sbin/showmount"
                 {

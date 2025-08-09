@@ -137,7 +137,7 @@ namespace Reecon
             string passFile = args[3];
 
             // Windows: Only files
-            if (General.GetOS() == General.OS.Windows)
+            if (General.GetOperatingSystem() == General.OperatingSystem.Windows)
             {
                 if (!File.Exists(userFile))
                 {

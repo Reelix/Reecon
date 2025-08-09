@@ -2,7 +2,7 @@
 
 Reelix's Recon - A small program for network recon.  
 This program is still in early stages of development and should probably not be used by anyone.
-* Version: 0.39
+* Version: 0.39a
 * Build Status: <img src="https://img.shields.io/github/actions/workflow/status/Reelix/Reecon/dotnet-publish.yml" valign="middle" />
 * Requirements: [NMap 7.95+](https://nmap.org/download.html)
   * LDAP Enumeration on Ubuntu 22.04: Download + dpkg -i [this](https://packages.ubuntu.com/focal-updates/amd64/libldap-2.4-2/download)
@@ -57,13 +57,13 @@ If you're running this, you probably know how to get the dotnet SDK installed. I
 ## To Do (No specific order)
 - Raw nslookup in DNS.cs (Better cross platform / How does it work on a lower level?)
 - Raw RPC info (rpcinfo on for port 111, find service / version on ports) - https://svn.nmap.org/nmap/scripts/rpcinfo.nse - Oh gawd
-- Remove reliance on OS-specific tooling (showmount, smbclient, rpcinfo (111) / rpcclient (lol), etc.)
-- Fix rare instances of accessing broken https:// pages (Invalid cert?)
-- Fix broken OSINT scripts (Twitter?)
+- Fix broken OSINT Twitter OSINT
 - MSSQL handshake for version retrieval
-- Retrieve RDP Info (See nmap -sC -sV output)
+- Retrieve RDP Info - Specifically Domain / Auth Types (CredSSP Support - rdp-sec-check)
 - Implement basic MQTT handlers (Enough to get enough info to solve https://tryhackme.com/room/bugged)
 - Custom multi-threaded SYN Scan port scanner to remove nmap reliance (Won't happen any time soon)
 - Split Web into more files for cleaner code
+- Implement Wordfence / ? info for non-implemented WordPress plugins with vulns
 - Make the README.md file a bit more legible
-- Fix Pwn.cs to be slightly usable (On Windows?)
+- Fix Pwn.cs to be slightly usable
+- Continue working on the SMB2 Protocol Implementation to get basic user auth / shares (Multiple failed attempts)

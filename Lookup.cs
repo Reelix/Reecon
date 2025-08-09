@@ -16,7 +16,7 @@ public static class Lookup
         }
         string ip = args[1];
         // No HTTPS without paying. Weird... But it is free, so hey!
-        var result = Web.GetHTTPInfo($"http://ip-api.com/json/{ip}");
+        var result = Web.GetHttpInfo($"http://ip-api.com/json/{ip}");
         if (result.StatusCode == HttpStatusCode.OK && result.PageText != null)
         {
             string pageText = result.PageText;

@@ -10,7 +10,7 @@ namespace Reecon
         public static RedditInfo GetInfo(string name)
         {
             RedditInfo redditInfo = new() { Exists = false };
-            var aboutPage = Web.GetHTTPInfo($"https://www.reddit.com/user/{name}/about.json", "Reecon (https://github.com/Reelix/reecon)");
+            var aboutPage = Web.GetHttpInfo($"https://www.reddit.com/user/{name}/about.json", "Reecon (https://github.com/Reelix/reecon)");
             if (aboutPage.StatusCode == HttpStatusCode.OK && aboutPage.PageText != null)
             {
                 redditInfo.Exists = true;
@@ -22,7 +22,7 @@ namespace Reecon
 
                 // Get Comments
                 List<OSINT_Reddit_Comment> commentList = new List<OSINT_Reddit_Comment>();
-                var commentsPage = Web.GetHTTPInfo($"https://www.reddit.com/user/{name}/comments.json", "Reecon (https://github.com/Reelix/reecon)");
+                var commentsPage = Web.GetHttpInfo($"https://www.reddit.com/user/{name}/comments.json", "Reecon (https://github.com/Reelix/reecon)");
                 if (commentsPage.StatusCode == HttpStatusCode.OK && commentsPage.PageText != null)
                 {
                     var commentInfo = JsonDocument.Parse(commentsPage.PageText);
@@ -44,7 +44,7 @@ namespace Reecon
                 List<OSINT_Reddit_Submission> submissionList = new List<OSINT_Reddit_Submission>();
                 try
                 {
-                    var submissionsPage = Web.GetHTTPInfo($"https://www.reddit.com/user/{name}/submitted.json", "Reecon (https://github.com/Reelix/reecon)");
+                    var submissionsPage = Web.GetHttpInfo($"https://www.reddit.com/user/{name}/submitted.json", "Reecon (https://github.com/Reelix/reecon)");
                     if (submissionsPage.StatusCode == HttpStatusCode.OK && submissionsPage.PageText != null)
                     {
                         var submissionInfo = JsonDocument.Parse(submissionsPage.PageText);

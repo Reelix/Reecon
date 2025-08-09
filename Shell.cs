@@ -13,18 +13,18 @@ namespace Reecon
             {
                 Console.WriteLine("Shell Usage: reecon -shell shellType [IP Port]");
                 Console.WriteLine("Types: bash, haskell, jar, jsp, nc, nodejs, php, powershell, python, war");
-                General.PrintIPList();
+                General.PrintIpList();
                 return;
             }
             string shellType = args[1].ToLower(); // NodeJS == nodejs
             // If we have a tun0 IP, use that instead as the default
-            List<General.IP> ipList = General.GetIPList();
+            List<General.IP> ipList = General.GetIpList();
             string ip = ipList.Any(x => x.Name == "tun0") ? ipList.First(x => x.Name == "tun0").Address.ToString() : "10.0.0.1";
             string port = "9001";
             if (args.Length == 2)
             {
                 Console.WriteLine("Don't forget to change the IP / Port!");
-                General.PrintIPList();
+                General.PrintIpList();
                 Console.WriteLine($"-> Generating shell with IP {ip} and Port {port}");
             }
             if (args.Length == 3)

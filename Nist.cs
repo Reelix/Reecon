@@ -20,7 +20,7 @@ namespace Reecon
             string programName = string.Join('+', args.Skip(1)).Trim();
             Console.WriteLine($"Searching for CVE's for {programName}...");
             string URL = $"https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch={programName}&resultsPerPage=250";
-            Web.HttpInfo jsonPage = Web.GetHTTPInfo(URL, "Reecon (https://github.com/Reelix/reecon)", Timeout: 15);
+            Web.HttpInfo jsonPage = Web.GetHttpInfo(URL, "Reecon (https://github.com/Reelix/reecon)", Timeout: 15);
             if (jsonPage.StatusCode == HttpStatusCode.OK && jsonPage.PageText != null)
             {
                 // Use the generated context for deserialization
