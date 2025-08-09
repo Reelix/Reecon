@@ -19,7 +19,7 @@ namespace Reecon
                 smtpSocket.SendTimeout = 5000;
                 try
                 {
-                    Console.WriteLine($"Connecting to {ip}:{port}");
+                    // Console.WriteLine($"Connecting to {ip}:{port}");
                     smtpSocket.Connect(ip, port);
                     // Wait for info
                     int bytes = smtpSocket.Receive(buffer, buffer.Length, 0);

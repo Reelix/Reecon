@@ -47,32 +47,35 @@ namespace Reecon
                 }
                 HttpInfo httpInfo = Web.GetHttpInfo(url);
                 
-                // Broken things
-                if (httpInfo.AdditionalInfo == "Timeout")
+                // AdditionalInfo with a single word is actually broken
+                // May need to shift these outsomewhere else
+                if (httpInfo.AdditionalInfo != null && !httpInfo.AdditionalInfo.Contains(' '))
                 {
-                    return "- Timeout";
-                }
-                else if (httpInfo.AdditionalInfo == "WeirdSSL")
-                {
-                    return "- It's SSL, but can't connect with https for some reason :(";
-                }
-                else if (httpInfo.AdditionalInfo == "InvalidDNS")
-                {
-                    return $"- The url {url} does not exist - Maybe fix your /etc/hosts file?";
-                }
-                else if (httpInfo.AdditionalInfo == "ConnectionRefused")
-                {
-                    return "- Connection Refused - Is it still online?";
-                }
-                else if (httpInfo.AdditionalInfo == "SSL_ERROR_SSL")
-                {
-                    return "- SSL Handshake Failed - You may want to look into this :/";
-                }
-                // OK Things
-                else if (httpInfo.AdditionalInfo != null)
-                {
-                    
-                    return $"- {httpInfo.AdditionalInfo.TrimEnd(Environment.NewLine.ToCharArray())}";
+                    if (httpInfo.AdditionalInfo == "Timeout")
+                    {
+                        return "- Timeout";
+                    }
+                    else if (httpInfo.AdditionalInfo == "WeirdSSL")
+                    {
+                        return "- It's SSL, but can't connect with https for some reason :(";
+                    }
+                    else if (httpInfo.AdditionalInfo == "InvalidDNS")
+                    {
+                        return $"- The url {url} does not exist - Maybe fix your /etc/hosts file?";
+                    }
+                    else if (httpInfo.AdditionalInfo == "ConnectionRefused")
+                    {
+                        return "- Connection Refused - Is it still online?";
+                    }
+                    else if (httpInfo.AdditionalInfo == "SSL_ERROR_SSL")
+                    {
+                        return "- SSL Handshake Failed - You may want to look into this :/";
+                    }
+                    // OK Things
+                    else if (httpInfo.AdditionalInfo != null && !httpInfo.AdditionalInfo.Contains(' '))
+                    {
+                        return $"- {httpInfo.AdditionalInfo.TrimEnd(Environment.NewLine.ToCharArray())}";
+                    }
                 }
                 // Except for this
                 else if (httpInfo.StatusCode == null)

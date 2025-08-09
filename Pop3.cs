@@ -85,6 +85,8 @@ namespace Reecon
                     returnText += $"- Unknown Error: {ex.Message}";
                 }
             }
+            
+            returnText = returnText.Trim(Environment.NewLine.ToCharArray());
             return ("POP3", returnText);
         }
     }
