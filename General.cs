@@ -25,7 +25,7 @@ namespace Reecon
 
         public static void ShowBanner()
         {
-            Console.WriteLine("Reecon - Version 0.39a ( https://github.com/Reelix/Reecon )".Recolor(Color.Yellow));
+            Console.WriteLine("Reecon - Version 0.40 ( https://github.com/Reelix/Reecon )".Recolor(Color.Yellow));
         }
         public static void ShowHelp()
         {
@@ -45,6 +45,7 @@ namespace Reecon
             Console.WriteLine($"LFI Test:\t{ProgramName} -lfi (Very buggy)");
             Console.WriteLine($"Web Info:\t{ProgramName} -web url (Very buggy)");
             Console.WriteLine($"IP Lookup:\t{ProgramName} -lookup IP");
+            Console.WriteLine($"API Key Lookup:\t{ProgramName} -apikey APIKey");
         }
 
         // Fingerprinting service

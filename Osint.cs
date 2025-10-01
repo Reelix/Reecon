@@ -22,19 +22,70 @@ namespace Reecon
             Console.WriteLine("Warning: The OSINT Module is still in early development and will probably break / give incorrect information".Recolor(Color.Red));
             string username = args[1];
             Console.WriteLine($"Searching for {username}...");
-            //GetInstagramInfo(username); - Broken - https://www.instagram.com/web/search/topsearch/?query=Reelix
-            GetRedditInfo(username);
-            GetSteamInfo(username);
-            GetTwitterInfo(username);
-            GetYouTubeInfo(username);
+            
+            // Keep this in alphabetical order
+            
             GetGithubInfo(username);
+            // GetInstagramInfo(username); - Broken - https://www.instagram.com/web/search/topsearch/?query=Reelix
+            GetLinkMeInfo(username);
             GetPastebinInfo(username);
             GetRecRoomInfo(username);
-            // Pastebin - https://pastebin.com/u/rzsdw2iwug77eda
+            GetRedditInfo(username);
+            GetSteamInfo(username);
+            GetTelegramInfo(username);
+            GetTwitterInfo(username);
+            GetYouTubeInfo(username);
             // TODO: Disqus - https://disqus.com/by/soremanzo/about/ (Comment count + About page)
             // Google Storage: https://storage.googleapis.com/erg1erh315ezf5zev (Note: Malware link - Need a better valid test case)
         }
 
+        private static void GetGithubInfo(string username)
+        {
+            Web.HttpInfo httpInfo = Web.GetHttpInfo($"https://api.github.com/users/{username}", "Reecon");
+            if (httpInfo.StatusCode != HttpStatusCode.NotFound && httpInfo.PageText != null)
+            {
+                Console.WriteLine("- Github: " + "Found".Recolor(Color.Green));
+                JsonDocument githubInfo = JsonDocument.Parse(httpInfo.PageText);
+
+                JsonElement login = githubInfo.RootElement.GetProperty("login");
+                Console.WriteLine("-- Login: " + login);
+                JsonElement htmlLink = githubInfo.RootElement.GetProperty("html_url");
+                Console.WriteLine($"-- Link: {htmlLink}");
+                JsonElement name = githubInfo.RootElement.GetProperty("name");
+                Console.WriteLine("-- Name: " + name);
+                // Bio?
+                JsonElement company = githubInfo.RootElement.GetProperty("company");
+                if (company.ValueKind != JsonValueKind.Null)
+                {
+                    Console.WriteLine("-- Company: " + company);
+                }
+                JsonElement location = githubInfo.RootElement.GetProperty("location");
+                if (location.ValueKind != JsonValueKind.Null)
+                {
+                    Console.WriteLine("-- Location: " + location);
+                }
+                JsonElement avatar = githubInfo.RootElement.GetProperty("avatar_url");
+                if (avatar.ValueKind != JsonValueKind.Null)
+                {
+                    Console.WriteLine("-- Avatar Picture: " + avatar);
+                }
+                JsonElement createdAt = githubInfo.RootElement.GetProperty("created_at");
+                Console.WriteLine("-- Account Created At: " + createdAt);
+                JsonElement blog = githubInfo.RootElement.GetProperty("blog");
+                if (blog.ToString() != "")
+                {
+                    Console.WriteLine("-- Blog: " + blog);
+                }
+                // TODO: Parse Repos + Commits
+                // Repos: https://api.github.com/users/sakurasnowangelaiko/repos
+                // Commits (And everything else): https://api.github.com/users/sakurasnowangelaiko/events (
+            }
+            else
+            {
+                Console.WriteLine("- Github: Not Found");
+            }
+        }
+        
         /*
         public static void GetInstagramInfo(string username)
         {
@@ -57,7 +108,49 @@ namespace Reecon
             }
         }
         */
+        
+        private static void GetLinkMeInfo(string username)
+        {
+            Web.HttpInfo httpInfo = Web.GetHttpInfo($"https://link.me/{username}");
+            if (httpInfo.StatusCode != HttpStatusCode.NotFound)
+            {
+                Console.WriteLine("- Link Me: " + "Found".Recolor(Color.Green));
+                Console.WriteLine($"-- Link: https://link.me/{username}");
+            }
+            else
+            {
+                Console.WriteLine("- Link Me: Not Found");
+            }
+        }
 
+        private static void GetPastebinInfo(string username)
+        {
+            Web.HttpInfo httpInfo = Web.GetHttpInfo($"https://pastebin.com/u/{username}");
+            if (httpInfo.StatusCode != HttpStatusCode.NotFound)
+            {
+                Console.WriteLine("- Pastebin: Found");
+                Console.WriteLine($"-- Link: https://pastebin.com/u/{username}");
+            }
+            else
+            {
+                Console.WriteLine("- Pastebin: Not Found");
+            }
+        }
+
+        private static void GetRecRoomInfo(string username)
+        {
+            Web.HttpInfo httpInfo = Web.GetHttpInfo($"https://apim.rec.net/accounts/account?username={username}");
+            if (httpInfo.StatusCode != HttpStatusCode.NotFound && httpInfo.PageText != null)
+            {
+                Console.WriteLine("- Rec Room: " + "Found".Recolor(Color.Green));
+                Console.WriteLine($"-- Link: https://rec.net/user/{username}");
+            }
+            else
+            {
+                Console.WriteLine("- Rec Room: Not Found");
+            }
+        }
+        
         private static void GetRedditInfo(string username)
         {
             RedditInfo redditInfo = Osint_Reddit.GetInfo(username);
@@ -112,7 +205,7 @@ namespace Reecon
                 Console.WriteLine("- Reddit: Not Found");
             }
         }
-
+        
         private static void GetSteamInfo(string username)
         {
             string result = Osint_Steam.GetInfo(username);
@@ -130,6 +223,33 @@ namespace Reecon
             }
         }
 
+        private static void GetTelegramInfo(string username)
+        {
+            Web.HttpInfo httpInfo = Web.GetHttpInfo($"https://t.me/{username}");
+            if (httpInfo.StatusCode != HttpStatusCode.NotFound && httpInfo.PageText != null && httpInfo.PageText.Contains("tgme_page_extra"))
+            {
+                string pageExtra = httpInfo.PageText.Remove(0, httpInfo.PageText.IndexOf("tgme_page_extra", StringComparison.Ordinal) + 17);
+                pageExtra = pageExtra.Substring(0, pageExtra.IndexOf("</div>", StringComparison.Ordinal));
+                pageExtra = pageExtra.Replace(Environment.NewLine, "").Trim();
+                
+                // Name is in tgme_page_title - May do that later
+                if (pageExtra.StartsWith('@'))
+                {
+                    // Username
+                    Console.WriteLine("- Telegram (User): " + "Found".Recolor(Color.Green));
+                }
+                else if (pageExtra.EndsWith("subscribers"))
+                {
+                    Console.WriteLine("- Telegram (Group): " + "Found".Recolor(Color.Green));
+                }
+                Console.WriteLine($"-- Link: https://t.me/{username}");
+            }
+            else
+            {
+                Console.WriteLine("- Telegram: Not Found");
+            }
+        }
+        
         private static void GetTwitterInfo(string username)
         {
             // TODO
@@ -198,17 +318,18 @@ namespace Reecon
                 Console.WriteLine("- Twitter: " + "Error".Recolor(Color.Red) + " - Bug Reelix");
             }
         }
-
+        
         private static void GetYouTubeInfo(string username)
         {
             // YouTube usernames CAN have spaces - Oh gawd
+            // YouTube can be both youtube.com/user OR youtube.com/@user
             Web.HttpInfo httpInfo = Web.GetHttpInfo("https://www.youtube.com/" + username);
             if (httpInfo.StatusCode == HttpStatusCode.OK && httpInfo.PageTitle != null)
             {
                 string youtubeUsername = httpInfo.PageTitle.Replace(" - YouTube", "");
                 Console.WriteLine("- YouTube: " + "Found".Recolor(Color.Green));
-                Console.WriteLine("-- Link: https://www.youtube.com/" + username);
-                Console.WriteLine("-- Name: " + youtubeUsername);
+                Console.WriteLine($"-- Link: https://www.youtube.com/{username}");
+                Console.WriteLine($"-- Name: {youtubeUsername}");
 
                 // About page
                 Web.HttpInfo aboutPage = Web.GetHttpInfo("https://www.youtube.com/c/" + username + "/about");
@@ -259,74 +380,14 @@ namespace Reecon
             {
                 Console.WriteLine("- YouTube: Error - Bug Reelix: " + httpInfo.StatusCode);
             }
-        }
-
-        private static void GetGithubInfo(string username)
-        {
-            Web.HttpInfo httpInfo = Web.GetHttpInfo($"https://api.github.com/users/{username}", "Reecon");
-            if (httpInfo.StatusCode != HttpStatusCode.NotFound && httpInfo.PageText != null)
+            
+            // .com/@{username} is different from .com/{username} ._.
+            
+            httpInfo = Web.GetHttpInfo("https://www.youtube.com/@" + username);
+            if (httpInfo.StatusCode == HttpStatusCode.OK && httpInfo.PageTitle != null)
             {
-                Console.WriteLine("- Github: " + "Found".Recolor(Color.Green));
-                JsonDocument githubInfo = JsonDocument.Parse(httpInfo.PageText);
-
-                JsonElement login = githubInfo.RootElement.GetProperty("login");
-                Console.WriteLine("-- Login: " + login);
-                JsonElement htmlLink = githubInfo.RootElement.GetProperty("html_url");
-                Console.WriteLine($"-- Link: {htmlLink}");
-                JsonElement name = githubInfo.RootElement.GetProperty("name");
-                Console.WriteLine("-- Name: " + name);
-                JsonElement location = githubInfo.RootElement.GetProperty("location");
-                if (location.ValueKind != JsonValueKind.Null)
-                {
-                    Console.WriteLine("-- Location: " + location);
-                }
-                JsonElement avatar = githubInfo.RootElement.GetProperty("avatar_url");
-                if (avatar.ValueKind != JsonValueKind.Null)
-                {
-                    Console.WriteLine("-- Avatar Picture: " + avatar);
-                }
-                JsonElement createdAt = githubInfo.RootElement.GetProperty("created_at");
-                Console.WriteLine("-- Account Created At: " + createdAt);
-                JsonElement blog = githubInfo.RootElement.GetProperty("blog");
-                if (blog.ToString() != "")
-                {
-                    Console.WriteLine("-- Blog: " + blog);
-                }
-                // TODO: Parse Repos + Commits
-                // Repos: https://api.github.com/users/sakurasnowangelaiko/repos
-                // Commits (And everything else): https://api.github.com/users/sakurasnowangelaiko/events (
-            }
-            else
-            {
-                Console.WriteLine("- Github: Not Found");
-            }
-        }
-
-        private static void GetPastebinInfo(string username)
-        {
-            Web.HttpInfo httpInfo = Web.GetHttpInfo($"https://pastebin.com/u/{username}");
-            if (httpInfo.StatusCode != HttpStatusCode.NotFound)
-            {
-                Console.WriteLine("- Pastebin: Found");
-                Console.WriteLine($"-- Link: https://pastebin.com/u/{username}");
-            }
-            else
-            {
-                Console.WriteLine("- Pastebin: Not Found");
-            }
-        }
-
-        private static void GetRecRoomInfo(string username)
-        {
-            Web.HttpInfo httpInfo = Web.GetHttpInfo($"https://apim.rec.net/accounts/account?username={username}");
-            if (httpInfo.StatusCode != HttpStatusCode.NotFound && httpInfo.PageText != null)
-            {
-                Console.WriteLine("- Rec Room Found");
-                Console.WriteLine($"-- Link: https://rec.net/user/{username}");
-            }
-            else
-            {
-                Console.WriteLine("- Rec Room: Not Found");
+                Console.WriteLine("- YouTube - User: " + "Found".Recolor(Color.Green));
+                Console.WriteLine($"-- Link: https://www.youtube.com/@{username}");
             }
         }
     }

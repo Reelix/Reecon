@@ -120,6 +120,12 @@ namespace Reecon
                 ];
                 DoLFI(linux_tomcat9);
 
+                // JS
+                // /app/server.js
+                // /app/.next/
+                // /app/.next/routes-manifest.json	
+                // /app/.next/server/pages/api/auth/%5B...nextauth%5D.js
+                
                 // Do basic SSH Checks - https://evi1us3r.wordpress.com/lfi-cheat-sheet/
                 List<string> linux_ssh =
                 [
@@ -465,8 +471,10 @@ namespace Reecon
                     && (resultLength - (check.Length + bypassLength) != notFoundLength3)
                     && !result.Contains("failed to open stream")
                     && !result.Contains("Attack detected") // Firewall
+                    && resultLength != 0 // Probably an error page
                    )
                 {
+                    Console.WriteLine("Len: " + resultLength);
                     Console.WriteLine("- " + fullPath + " (Len: " + resultLength + ")");
                     ParseUsefulEntries(check, result);
                     return true;

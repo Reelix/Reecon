@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -17,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace Reecon
 {
-    static partial class Web
+    static class Web
     {
         static string scanURL = "";
         static List<string> fullPageList = [];
@@ -42,7 +43,7 @@ namespace Reecon
             // First - Scan the base page
             var httpInfo = Web.GetHttpInfo(scanURL);
             string? pageText = httpInfo.PageText;
-            
+
             // All actual errors are single words
             if (httpInfo.AdditionalInfo != null && !httpInfo.AdditionalInfo.Contains(' '))
             {
@@ -224,7 +225,7 @@ namespace Reecon
             string returnInfo = "";
 
             // Do not change this Regex
-            Regex emailRegex = MyRegex();
+            Regex emailRegex = new Regex(@"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b");
             MatchCollection emailMatches = emailRegex.Matches(text);
             List<string> matchList = General.MatchCollectionToList(emailMatches);
             foreach (string match in matchList)
@@ -321,8 +322,8 @@ namespace Reecon
             }
         }
 
-        // This is intentionally not multi-threaded to avoid WAF issues
-        // It may take awhile, but it's short enough
+        // This is intentionally not multithreaded to avoid WAF issues
+        // It may take a while, but it's short enough
         // Can't switch to HEAD instead of GET because some 404 pages return 200's (-_-)
         public static string FindCommonFiles(string url)
         {
@@ -558,7 +559,9 @@ namespace Reecon
                             {
                                 returnText += "-- Bolt CMS!".Recolor(Color.Orange) + Environment.NewLine;
                                 returnText += $"-- Admin Page: {url}bolt" + Environment.NewLine;
-                                returnText += "-- If you get details and the version is 3.6.* or 3.7: https://www.rapid7.com/db/modules/exploit/unix/webapp/bolt_authenticated_rce OR https://github.com/r3m0t3nu11/Boltcms-Auth-rce-py/blob/master/exploit.py (3.7.0)" + Environment.NewLine;
+                                returnText +=
+                                    "-- If you get details and the version is 3.6.* or 3.7: https://www.rapid7.com/db/modules/exploit/unix/webapp/bolt_authenticated_rce OR https://github.com/r3m0t3nu11/Boltcms-Auth-rce-py/blob/master/exploit.py (3.7.0)" +
+                                    Environment.NewLine;
                             }
                             // Docker Engine
                             else if (file == "version" && pageText.Contains("Docker Engine - Community"))
@@ -710,7 +713,7 @@ namespace Reecon
                     }
 
                     returnText += $"- Common Path redirects: {url}{file}" + Environment.NewLine;
-                    if (response.ResponseHeaders != null && response.ResponseHeaders.Location != null)
+                    if (response.ResponseHeaders.Location != null)
                     {
                         returnText += $"-- Redirection Location: {response.ResponseHeaders.Location}" + Environment.NewLine;
 
@@ -724,8 +727,8 @@ namespace Reecon
                 else if (response.StatusCode == HttpStatusCode.Unauthorized)
                 {
                     returnText += $"- Common path requires authentication: {url}{file}" + Environment.NewLine;
-                    HttpResponseHeaders? headers = response.ResponseHeaders;
-                    if (headers != null && headers.Contains("WWW-Authenticate"))
+                    HttpResponseHeaders headers = response.ResponseHeaders;
+                    if (headers.Contains("WWW-Authenticate"))
                     {
                         returnText += $"-- WWW-Authenticate: {headers.GetValues("WWW-Authenticate").First()}" + Environment.NewLine;
                     }
@@ -843,7 +846,13 @@ namespace Reecon
         public static string FindCommonSubdomains(string url)
         {
             // This only works on domains which are http[s]://domain.ext/ - No extension
+            // There's a weird HttpRequestException bug when this is run on stacksmash[.]io - Need to look into that... 
 
+            if (url.Contains("://www."))
+            {
+                Console.WriteLine("www detected - Existing subdomains are ignored when searching for subdomains - Stripping...");
+                url = url.Replace("://www.", "://"); // Technically an issue if that's in a query string value or something, but it should be fine
+            }
             string toReturn = "";
             Uri uri = new Uri(url);
             string baseHost = uri.Host;
@@ -851,8 +860,8 @@ namespace Reecon
             string authority = uri.Authority; // domain:port
 
             string domainToCheck = scheme + "://" + authority + "/";
-            // Common to uncommon - Maybe alphabetical later?
-            List<string> subdomains = ["www", "dev", "admin", "mail", "test", "nagios", "status", "storage"];
+            // Common to uncommon-ish - Maybe alphabetical later?
+            List<string> subdomains = ["www", "dev", "admin", "mail", "test", "nagios", "ftp", "status", "gitea", "storage"];
 
             var pageInfo = GetHttpInfo(url);
 
@@ -931,8 +940,7 @@ namespace Reecon
             public string? AdditionalInfo { get; set; }
         }
 
-        public static HttpInfo GetHttpInfo(string url, string? UserAgent = null, string? Cookie = null,
-            string? HostHeader = null, int Timeout = 5)
+        public static HttpInfo GetHttpInfo(string url, string? UserAgent = null, string? Cookie = null, string? HostHeader = null, int Timeout = 5)
         {
             HttpInfo toReturn = new();
             HttpStatusCode statusCode = new();
@@ -1173,6 +1181,8 @@ namespace Reecon
             return toReturn;
         }
 
+        // Fun stuff
+        // Need to clean up this method - It's huge
         public static string ParseHttpInfo(HttpInfo httpInfo)
         {
             // Pull the info out
@@ -1381,7 +1391,7 @@ namespace Reecon
             }
 
             // Headers + Cookies!
-            if (responseHeaders != null && responseHeaders.Any())
+            if (responseHeaders.Any())
             {
                 // Server info
                 if (responseHeaders.Any(x => x.Key == "Server"))
@@ -1742,6 +1752,9 @@ namespace Reecon
                 // Useless ones (For our purposes, anyways)
                 // X-Matched-Path ?
                 responseHeaders.Remove("X-Content-Type-Options");
+                responseHeaders.Remove("X-UA-Compatible");
+                
+                // Keep these 2 for XSS... ?
                 responseHeaders.Remove("X-Frame-Options");
                 responseHeaders.Remove("X-XSS-Protection");
 
@@ -1890,42 +1903,100 @@ namespace Reecon
                     toReturn += "- Page Text: " + pageText.Trim() + Environment.NewLine;
                 }
 
-                // Generic <meta name="generator" 
-                if (pageText.Contains("<meta name=\"generator\" content="))
+                // Meta tags
+                if (pageText.Contains("<meta name="))
                 {
-                    string contentValue = pageText.Remove(0, pageText.IndexOf("<meta name=\"generator\" content=\"", StringComparison.Ordinal) + "<meta name=\"generator\" content=\"".Length);
-                    contentValue = contentValue.Substring(0, contentValue.IndexOf('"')).Trim();
-                    if (contentValue.StartsWith("concrete5 - "))
+                    // Split by this
+                    List<string> metaTags = pageText.Split("<meta name=", StringSplitOptions.RemoveEmptyEntries).ToList();
+                    // The first item is just stuff before the split
+                    metaTags.RemoveAt(0);
+                    foreach (string metaTag in metaTags)
                     {
-                        toReturn += "- " + "concrete5 CMS detected!".Recolor(Color.Orange) + Environment.NewLine;
-                        // <meta name="generator" content="concrete5 - 8.5.2"/>
-                        string versionInfo = pageText.Remove(0, pageText.IndexOf("<meta name=\"generator\" content=\"concrete5 - ", StringComparison.Ordinal));
-                        versionInfo = versionInfo.Remove(0, versionInfo.IndexOf("concrete5 - ", StringComparison.Ordinal) + 12);
-                        versionInfo = versionInfo.Substring(0, versionInfo.IndexOf('"'));
-                        toReturn += "-- Version: " + versionInfo + Environment.NewLine;
-                        if (versionInfo == "8.5.2")
+                        // Stop at the closing tag
+                        string cleanedMetaTag = metaTag.Substring(0, metaTag.IndexOf('>'));
+
+                        // Remove any "'s to account for variations (name=x content=y VS name="x" content="y"
+                        cleanedMetaTag = cleanedMetaTag.Replace("\"", "");
+
+                        string tagName = cleanedMetaTag.Split(' ')[0];
+                        string tagValue = cleanedMetaTag.Remove(0, cleanedMetaTag.IndexOf("content=", StringComparison.Ordinal) + 8);
+
+                        // For debugging
+                        // Console.WriteLine("x -> " + tagName + "<->" + tagValue);
+
+                        // Generator
+                        if (tagName == "generator")
                         {
-                            toReturn += "---" + " Vulnerable version detected - Vulnerable to CVE-2020-24986 - https://hackerone.com/reports/768322".Recolor(Color.Orange) + Environment.NewLine;
+                            if (tagValue.StartsWith("concrete5 - "))
+                            {
+                                toReturn += "- " + "concrete5 CMS detected!".Recolor(Color.Orange) + Environment.NewLine;
+                                // <meta name="generator" content="concrete5 - 8.5.2"/>
+                                string versionInfo = pageText.Remove(0, pageText.IndexOf("<meta name=\"generator\" content=\"concrete5 - ", StringComparison.Ordinal));
+                                versionInfo = versionInfo.Remove(0, versionInfo.IndexOf("concrete5 - ", StringComparison.Ordinal) + 12);
+                                versionInfo = versionInfo.Substring(0, versionInfo.IndexOf('"'));
+                                toReturn += "-- Version: " + versionInfo + Environment.NewLine;
+                                if (versionInfo == "8.5.2")
+                                {
+                                    toReturn += "---" + " Vulnerable version detected - Vulnerable to CVE-2020-24986 - https://hackerone.com/reports/768322".Recolor(Color.Orange) + Environment.NewLine;
+                                }
+                            }
+                            else if (tagValue.StartsWith("TYPO3"))
+                            {
+                                toReturn += "- " + "TYPO3 CMS detected!".Recolor(Color.Orange) + Environment.NewLine;
+                                toReturn += "$-- check out /typo3temp, /typo3, and /typo3conf" + Environment.NewLine;
+                                toReturn += $"-- git clone https://github.com/whoot/Typo3Scan && python3 typo3scan.py -d {urlPrefix}" + Environment.NewLine;
+                            }
+                            else if (tagValue.StartsWith("WordPress "))
+                            {
+                                // Do nothing - WordPress is more thoroughly checked further down
+                            }
+                            else if (tagValue.StartsWith("Ghost "))
+                            {
+                                // Ghost
+                                toReturn += "- " + (tagValue + " detected!").Recolor(Color.Orange) + Environment.NewLine;
+                            }
+                            else
+                            {
+                                toReturn += "- " + (tagValue + " detected!").Recolor(Color.Orange) + Environment.NewLine;
+                            }
                         }
-                    }
-                    else if (contentValue.StartsWith("TYPO3"))
-                    {
-                        toReturn += "- " + "TYPO3 CMS detected!".Recolor(Color.Orange) + Environment.NewLine;
-                        toReturn += "$-- check out /typo3temp, /typo3, and /typo3conf" + Environment.NewLine;
-                        toReturn += $"-- git clone https://github.com/whoot/Typo3Scan && python3 typo3scan.py -d {urlPrefix}" + Environment.NewLine;
-                    }
-                    else if (contentValue.StartsWith("WordPress "))
-                    {
-                        // Do nothing - WordPress is more thoroughly checked further down
-                    }
-                    else if (contentValue.StartsWith("Ghost "))
-                    {
-                        // Ghost
-                        toReturn += "- " + (contentValue + " detected!").Recolor(Color.Orange) + Environment.NewLine;
-                    }
-                    else
-                    {
-                        toReturn += "- " + (contentValue + " detected!").Recolor(Color.Orange) + Environment.NewLine;
+
+                        if (tagName == "description")
+                        {
+                            // CrushFTP
+                            if (tagValue == "CrushFTP - Login")
+                            {
+                                toReturn += "- " + "CrushFTP detected!".Recolor(Color.Orange) + Environment.NewLine;
+                                if (pageText.Contains("/assets/app/login.js?v="))
+                                {
+                                    string versionText = pageText.Remove(0, pageText.IndexOf("/assets/app/login.js?v=", StringComparison.Ordinal) + 23);
+                                    versionText = versionText.Substring(0, versionText.IndexOf('"'));
+                                    // https://www.crushftp.com/WebInterface/login.html?u=demo&p=test
+                                    // 11.W.657-2025_03_08_07_52 // Vulnerable
+                                    // 11.W.800-2025_08_13_13_17 // Not Vulnerable
+                                    // ???
+                                    // CVE-2025-31161 - CrushFTP 10 before 10.8.4 and 11 before 11.3.1
+                                    // https://www.crushftp.com/crush11wiki/Wiki.jsp?page=Update
+                                    // 10.8.4 and 11.3.1 were published on 3/21/2025 - Any before that
+                                    string majorVersion = versionText.Substring(0, versionText.IndexOf('.'));
+                                    string dateVersion = versionText.Remove(0, versionText.IndexOf('-') + 1);
+                                    DateTime versionDate = DateTime.ParseExact(dateVersion, "yyyy_MM_dd_HH_mm", CultureInfo.InvariantCulture);
+                                    DateTime safeDate = DateTime.ParseExact("2025/21/03", "yyyy/dd/MM", CultureInfo.InvariantCulture);
+                                    if (majorVersion == "10" || majorVersion == "11")
+                                    {
+                                        if (versionDate < safeDate)
+                                        {
+                                            toReturn += "-- " + "Vulnerable to CVE-2025-31161!!! <----".Recolor(Color.Orange);
+                                        }
+                                    }
+                                }
+                                
+                            }
+                            else
+                            {
+                                toReturn += "- Potentially useful meta description value: " + tagValue + Environment.NewLine;
+                            }
+                        }
                     }
                 }
 
@@ -2421,7 +2492,7 @@ namespace Reecon
             }
 
             // And finally, any additional info from the base connection
-            if (httpInfo.AdditionalInfo != "")
+            if (httpInfo.AdditionalInfo != null && httpInfo.AdditionalInfo.Trim() != "")
             {
                 toReturn += "- Additional Info: " + httpInfo.AdditionalInfo + Environment.NewLine;
             }
@@ -2432,7 +2503,7 @@ namespace Reecon
             return toReturn;
         }
 
-        public static string TestBaseLFI(string ip, int port)
+        public static string TestBaseLfi(string ip, int port)
         {
             string result = General.BannerGrab(ip, port, "GET /../../../../../../etc/passwd HTTP/1.1" + Environment.NewLine + "Host: " + ip + Environment.NewLine + Environment.NewLine, 2500);
             if (result.Contains("root"))
@@ -2611,8 +2682,5 @@ namespace Reecon
 
             return toReturn;
         }
-
-        [GeneratedRegex(@"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", RegexOptions.IgnoreCase, "en-ZA")]
-        private static partial Regex MyRegex();
     }
 }

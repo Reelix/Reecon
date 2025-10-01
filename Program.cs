@@ -40,15 +40,21 @@ namespace Reecon
                 Console.ResetColor();
                 return;
             }
-            else if (args[0].Contains("-ip"))
+            else if (args[0].Contains("-apikey"))
             {
-                General.PrintIpList();
+                ApiKey.Search(args);
                 Console.ResetColor();
                 return;
             }
             else if (args[0].Contains("-bloodhound"))
             {
                 Bloodhound.Run(args);
+                Console.ResetColor();
+                return;
+            }
+            else if (args[0].Contains("-ip"))
+            {
+                General.PrintIpList();
                 Console.ResetColor();
                 return;
             }

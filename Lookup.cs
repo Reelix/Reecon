@@ -25,7 +25,13 @@ public static class Lookup
             string status = jsonRoot.GetProperty("status").GetString() ?? "";
             if (status != "success")
             {
+                string message = jsonRoot.GetProperty("message").GetString() ?? "";
                 Console.WriteLine($"Lookup Error for {ip}: " + status);
+                if (message != "")
+                {
+                    Console.WriteLine($"- Reason: {message}");
+                }
+                return;
             }
             string country = jsonRoot.GetProperty("country").GetString() ?? "";
             string countryCode = jsonRoot.GetProperty("countryCode").GetString() ?? "";

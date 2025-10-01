@@ -18,37 +18,23 @@ namespace Reecon
             return ("HTTP", result);
         }
 
-        public static string GetInfoMain(string target, int port, bool isHTTPS)
+        public static string GetInfoMain(string target, int port, bool isHttps)
         {
             try
             {
-                string url = "";
-                if (isHTTPS)
+                string url;
+                if (isHttps)
                 {
-                    if (port == 443)
-                    {
-                        url = $"https://{target}/";
-                    }
-                    else
-                    {
-                        url = $"https://{target}:{port}/";
-                    }
+                    url = port == 443 ? $"https://{target}/" : $"https://{target}:{port}/";
                 }
                 else
                 {
-                    if (port == 80)
-                    {
-                        url = $"http://{target}/";
-                    }
-                    else
-                    {
-                        url = $"http://{target}:{port}/";
-                    }
+                    url = port == 80 ? $"http://{target}/" : $"http://{target}:{port}/";
                 }
-                HttpInfo httpInfo = Web.GetHttpInfo(url);
+                HttpInfo httpInfo = GetHttpInfo(url);
                 
                 // AdditionalInfo with a single word is actually broken
-                // May need to shift these outsomewhere else
+                // May need to shift these out somewhere else
                 if (httpInfo.AdditionalInfo != null && !httpInfo.AdditionalInfo.Contains(' '))
                 {
                     if (httpInfo.AdditionalInfo == "Timeout")
@@ -98,10 +84,10 @@ namespace Reecon
                         portData += Environment.NewLine + commonFiles;
                     }
                 }
-                string baseLFI = Web.TestBaseLFI(target, port);
-                if (baseLFI != "")
+                string baseLfi = TestBaseLfi(target, port);
+                if (baseLfi != "")
                 {
-                    portData += Environment.NewLine + baseLFI + Environment.NewLine;
+                    portData += Environment.NewLine + baseLfi + Environment.NewLine;
                 }
                 if (portData == "")
                 {
