@@ -14,7 +14,7 @@
 
   <ItemGroup>
 		<!-- FTP - To find hidden folders (Named .) and to read text in files -->
-		<PackageReference Include="FluentFTP" Version="53.0.1" />
+		<PackageReference Include="FluentFTP" Version="53.0.2" />
 		<PackageReference Include="JetBrains.Annotations" Version="2025.2.2" />
       <!-- LDAP with Linux Support -->
       <PackageReference Include="Novell.Directory.Ldap.NETStandard" Version="4.0.0" />
