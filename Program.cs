@@ -19,14 +19,14 @@ namespace Reecon
             
             // Stands out a bit more
             Console.ForegroundColor = ConsoleColor.White;
-            
+
             // Show the banner (Rather self-explanatory :p)
             General.ShowBanner();
-
+            
             // And begin!
             if (args.Length == 0)
             {
-                General.ShowHelp();
+                General.ShowHelp(false);
                 Console.ResetColor();
                 return;
             }
@@ -36,7 +36,7 @@ namespace Reecon
             if (args.Contains("-h") || args.Contains("--help") || args.Contains("--version") || args.Contains("-v") ||
                 args.Contains("-V") || args.Contains("--v")) // Any others? :p
             {
-                General.ShowHelp();
+                General.ShowHelp(false);
                 Console.ResetColor();
                 return;
             }
@@ -103,12 +103,6 @@ namespace Reecon
             else if (args.Contains("-shell") || args.Contains("--shell"))
             {
                 Shell.GetInfo(args);
-                Console.ResetColor();
-                return;
-            }
-            else if (args.Contains("-smb-brute"))
-            {
-                Smb.SMBBrute(args);
                 Console.ResetColor();
                 return;
             }

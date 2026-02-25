@@ -43,9 +43,9 @@ namespace Reecon
             InitialChecks(path);
 
             // Find OS
-            var OS = GetOS();
+            var operatingSystem = GetOS();
 
-            if (OS == General.OperatingSystem.Linux)
+            if (operatingSystem == General.OperatingSystem.Linux)
             {
                 Console.WriteLine("OS Detected as: " + "Linux".Recolor(Color.Green));
                 Console.WriteLine("Running additional checks - Please wait...");
@@ -138,11 +138,7 @@ namespace Reecon
                 DoLFI(linux_ssh);
 
                 // Linux - Misc
-                List<string> linux_misc = new()
-                {
-                    "/etc/laurel/config.toml" // Tell if exists - Nothing super useful though
-                    // /var/log/laurel
-                };
+                List<string> linux_misc = ["/etc/laurel/config.toml"];
                 DoLFI(linux_misc);
 
                 // Mega Weird
@@ -151,7 +147,7 @@ namespace Reecon
                 DoLFI(["phpinfo();"]);
                 bypassMethod = actualBypassMethod;
             }
-            else if (OS == General.OperatingSystem.Windows)
+            else if (operatingSystem == General.OperatingSystem.Windows)
             {
                 Console.WriteLine("OS Detected as: Windows");
                 // Do IIS Checks
@@ -163,7 +159,7 @@ namespace Reecon
                 // Unknown - Do All Checks
             }
             Console.WriteLine("All Checks Done!");
-            if (OS == General.OperatingSystem.Linux)
+            if (operatingSystem == General.OperatingSystem.Linux)
             {
                 Console.WriteLine("Note: If you can create sessions, they can be stored in /tmp/ses_SESSID");
             }
@@ -468,6 +464,7 @@ namespace Reecon
                     // NFL 2
                     && resultLength != notFoundLength2 && resultLength != (notFoundLength2 + check.Length + bypassLength)
                     // NFL 3
+                    && resultLength != notFoundLength3
                     && (resultLength - (check.Length + bypassLength) != notFoundLength3)
                     && !result.Contains("failed to open stream")
                     && !result.Contains("Attack detected") // Firewall

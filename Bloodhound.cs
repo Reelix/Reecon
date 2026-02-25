@@ -13,9 +13,9 @@ namespace Reecon
 {
     public static class Bloodhound
     {
-        private static readonly string BloodhoundUsername = "admin";
-        private static readonly string BloodhoundPassword = "Password111!";
-        private static readonly string BloodhoundURL = "http://localhost:8080/"; // With trailing /
+        private const string BloodhoundUsername = "admin";
+        private const string BloodhoundPassword = "Password111!";
+        private const string BloodhoundUrl = "http://localhost:8080/"; // With trailing /
 
         public static void Run(string[] args)
         {
@@ -81,7 +81,7 @@ namespace Reecon
 
             Console.WriteLine("Exploring data...");
             // Get Profile ObjectId
-            (string Text, HttpStatusCode StatusCode) profileIdReq = Web.DownloadString($"{BloodhoundURL}api/v2/search?q={userId}", JWT: jwt);
+            (string Text, HttpStatusCode StatusCode) profileIdReq = Web.DownloadString($"{BloodhoundUrl}api/v2/search?q={userId}", JWT: jwt);
             if (profileIdReq.StatusCode != HttpStatusCode.OK)
             {
                 Console.WriteLine("Error - Unable to get info :(");
@@ -115,7 +115,7 @@ namespace Reecon
                 string postData = $$"""{"query":"{{req}}","include_properties":true}""";
                 Dictionary<string, string> headers = new() { { "Content-Type", "application/json" } };
                 byte[] byteData = Encoding.ASCII.GetBytes(postData);
-                Web.UploadDataResult cypherReq = Web.UploadData($"{BloodhoundURL}api/v2/graphs/cypher", RequestHeaders: authHeader, ContentHeaders: headers, PostContent: byteData);
+                Web.UploadDataResult cypherReq = Web.UploadData($"{BloodhoundUrl}api/v2/graphs/cypher", RequestHeaders: authHeader, ContentHeaders: headers, PostContent: byteData);
 
                 // (string Text, HttpStatusCode StatusCode) cypherReq = Web.DownloadString($"{BloodhoundURL}ui/explore?exploreSearchTab=cypher&searchType=cypher&cypherSearch={base64Req}", JWT: jwt);
                 if (cypherReq.StatusCode == HttpStatusCode.OK)
@@ -140,7 +140,7 @@ namespace Reecon
             }
 
             // Memberships
-            (string Text, HttpStatusCode StatusCode) membershipsReq = Web.DownloadString($"{BloodhoundURL}api/v2/users/{profileId}/memberships", JWT: jwt);
+            (string Text, HttpStatusCode StatusCode) membershipsReq = Web.DownloadString($"{BloodhoundUrl}api/v2/users/{profileId}/memberships", JWT: jwt);
             JsonDocument membershipsInfo = JsonDocument.Parse(membershipsReq.Text);
             JsonElement membershipsChildren = membershipsInfo.RootElement.GetProperty("data");
             foreach (JsonElement membership in membershipsChildren.EnumerateArray())
@@ -252,11 +252,11 @@ namespace Reecon
         {
             // https://bloodhound.specterops.io/resources/edges/overview
 
-            string IP;
+            string ip;
             string mainDomain = node1Name.Split('@')[1];
             try
             {
-                IP = System.Net.Dns.GetHostEntry(mainDomain).AddressList.First().ToString();
+                ip = System.Net.Dns.GetHostEntry(mainDomain).AddressList.First().ToString();
             }
             catch (Exception ex)
             {
@@ -288,7 +288,7 @@ namespace Reecon
                 string userDomain = node1Name.Split('@')[1];
                 string groupName = node2Name.Split('@')[0];
                 Console.WriteLine($"- {userDomain} can add themself to {groupName} due to AddSelf permissions.");
-                Console.WriteLine($"-- bloodyAD --host {IP} -d {userDomain} -u {userName} -p '{"PASSWORD".Recolor(Color.Green)}' add groupMember {groupName} {userName}");
+                Console.WriteLine($"-- bloodyAD --host {ip} -d {userDomain} -u {userName} -p '{"PASSWORD".Recolor(Color.Green)}' add groupMember {groupName} {userName}");
             }
 
             // The User has WriteOwner over another User
@@ -298,8 +298,8 @@ namespace Reecon
                 string secondUserName = node2Name.Split('@')[0];
                 string domain = node1Name.Split('@')[1];
                 Console.WriteLine($"- {firstUserName} has write ownership over {secondUserName}");
-                Console.WriteLine($"-- bloodyAD --host {IP} -d {domain} -u {firstUserName} -p '{"PASSWORD".Recolor(Color.Green)}' add genericAll {secondUserName} {firstUserName}");
-                Console.WriteLine($"-- bloodyAD --host {IP} -d {domain} -u {firstUserName} -p '{"PASSWORD".Recolor(Color.Green)}' set password {secondUserName} 'Password123!'");
+                Console.WriteLine($"-- bloodyAD --host {ip} -d {domain} -u {firstUserName} -p '{"PASSWORD".Recolor(Color.Green)}' add genericAll {secondUserName} {firstUserName}");
+                Console.WriteLine($"-- bloodyAD --host {ip} -d {domain} -u {firstUserName} -p '{"PASSWORD".Recolor(Color.Green)}' set password {secondUserName} 'Password123!'");
             }
 
             //
@@ -505,10 +505,13 @@ namespace Reecon
             string postData = $$"""{"login_method":"secret","username":"{{BloodhoundUsername}}","secret":"{{BloodhoundPassword}}"}""";
             Dictionary<string, string> headers = new() { { "Content-Type", "application/json" } };
             byte[] byteData = Encoding.ASCII.GetBytes(postData);
-            Web.UploadDataResult authResult = Web.UploadData($"{BloodhoundURL}api/v2/login", PostContent: byteData, ContentHeaders: headers);
+            Web.UploadDataResult authResult = Web.UploadData($"{BloodhoundUrl}api/v2/login", PostContent: byteData, ContentHeaders: headers);
             if (authResult.StatusCode == null)
             {
-                Console.WriteLine($"No HTTP Status Code - Is the server at {BloodhoundURL} down?");
+                Console.WriteLine($"No HTTP Status Code - Is the server at {BloodhoundUrl} down?");
+                // It's down - Can just exit.
+                // Can probably do this better by returning an enum or something.
+                Environment.Exit(0);
                 return null;
             }
 
@@ -534,8 +537,7 @@ namespace Reecon
             }
 
             // Use the JWT to create a File Upload Job
-            Dictionary<string, string> authHeader = new();
-            authHeader.Add("Authorization", "Bearer " + jwt);
+            Dictionary<string, string> authHeader = new() { { "Authorization", "Bearer " + jwt } };
             byte[] emptyPost = new byte[1];
             Web.UploadDataResult fileUploadJob = Web.UploadData($"http://localhost:8080/api/v2/file-upload/start",
                 RequestHeaders: authHeader, PostContent: emptyPost);
@@ -585,22 +587,24 @@ namespace Reecon
             Console.Write("Ingesting...");
 
             string statusMessage = "";
-            while (statusMessage != "Complete")
+            while (statusMessage != "Complete") // If it fails. then this loops forever - Never had that yet, so :p
             {
-                string jobData = Web.DownloadString("http://localhost:8080/api/v2/file-upload?id=" + jobId.ToString(),
-                    JWT: jwt).Text;
-                JsonElement.ArrayEnumerator dataArray =
-                    JsonDocument.Parse(jobData).RootElement.GetProperty("data").EnumerateArray();
+                string jobData = Web.DownloadString("http://localhost:8080/api/v2/file-upload?id=" + jobId, JWT: jwt).Text;
+                JsonElement.ArrayEnumerator dataArray = JsonDocument.Parse(jobData).RootElement.GetProperty("data").EnumerateArray();
+
+                // Could probably refactor this entire thing to a single LINQ query since all we need is the value that matches the id...
                 foreach (JsonElement dataItem in dataArray)
                 {
                     if (dataItem.GetProperty("id").GetInt32() == jobId)
                     {
                         statusMessage = dataItem.GetProperty("status_message").GetString() ?? string.Empty;
+                        // A progress dot per loop whilst waiting
                         Console.Write(".");
                         break;
                     }
                 }
 
+                // Wait for it to complete 
                 Thread.Sleep(2500);
             }
 
@@ -611,6 +615,7 @@ namespace Reecon
             return true;
         }
 
+        // Here be dragons
         private static (List<NodeItem> Nodes, List<RelationshipItem> Relationships) ParseJsonBlob(string jsonBlob)
         {
             List<NodeItem> nodes = [];

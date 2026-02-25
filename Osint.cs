@@ -26,13 +26,17 @@ namespace Reecon
             // Keep this in alphabetical order
             
             GetGithubInfo(username);
-            // GetInstagramInfo(username); - Broken - https://www.instagram.com/web/search/topsearch/?query=Reelix
+            // GetInstagramInfo(username); - Broken
+            // https://www.instagram.com/web/search/topsearch/?query=Reelix
+            // Requires any ds_user_id value, and a valid session token...
             GetLinkMeInfo(username);
             GetPastebinInfo(username);
             GetRecRoomInfo(username);
             GetRedditInfo(username);
             GetSteamInfo(username);
-            GetTelegramInfo(username);
+            GetThreadsInfo(username);
+            GetInstagramInfo2(username);
+            // GetTelegramInfo(username);
             GetTwitterInfo(username);
             GetYouTubeInfo(username);
             // TODO: Disqus - https://disqus.com/by/soremanzo/about/ (Comment count + About page)
@@ -108,6 +112,25 @@ namespace Reecon
             }
         }
         */
+
+        private static void GetInstagramInfo2(string username)
+        {
+            string profileUrl = $"https://www.instagram.com/{username}";
+            Web.HttpInfo httpInfo = Web.GetHttpInfo(profileUrl);
+            if (httpInfo.StatusCode != HttpStatusCode.NotFound && httpInfo.StatusCode == HttpStatusCode.OK)
+            {
+                // It's hacky - But it works :p
+                if (httpInfo.ResponseHeaders.FirstOrDefault(x => x.Key == "document-policy").Value.Count() == 2)
+                {
+                    Console.WriteLine("- Instagram: " + "Found".Recolor(Color.Green));
+                    Console.WriteLine($"-- Profile Link: {profileUrl}");
+                }
+                else
+                {
+                    Console.WriteLine("- Instagram: Not Found");
+                }
+            }
+        }
         
         private static void GetLinkMeInfo(string username)
         {
@@ -223,7 +246,22 @@ namespace Reecon
             }
         }
 
-        private static void GetTelegramInfo(string username)
+        private static void GetThreadsInfo(string username)
+        {
+            string profileUrl = $"https://www.threads.com/@{username}";
+            Web.HttpInfo httpInfo = Web.GetHttpInfo(profileUrl);
+            if (httpInfo.StatusCode != HttpStatusCode.NotFound && httpInfo.StatusCode == HttpStatusCode.OK) // Threads redirects if the profile doesn't exist
+            {
+                Console.WriteLine("- Threads: " + "Found".Recolor(Color.Green));
+                Console.WriteLine($"-- Profile Link: {profileUrl}");
+            }
+            else
+            {
+                Console.WriteLine("- Threads: Not Found");
+            }
+        }
+
+        public static void GetTelegramInfo(string username)
         {
             Web.HttpInfo httpInfo = Web.GetHttpInfo($"https://t.me/{username}");
             if (httpInfo.StatusCode != HttpStatusCode.NotFound && httpInfo.PageText != null && httpInfo.PageText.Contains("tgme_page_extra"))
@@ -237,6 +275,11 @@ namespace Reecon
                 {
                     // Username
                     Console.WriteLine("- Telegram (User): " + "Found".Recolor(Color.Green));
+                    string name = httpInfo.PageText.Remove(0,  httpInfo.PageText.IndexOf("tgme_page_title", StringComparison.Ordinal) + 15);
+                    // Span inside
+                    name = name.Remove(0, name.IndexOf("<span dir = \"auto\">", StringComparison.Ordinal) + 20);
+                    name = name.Substring(0, name.IndexOf("</span>", StringComparison.Ordinal));
+                    Console.WriteLine($"-- Name: {name}");
                 }
                 else if (pageExtra.EndsWith("subscribers"))
                 {
@@ -344,9 +387,6 @@ namespace Reecon
                         Console.WriteLine("-- Description: " + description);
                     }
                 }
-
-                // New line break at the end
-                Console.WriteLine();
             }
             else if (httpInfo.StatusCode == HttpStatusCode.NotFound)
             {

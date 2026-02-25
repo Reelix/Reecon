@@ -78,7 +78,11 @@ namespace Reecon
                                         }
                                         else if (versionStartIncluding != null && versionEndIncluding == null && versionEndExcluding != null)
                                         {
-                                            affected = $"From {versionStartIncluding} to {versionEndIncluding} (Excluding)";
+                                            affected = $"From {versionStartIncluding} to {versionEndExcluding} (Excluding)";
+                                        }
+                                        else if (versionStartIncluding == null && versionEndIncluding == null && versionEndExcluding == null)
+                                        {
+                                            affected = "All"; // Is it, or is it just not stated?
                                         }
                                         else
                                         {

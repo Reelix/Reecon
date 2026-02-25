@@ -25,11 +25,15 @@ namespace Reecon
 
         public static void ShowBanner()
         {
-            Console.WriteLine("Reecon - Version 0.40 ( https://github.com/Reelix/Reecon )".Recolor(Color.Yellow));
+            Console.WriteLine("Reecon - Version 0.41 ( https://github.com/Reelix/Reecon )".Recolor(Color.Yellow));
         }
-        public static void ShowHelp()
+        public static void ShowHelp(bool includeBanner = true)
         {
-            ShowBanner();
+            if (includeBanner)
+            {
+                ShowBanner();
+            }
+
             Console.WriteLine("Usage");
             Console.WriteLine("-----");
             Console.WriteLine($"Basic Scan:\t{ProgramName} IP OutputName (Optional: -noping to skip the online check)");
@@ -40,15 +44,15 @@ namespace Reecon
             Console.WriteLine($"Nist Search:\t{ProgramName} -search NameHere (Only 6/10+ results)");
             Console.WriteLine($"Searchsploit:\t{ProgramName} -searchsploit NameHere (Beta)");
             Console.WriteLine($"Shell Gen:\t{ProgramName} -shell");
-            Console.WriteLine($"SMB Brute:\t{ProgramName} -smb-brute (Linux Only)");
             Console.WriteLine($"WinRM Brute:\t{ProgramName} -winrm-brute IP UserList PassList");
             Console.WriteLine($"LFI Test:\t{ProgramName} -lfi (Very buggy)");
             Console.WriteLine($"Web Info:\t{ProgramName} -web url (Very buggy)");
             Console.WriteLine($"IP Lookup:\t{ProgramName} -lookup IP");
             Console.WriteLine($"API Key Lookup:\t{ProgramName} -apikey APIKey");
+            Console.WriteLine($"Bloodhound Lookup:\t{ProgramName} -bloodhound (Beta)");
         }
 
-        // Fingerprinting service
+        // Fingerprinting service 
         public static List<List<byte>> MultiBannerGrab(string ip, int port, int bufferSize = 512, int timeout = 5000)
         {
             List<List<byte>> returnList = new();
@@ -329,6 +333,14 @@ namespace Reecon
 
         public static bool? IsUp(string ip)
         {
+            if (General.GetOperatingSystem() == OperatingSystem.Linux)
+            {
+                if (!General.IsInstalledOnLinux("ping"))
+                {
+                    Console.WriteLine("ping does not exist on the OS - Try with -noping");
+                    return false;
+                }
+            }
             using Ping myPing = new();
             try
             {

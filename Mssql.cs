@@ -37,6 +37,8 @@
             INNER JOIN sys.server_principals b
             ON a.grantor_principal_id = b.principal_id
             WHERE a.permission_name = 'IMPERSONATE'
+            
+            SELECT distinct b.name FROM sys.server_permissions a INNER JOIN sys.server_principals b ON a.grantor_principal_id = b.principal_id WHERE a.permission_name = 'IMPERSONATE'
 
             // If you can impersonate "sa"
             EXECUTE AS LOGIN = 'sa';
@@ -46,7 +48,8 @@
             RECONFIGURE
             EXEC master..xp_cmdshell 'whoami' // Rerun at end
             */
-            return ("MSSQL", "");
+            string toReturn = "- Bug Reelix to finish MSSQL implementation.";
+            return ("MSSQL", toReturn);
         }
     }
 }

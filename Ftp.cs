@@ -53,7 +53,7 @@ namespace Reecon
                     // Remove the logger-related stuff
                     string bannerMessage = loggerString.Remove(0, "Response: ".Length);
                     // logger messages end off with a time stamp in some weird format - [738959.568d]
-                    bannerMessage = bannerMessage.Substring(0, bannerMessage.LastIndexOf("[") - 1);
+                    bannerMessage = bannerMessage.Substring(0, bannerMessage.LastIndexOf('[') - 1);
                     ftpLoginResult += ParseBannerMessageResponse(bannerMessage) + Environment.NewLine;
                 }
                 /*

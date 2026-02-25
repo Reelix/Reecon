@@ -74,6 +74,21 @@
         3.) ~/scripts/update.sh
         4.) sudo apt install google-cloud-cli -y
         */
+        
+        
+        /*
+         Microsoft Azure
+         Login: az login --username 'username@4rhdc6.onmicrosoft.com' --password 'MyPasswordHere' --allow-no-subscriptions
+         Get Tenant ID: az account show --query "tenantId"
+         User Summary: az ad user list --output table
+         Active User Info: az ad user list
+         Continuous access evaluation resulted... : az logout
+         Active Groups: az rest --method GET --url 'https://graph.microsoft.com/v1.0/groups'
+         Deleted Groups: az rest --method GET --url 'https://graph.microsoft.com/v1.0/directory/deletedItems/microsoft.graph.group'
+         List all Service Principles: az ad sp list --all
+         Get Branding given Tenant ID: az rest --method GET --url "https://graph.microsoft.com/v1.0/organization/$TENANT_ID/branding
+    
+         */
 
     }
 }
