@@ -22,7 +22,7 @@ namespace Reecon
 
             // Show the banner (Rather self-explanatory :p)
             General.ShowBanner();
-            
+
             // And begin!
             if (args.Length == 0)
             {

@@ -150,6 +150,11 @@ namespace Reecon
                 {
                     Console.WriteLine("Member Of: " + membershipName.Recolor(Color.Green) + " <---- WINRM!!!");
                 }
+                // https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/7a76a403-ed8d-4c39-adb7-a3255cab82c5
+                else if (membershipName.StartsWith("PRE-WINDOWS 2000 COMPATIBLE ACCESS"))
+                {
+                    Console.WriteLine("Member Of: " + membershipName.Recolor(Color.Green) + " <---- Run --pre2k in nxc");
+                }
                 else
                 {
                     Console.WriteLine("Member Of: " + membershipName);
@@ -173,7 +178,6 @@ namespace Reecon
             // Console.WriteLine($"\nParsed Nodes: {parsedNodes.Count}");
             foreach (NodeItem node in parsedNodes)
             {
-                // Console.WriteLine($"  Node Key: {node.OriginalKey}, Name: {node.Data?.Name} (ObjectId: {node.Data?.ObjectId}), Type: {node.Data?.NodeType}");
                 Node thisNode = new Node(int.Parse(node.OriginalKey ?? "Break"), node.Data?.Name ?? "Unknown Name - Bug Reelix", node.Data?.ObjectId ?? "Unknown Id - Bug Reelix",
                     node.Data?.NodeType ?? "Unknown Type - Bug Reelix");
                 nodeList.Add(thisNode);
@@ -182,7 +186,6 @@ namespace Reecon
             // Console.WriteLine($"\nParsed Relationships: {parsedRelationships.Count}");
             foreach (RelationshipItem rel in parsedRelationships)
             {
-                // Console.WriteLine($"  Rel Key: {rel.OriginalKey}, Type: {rel.LabelInfo?.Text}, From: {rel.Id1}, To: {rel.Id2}");
                 Relationship thisRelationship = new Relationship(rel.LabelInfo?.Text ?? "", int.Parse(rel.Id1 ?? "Break"), int.Parse(rel.Id2 ?? "Break"));
                 relationshipList.Add(thisRelationship);
             }
@@ -234,9 +237,8 @@ namespace Reecon
 
                         // If we haven't processed this target node before, add it to the queue
                         // to process its relationships in a future iteration.
-                        if (!processedNodeKeys.Contains(targetNode.Key))
+                        if (processedNodeKeys.Add(targetNode.Key))
                         {
-                            processedNodeKeys.Add(targetNode.Key);
                             nodesToProcess.Enqueue(targetNode);
                         }
                     }
@@ -253,7 +255,29 @@ namespace Reecon
             // https://bloodhound.specterops.io/resources/edges/overview
 
             string ip;
-            string mainDomain = node1Name.Split('@')[1];
+            
+            string mainDomain = "";
+            if (node1Type == "User")
+            {
+                // user@domain.com
+                mainDomain = node1Name.Split('@')[1];
+            }
+            else if (node1Type == "Group")
+            {
+                // group@domain.com
+                mainDomain = node1Name.Split('@')[1];
+            }
+            else if (node1Type == "Computer")
+            {
+                // DC01.domain.com
+                mainDomain = node1Name.Remove(0, node1Name.IndexOf('.') + 1);
+            }
+            else
+            {
+                Console.WriteLine($"Searching not implemented for type: {node1Type} - Bug Reelix!");
+                Environment.Exit(0);
+            }
+
             try
             {
                 ip = System.Net.Dns.GetHostEntry(mainDomain).AddressList.First().ToString();
@@ -327,6 +351,18 @@ namespace Reecon
                     string computerName = node2Name.Split('@')[0];
                     Console.WriteLine($"- Users of Group {groupName} can read the GMSA Passsword of the Computer {computerName}");
                     Console.WriteLine($"-- python3 gMSADumper.py -u '{"UserInGroup".Recolor(Color.Green)}' -p '{"UserPass".Recolor(Color.Green)}' -d '{domain}'");
+                }
+            }
+            
+            if (node1Type == "Group" && relationshipType == "ReadGMSAPassword" && node2Type == "User")
+            {
+                {
+                    // NodeItem computerNode = sortedNodes[1];
+                    string groupName = node1Name.Split('@')[0];
+                    string domain = node1Name.Split('@')[1];
+                    string userName = node2Name.Split('@')[0];
+                    Console.WriteLine($"- Users of Group {groupName} can read the GMSA Passsword of the User {userName}");
+                    Console.WriteLine($"-- faketime '2026-03-02T21:55:34' nxc ldap {domain} -u '{"UserInGroup".Recolor(Color.Green)}' [-p '{"UserPass".Recolor(Color.Green)}' / --use-kcache] --gmsa");
                 }
             }
 
@@ -406,7 +442,7 @@ namespace Reecon
                     string? userName = userNode.Data?.Name?.Split('@')[0];
                     string? userDomain = userNode.Data?.Name?.Split('@')[1];
                     string? groupName = groupNode.Data?.Name?.Split('@')[0];
-                    Console.WriteLine($"- {userDomain} can add themself to {groupName} due to AddSelf permissions.");
+                    Console.WriteLine($"- {userDomain} can add themselves to {groupName} due to AddSelf permissions.");
                     Console.WriteLine(
                         $"-- bloodyAD --host {"IP".Recolor(Color.Green)} -d {userDomain} -u {userName} -p '{"PASSWORD".Recolor(Color.Green)}' add groupMember {groupName} {userName}");
                 }

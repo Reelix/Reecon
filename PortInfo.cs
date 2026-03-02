@@ -343,6 +343,13 @@ namespace Reecon
                     unknownPortResult += "- To Read: https://www.hackingarticles.in/penetration-testing-on-voip-asterisk-server-part-2/";
                     Console.WriteLine(unknownPortResult + Environment.NewLine);
                 }
+                // EtherNet/IP "List Identity" Response
+                else if (bannerBytes[0] == 0x63 && bannerBytes[1] == 0x00)
+                {
+                    unknownPortResult += $"Port {port} - EtherNet/IP".Recolor(Color.Green) + Environment.NewLine;
+                    unknownPortResult += "- Python3 script - from pylogix import PLC, with PLC() as comm, etc.";
+                    Console.WriteLine(unknownPortResult + Environment.NewLine);
+                }
                 // FTP / SMTP
                 // Both start with a 220 response....
                 else if (bannerString.StartsWith("220 ")) // ToUpper for things like pyftpdlib / FreeFloat Ftp Server
