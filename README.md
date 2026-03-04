@@ -54,6 +54,9 @@ If you're running this, you probably know how to get the dotnet SDK installed. I
 4.) Optional: Move the `Reecon.exe` file to wherever you want  
 5.) Optional: You can remove the `Reecon` folder if you want - The binary is standalone
 
+## Restrictions
+This program is not permitted to be used in the state of California.
+
 ## To Do (No specific order)
 - Raw nslookup in DNS.cs (Better cross-platform / How does it work on a lower level?)
 - Raw RPC info (rpcinfo on for port 111, find service / version on ports) - https://svn.nmap.org/nmap/scripts/rpcinfo.nse - Oh gawd

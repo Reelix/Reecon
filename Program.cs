@@ -17,7 +17,7 @@ namespace Reecon
             // For timing
             DateTime startDate = DateTime.Now;
             
-            // Stands out a bit more
+            // Stands out a bit more 
             Console.ForegroundColor = ConsoleColor.White;
 
             // Show the banner (Rather self-explanatory :p)

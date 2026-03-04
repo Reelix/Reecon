@@ -27,6 +27,7 @@ namespace Reecon
         {
             Console.WriteLine("Reecon - Version 0.41a ( https://github.com/Reelix/Reecon )".Recolor(Color.Yellow));
         }
+        
         public static void ShowHelp(bool includeBanner = true)
         {
             if (includeBanner)

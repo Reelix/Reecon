@@ -411,6 +411,7 @@ namespace Reecon
             // https://bloodhound.specterops.io/resources/edges/write-spn
             if (sortedNodes.Count == 2 && sortedRelationships.Count == 1)
             {
+            
                 if (sortedNodes[0].Data?.NodeType == "User" &&
                     sortedNodes[1].Data?.NodeType == "User" &&
                     sortedRelationships[0].LabelInfo?.Text == "WriteSPN")

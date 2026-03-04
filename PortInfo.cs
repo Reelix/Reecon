@@ -299,7 +299,7 @@ namespace Reecon
                 return "";
             }
 
-            // Intentionally closed
+            // Intentionally closed 
             foreach (List<byte> bannerBytes in bannerList)
             {
                 string bannerString = Encoding.UTF8.GetString(bannerBytes.ToArray());
