@@ -33,12 +33,16 @@ jobs:
         dotnet-version: '10.0.x'
 
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
+      uses: github/codeql-action/init@v3        dotnet restore
+        dotnet build --no-restore -c Release
       with:
         languages: ${{ matrix.language }}
 
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@v3
+    - name: Build
+      run: |
+        dotnet restore        dotnet restore
+        dotnet build --no-restore -c Release
+        dotnet build --no-restore -c Release
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
