@@ -20,12 +20,24 @@ public static class ApiKey
         }
 
         string apiKey = args[1];
+        bool found = false;
         // https://github.com/streaak/keyhacks
         
+        // Github
+        if (Regex.IsMatch(apiKey, "ghp_[a-zA-Z0-9]{36}"))
+        {
+            found = true;
+            Console.WriteLine("Github Token Detected");
+            
+            // Need to add something
+            // Potential: curl https://api.github.com/user -H "Authorization: token ghp_......"
+            Console.WriteLine("Can't do anything with it yet, though :/");
+        }
         // Will shift this out into its own class when this gets busier
         // Google-Maps-API-key
         if (Regex.IsMatch(apiKey, "AIza[0-9A-Za-z\\-_]{35}"))
         {
+            found = true;
             Console.WriteLine("Matches Google Maps Format - Testing...");
 
             // Sample: AIzaSyDe0LldBAVmT9ZzViJBZa0XQvR_iYEyA-0 (Don't ask)
@@ -125,6 +137,7 @@ public static class ApiKey
         // /^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$/
         if (Regex.IsMatch(apiKey, "^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$"))
         {
+            found = true;
             Console.WriteLine("Matches Telegram Bot Token Format - Testing...");
             string telegramBotToken = $"https://api.telegram.org/bot{apiKey}/getMe";
             // /getUpdates <---
@@ -136,13 +149,13 @@ public static class ApiKey
                 Console.WriteLine($"- Telegram Bot Token - The Bot Token is {"valid".Recolor(Color.Green)}.");
                 JsonDocument jsonData = JsonDocument.Parse(httpInfo.PageText);
                 JsonElement result = jsonData.RootElement.GetProperty("result");
-                if (result.TryGetProperty("first_name", out JsonElement jsonFirstName))
-                {
-                    Console.WriteLine($"-- First Name: {jsonFirstName.GetString()}");
-                }
                 if (result.TryGetProperty("username", out JsonElement jsonUsername))
                 {
                     Console.WriteLine($"-- Username: {jsonUsername.GetString()}");
+                }
+                if (result.TryGetProperty("first_name", out JsonElement jsonFirstName))
+                {
+                    Console.WriteLine($"-- First Name: {jsonFirstName.GetString()}");
                 }
                 Console.WriteLine("Woof");
                 
@@ -158,15 +171,29 @@ public static class ApiKey
                 // Find your own group ID
                 // Forward a random message to @getidsbot - Look at Origin Chat ID
                 
-                // Forward message from one group to another
+                // Get Bot Webhook ID
+                // curl https://api.telegram.org/bot{apiKey}/getWebhookInfo
+                
+                // Forward message from one group to another (NOTE: Must first be an administrator in your channel!)
                 // curl https://api.telegram.org/bot{apiKey}/forwardMessage -d from_chat_id=-fromGroupId -d chat_id=-toGroupId -d message_id=1
                 // Note: Some ID's may be deleted - Go from 1 to ...
+                
+                // Create invite link (Untested)
+                // curl https://api.telegram.org/bot{apiKey}/createChatInviteLink?chat_id=12345678&member_limit=1
+                
+                // Send message from bot to group
+                // curl https://api.telegram.org/bot{apiKey}/sendMessage -d chat_id=groupIdHere -d text="Test Message"
                 
             }
             else if (httpInfo.StatusCode == HttpStatusCode.Unauthorized)
             {
                 Console.WriteLine("- Telegram Bot Token - The Bot Token is invalid.");
             }
+        }
+        
+        if (!found)
+        {
+            Console.WriteLine("No API keys that this program detects match this format.");
         }
     }
 }

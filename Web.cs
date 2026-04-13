@@ -877,8 +877,9 @@ namespace Reecon
             string authority = uri.Authority; // domain:port
 
             string domainToCheck = scheme + "://" + authority + "/";
-            // Common to uncommon-ish - Maybe alphabetical later?
-            List<string> subdomains = ["www", "dev", "admin", "mail", "test", "panel", "nagios", "ftp", "status", "gitea", "storage"];
+            
+            // No particular order, although if something comes up very often, maybe I'll shift it more to the left
+            List<string> subdomains = ["www", "dev", "admin", "mail", "test", "staging", "panel", "portal", "nagios", "ftp", "status", "gitea", "storage"];
 
             var pageInfo = GetHttpInfo(url);
 
@@ -2018,8 +2019,8 @@ namespace Reecon
                             else if (tagValue.StartsWith("TYPO3"))
                             {
                                 toReturn += "- " + "TYPO3 CMS detected!".Recolor(Color.Orange) + Environment.NewLine;
-                                toReturn += "$-- check out /typo3temp, /typo3, and /typo3conf" + Environment.NewLine;
-                                toReturn += $"-- git clone https://github.com/whoot/Typo3Scan && python3 typo3scan.py -d {urlPrefix}" + Environment.NewLine;
+                                toReturn += "-- check out /typo3temp, /typo3, and /typo3conf" + Environment.NewLine;
+                                toReturn += "-- git clone https://github.com/whoot/Typo3Scan && python3 typo3scan.py -d {urlPrefix}" + Environment.NewLine;
                             }
                             else if (tagValue.StartsWith("WordPress "))
                             {

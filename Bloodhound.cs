@@ -14,7 +14,7 @@ namespace Reecon
     public static class Bloodhound
     {
         private const string BloodhoundUsername = "admin";
-        private const string BloodhoundPassword = "Password111!";
+        private const string BloodhoundPassword = "Password111!"; // Intentionally displayed
         private const string BloodhoundUrl = "http://localhost:8080/"; // With trailing /
 
         public static void Run(string[] args)
@@ -291,7 +291,19 @@ namespace Reecon
             //
             // Users
             //
+            
+            // The User has GenericWrite to another User
 
+            if (node1Type == "User" && relationshipType == "GenericWrite" && node2Type == "User")
+            {
+                string ourUserName = node1Name.Split('@')[0];
+                string userDomain = node1Name.Split('@')[1];
+                string otherUserName = node2Name.Split('@')[0];
+                // This abuse can be carried out when controlling an object that has a GenericAll, GenericWrite, WriteProperty or Validated-SPN
+                Console.WriteLine($"- The User {ourUserName} can perform a targeted Kerberoast attack against {otherUserName}");
+                Console.WriteLine($"-- targetedKerberoast.py -d '{userDomain}' -u '{ourUserName}' -p '{"PASSWORD".Recolor(Color.Green)}' --request-user '{otherUserName}'");
+            }
+            
             // The User has WriteSPN to another User
             if (node1Type == "User" && relationshipType == "WriteSPN" && node2Type == "User")
             {
@@ -545,7 +557,7 @@ namespace Reecon
             Web.UploadDataResult authResult = Web.UploadData($"{BloodhoundUrl}api/v2/login", PostContent: byteData, ContentHeaders: headers);
             if (authResult.StatusCode == null)
             {
-                Console.WriteLine($"No HTTP Status Code - Is the server at {BloodhoundUrl} down?");
+                Console.WriteLine($"No HTTP Status Code - Is the Bloodhound server at {BloodhoundUrl} down?");
                 // It's down - Can just exit.
                 // Can probably do this better by returning an enum or something.
                 Environment.Exit(0);

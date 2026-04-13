@@ -36,7 +36,7 @@ namespace Reecon
             GetSteamInfo(username);
             GetThreadsInfo(username);
             GetInstagramInfo2(username);
-            // GetTelegramInfo(username);
+            GetTelegramInfo(username);
             GetTwitterInfo(username);
             GetYouTubeInfo(username);
             // TODO: Disqus - https://disqus.com/by/soremanzo/about/ (Comment count + About page)

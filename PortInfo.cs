@@ -442,6 +442,14 @@ namespace Reecon
                     Console.WriteLine("Possibly Minecraft - Bug Reelix!");
                     Slp.GetInfo(target, port);
                 }
+                // MSSQL - Sample: 04 01 00 25 00 00 01 00 00 00 15 00 06 01 00 1b
+                else if (bannerBytes[0] == 0x04 && bannerBytes[1] == 0x01) // May need to expand this if too many false positives
+                {
+                    (string PortName, string PortData) portInfo = Mssql.GetInfo(target, port);
+                    unknownPortResult += $"Port {port} - {portInfo.PortName}".Recolor(Color.Green);
+                    Console.WriteLine(unknownPortResult + Environment.NewLine + portInfo.PortData + Environment.NewLine);
+                    break;
+                }
                 // MySQL
                 else if (bannerString.StartsWith('c') && bannerString.Contains("\0mysql_native_password\0"))
                 {
@@ -648,7 +656,7 @@ namespace Reecon
                 postScanActions += $"- Try list all records (Linux): dig @{target} domain.com any" + Environment.NewLine;
                 postScanActions += $"- Try a reverse lookup (Linux): dig @{target} -x {target}" + Environment.NewLine;
                 postScanActions += $"- Try a zone transfer (Linux): dig axfr domain.com @{target}" + Environment.NewLine;
-                postScanActions += $@"- Try add a custom record: echo -e 'server {target}\nzone domain.com\nupdate add custom-subdomain.domain.com 600 IN A YOUR_IP\nsend' | nsupdate" + Environment.NewLine;
+                postScanActions += $@"- Try add a custom record: echo -e 'server {target}\nzone domain.com\nupdate add custom-subdomain.domain.com 600 IN A YOUR_IP\nsend' | nsupdate (With -g after kinit if ldap auth required)" + Environment.NewLine;
                 postScanActions += $"-- Check if it worked: dig +noall +answer @{target} custom-subdomain.domain.com ANY" + Environment.NewLine;
             }
             else if (portName == "HTTP")
@@ -701,7 +709,13 @@ namespace Reecon
 
                     // Try to find Service Principal Names that are associated with normal user account.
                     postScanActions += $"- Kerberos Associated SPNs (Auth'd): GetUserSPNs.py {defaultNamingContext}/username:\"password\" -request" + Environment.NewLine;
+                    
+                    // Guest Kerberoasting
+                    postScanActions += $"- Guest Kerberoasting: nxc ldap {defaultNamingContext} -u 'guest' -p '' --kerberoasting kerberoastables.txt" + Environment.NewLine;
 
+                    // Writables (Because Bloodhound misses it ._.)
+                    postScanActions += $" - Get Writables: bloodyAD --host {defaultNamingContext} -d {defaultNamingContext} -u username -p 'password' get writable" + Environment.NewLine;
+                    
                     // Post exploitation
                     postScanActions += $"- If you get details: python3 secretsdump.py usernameHere:\"passwordHere\"@{target} | grep :" + Environment.NewLine;
                 }

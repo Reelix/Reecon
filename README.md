@@ -2,7 +2,7 @@
 
 Reelix's Recon - A small program for network recon.  
 This program is still in early stages of development and should probably not be used by anyone.
-* Version: 0.41a
+* Version: 0.41b
 * Build Status: <img src="https://img.shields.io/github/actions/workflow/status/Reelix/Reecon/dotnet-publish.yml" valign="middle" />
 * Requirements: [NMap 7.95+](https://nmap.org/download.html)
   * LDAP Enumeration on Ubuntu 22.04: Download + dpkg -i [this](https://packages.ubuntu.com/focal-updates/amd64/libldap-2.4-2/download)
@@ -32,19 +32,21 @@ If it sounds cool, I'll try :)
 ### Linux (armx64 / aarch64 - Is this the future?)
 - Download + Run https://github.com/Reelix/Reecon/releases/download/latest/reecon-linux-arm64
 
-## Build Setup
+## Build Setup (Optional - For Developers)
 ### Linux (Ubuntu 22.10 and above)
 sudo apt update  
 sudo apt upgrade  
 sudo apt install dotnet-sdk-10.0 -y
+### Linux (CachyOS / Arch)./reecon./bui
+sudo pacman -S dotnet-sdk-10.0
 ### Linux (Other)
 If you're running this, you probably know how to get the dotnet SDK installed. If not, start [here](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) (SDK 10.0.x)
 
 ## Build Instructions
 1.) Clone the repo: `git clone https://github.com/Reelix/Reecon.git`  
 2.) Run the build file: `chmod +x ./Reecon/build && ./Reecon/build`  
-3.) Run: `./reecon`  
-4.) Optional: Move `./reecon` into `/usr/local/bin/reecon` to be able to run `reecon` from anywhere  
+3.) Run: `/Reecon/bin/{OS-Here}/reecon`  
+4.) Optional: Move `reecon` into `/usr/local/bin/reecon` to be able to run `reecon` from anywhere  
 5.) Optional: You can remove the `./Reecon` folder if you want - The binary is standalone
 
 ### Windows  

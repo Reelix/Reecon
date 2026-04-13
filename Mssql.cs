@@ -9,6 +9,8 @@
 
             // TODO: Implement basic auth'd enumeration (VERSION, DB's, Tables, user privs)
             /*
+             
+            // What can your user do?
             select dp.NAME AS principal_name,
             dp.type_desc AS principal_type_desc,
             o.NAME AS object_name,
@@ -47,6 +49,19 @@
             EXEC master..sp_configure 'xp_cmdshell', '1'
             RECONFIGURE
             EXEC master..xp_cmdshell 'whoami' // Rerun at end
+            
+            
+            // Enumerate linked servers
+            nxc mssql <ip> -u user -p password -M enum_links
+            
+            // Exec command on a linked server
+            nxc mssql <ip> -u user -p password -M exec_on_link -o LINKED_SERVER=BRAAVOS COMMAND='select @@servername'
+            
+            // If you get a timeout, check
+            nxc mssql <ip> -u user -p password -q 'EXEC sp_helplinkedsrvlogin;'
+            
+            // If there are no results - See if you can manually add a DNS record for the linked server, and re-run it
+            
             */
             string toReturn = "- Bug Reelix to finish MSSQL implementation.";
             return ("MSSQL", toReturn);

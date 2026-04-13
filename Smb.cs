@@ -249,17 +249,28 @@ namespace Reecon
                             string itemComment = item.Split('|')[2];
                             smbClientItems += "- " + itemType + ": " + itemName + " " + (itemComment == "" ? "" : "(" + itemComment.Trim() + ")") + Environment.NewLine;
                             List<string> subProcessResults = General.GetProcessOutput("smbclient", $"//{target}/{itemName} --no-pass -c \"ls\"");
-                            if (subProcessResults.Count > 1 && !subProcessResults.Any(x => x.Contains("NT_STATUS_ACCESS_DENIED") || x.Contains("NT_STATUS_OBJECT_NAME_NOT_FOUND")))
+                            // Strip out . / .. (Folders)
+                            // This is a major hack, and will break on cases where the name starts with a period followed by enough spaces
+                            subProcessResults.RemoveAll(x => x.Trim().StartsWith(".".PadRight(15)));
+                            subProcessResults.RemoveAll(x => x.Trim().StartsWith("..".PadRight(15)));
+                            
+                            // And another to remove the disk space entry - Could theoretically remove a valid item, but highly unlikely
+                            subProcessResults.RemoveAll(x => x.Contains("blocks of size ") && x.Contains("blocks available"));
+                            if (!subProcessResults.Any(x => x.Contains("NT_STATUS_ACCESS_DENIED") || x.Contains("NT_STATUS_OBJECT_NAME_NOT_FOUND") || x.Contains("NT_STATUS_NO_SUCH_FILE listing \\*")))
                             {
-                                smbClientItems += "-- " + $"{itemName} has ls perms - {subProcessResults.Count} items found! -> smbclient //{target}/{itemName} --no-pass".Recolor(Color.Orange) + Environment.NewLine;
-                                smbClientItems += "--- To download the entire contents, add -c \"recurse; prompt; mget *\"" + Environment.NewLine;
+                                smbClientItems += "-- " + $"{itemName} has ls perms - {subProcessResults.Count} items found! -> smbclient '//{target}/{itemName}' --no-pass".Recolor(Color.Orange) + Environment.NewLine;
+                                foreach (string smbClientItem in subProcessResults)
+                                {
+                                    smbClientItems += "--- Item: " + smbClientItem + Environment.NewLine;
+                                }
+                                smbClientItems += "---- To download the entire contents, add -c \"recurse; prompt; mget *\"" + Environment.NewLine;
                             }
                             if (itemType == "IPC" && itemName == "IPC$")
                             {
                                 if (itemComment.Contains("Samba Server"))
                                 {
-                                    smbClientItems += "-- Samba Detected".Recolor(Color.Orange) + Environment.NewLine;
-                                    smbClientItems += "-- If version Samba 3.5.0 < 4.4.14/4.5.10/4.6.4, https://www.exploit-db.com/exploits/42084 / msfconsole -x \"use /exploit/linux/samba/is_known_pipename\"" + Environment.NewLine;
+                                    smbClientItems += "--- Samba Detected".Recolor(Color.Orange) + Environment.NewLine;
+                                    smbClientItems += "--- If version Samba 3.5.0 < 4.4.14/4.5.10/4.6.4, https://www.exploit-db.com/exploits/42084 / msfconsole -x \"use /exploit/linux/samba/is_known_pipename\"" + Environment.NewLine;
                                 }
                             }
                         }

@@ -30,7 +30,8 @@
 
         // S3 - Sample URL
         // http://s3.amazonaws.com/samplename/
-        // https://samplename.s3.amazonaws.com/
+        // https://samplename.s3.amazonaws.com/ - Eg: https://certifiedhacker003.s3.amazonaws.com/
+        
 
         // S3 - Logging In
         // export AWS_SESSION_TOKEN=FindIt
@@ -78,6 +79,17 @@
         
         /*
          Microsoft Azure
+         
+         Get TenantID for domain
+         - curl -s "https://login.microsoftonline.com/eccouncil.org/.well-known/openid-configuration" | jq -r '.token_endpoint' | cut -d'/' -f4
+         - The cut strips out https://login.microsoftonline.com/ at the start
+         
+         Get Tenant Region (US / NA / Etc) for domain
+         - curl -s "https://login.microsoftonline.com/eccouncil.org/.well-known/openid-configuration" | jq -r '.tenant_region_scope'
+         
+         Get Tenant Brand Name for domain (Eg: `EC-Council` for `eccouncil.org)
+         - curl -s "https://login.microsoftonline.com/getuserrealm.srf?login=anyuser@eccouncil.org&json=1" | jq -r '.FederationBrandName'
+         
          Login: az login --username 'username@4rhdc6.onmicrosoft.com' --password 'MyPasswordHere' --allow-no-subscriptions
          Get Tenant ID: az account show --query "tenantId"
          User Summary: az ad user list --output table

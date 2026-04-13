@@ -22,7 +22,7 @@ namespace Reecon
 
             // Show the banner (Rather self-explanatory :p)
             General.ShowBanner();
-
+            
             // And begin!
             if (args.Length == 0)
             {
@@ -298,9 +298,11 @@ namespace Reecon
             {
                 PostScanList.Add($"- Nmap Script+Version Scan: sudo nmap -sC -sV -p{string.Join(",", portsToScan)} {target} -oN nmap.txt" + Environment.NewLine);
                 PostScanList.Add($"- Nmap UDP Scan: sudo nmap -sU {target} (-F for top 100)" + Environment.NewLine);
+                
+                // May be looking for PortInfo.GetAdditionalPortInfo
                 foreach (string item in PostScanList)
                 {
-                    Console.Write(item);
+                    Console.Write(item); // Most already contain newlines - Could trim them I guess
                 }
             }
         }
