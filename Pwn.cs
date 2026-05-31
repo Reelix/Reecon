@@ -234,7 +234,7 @@ namespace Reecon
             }
             else
             {
-                Console.WriteLine("- rabin2 is not installed (sudo apt install radare2 or https://github.com/radareorg/radare2/releases) - Skipping nx check");
+                Console.WriteLine("- rabin2 is not installed (Install radare2 with your package manager or https://github.com/radareorg/radare2/releases) - Skipping nx check");
             }
 
             if (General.IsInstalledOnLinux("objdump"))

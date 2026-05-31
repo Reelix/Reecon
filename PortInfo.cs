@@ -472,6 +472,15 @@ namespace Reecon
                     unknownPortResult += Pop3.GetInfo(target, port);
                     Console.WriteLine(unknownPortResult);
                 }
+                // RDP
+                // The 03 00 00 13 (TPKT) and 0e d0 (X.224) handshake.
+                // This is the "ISO-on-TCP" standard that RDP has used since its inception (inherited from the T.120 protocol). <--- AI - To Verify
+                else if (bannerBytes[0] == 0x03 && bannerBytes[1] == 0x00 && bannerBytes[2] == 0x00 && bannerBytes[3] == 0x13 && bannerBytes[4] == 0x0e && bannerBytes[5] == 0xd0)
+                {
+                    unknownPortResult += $"Port {port} - RDP".Recolor(Color.Green) + Environment.NewLine;
+                    unknownPortResult += "- Bug Reelix to get more info on this (nmap has lots)";
+                    Console.WriteLine(unknownPortResult + Environment.NewLine);
+                }
                 // Redis
                 else if (bannerString == "-ERR unknown command 'Woof'")
                 {

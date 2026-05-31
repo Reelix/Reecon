@@ -348,7 +348,7 @@ namespace Reecon
                     if (enumdomusersList.Count == 1 && enumdomusersList[0].Contains("NT_STATUS_ACCESS_DENIED"))
                     {
                         anonAccess = false;
-                        rpcInfo = "- - enumdomusers is denied - Probably can't get anything useful" + Environment.NewLine;
+                        rpcInfo = "-- enumdomusers is denied - Probably can't get anything useful" + Environment.NewLine;
                     }
                     else if (enumdomusersList.Count == 1 && enumdomusersList[0].Contains("NT_STATUS_NOT_SUPPORTED"))
                     {

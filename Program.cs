@@ -8,7 +8,7 @@ namespace Reecon
     internal class Program
     {
         private static readonly List<int> PortList = [];
-        private static string target = "";
+        private static string _target = "";
         private static readonly List<Thread> ThreadList = [];
         private static readonly List<string> PostScanList = [];
 
@@ -167,7 +167,7 @@ namespace Reecon
                 Console.WriteLine("Parsing file...");
                 string fileName = args[0];
                 var nmapResult = Nmap.ParseFile(fileName);
-                target = nmapResult.Target;
+                _target = nmapResult.Target;
                 List<int> ports = nmapResult.Ports;
                 if (ports.Count == 0)
                 {
@@ -180,10 +180,10 @@ namespace Reecon
             }
             else
             {
-                target = args[0];
+                _target = args[0];
             }
 
-            if (target.StartsWith("http"))
+            if (_target.StartsWith("http"))
             {
                 Console.WriteLine("Cannot do a standard scan on a URL - Try a -web scan");
                 Console.ResetColor();
@@ -208,18 +208,18 @@ namespace Reecon
             if (mustPing)
             {
                 Console.WriteLine("Checking if target is online...");
-                bool? isHostOnline = General.IsUp(target);
+                bool? isHostOnline = General.IsUp(_target);
                 General.ClearPreviousConsoleLine();
 
                 if (isHostOnline == null)
                 {
-                    Console.WriteLine($"Invalid target: {target}");
+                    Console.WriteLine($"Invalid target: {_target}");
                     return;
                 }
 
                 if (!isHostOnline.Value)
                 {
-                    Console.WriteLine($"Host {target} is not responding to pings :(");
+                    Console.WriteLine($"Host {_target} is not responding to pings :(");
                     Console.WriteLine("If you are sure it's up and are specifying ports, you can use -noping");
                     return;
                 }
@@ -233,7 +233,7 @@ namespace Reecon
 
                 // Parse the ports
                 var nmapResult = Nmap.ParseFile(fileName);
-                target = nmapResult.Target;
+                _target = nmapResult.Target;
                 PortList.AddRange(nmapResult.Ports);
             }
 
@@ -260,7 +260,7 @@ namespace Reecon
         {
             PortInfo.LoadPortInfo();
 
-            Console.Write("Scanning: " + target);
+            Console.Write("Scanning: " + _target);
             Console.Write(" (Port");
             if (portsToScan.Count > 1)
             {
@@ -291,13 +291,13 @@ namespace Reecon
             if (portsToScan.Count == 0)
             {
                 // Something broke, or there are only UDP Ports :|
-                Console.WriteLine($"- nmap -sC -sV -p- {target} -oN nmap.txt");
-                Console.WriteLine($"- nmap -sU {target} -oN nmap-UDP.txt");
+                Console.WriteLine($"- nmap -sC -sV -p- {_target} -oN nmap.txt");
+                Console.WriteLine($"- nmap -sU {_target} -oN nmap-UDP.txt");
             }
             else
             {
-                PostScanList.Add($"- Nmap Script+Version Scan: sudo nmap -sC -sV -p{string.Join(",", portsToScan)} {target} -oN nmap.txt" + Environment.NewLine);
-                PostScanList.Add($"- Nmap UDP Scan: sudo nmap -sU {target} (-F for top 100)" + Environment.NewLine);
+                PostScanList.Add($"- Nmap Script+Version Scan: sudo nmap -sC -sV -p{string.Join(",", portsToScan)} {_target} -oN nmap.txt" + Environment.NewLine);
+                PostScanList.Add($"- Nmap UDP Scan: sudo nmap -sU {_target} (-F for top 100)" + Environment.NewLine);
                 
                 // May be looking for PortInfo.GetAdditionalPortInfo
                 foreach (string item in PostScanList)
@@ -309,7 +309,7 @@ namespace Reecon
 
         static void ScanPort(int port)
         {
-            string toDo = PortInfo.ScanPort(target, port);
+            string toDo = PortInfo.ScanPort(_target, port);
             // If there's something to do (Additional info on a port)
             // And it's not a dupe (2+ ports with identical info - LDAP is a big offender here)
             if (toDo != "" && !PostScanList.Contains(toDo))

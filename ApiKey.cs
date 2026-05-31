@@ -8,9 +8,6 @@ namespace Reecon;
 
 public static class ApiKey
 {
-    // Currently supported
-    // Google Maps API Key
-    // Telegram Bot Token
     public static void Search(string[] args)
     {
         if (args.Length != 2)
@@ -23,22 +20,45 @@ public static class ApiKey
         bool found = false;
         // https://github.com/streaak/keyhacks
         
-        // Github
-        if (Regex.IsMatch(apiKey, "ghp_[a-zA-Z0-9]{36}"))
+        // Github Personal Access Token (Legacy)
+        if (Regex.IsMatch(apiKey, "^ghp_[a-zA-Z0-9]{36}$"))
         {
             found = true;
-            Console.WriteLine("Github Token Detected");
+            Console.WriteLine("Matches Github Personal Access Token (PAT - Legacy) Format - Testing...");
+
+            string authHeader = $"Authorization: token {apiKey}";
+            var apiTestResult = Web.DownloadString("https://api.github.com/user", CustomHeader: authHeader);
+            if (apiTestResult.StatusCode == HttpStatusCode.OK)
+            {
+                Console.WriteLine($"- The API key is {"valid".Recolor(Color.Green)}.");
+            }
+            else if (apiTestResult.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Console.WriteLine($"- The API key is {"invalid".Recolor(Color.Red)} (Bad credentials)");
+            }
+            else
+            {
+                Console.WriteLine("- Unknown API Key Response - Bug Reelix!");
+            }
+        }
+        
+        // Github Personal Access Token (Specific)
+        if (Regex.IsMatch(apiKey, "^github_pat_[a-zA-Z0-9_]{82}$"))
+        {
+            found = true;
+            Console.WriteLine("Matches Github Personal Access Token (PAT - Specific)");
             
             // Need to add something
-            // Potential: curl https://api.github.com/user -H "Authorization: token ghp_......"
-            Console.WriteLine("Can't do anything with it yet, though :/");
+            // Potential: curl https://api.github.com/user -H "Authorization: Bearer github_pat_......" -H "X-GitHub-Api-Version: 2022-11-28"
+            Console.WriteLine("- Can't do anything with it yet, though :/");
         }
+        
         // Will shift this out into its own class when this gets busier
         // Google-Maps-API-key
         if (Regex.IsMatch(apiKey, "AIza[0-9A-Za-z\\-_]{35}"))
         {
             found = true;
-            Console.WriteLine("Matches Google Maps Format - Testing...");
+            Console.WriteLine("Matches Google Maps API Key Format - Testing...");
 
             // Sample: AIzaSyDe0LldBAVmT9ZzViJBZa0XQvR_iYEyA-0 (Don't ask)
 
@@ -133,6 +153,22 @@ public static class ApiKey
             // Timezone - TODO
         }
 
+        // Shodan
+        if (Regex.IsMatch(apiKey, "^[a-zA-Z0-9]{32}$"))
+        {
+            found = true;
+            Console.WriteLine("Matches Shodan API Key Format - Testing...");
+            var apiTestResult = Web.DownloadString($"https://api.shodan.io/api-info?key={apiKey}");
+            if (apiTestResult.StatusCode == HttpStatusCode.OK)
+            {
+                Console.WriteLine($"- The API key is {"valid".Recolor(Color.Green)}.");
+            }
+            else if (apiTestResult.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Console.WriteLine($"- The API key is {"invalid".Recolor(Color.Red)} - Unauthorized");
+            }
+        }
+        
         // Telegram Bot Token
         // /^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$/
         if (Regex.IsMatch(apiKey, "^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$"))
@@ -191,6 +227,23 @@ public static class ApiKey
             }
         }
         
+        // VirusTotal
+        if (Regex.IsMatch(apiKey, "^[a-z0-9]{64}$"))
+        {
+            found = true;
+            Console.WriteLine("Matches VirusTotal API Key Format - Testing...");
+            string authHeader = $"x-apikey: {apiKey}";
+            var apiTestResult = Web.DownloadString($"https://www.virustotal.com/api/v3/domains/google.com", CustomHeader: authHeader);
+            if (apiTestResult.StatusCode == HttpStatusCode.OK)
+            {
+                Console.WriteLine($"- The API key is {"valid".Recolor(Color.Green)}.");
+            }
+            else if (apiTestResult.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Console.WriteLine($"- The API key is {"invalid".Recolor(Color.Red)} - Unauthorized");
+            }
+        }
+                
         if (!found)
         {
             Console.WriteLine("No API keys that this program detects match this format.");

@@ -2,7 +2,7 @@
 
 Reelix's Recon - A small program for network recon.  
 This program is still in early stages of development and should probably not be used by anyone.
-* Version: 0.41b
+* Version: 0.41c
 * Build Status: <img src="https://img.shields.io/github/actions/workflow/status/Reelix/Reecon/dotnet-publish.yml" valign="middle" />
 * Requirements: [NMap 7.95+](https://nmap.org/download.html)
   * LDAP Enumeration on Ubuntu 22.04: Download + dpkg -i [this](https://packages.ubuntu.com/focal-updates/amd64/libldap-2.4-2/download)
@@ -33,11 +33,11 @@ If it sounds cool, I'll try :)
 - Download + Run https://github.com/Reelix/Reecon/releases/download/latest/reecon-linux-arm64
 
 ## Build Setup (Optional - For Developers)
-### Linux (Ubuntu 22.10 and above)
+### Linux (Debian based - apt)
 sudo apt update  
 sudo apt upgrade  
 sudo apt install dotnet-sdk-10.0 -y
-### Linux (CachyOS / Arch)./reecon./bui
+### Linux (Arch based - pacman)
 sudo pacman -S dotnet-sdk-10.0
 ### Linux (Other)
 If you're running this, you probably know how to get the dotnet SDK installed. If not, start [here](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) (SDK 10.0.x)

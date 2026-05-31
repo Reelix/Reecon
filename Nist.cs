@@ -32,6 +32,7 @@ namespace Reecon
                 }
 
                 List<Vulnerability> highVulns = myObject.vulnerabilities.Where(x =>
+                    (x.cve.metrics.cvssMetricV30 != null && x.cve.metrics.cvssMetricV30.Any(y => y.cvssData.baseScore >= 6f)) ||
                     (x.cve.metrics.cvssMetricV31 != null && x.cve.metrics.cvssMetricV31.Any(y => y.cvssData.baseScore >= 6f)) ||
                     (x.cve.metrics.cvssMetricV40 != null && x.cve.metrics.cvssMetricV40.Any(y => y.cvssData.baseScore >= 6f))
                 ).ToList();
@@ -42,10 +43,28 @@ namespace Reecon
                     foreach (Vulnerability vuln in highVulns)
                     {
                         Cve cve = vuln.cve;
+                        float baseScore = 0.0f;
+                        // string baseSeverity = "";
+                        
+                        // Get some data - Priority goes 3.1 -> 4.0 -> 3.0 (Personal preference)
+                        // This is a bit cumbersome, but it works
+                        if (vuln.cve.metrics.cvssMetricV31 != null)
+                        {
+                            baseScore = vuln.cve.metrics.cvssMetricV31.First(x => x.cvssData.baseScore >= 6f).cvssData.baseScore;
+                        }
+                        else if (vuln.cve.metrics.cvssMetricV40 != null)
+                        {
+                            baseScore = vuln.cve.metrics.cvssMetricV40.First(x => x.cvssData.baseScore >= 6f).cvssData.baseScore;
+                        }
+                        else if (vuln.cve.metrics.cvssMetricV30 != null)
+                        {
+                            baseScore = vuln.cve.metrics.cvssMetricV30.First(x => x.cvssData.baseScore >= 6f).cvssData.baseScore;
+                        }
                         Console.WriteLine(cve.id.Recolor(Color.Green));
                         Console.WriteLine($"- Link: https://nvd.nist.gov/vuln/detail/{cve.id}");
+                        Console.WriteLine($"- Score: {(baseScore >= 8.0f ? $"{baseScore}".Recolor(Color.Red) : baseScore)}");
                         string description = cve.descriptions.First(x => x.lang == "en").value;
-                        Console.WriteLine("- Desc: " + description.Trim());
+                        Console.WriteLine($"- Desc: {description.Trim()}");
 
                         if (cve.configurations != null)
                         {
@@ -64,7 +83,11 @@ namespace Reecon
                                         string? versionEndExcluding = cpeMatch.versionEndExcluding;
 
                                         string affected = "";
-                                        if (versionStartIncluding == null && versionEndIncluding == null && versionEndExcluding != null)
+                                        if (versionStartIncluding != null && versionEndIncluding == null && versionEndIncluding == null)
+                                        {
+                                            affected = $"All versions since {versionStartIncluding} (Including)";
+                                        }
+                                        else if (versionStartIncluding == null && versionEndIncluding == null && versionEndExcluding != null)
                                         {
                                             affected = "All versions before " + versionEndExcluding;
                                         }

@@ -546,6 +546,13 @@ namespace Reecon
             {
                 string path = url + file;
                 HttpInfo response = Web.GetHttpInfo(path);
+                
+                // https://datatracker.ietf.org/doc/html/rfc7238
+                // The server's response payload usually contains a short hypertext note with a hyperlink to the new URI(s).
+                if (response.StatusCode == HttpStatusCode.PermanentRedirect && response.PageText == "/" + file.Trim('/'))
+                {
+                    response.PageText = "";
+                }
                 if (response.StatusCode == HttpStatusCode.OK)
                 {
                     // Since it's readable - Let's deal with it!
@@ -879,7 +886,7 @@ namespace Reecon
             string domainToCheck = scheme + "://" + authority + "/";
             
             // No particular order, although if something comes up very often, maybe I'll shift it more to the left
-            List<string> subdomains = ["www", "dev", "admin", "mail", "test", "staging", "panel", "portal", "nagios", "ftp", "status", "gitea", "storage"];
+            List<string> subdomains = ["www", "dev", "admin", "mail", "test", "staging", "panel", "portal", "nagios", "ftp", "status", "gitea", "storage", "code", "flow"];
 
             var pageInfo = GetHttpInfo(url);
 
@@ -1123,9 +1130,9 @@ namespace Reecon
 
                 return toReturn;
             }
-            catch (TimeoutException ex)
+            catch (TimeoutException tex)
             {
-                Console.WriteLine("HttpClient Timeout Error: " + ex.Message);
+                Console.WriteLine("HttpClient Timeout Error: " + tex.Message);
             }
             catch (WebException wex)
             {
@@ -1659,7 +1666,7 @@ namespace Reecon
                     // Next.js
                     else if (poweredBy == "Next.js")
                     {
-                        Console.WriteLine("- Next.js detected");
+                        toReturn += "- Next.js detected" + Environment.NewLine;
                         if (pageText != null)
                         {
                             List<string> chunks = pageText.Split(new[] { "/_next/static/chunks/" }, StringSplitOptions.RemoveEmptyEntries).ToList();
@@ -1679,18 +1686,37 @@ namespace Reecon
                                     {
                                         string version = jsString.Remove(0, jsString.IndexOf("window.next={version:\"") + 22);
                                         version = version.Substring(0, version.IndexOf('"'));
-                                        Console.WriteLine($@"-- Version: {version}");
+                                        toReturn += $@"-- Version: {version}" + Environment.NewLine;
 
                                         // https://www.dynatrace.com/news/blog/cve-2025-55182-react2shell-critical-vulnerability-what-it-is-and-what-to-do/
-                                        if (version.StartsWith("16.") && Version.Parse(version) < Version.Parse("16.0.7"))
+                                        /* Upgrade Next.js to one of the following versions, or higher:
+                                           
+                                           15.0.5
+                                           15.1.9
+                                           15.2.6
+                                           15.3.6
+                                           15.4.8
+                                           15.5.7
+                                           16.0.7
+                                         */
+                                        Version theVersion = Version.Parse(version);
+                                        if (
+                                            theVersion >= Version.Parse("15.0.0") && theVersion < Version.Parse("15.0.5") ||
+                                            theVersion >= Version.Parse("15.1.0") && theVersion < Version.Parse("15.1.9") ||
+                                            theVersion >= Version.Parse("15.2.0") && theVersion < Version.Parse("15.2.6") ||
+                                            theVersion >= Version.Parse("15.3.0") && theVersion < Version.Parse("15.3.6") ||
+                                            theVersion >= Version.Parse("15.4.0") && theVersion < Version.Parse("15.4.8") ||
+                                            theVersion >= Version.Parse("15.5.0") && theVersion < Version.Parse("15.5.7") ||
+                                            theVersion >= Version.Parse("16.0.0") && theVersion < Version.Parse("16.0.7")
+                                        )
                                         {
-                                            Console.WriteLine("-- " + "Vulnerable to CVE-2025-55182 (React2Shell) - https://raw.githubusercontent.com/xalgord/React2Shell/refs/heads/master/react2shell.py".Recolor(Color.Red));
+                                            toReturn += "--- " + "Vulnerable to CVE-2025-55182 (React2Shell) - https://raw.githubusercontent.com/xalgord/React2Shell/refs/heads/master/react2shell.py".Recolor(Color.Red) + Environment.NewLine;
+                                            toReturn += "---- " + $"python3 react2shell.py -u {urlWithSlash}".Recolor(Color.Red) + Environment.NewLine;
                                         }
                                         else
                                         {
-                                            Console.WriteLine("Either not 16. or not vulnerable to React2Shell (CVE-2025-55182) - If 15.x or lower, bug Reelix!");
+                                            toReturn += "--- Either not 16. or not vulnerable to React2Shell (CVE-2025-55182) - If 15.x or lower, bug Reelix!" + Environment.NewLine;
                                         }
-
                                         break;
                                     }
                                 }
@@ -1984,12 +2010,21 @@ namespace Reecon
                 {
                     // Split by this
                     List<string> metaTags = pageText.Split("<meta name=", StringSplitOptions.RemoveEmptyEntries).ToList();
+                    
+                    // Remove all malformed meta tags
+                    metaTags.RemoveAll(x => !x.Contains("/>"));
+                    
                     // The first item is just stuff before the split
-                    metaTags.RemoveAt(0);
+                    if (metaTags.Any())
+                    {
+                        metaTags.RemoveAt(0);
+                    }
+
+                    // And now process them!
                     foreach (string metaTag in metaTags)
                     {
                         // Stop at the closing tag
-                        string cleanedMetaTag = metaTag.Substring(0, metaTag.IndexOf('>'));
+                        string cleanedMetaTag = metaTag.Substring(0, metaTag.IndexOf("/>", StringComparison.Ordinal));
 
                         // Remove any "'s to account for variations (name=x content=y VS name="x" content="y"
                         cleanedMetaTag = cleanedMetaTag.Replace("\"", "");
@@ -2658,8 +2693,13 @@ namespace Reecon
         {
             try
             {
-                // Technically it could also fail if HEAD's are blocked - Will need to run into that when I find it 
-                _ = DownloadString($"https://{target}:{port}/", Method: HttpMethod.Head).Text;
+                var result = DownloadString($"https://{target}:{port}/", Method: HttpMethod.Head);
+                
+                // Technically it could also fail if HEAD's are blocked - Will need to run into that when I find it
+                if (result.StatusCode == HttpStatusCode.RequestTimeout || result.StatusCode == HttpStatusCode.ExpectationFailed) // ExpectationFailed = Nope
+                {
+                    return false;
+                }
                 return true;
             }
             catch (Exception ex)
@@ -2676,7 +2716,7 @@ namespace Reecon
             }
         }
 
-        public static (string Text, HttpStatusCode StatusCode) DownloadString(string url, string? Cookie = null, NetworkCredential? Creds = null, string? JWT = null, string? UserAgent = null, HttpMethod? Method = null)
+        public static (string Text, HttpStatusCode StatusCode) DownloadString(string url, string? Cookie = null, NetworkCredential? Creds = null, string? JWT = null, string? UserAgent = null, HttpMethod? Method = null, string? CustomHeader = null)
         {
             // For invalid HTTPS Certs
             var handler = new HttpClientHandler()
@@ -2721,18 +2761,64 @@ namespace Reecon
             {
                 request.Headers.Add("User-Agent", UserAgent);
             }
-
-            HttpStatusCode statusCode;
-            using (HttpResponseMessage response = httpClient.Send(request))
+            else
             {
-                statusCode = response.StatusCode;
-                using (StreamReader readStream = new(response.Content.ReadAsStream()))
-                {
-                    toReturn = readStream.ReadToEnd();
-                }
+                request.Headers.Add("User-Agent", "Reecon (https://github.com/Reelix/reecon)");
+            }
+            
+            // Custom Header
+            if (CustomHeader != null)
+            {
+                request.Headers.Add(CustomHeader.Split(':')[0],  CustomHeader.Split(':')[1]);
             }
 
-            return (toReturn, statusCode);
+            HttpStatusCode statusCode;
+            httpClient.Timeout = TimeSpan.FromSeconds(5);
+            try
+            {
+                using (HttpResponseMessage response = httpClient.Send(request))
+                {
+                    statusCode = response.StatusCode;
+                    using (StreamReader readStream = new(response.Content.ReadAsStream()))
+                    {
+                        toReturn = readStream.ReadToEnd();
+                    }
+                }
+                return (toReturn, statusCode);
+            }
+            catch (HttpRequestException hrex)
+            {
+                if (hrex.Message != "The SSL connection could not be established, see inner exception.")
+                {
+                    Console.WriteLine($"Hell knows what happened here - hrex: {hrex.Message}");
+                }
+            }
+            catch (TaskCanceledException tcex)
+            {
+                if (tcex.Message.StartsWith("The request was canceled due to the configured HttpClient.Timeout"))
+                {
+                    return ("Timed Out", HttpStatusCode.RequestTimeout);
+                }
+                else
+                {
+                    Console.WriteLine($"Hell knows what happened here - tcex: {tcex.Message}");
+                }
+            }
+            catch (TimeoutException tex)
+            {
+                Console.WriteLine($"Hell knows what happened here - tex: {tex.Message}");
+            }
+            catch (WebException wex)
+            {
+                Console.WriteLine($"Hell knows what happened here - wex: {wex.Message}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Hell knows what happened here - ex: {ex.Message}");
+            }
+
+            // This will probably crash
+            return ("Unknown in Web.DownloadString", HttpStatusCode.ExpectationFailed);
         }
 
         public class UploadDataResult

