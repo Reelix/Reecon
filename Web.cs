@@ -39,9 +39,12 @@ namespace Reecon
             }
 
             Console.WriteLine($"Scanning {scanURL} - Please wait...");
-
+            
             // First - Scan the base page
             var httpInfo = Web.GetHttpInfo(scanURL);
+            Uri uri = new Uri(scanURL);
+            string host = uri.Host;
+            int port = uri.Port;
             string? pageText = httpInfo.PageText;
 
             // All actual errors are single words
@@ -90,16 +93,10 @@ namespace Reecon
                 if (scanURL.EndsWith('/'))
                 {
                     Console.WriteLine("Ending / detected - Searching for directory-based traversals...");
-                    List<string> windowsTraversals = new List<string>();
-                    // https://raw.githubusercontent.com/swisskyrepo/PayloadsAllTheThings/refs/heads/master/Directory%20Traversal/Intruder/traversals-8-deep-exotic-encoding.txt
-                    windowsTraversals.Add(@"..\\..\\..\\..\\..\\..\\..\\Windows\\win.ini");
-                    foreach (string traversal in windowsTraversals)
+                    string toReturn = TestBaseLfi(host, port);
+                    if (toReturn != "")
                     {
-                        var webInfo = Web.GetHttpInfo(scanURL + traversal, AllowDangerousPaths: true);
-                        if (webInfo.PageText != null && webInfo.PageText.Contains("for 16-bit app support"))
-                        {
-                            Console.WriteLine("- " + $"Successful Windows Traversal: {scanURL + traversal}".Recolor(Color.Orange));
-                        }
+                        Console.WriteLine(toReturn);
                     }
                 }
             }
@@ -457,6 +454,7 @@ namespace Reecon
                 "development/",
                 // Common Index files
                 "index.php",
+                "index.php.bak", // Just in case
                 "index.html",
                 "index.jsp",
                 "index.nginx-debian.html", // If they didn't remove the default nginx config file
@@ -504,7 +502,7 @@ namespace Reecon
                 "wp-config.php.bak",
                 // phpMyAdmin
                 "phpmyadmin/",
-                "phpMyAdmin", // Some are case sensitive
+                "phpMyAdmin", // Some are case-sensitive
                 // Kibana
                 "app/kibana",
                 // Bolt CMS
@@ -532,7 +530,8 @@ namespace Reecon
                 "help",
                 "info",
                 "files/",
-                "console"
+                "console",
+                "status"
             ];
 
             if (ignorePhp)
@@ -886,7 +885,7 @@ namespace Reecon
             string domainToCheck = scheme + "://" + authority + "/";
             
             // No particular order, although if something comes up very often, maybe I'll shift it more to the left
-            List<string> subdomains = ["www", "dev", "admin", "mail", "test", "staging", "panel", "portal", "nagios", "ftp", "status", "gitea", "storage", "code", "flow"];
+            List<string> subdomains = ["www", "dev", "admin", "mail", "test", "staging", "panel", "portal", "nagios", "ftp", "status", "gitea", "storage", "code", "flow", "research"];
 
             var pageInfo = GetHttpInfo(url);
 
@@ -965,7 +964,7 @@ namespace Reecon
             public string? AdditionalInfo { get; set; }
         }
 
-        public static HttpInfo GetHttpInfo(string url, string? UserAgent = null, string? Cookie = null, string? HostHeader = null, int Timeout = 5, bool AllowDangerousPaths = false)
+        public static HttpInfo GetHttpInfo(string url, string? UserAgent = null, string? Cookie = null, string? HostHeader = null, bool AllowAutoRedirect = false, int Timeout = 5, bool AllowDangerousPaths = false)
         {
             HttpInfo toReturn = new();
             HttpStatusCode statusCode = new();
@@ -974,7 +973,7 @@ namespace Reecon
             HttpClientHandler httpClientHandler = new HttpClientHandler()
             {
                 UseCookies = false, // Needed for a custom Cookie header
-                AllowAutoRedirect = false
+                AllowAutoRedirect = AllowAutoRedirect
             };
 
             // Now we deal with SSL certs and their errors
@@ -1103,6 +1102,13 @@ namespace Reecon
                 if (hrex.HttpRequestError == HttpRequestError.ConnectionError)
                 {
                     toReturn.AdditionalInfo += "ConnectionRefused";
+                    return toReturn;
+                }
+
+                // Happened when I try to send a malformed host header to an SSL domain with subdomain testing
+                if (hrex.HttpRequestError == HttpRequestError.SecureConnectionError)
+                {
+                    toReturn.AdditionalInfo += "SecureConnectionError";
                     return toReturn;
                 }
 
@@ -1561,6 +1567,7 @@ namespace Reecon
                     {
                         toReturn += "-- Splunk Detected (Bug Reelix to get a better version detector)" + Environment.NewLine;
                         // splunkd-partials
+                        // /en-US/account/login....
                         // D124F896D3FA893867AB88B2BE1BDFF0B34AB88817E91B6FB07AC2C98D170790 == VERSION=9.2.1 BUILD=78803f08aabb PRODUCT=splunk PLATFORM=Windows-AMD64 (Always?)
                         // StatusCode == HttpStatusCode.SeeOther is also 303????
                         if (statusCode == HttpStatusCode.RedirectMethod)
@@ -1666,62 +1673,7 @@ namespace Reecon
                     // Next.js
                     else if (poweredBy == "Next.js")
                     {
-                        toReturn += "- Next.js detected" + Environment.NewLine;
-                        if (pageText != null)
-                        {
-                            List<string> chunks = pageText.Split(new[] { "/_next/static/chunks/" }, StringSplitOptions.RemoveEmptyEntries).ToList();
-
-                            // Only keep the JS ones
-                            chunks = chunks.Where(x => x.Contains(".js\"")).ToList();
-
-                            // Go through each, download them, and search for the version
-                            foreach (string chunk in chunks)
-                            {
-                                string jsPath = chunk.Substring(0, chunk.IndexOf('"'));
-                                var jsDownload = Web.DownloadString($"{urlWithSlash}_next/static/chunks/{jsPath}");
-                                if (jsDownload.StatusCode == HttpStatusCode.OK)
-                                {
-                                    string jsString = jsDownload.Text;
-                                    if (jsString.Contains("window.next={version:\""))
-                                    {
-                                        string version = jsString.Remove(0, jsString.IndexOf("window.next={version:\"") + 22);
-                                        version = version.Substring(0, version.IndexOf('"'));
-                                        toReturn += $@"-- Version: {version}" + Environment.NewLine;
-
-                                        // https://www.dynatrace.com/news/blog/cve-2025-55182-react2shell-critical-vulnerability-what-it-is-and-what-to-do/
-                                        /* Upgrade Next.js to one of the following versions, or higher:
-                                           
-                                           15.0.5
-                                           15.1.9
-                                           15.2.6
-                                           15.3.6
-                                           15.4.8
-                                           15.5.7
-                                           16.0.7
-                                         */
-                                        Version theVersion = Version.Parse(version);
-                                        if (
-                                            theVersion >= Version.Parse("15.0.0") && theVersion < Version.Parse("15.0.5") ||
-                                            theVersion >= Version.Parse("15.1.0") && theVersion < Version.Parse("15.1.9") ||
-                                            theVersion >= Version.Parse("15.2.0") && theVersion < Version.Parse("15.2.6") ||
-                                            theVersion >= Version.Parse("15.3.0") && theVersion < Version.Parse("15.3.6") ||
-                                            theVersion >= Version.Parse("15.4.0") && theVersion < Version.Parse("15.4.8") ||
-                                            theVersion >= Version.Parse("15.5.0") && theVersion < Version.Parse("15.5.7") ||
-                                            theVersion >= Version.Parse("16.0.0") && theVersion < Version.Parse("16.0.7")
-                                        )
-                                        {
-                                            toReturn += "--- " + "Vulnerable to CVE-2025-55182 (React2Shell) - https://raw.githubusercontent.com/xalgord/React2Shell/refs/heads/master/react2shell.py".Recolor(Color.Red) + Environment.NewLine;
-                                            toReturn += "---- " + $"python3 react2shell.py -u {urlWithSlash}".Recolor(Color.Red) + Environment.NewLine;
-                                        }
-                                        else
-                                        {
-                                            toReturn += "--- Either not 16. or not vulnerable to React2Shell (CVE-2025-55182) - If 15.x or lower, bug Reelix!" + Environment.NewLine;
-                                        }
-                                        break;
-                                    }
-                                }
-                            }
-                        }
+                        toReturn += Web_Technologies.NextJSChecks(httpInfo.PageText, urlWithSlash);
                     }
                     
                     // Strapi
@@ -1807,7 +1759,23 @@ namespace Reecon
                         toReturn += "-- " + "Possible Vulnerable Version Detected - https://www.komodosec.com/post/when-all-else-fails-find-a-0-day <-----".Recolor(Color.Orange) + Environment.NewLine;
                     }
                 }
+                
+                // Kabana
+                if (responseHeaders.Any(x => x.Key == "kbn-name"))
+                {
+                    string kbnName = responseHeaders.GetValues("kbn-name").First();
+                    responseHeaders.Remove("kbn-name");
+                    toReturn += "- kbn-name: " + kbnName + Environment.NewLine;
+                    toReturn += "-- You should get more kibana-based info further down" + Environment.NewLine;
+                }
 
+                if (responseHeaders.Any(x => x.Key == "kbn-version"))
+                {
+                    string kbnVersion = responseHeaders.GetValues("kbn-version").First();
+                    responseHeaders.Remove("kbn-version");
+                    toReturn += $"- kbn-version: {kbnVersion}" + Environment.NewLine;
+                }
+                
                 // Kubernetes
                 if (responseHeaders.Any(x => x.Key.StartsWith("X-Kubernetes-")))
                 {
@@ -1871,22 +1839,6 @@ namespace Reecon
                     toReturn += $"- WWW-Authenticate: {wwwAuthenticate}" + Environment.NewLine;
                 }
 
-                // Kabana
-                if (responseHeaders.Any(x => x.Key == "kbn-name"))
-                {
-                    string kbnName = responseHeaders.GetValues("kbn-name").First();
-                    responseHeaders.Remove("kbn-name");
-                    toReturn += "- kbn-name: " + kbnName + Environment.NewLine;
-                    toReturn += "-- You should get more kibana-based info further down" + Environment.NewLine;
-                }
-
-                if (responseHeaders.Any(x => x.Key == "kbn-version"))
-                {
-                    string kbnVersion = responseHeaders.GetValues("kbn-version").First();
-                    responseHeaders.Remove("kbn-version");
-                    toReturn += $"- kbn-version: {kbnVersion}" + Environment.NewLine;
-                }
-
                 // Useful cookies
                 if (responseHeaders.Any(x => x.Key == "Set-Cookie"))
                 {
@@ -1930,6 +1882,28 @@ namespace Reecon
                         // https://blog.redteam-pentesting.de/2024/moodle-rce/
                         // https://www.redteam-pentesting.de/en/advisories/rt-sa-2024-009/
                         toReturn += "--- " + $"If before 4.1.12, 4.2.9, 4.3.6, 4.4.2 -> https://blog.redteam-pentesting.de/2024/moodle-rce/".Recolor(Color.Orange) + Environment.NewLine;
+                    }
+                    // Round Cube
+                    else if (setCookie.StartsWith("roundcube_sessid="))
+                    {
+                        toReturn += "-- " + $"Roundcube Found".Recolor(Color.Orange) + Environment.NewLine;
+                        if (pageText != null && pageText.Contains("rcmail.set_env"))
+                        {
+                            string rcMailVars = pageText.Remove(0, pageText.IndexOf("rcmail.set_env"));
+                            rcMailVars = rcMailVars.Substring(0, rcMailVars.IndexOf("</script>"));
+                            if (rcMailVars.Contains("rcversion"))
+                            {
+                                string rcMailVersion = rcMailVars.Remove(0,  rcMailVars.IndexOf("rcversion") + 11);
+                                rcMailVersion = rcMailVersion.Substring(0, rcMailVersion.IndexOf(','));
+                                // Roundcube uses an integer format for versions: Major * 10000 + Minor * 100 + Patch.
+                                int rcVersion = int.Parse(rcMailVersion);
+                                int major = rcVersion / 10000;
+                                int minor = (rcVersion % 10000) / 100;
+                                int patch = rcVersion % 100;
+                                string rcMailVersionText = $"{major}.{minor}.{patch}";
+                                toReturn += "--- " + $"Version: {rcMailVersionText}".Recolor(Color.Orange) + Environment.NewLine;
+                            }
+                        }
                     }
                 }
 
@@ -2357,11 +2331,20 @@ namespace Reecon
                     toReturn += "---- Kibana versions before 5.6.15 and 6.6.1 -> CVE-2019-7609 -> https://github.com/mpgn/CVE-2019-7609" + Environment.NewLine;
                 }
 
+                // Next.js - Check 2 - This is messy, but should only trigger if Powered-By does not trigger
+                if ((pageText?.Contains("/_next/static/css/", StringComparison.OrdinalIgnoreCase) ?? false)
+                    && !responseHeaders.Any(h => h.Key.Equals("X-Powered-By", StringComparison.OrdinalIgnoreCase) 
+                                                 && h.Value.Any(v => v.Equals("Next.js", StringComparison.OrdinalIgnoreCase))))
+                {
+                    Console.WriteLine("Next.js 2 - Woof");
+                    toReturn += Web_Technologies.NextJSChecks(pageText, urlWithSlash);
+                }
+                    
                 // Wordpress
                 // TODO: /?rest_route=/ - REF: https://github.com/Chocapikk/wpprobe
                 //if (PageText.Contains("/wp-content/themes/") && (PageText.Contains("/wp-includes/") || PageText.Contains("/wp-includes\\")))
                 // Some Wordpress pages don't contain "wp-content" (Ref: HTB Acute)
-                if (pageText.Contains("/wp-includes/") || pageText.Contains("/wp-includes\\"))
+                if (pageText != null && (pageText.Contains("/wp-includes/") || pageText.Contains("/wp-includes\\")))
                 {
                     toReturn += "- " + "WordPress detected!".Recolor(Color.Orange) + Environment.NewLine;
 
@@ -2425,6 +2408,9 @@ namespace Reecon
                         }
 
                         string homePath = Environment.GetEnvironmentVariable("HOME") ?? ""; // On Linux - HOMEPATH on Windows - May add later.
+                        // v3 requires an API key
+                        // We can use this in the meantime
+                        // https://github.com/Boreas37/onyx-db/raw/refs/heads/main/wordfence-latest.json.gz
                         string wordfenceFileLocation = homePath + "/.local/share/reecon/wordfence.json";
                         bool hasWordfence = false;
                         string wordfenceData = "";
@@ -2436,6 +2422,8 @@ namespace Reecon
                         }
 
                         List<string> pluginList = new List<string>();
+                        // Unique bug case with certain formats - Include this to fix it (wpscan also bugs on it)
+                        pluginList.Add("*\",\"");
 
                         foreach (string plugin in pluginSearcher)
                         {
@@ -2443,6 +2431,7 @@ namespace Reecon
                             // /wp-content/plugins/adrotate/readme.txt
                             string pluginName = plugin.Substring(0, plugin.IndexOf(' ') - 1);
                             pluginName = pluginName.Substring(0, pluginName.IndexOf('/'));
+                            Version? pluginVersion = null;
                             if (!pluginList.Contains(pluginName))
                             {
                                 pluginList.Add(pluginName);
@@ -2483,9 +2472,10 @@ namespace Reecon
                                         toReturn += $"--- Plugin readme found: {readmeLoc}" + Environment.NewLine;
                                         if (pluginReadme.PageText.Contains("Stable tag: "))
                                         {
-                                            string pluginVersion = pluginReadme.PageText.Remove(0, pluginReadme.PageText.IndexOf("Stable tag: ", StringComparison.Ordinal) + "Stable tag: ".Length);
-                                            pluginVersion = pluginVersion.Substring(0, pluginVersion.IndexOf('\n')).Trim('\r');
-                                            toReturn += "--- " + $"Plugin version: {pluginVersion}".Recolor(Color.Orange) + Environment.NewLine;
+                                            string pluginVersionText = pluginReadme.PageText.Remove(0, pluginReadme.PageText.IndexOf("Stable tag: ", StringComparison.Ordinal) + "Stable tag: ".Length);
+                                            pluginVersionText = pluginVersionText.Substring(0, pluginVersionText.IndexOf('\n')).Trim('\r');
+                                            pluginVersion = Version.Parse(pluginVersionText); // Used below
+                                            toReturn += "--- " + $"Plugin version: {pluginVersionText}".Recolor(Color.Orange) + Environment.NewLine;
                                         }
                                     }
                                     // Some use changelog.txt instead
@@ -2519,12 +2509,46 @@ namespace Reecon
                                                 if (softwareItem.TryGetProperty("slug", out JsonElement softwareSlug) && softwareSlug.GetString() == pluginName)
                                                 {
                                                     foundEntry = true;
-                                                    toReturn += "--- " + "Wordfence Entry Found".Recolor(Color.Orange) + Environment.NewLine;
                                                     string? title = entryItem.Value.GetProperty("title").GetString();
                                                     string? description = entryItem.Value.GetProperty("description").GetString();
                                                     string? cve = entryItem.Value.GetProperty("cve").GetString();
-                                                    toReturn += "---- " + $"Title: {cve} - {title}" + Environment.NewLine;
-                                                    toReturn += "---- " + $"Description: {description}" + Environment.NewLine;
+                                                    bool isVuln = true;
+                                                    if (entryItem.Value.TryGetProperty("software", out _))
+                                                    {
+                                                        JsonProperty affectedVersions = entryItem.Value.GetProperty("software").EnumerateArray().First().GetProperty("affected_versions").EnumerateObject().First();
+                                                        Version.TryParse(affectedVersions.Value.GetProperty("from_version").GetString(), out Version? fromVersion);
+                                                        Version.TryParse(affectedVersions.Value.GetProperty("to_version").GetString(), out Version? toVersion);
+                                                        // If it's invalid - Include it. If the data is wrong - They can decide, or maybe I can debug later.
+                                                        fromVersion = fromVersion == null ? Version.Parse("0.0.0") : fromVersion;
+                                                        toVersion = toVersion == null ? Version.Parse("999.999.999") : toVersion;
+                                                        /*
+                                                        Debugging
+                                                        toReturn += $"---- FromVersion: {fromVersion}";
+                                                        toReturn += $"---- ToVersion: {toVersion}";
+                                                        */
+                                                        if (pluginVersion != null)
+                                                        {
+                                                            if (pluginVersion > toVersion || pluginVersion < fromVersion)
+                                                            {
+                                                                isVuln = false;
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            isVuln = true; // No idea - Just return it
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        toReturn += $"---- software cannot TryGetProperty";
+                                                    }
+
+                                                    if (isVuln)
+                                                    {
+                                                        toReturn += "--- " + "Wordfence Entry Found".Recolor(Color.Orange) + Environment.NewLine;
+                                                        toReturn += "---- " + $"Title: {cve} - {title}" + Environment.NewLine;
+                                                        toReturn += "---- " + $"Description: {description}" + Environment.NewLine;
+                                                    }
                                                 }
                                             }
                                         }
@@ -2665,25 +2689,27 @@ namespace Reecon
 
         public static string TestBaseLfi(string ip, int port)
         {
-            string result = General.BannerGrab(ip, port, "GET /../../../../../../etc/passwd HTTP/1.1" + Environment.NewLine + "Host: " + ip + Environment.NewLine + Environment.NewLine, 2500);
+            // 1.0 is used since 1.1 can use "Transfer-Encoding: chunked" which messes up the output
+            string result = General.BannerGrab(ip, port, "GET /../../../../../../etc/passwd HTTP/1.0" + Environment.NewLine + "Host: " + ip + Environment.NewLine + Environment.NewLine, 5000);
+            // Technically a false negative if root renames - Maybe :x:0:0 instead?
             if (result.Contains("root"))
             {
-                return "- /etc/passwd File Found VIA Base LFI! --> GET /../../../../../../etc/passwd" + Environment.NewLine + result;
+                return "- /etc/passwd File Found VIA Base LFI! --> GET /../../../../../../etc/passwd".Recolor(Color.Orange) + Environment.NewLine + result;
                 // Need to format this better...
             }
 
             // Windows 1 (Windows app running on Windows)
-            result = General.BannerGrab(ip, port, "GET /../../../../../../windows/win.ini HTTP/1.1\r\nHost: " + ip + "\r\n\r\n", 2500);
+            result = General.BannerGrab(ip, port, "GET /../../../../../../windows/win.ini HTTP/1.0\r\nHost: " + ip + "\r\n\r\n", 2500);
             if (result.Contains("for 16-bit app support"))
             {
-                return "- /windows/win.ini File Found VIA Base LFI! --> GET /../../../../../../windows/win.ini" + Environment.NewLine + result;
+                return "- /windows/win.ini File Found VIA Base LFI! --> GET /../../../../../../windows/win.ini".Recolor(Color.Orange) + Environment.NewLine + result;
             }
 
             // Windows 2 (Linux app running on Windows)
-            result = General.BannerGrab(ip, port, "GET /../../../../../../windows/win.ini HTTP/1.1\nHost: " + ip + "\n\n", 2500);
+            result = General.BannerGrab(ip, port, "GET /../../../../../../windows/win.ini HTTP/1.0\nHost: " + ip + "\n\n", 2500);
             if (result.Contains("for 16-bit app support"))
             {
-                return "- /windows/win.ini File Found VIA Base LFI! --> GET /../../../../../../windows/win.ini" + Environment.NewLine + result;
+                return "- /windows/win.ini File Found VIA Base LFI! --> GET /../../../../../../windows/win.ini".Recolor(Color.Orange) + Environment.NewLine + result;
             }
 
             return "";

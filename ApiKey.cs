@@ -20,6 +20,12 @@ public static class ApiKey
         bool found = false;
         // https://github.com/streaak/keyhacks
         
+        // Discord
+        if (Regex.IsMatch(apiKey, "/[\\w-]{24}\\.[\\w-]{6}\\.[\\w-]{27,}/\r\n\r\n"))
+        {
+            found = true;
+            Console.WriteLine("Potential Discord Key / Token");
+        }
         // Github Personal Access Token (Legacy)
         if (Regex.IsMatch(apiKey, "^ghp_[a-zA-Z0-9]{36}$"))
         {
@@ -193,7 +199,6 @@ public static class ApiKey
                 {
                     Console.WriteLine($"-- First Name: {jsonFirstName.GetString()}");
                 }
-                Console.WriteLine("Woof");
                 
                 // Get Chat Info:
                 // https://api.telegram.org/bot{apiKey}/getChat?chat_id=-4862820035

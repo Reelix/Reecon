@@ -48,18 +48,24 @@ namespace Reecon
                         
                         // Get some data - Priority goes 3.1 -> 4.0 -> 3.0 (Personal preference)
                         // This is a bit cumbersome, but it works
-                        if (vuln.cve.metrics.cvssMetricV31 != null)
+                        
+                        var v31Match = vuln.cve.metrics.cvssMetricV31?.FirstOrDefault(x => x.cvssData.baseScore >= 6f);
+                        var v40Match = vuln.cve.metrics.cvssMetricV40?.FirstOrDefault(x => x.cvssData.baseScore >= 6f);
+                        var v30Match = vuln.cve.metrics.cvssMetricV30?.FirstOrDefault(x => x.cvssData.baseScore >= 6f);
+                        
+                        if (v31Match != null)
                         {
-                            baseScore = vuln.cve.metrics.cvssMetricV31.First(x => x.cvssData.baseScore >= 6f).cvssData.baseScore;
+                            baseScore = v31Match.cvssData.baseScore;
                         }
-                        else if (vuln.cve.metrics.cvssMetricV40 != null)
+                        else if (v40Match != null)
                         {
-                            baseScore = vuln.cve.metrics.cvssMetricV40.First(x => x.cvssData.baseScore >= 6f).cvssData.baseScore;
+                            baseScore = v40Match.cvssData.baseScore;
                         }
-                        else if (vuln.cve.metrics.cvssMetricV30 != null)
+                        else if (v30Match != null)
                         {
-                            baseScore = vuln.cve.metrics.cvssMetricV30.First(x => x.cvssData.baseScore >= 6f).cvssData.baseScore;
+                            baseScore = v30Match.cvssData.baseScore;
                         }
+                        
                         Console.WriteLine(cve.id.Recolor(Color.Green));
                         Console.WriteLine($"- Link: https://nvd.nist.gov/vuln/detail/{cve.id}");
                         Console.WriteLine($"- Score: {(baseScore >= 8.0f ? $"{baseScore}".Recolor(Color.Red) : baseScore)}");

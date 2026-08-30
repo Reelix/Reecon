@@ -6,9 +6,12 @@
 
         // AWS (aws-cli / s3)
 
+        // 169.254.169.254/latest/meta-data/iam/security-credentials -> RoleName
+        // 169.254.169.254/latest/meta-data/iam/security-credentials/{RoleName} -> Creds
         /*
         https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html
-
+        
+        // AccessKeyId
         Prefix  | Resource type
         --------|---------------------------------------------------------------------
         ABIA    | AWS STS service bearer token
@@ -65,6 +68,21 @@
         // Downloading
         // aws s3 cp s3://sample-name-here/file.txt .
         
+        // Get Queues
+        aws sqs list-queues --endpoint-url=http://aws.domain.htb
+        
+        //
+        // Given the IDENTITY_POOL_ID
+        //
+        
+        // Get an Identity ID
+        aws cognito-identity get-id --identity-pool-id "us-east-1:POOL_ID_HERE" --region us-east-1 --no-sign-request
+         
+        // Get Temporary Credentials using Identity ID
+        aws cognito-identity get-credentials-for-identity  --identity-id "us-east-1:IDENTITY_ID_FROM_ABOVE" --region us-east-1 --no-sign-request
+
+        // If you have a table name
+        aws dynamodb scan --table-name TABLE_NAME_HERE
          */
 
         // Google (gcloud)

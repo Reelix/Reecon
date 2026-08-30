@@ -302,12 +302,12 @@ namespace Reecon
                 // May be looking for PortInfo.GetAdditionalPortInfo
                 foreach (string item in PostScanList)
                 {
-                    Console.Write(item); // Most already contain newlines - Could trim them I guess
+                    Console.WriteLine(item.Trim(Environment.NewLine));
                 }
             }
         }
 
-        static void ScanPort(int port)
+        private static void ScanPort(int port)
         {
             string toDo = PortInfo.ScanPort(_target, port);
             // If there's something to do (Additional info on a port)
