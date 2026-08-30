@@ -40,8 +40,7 @@ jobs:
 
     - name: Build
       run: |
-        dotnet restore        dotnet restore
-        dotnet build --no-restore -c Release
+        dotnet restore
         dotnet build --no-restore -c Release
 
     - name: Perform CodeQL Analysis
