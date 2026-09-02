@@ -37,10 +37,10 @@ namespace Reecon
             GetLinkMeInfo(username);
             GetPastebinInfo(username);
             GetRedditInfo(username);
-            // GetRobloxInfo(username) -> curl --url 'https://apis.roblox.com/search-api/omni-search?urlLocale=en_us&verticalType=user&searchQuery=deadcatx3&sessionId=a' | jq
+            // GetRobloxInfo(username) -> curl -s 'https://apis.roblox.com/search-api/omni-search?urlLocale=en_us&verticalType=user&searchQuery=deadcatx3&sessionId=a' | jq
             GetSteamInfo(username);
-            GetThreadsInfo(username);
             GetTelegramInfo(username);
+            GetThreadsInfo(username);
             // GetTiktokInfo(username) -- Todo (asdsadsdazzz VS https://www.tiktok.com/@yolosolo17)
             GetTwitterInfo(username);
             GetYouTubeInfo(username);
@@ -71,45 +71,45 @@ namespace Reecon
                 Console.WriteLine("- HackerOne: " + "Found".Recolor(Color.Green));
 
                 // GraphQL Request
-                var payload = new
+                string jsonContent = $$"""
+                                       {
+                                         "operationName": "UserProfilePageQuery",
+                                         "variables": {
+                                           "resourceIdentifier": "{{username}}",
+                                           "product_area": "other",
+                                           "product_feature": "other"
+                                         },
+                                         "query": "query UserProfilePageQuery($resourceIdentifier: String!) { user(username: $resourceIdentifier) { name } }"
+                                       }
+                                       """;
+                byte[] postData = Encoding.UTF8.GetBytes(jsonContent);
+                var contentHeaders = new Dictionary<string, string>
                 {
-                    operationName = "UserProfilePageQuery",
-                    variables = new
-                    {
-                        resourceIdentifier = username,
-                        product_area = "other",
-                        product_feature = "other"
-                    },
-                    
-                    // This can be expanded on quite significantly - But let's start with this
-                    query = """
-                            query UserProfilePageQuery($resourceIdentifier: String!) {
-                              user(username: $resourceIdentifier) {
-                                name
-                              }
-                            }
-                            """
+                    { "Content-Type", "application/json" }
                 };
-                var jsonContent = JsonSerializer.Serialize(payload);
-                var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-                string url = "https://hackerone.com/graphql";
-                var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };
-                HttpResponseMessage response = Client.Send(request);
-                string jsonResponse = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-                using JsonDocument doc = JsonDocument.Parse(jsonResponse);
-                string? name = doc.RootElement.GetProperty("data").GetProperty("user").GetProperty("name").GetString();
-                if (name != null)
+                Web.UploadDataResult uploadResult = Web.UploadData("https://hackerone.com/graphql", postData, ContentHeaders: contentHeaders);
+                if (uploadResult.StatusCode == HttpStatusCode.OK)
                 {
-                    Console.WriteLine($"-- Name: {name}");
+                    string jsonResponse = uploadResult.Text;
+                    using JsonDocument doc = JsonDocument.Parse(jsonResponse);
+                    string? name = doc.RootElement.GetProperty("data").GetProperty("user").GetProperty("name").GetString();
+                    if (name != null)
+                    {
+                        Console.WriteLine($"-- Name: {name}");
+                    }
+                    else
+                    {
+                        Console.WriteLine("-- Name is empty - Bug Reelix to get additional HackerOne info.");
+                    }
                 }
-                else
-                {
-                    Console.WriteLine("-- Name is empty - Bug Reelix to get additional HackerOne info.");
-                }
+            }
+            else
+            {
+                Console.WriteLine("- HackerOne: Not Found");
             }
         }
 
-        public static void GetHuggingFaceInfo(string username)
+        private static void GetHuggingFaceInfo(string username)
         {
             string profileUrl = $"https://huggingface.co/{username}";
             Web.HttpInfo httpInfo = Web.GetHttpInfo(profileUrl, AllowAutoRedirect: true);
@@ -130,6 +130,7 @@ namespace Reecon
                 {
                     Console.WriteLine($"-- Link: https://huggingface.co/{siteUsername}");
                 }
+
                 string? siteFullname = userProfile.GetProperty("fullname").GetString();
                 if (siteFullname != null)
                 {
@@ -143,6 +144,10 @@ namespace Reecon
                     string? socialValue = item.Value.GetString();
                     Console.WriteLine($"-- {socialName}: {socialValue}");
                 }
+            }
+            else
+            {
+                Console.WriteLine("- HuggingFace: Not Found");
             }
         }
 
@@ -263,6 +268,42 @@ namespace Reecon
             }
         }
 
+        private static void GetTelegramInfo(string username)
+        {
+            Web.HttpInfo httpInfo = Web.GetHttpInfo($"https://t.me/{username}");
+            if (httpInfo.StatusCode != HttpStatusCode.NotFound && httpInfo.PageText != null && httpInfo.PageText.Contains("tgme_page_extra"))
+            {
+                string pageExtra = httpInfo.PageText.Remove(0, httpInfo.PageText.IndexOf("tgme_page_extra", StringComparison.Ordinal) + 17);
+                pageExtra = pageExtra.Substring(0, pageExtra.IndexOf("</div>", StringComparison.Ordinal));
+                pageExtra = pageExtra.Replace(Environment.NewLine, "").Trim();
+
+                if (pageExtra.StartsWith('@'))
+                {
+                    Console.WriteLine("- Telegram (User): " + "Found".Recolor(Color.Green));
+                    // Username
+                    string name = httpInfo.PageText.Remove(0, httpInfo.PageText.IndexOf("tgme_page_title", StringComparison.Ordinal) + 15);
+                    // Span inside
+                    name = name.Remove(0, name.IndexOf("<span dir = \"auto\">", StringComparison.Ordinal) + 20);
+                    name = name.Substring(0, name.IndexOf("</span>", StringComparison.Ordinal));
+                    Console.WriteLine($"-- Name: {name}");
+                }
+                else if (pageExtra.EndsWith("subscribers"))
+                {
+                    Console.WriteLine("- Telegram (Channel): " + "Found".Recolor(Color.Green));
+                }
+                else if (pageExtra.Contains(" members ") && pageExtra.Contains(" online"))
+                {
+                    Console.WriteLine("- Telegram (Group): " + "Found".Recolor(Color.Green));
+                }
+
+                Console.WriteLine($"-- Link: https://t.me/{username}");
+            }
+            else
+            {
+                Console.WriteLine("- Telegram: Not Found");
+            }
+        }
+
         private static void GetThreadsInfo(string username)
         {
             string profileUrl = $"https://www.threads.com/@{username}";
@@ -275,40 +316,6 @@ namespace Reecon
             else
             {
                 Console.WriteLine("- Threads: Not Found");
-            }
-        }
-
-        private static void GetTelegramInfo(string username)
-        {
-            Web.HttpInfo httpInfo = Web.GetHttpInfo($"https://t.me/{username}");
-            if (httpInfo.StatusCode != HttpStatusCode.NotFound && httpInfo.PageText != null && httpInfo.PageText.Contains("tgme_page_extra"))
-            {
-                Console.WriteLine("- Telegram (User): " + "Found".Recolor(Color.Green));
-
-                string pageExtra = httpInfo.PageText.Remove(0, httpInfo.PageText.IndexOf("tgme_page_extra", StringComparison.Ordinal) + 17);
-                pageExtra = pageExtra.Substring(0, pageExtra.IndexOf("</div>", StringComparison.Ordinal));
-                pageExtra = pageExtra.Replace(Environment.NewLine, "").Trim();
-
-                // Name is in tgme_page_title - May do that later
-                if (pageExtra.StartsWith('@'))
-                {
-                    // Username
-                    string name = httpInfo.PageText.Remove(0, httpInfo.PageText.IndexOf("tgme_page_title", StringComparison.Ordinal) + 15);
-                    // Span inside
-                    name = name.Remove(0, name.IndexOf("<span dir = \"auto\">", StringComparison.Ordinal) + 20);
-                    name = name.Substring(0, name.IndexOf("</span>", StringComparison.Ordinal));
-                    Console.WriteLine($"-- Name: {name}");
-                }
-                else if (pageExtra.EndsWith("subscribers"))
-                {
-                    Console.WriteLine("- Telegram (Group): " + "Found".Recolor(Color.Green));
-                }
-
-                Console.WriteLine($"-- Link: https://t.me/{username}");
-            }
-            else
-            {
-                Console.WriteLine("- Telegram: Not Found");
             }
         }
 
