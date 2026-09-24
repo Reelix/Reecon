@@ -23,6 +23,7 @@
 993|N/A|IMAPS (IMAP over SSL)
 995|N/A|POP3s (POP3 over SSL)
 1433|MSSQL|MSSQL (MSSQL)
+1883|MQTT|MQTT (Mosquitto)
 2049|NFS|NFS (Network File System)
 3128|Squid|Squid
 3268|LDAP|LDAP (Global Catalog)

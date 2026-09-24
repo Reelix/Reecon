@@ -209,6 +209,7 @@ namespace Reecon
                                 case "IMAP": portInfo = Imap.GetInfo(target, port); break;
                                 case "LDAP": portInfo = Ldap.GetInfoAsync(target, port).GetAwaiter().GetResult(); break;
                                 case "MSSQL" : portInfo = Mssql.GetInfo(target, port); break;
+                                case "MQTT" : portInfo = MQTT.GetInfo(target, port); break;
                                 case "HTTPS": portInfo = Https.GetInfo(target, port); break;
                                 case "SMB": portInfo = Smb.GetInfo(target, port); break;
                                 case "Rsync": portInfo = Rsync.GetInfo(target, port); break;
@@ -433,16 +434,17 @@ namespace Reecon
                     Console.WriteLine("Possibly Minecraft - Bug Reelix!");
                     Slp.GetInfo(target, port);
                 }
-                // MSSQL - Sample: 04 01 00 25 00 00 01 00 00 00 15 00 06 01 00 1b
-                else if (bannerBytes[0] == 0x04 && bannerBytes[1] == 0x01) // May need to expand this if too many false positives
+                // MSSQL
+                else if (Mssql.CheckBanner(bannerBytes))
                 {
-                    (string PortName, string PortData) portInfo = Mssql.GetInfo(target, port);
+                    (string PortName, string PortData) portInfo = Mssql.GetInfo(target, port, bannerBytes);
                     unknownPortResult += $"Port {port} - {portInfo.PortName}".Recolor(Color.Green);
                     Console.WriteLine(unknownPortResult + Environment.NewLine + portInfo.PortData + Environment.NewLine);
+                    postScanActions += $"- MSSQL - mssqlclient.py 'sa':'sa'@{target} -port {port}" + Environment.NewLine;
                     break;
                 }
                 // MySQL
-                else if (bannerString.StartsWith('c') && bannerString.Contains("\0mysql_native_password\0"))
+                else if (MySql.CheckBanner(bannerBytes))
                 {
                     (string PortName, string PortData) portInfo = MySql.GetInfo(target, port);
                     unknownPortResult += $"Port {port} - {portInfo.PortName}".Recolor(Color.Green);
@@ -672,7 +674,7 @@ namespace Reecon
                     {
                         unknownPortResult += $"Port {port} - Unknown".Recolor(Color.Green) + Environment.NewLine;
                         unknownPortResult += $"- Unknown Single Response: -->{bannerString}<-- (Len: {bannerBytes.Count})" + Environment.NewLine;
-                        if (bannerBytes.Count < 25)
+                        if (bannerBytes.Count < 75)
                         {
                             unknownPortResult += $"- Numeric Bytes: {string.Join(",", bannerBytes)}" + Environment.NewLine;
                         }
@@ -681,11 +683,18 @@ namespace Reecon
                 }
                 else
                 {
-                    unknownPortResult += $"Port {port} - Unknown (Dumping possible outcomes)".Recolor(Color.Red) + Environment.NewLine;
+                    bool showNmapResponse = false;
+                    if (bannerList.Count > 0)
+                    {
+                        unknownPortResult += $"Port {port} - Unknown (Dumping possible outcomes)".Recolor(Color.Red) + Environment.NewLine;
+                    }
+                    else
+                    {
+                        unknownPortResult += $"Port {port} - Unknown".Recolor(Color.Red) + Environment.NewLine;
+                    }
                     // Truly unknown - Find the best result
                     
                     // We're using multiple banner checks, but we should only show the nmap message once if it has a response.
-                    bool showNmapResponse = false;
                     foreach (List<byte> theBanner in bannerList)
                     {
                         string bannerString = Encoding.UTF8.GetString(theBanner.ToArray());
@@ -735,7 +744,6 @@ namespace Reecon
             {
                 // TODO: https://svn.nmap.org/nmap/scripts/dns-nsid.nse
                 postScanActions += $"- Try list all records (Linux): dig @{target} domain.com any" + Environment.NewLine;
-                postScanActions += $"- Try a reverse lookup (Linux): dig @{target} -x {target}" + Environment.NewLine;
                 postScanActions += $"- Try a zone transfer (Linux): dig axfr domain.com @{target}" + Environment.NewLine;
                 postScanActions += $@"- Try add a custom record: echo -e 'server {target}\nzone domain.com\nupdate add custom-subdomain.domain.com 600 IN A YOUR_IP\nsend' | nsupdate (With -g after kinit if ldap auth required)" + Environment.NewLine;
                 postScanActions += $"-- Check if it worked: dig +noall +answer @{target} custom-subdomain.domain.com ANY" + Environment.NewLine;

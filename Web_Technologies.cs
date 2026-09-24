@@ -3,27 +3,66 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Net;
+using System.Text.RegularExpressions;
 
 namespace Reecon;
 
 public class Web_Technologies
 {
-    public static string NextJSChecks(string pageText, string urlWithSlash)
+    private static readonly List<string> DetectedTechnologies = [];
+
+    // Drupal
+    public string DrupalChecks(string? pageText, string urlWithSlash)
     {
-        string toReturn = "- Next.js detected" + Environment.NewLine;
+        if (DetectedTechnologies.Contains("Drupal"))
+        {
+            return "";
+        }
+        DetectedTechnologies.Add("Drupal");
+        
+        string toReturn = "- Drupal detected".Recolor(Color.Orange) + Environment.NewLine;
+        // TODO: Do these in-code
+        toReturn += $"-- Possible Version Detection: curl -s {urlWithSlash}CHANGELOG.txt | grep -m2 \"\"" + Environment.NewLine;
+        // Drupal before 7.58, 8.x before 8.3.9, 8.4.x before 8.4.6, and 8.5.x before 8.5.1
+        // Drupalgeddon - https://nvd.nist.gov/vuln/detail/cve-2018-7600
+        // 1, 2, 3 o_O
+        toReturn += $"-- Possible Version Detection 2: curl -s {urlWithSlash} grep 'content=\"Drupal'" + Environment.NewLine;
+        toReturn += $"-- Content Discovery: {urlWithSlash}node/1 (2,3,4,etc.)" + Environment.NewLine;
+        toReturn += $"--- Run: droopescan scan drupal -u {urlWithSlash} (pipx install droopescan)" + Environment.NewLine;
+        return "";
+    }
+    
+    // Next.js
+    public string NextJsChecks(string? pageText, string urlWithSlash)
+    {
+        if (DetectedTechnologies.Contains("Next.js"))
+        {
+            return "";
+        }
+        DetectedTechnologies.Add("Next.js");
+        
+        string toReturn = "- Next.js detected".Recolor(Color.Orange) + Environment.NewLine;
+        
         // JS: log(window.next.version)
         if (pageText != null)
         {
-            List<string> chunks = pageText.Split(new[] { "/_next/static/chunks/" }, StringSplitOptions.RemoveEmptyEntries).ToList();
-
-            // Only keep the JS ones
-            chunks = chunks.Where(x => x.Contains(".js\"")).ToList();
+            // /_next/static/chunks/*.js
+            // Also preventing *.json / *.js.map
+            var chunkRegex = new Regex(
+                @"/?_next/static/chunks/[^\s""'<>]+\.js(?:\?[^\s""'<>]*)?", 
+                RegexOptions.IgnoreCase | RegexOptions.Compiled
+            );
+            
+            // Get all the unique ones
+            List<string> jsChunks = chunkRegex.Matches(pageText)
+                .Select(m => m.Value)
+                .Distinct()
+                .ToList();
 
             // Go through each, download them, and search for the version
-            foreach (string chunk in chunks)
+            foreach (string jsChunk in jsChunks)
             {
-                string jsPath = chunk.Substring(0, chunk.IndexOf('"'));
-                var jsDownload = Web.DownloadString($"{urlWithSlash}_next/static/chunks/{jsPath}");
+                var jsDownload = Web.DownloadString($"{urlWithSlash}{jsChunk}");
                 if (jsDownload.StatusCode == HttpStatusCode.OK)
                 {
                     string jsString = jsDownload.Text;

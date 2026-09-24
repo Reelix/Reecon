@@ -66,7 +66,7 @@ namespace Reecon
                         {
                             versionMessage = versionMessage.Remove(0, 8);
                             versionMessage = versionMessage.Replace("_", " ");
-                            versionMessage += " (protocol 2.0)"; // Nmap's format
+                            versionMessage += " (protocol 2.0)"; // Nmap's format - Might as well keep it since people are familiar with it
                         }
                         else if (versionMessage.Trim() == "")
                         {
@@ -78,6 +78,8 @@ namespace Reecon
                             versionMessage = $"Weird SSH Version: {versionMessage}";
                         }
                         // https://gist.github.com/0x4D31/35ddb0322530414bbb4c3288292749cc
+                        
+                        // TODO: False positive on @libssh.org
                         if (responseMessage.ToLower().Contains("libssh"))
                         {
                             versionMessage += Environment.NewLine;
