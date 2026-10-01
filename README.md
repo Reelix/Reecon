@@ -14,9 +14,9 @@ This program is still in early stages of development and should probably not be 
   * Printer Enumeration: [PRET](https://github.com/RUB-NDS/PRET)
 
 ## Frequently Asked Questions
-### WTF - Why is it 15MB? That's huge!
-It's standalone with parts of the .NET Framework built in. It runs on the device without any other requirements. No additional Framework is required if you're not self-compiling.
-That said, I'm always trying to make it smaller (Working on cross-OS trimming and reducing third-party libraries) - It was over 30MB at one point :p
+### WTF - Why is it 8MB? That's huge!
+It's fully standalone. It runs on the device without any other requirements. No additional Framework is required if you're not self-compiling.<br />
+That said, I'm always trying to make it smaller (Working on reducing third-party libraries) - It was over 30MB at one point :p
 ### It broke
 It is still in the early stages of development. Tell me how it broke, and I'll see if I can fix it.
 ### You should add XYZ
