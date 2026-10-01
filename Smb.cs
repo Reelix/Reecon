@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using Reecon.Color;
 
 namespace Reecon
 {
@@ -102,7 +101,7 @@ namespace Reecon
 
                         if (!string.IsNullOrEmpty(pResp.DomainName))
                         {
-                            toReturn += $"-- " + $"Domain Name: {pResp.DomainName}".Recolor(Color.Orange) + Environment.NewLine;
+                            toReturn += $"-- " + $"Domain Name: {pResp.DomainName}".Recolor(Recolor.Orange) + Environment.NewLine;
                         }
                         else
                         {
@@ -111,7 +110,7 @@ namespace Reecon
 
                         if (!string.IsNullOrEmpty(pResp.ServerName))
                         {
-                            toReturn += "-- " + $"Server Name: {pResp.ServerName}".Recolor(Color.Orange) + Environment.NewLine;
+                            toReturn += "-- " + $"Server Name: {pResp.ServerName}".Recolor(Recolor.Orange) + Environment.NewLine;
                         }
                         else
                         {
@@ -121,7 +120,7 @@ namespace Reecon
                         SMB1_MS17_010.MS17010CheckResult checkResult = SMB1_MS17_010.CheckIfVulnerable(negotiateResponse, stream, target);
                         if (checkResult == SMB1_MS17_010.MS17010CheckResult.LikelyVulnerable)
                         {
-                            toReturn += "-- " + "Vulnerable to MS17-010 (Eternal Blue) !".Recolor(Color.Orange) + Environment.NewLine;
+                            toReturn += "-- " + "Vulnerable to MS17-010 (Eternal Blue) !".Recolor(Recolor.Orange) + Environment.NewLine;
                         }
                         else
                         {
@@ -213,7 +212,7 @@ namespace Reecon
 
         private static string TestAnonymousAccess_Linux(string target)
         {
-            if (General.IsInstalledOnLinux("smbclient", "/usr/bin/smbclient"))
+            if (General.IsInstalledOnLinux("smbclient"))
             {
                 string smbClientItems = "";
                 List<string> processResults = General.GetProcessOutput("smbclient", $" -L {target} --no-pass -g"); // null auth
@@ -258,7 +257,7 @@ namespace Reecon
                             subProcessResults.RemoveAll(x => x.Contains("blocks of size ") && x.Contains("blocks available"));
                             if (!subProcessResults.Any(x => x.Contains("NT_STATUS_ACCESS_DENIED") || x.Contains("NT_STATUS_OBJECT_NAME_NOT_FOUND") || x.Contains("NT_STATUS_NO_SUCH_FILE listing \\*")))
                             {
-                                smbClientItems += "-- " + $"{itemName} has ls perms - {subProcessResults.Count} items found! -> smbclient '//{target}/{itemName}' --no-pass".Recolor(Color.Orange) + Environment.NewLine;
+                                smbClientItems += "-- " + $"{itemName} has ls perms - {subProcessResults.Count} items found! -> smbclient '//{target}/{itemName}' --no-pass".Recolor(Recolor.Orange) + Environment.NewLine;
                                 foreach (string smbClientItem in subProcessResults)
                                 {
                                     smbClientItems += "--- Item: " + smbClientItem + Environment.NewLine;
@@ -269,7 +268,7 @@ namespace Reecon
                             {
                                 if (itemComment.Contains("Samba Server"))
                                 {
-                                    smbClientItems += "--- Samba Detected".Recolor(Color.Orange) + Environment.NewLine;
+                                    smbClientItems += "--- Samba Detected".Recolor(Recolor.Orange) + Environment.NewLine;
                                     smbClientItems += "--- If version Samba 3.5.0 < 4.4.14/4.5.10/4.6.4, https://www.exploit-db.com/exploits/42084 / msfconsole -x \"use /exploit/linux/samba/is_known_pipename\"" + Environment.NewLine;
                                 }
                             }
@@ -291,7 +290,7 @@ namespace Reecon
             }
             else
             {
-                return "- Error: Cannot find /usr/bin/smbclient - Please install it".Recolor(Color.Red);
+                return "- Error: Cannot find /usr/bin/smbclient - Please install it".Recolor(Recolor.Red);
             }
         }
 

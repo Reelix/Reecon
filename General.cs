@@ -2,7 +2,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -14,6 +13,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Reecon.Color;
 
 namespace Reecon
 {
@@ -25,7 +25,7 @@ namespace Reecon
 
         public static void ShowBanner()
         {
-            Console.WriteLine("Reecon - Version 0.42 ( https://github.com/Reelix/Reecon )".Recolor(Color.Yellow));
+            Console.WriteLine("Reecon - Version 0.43 ( https://github.com/Reelix/Reecon )".Recolor(Recolor.Yellow));
         }
         
         public static void ShowHelp(bool includeBanner = true)
@@ -495,7 +495,7 @@ namespace Reecon
             }
         }
 
-        public static bool IsInstalledOnLinux(string app, string path = "")
+        public static bool IsInstalledOnLinux(string app)
         {
             if (General.GetOperatingSystem() != OperatingSystem.Linux)
             {
@@ -508,28 +508,12 @@ namespace Reecon
             List<string> linuxPaths = pathValue.Split(":").ToList();
             foreach (string pathDirectory in linuxPaths)
             {
+                // Console.WriteLine("Checking: " + pathDirectory);
                 string directory = pathDirectory.EndsWith('/') ? pathDirectory : pathDirectory + "/";
-                if (Directory.Exists(directory))
+                string targetFullPath = Path.Combine(directory, app);
+                if (File.Exists(targetFullPath))
                 {
-                    List<string> files = Directory.GetFiles(directory).ToList();
-                    if (path != "")
-                    {
-                        if (files.Contains(path))
-                        {
-                            return true;
-                        }
-                    }
-                    else
-                    {
-                        if (files.Exists(x => x.Remove(0, x.LastIndexOf('/') + 1) == app))
-                        {
-                            return true;
-                        }
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"Error - Directory ${pathDirectory} does not exist for app {app}. Your PATH variable might be broken");
+                    return true;
                 }
             }
             return false;
@@ -662,47 +646,6 @@ namespace Reecon
             }
             return totBuffer;
         }
-
-        // Changes the color of a specific string in a line of text, then everything after is white
-        // Whilst colour is technically correct for EU-based, color is more often used in software development
-        public static string Recolor(this string? input, Color color)
-        {
-            // https://misc.flogisoft.com/bash/tip_colors_and_formatting
-            // For using one of the 256 colors on the foreground (text color), the control sequence is “<Esc>[38;5;ColorNumberm” where ColorNumber is one of the following colors:
-            string toReturn = "";
-            string backToWhite = "\u001b[97m";
-            string yellow = "\u001b[38;5;228m"; // 226/227 are too bright - Either 228/229 - Not sure...
-            string green = "\u001b[38;5;46m";
-            string orange = "\u001b[38;5;214m";
-            string red = "\u001b[38;5;9m";
-            if (color == Color.Yellow)
-            {
-                toReturn = $"{yellow}{input}{backToWhite}";
-            }
-            else if (color == Color.Green)
-            {
-                // Console.WriteLine("Setting Green");
-                toReturn = $"{green}{input}{backToWhite}";
-            }
-            else if (color == Color.Orange)
-            {
-                // Console.WriteLine("Setting Orange");
-                toReturn = $"{orange}{input}{backToWhite}";
-            }
-            else if (color == Color.Red)
-            {
-                toReturn = $"{red}{input}{backToWhite}";
-            }
-            else if (color == Color.White)
-            {
-                toReturn = $"{backToWhite}";
-            }
-            else
-            {
-                Console.WriteLine("Unknown Color: " + color.Name);
-            }
-            return toReturn;
-        }
         
         public static void HandleUnknownException(Exception ex)
         {
@@ -711,7 +654,7 @@ namespace Reecon
             StackFrame frame = trace.GetFrames().Last();
             int lineNumber = frame.GetFileLineNumber();
             string? fileName = frame.GetFileName();
-            Console.WriteLine($"- Unhandled Error in {fileName} of type {exType} on Line {lineNumber} - Bug Reelix!".Recolor(Color.Red));
+            Console.WriteLine($"- Unhandled Error in {fileName} of type {exType} on Line {lineNumber} - Bug Reelix!".Recolor(Recolor.Red));
             if (ex.InnerException != null)
             {
                 Console.WriteLine("-- Inner Exception: " + ex.InnerException.Message);

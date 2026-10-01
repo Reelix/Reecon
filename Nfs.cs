@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
+using Reecon.Color;
 
 namespace Reecon
 {
@@ -50,17 +50,17 @@ namespace Reecon
                         // NFS V1
                         if (line.Trim().EndsWith("*"))
                         {
-                            fileList += "- " + line.Recolor(Color.Orange) + Environment.NewLine;
-                            fileList += "-- NFSV1 -> " + $"sudo mount -t nfs {target}:/mountNameHere /tmp/mount/ -nolock".Recolor(Color.Orange) + Environment.NewLine;
-                            fileList += "--- " + "Try copy over a version of bash onto the share, +s +x it, then ./bash -p".Recolor(Color.Orange) + Environment.NewLine;
+                            fileList += "- " + line.Recolor(Recolor.Orange) + Environment.NewLine;
+                            fileList += "-- NFSV1 -> " + $"sudo mount -t nfs {target}:/mountNameHere /tmp/mount/ -nolock".Recolor(Recolor.Orange) + Environment.NewLine;
+                            fileList += "--- " + "Try copy over a version of bash onto the share, +s +x it, then ./bash -p".Recolor(Recolor.Orange) + Environment.NewLine;
                         }
                         // NFS V2,V3,V4, ?
                         else if (line.Contains(" (everyone)"))
                         {
-                            fileList += "- " + line.Recolor(Color.Orange) + Environment.NewLine;
-                            fileList += "-- NFSV -> " + $"sudo mount -t nfs {target}:/mountNameHere /mnt/mountNameHere".Recolor(Color.Orange) + Environment.NewLine;
-                            fileList += "--- " + "Try copy over a version of bash onto the share, +s +x it, then ./bash -p".Recolor(Color.Orange) + Environment.NewLine;
-                            fileList += "--- sudo umount /mnt/mountNameHere".Recolor(Color.Orange) + Environment.NewLine;
+                            fileList += "- " + line.Recolor(Recolor.Orange) + Environment.NewLine;
+                            fileList += "-- NFSV -> " + $"sudo mount -t nfs {target}:/mountNameHere /mnt/mountNameHere".Recolor(Recolor.Orange) + Environment.NewLine;
+                            fileList += "--- " + "Try copy over a version of bash onto the share, +s +x it, then ./bash -p".Recolor(Recolor.Orange) + Environment.NewLine;
+                            fileList += "--- sudo umount /mnt/mountNameHere".Recolor(Recolor.Orange) + Environment.NewLine;
                         }
                         // This took me far too long to figure out
                         else if (line.Contains("clnt_create: RPC: Program not registered"))
@@ -108,7 +108,7 @@ namespace Reecon
                 }
                 else
                 {
-                    return ("NFS", "- Error - showmount is not installed - Unable to enumerate! Run: sudo apt install nfs-common".Recolor(Color.Red));
+                    return ("NFS", "- Error - showmount is not installed - Unable to enumerate! Run: sudo apt install nfs-common".Recolor(Recolor.Red));
                 }
             }
             else

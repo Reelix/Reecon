@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
+using Reecon.Color;
 
 namespace Reecon
 {
@@ -118,7 +118,7 @@ namespace Reecon
                     if (!allPorts.Contains(port))
                     {
                         allPorts.Add(port);
-                        Console.WriteLine($"Port {port} - Filtered".Recolor(Color.Orange));
+                        Console.WriteLine($"Port {port} - Filtered".Recolor(Recolor.Orange));
                     }
                 }
                 else

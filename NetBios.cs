@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using Reecon.Color;
 
 namespace Reecon
 {
@@ -269,7 +269,7 @@ namespace Reecon
             bool signing = true;
             if (General.GetOperatingSystem() == General.OperatingSystem.Linux)
             {
-                if (General.IsInstalledOnLinux("rpcclient", "/usr/bin/rpcclient"))
+                if (General.IsInstalledOnLinux("rpcclient"))
                 {
                     // Find the Domain Name
                     // Console.WriteLine("RPC - lsaquery");
@@ -428,7 +428,7 @@ namespace Reecon
                                             // A bit hacky, but it works
                                             if (!int.TryParse(name, out _))
                                             {
-                                                rpcInfo += "-- " + $"Sneaky Username Found: {name}".Recolor(Color.Orange) + Environment.NewLine;
+                                                rpcInfo += "-- " + $"Sneaky Username Found: {name}".Recolor(Recolor.Orange) + Environment.NewLine;
                                             }
                                         }
                                     }
@@ -479,7 +479,7 @@ namespace Reecon
                             // Rest are missed!
                             foreach (var item in sneakySids)
                             {
-                                rpcInfo += "-- " + $"Sneaky Username Found: {item.Name}".Recolor(Color.Orange) + Environment.NewLine;
+                                rpcInfo += "-- " + $"Sneaky Username Found: {item.Name}".Recolor(Recolor.Orange) + Environment.NewLine;
                             }
                             // 23 -> https://room362.com/post/2017/reset-ad-user-password-with-linux/
                             rpcInfo += "--> rpcclient -> setuserinfo2 userNameHere 23 'newPasswordHere'" + Environment.NewLine;
@@ -512,7 +512,7 @@ namespace Reecon
                     }
                     if (anonAccess)
                     {
-                        rpcInfo += "- " + $"Anonymous access permitted! -> rpcclient -U \"\"%\"\" {ip}".Recolor(Color.Orange) + Environment.NewLine;
+                        rpcInfo += "- " + $"Anonymous access permitted! -> rpcclient -U \"\"%\"\" {ip}".Recolor(Recolor.Orange) + Environment.NewLine;
                     }
                     else
                     {
@@ -523,7 +523,7 @@ namespace Reecon
                 }
                 else
                 {
-                    rpcInfo = "- Error: Cannot find /usr/bin/rpcclient - Please install smbclient (Includes it)".Recolor(Color.Red) + Environment.NewLine;
+                    rpcInfo = "- Error: Cannot find /usr/bin/rpcclient - Please install smbclient (Includes it)".Recolor(Recolor.Red) + Environment.NewLine;
                 }
             }
             else

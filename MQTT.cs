@@ -33,7 +33,9 @@ namespace Reecon
                     byte[] buffer = new byte[4096];
 
                     Stopwatch stopwatch = Stopwatch.StartNew();
-                    const int totalListenTimeMs = 3000;
+                    // This intentionally takes awhile since it listens for rarer messages
+                    // The THM room ticks once every 15 seconds... So I'll give another message for that
+                    const int totalListenTimeMs = 5000;
 
                     while (stopwatch.ElapsedMilliseconds < totalListenTimeMs)
                     {
@@ -165,6 +167,7 @@ namespace Reecon
             return packetBytes;
         }
 
+        // TODO: Refactor
         private static int ReadVariableByteLength(byte[] data, ref int offset)
         {
             int multiplier = 1;
@@ -176,12 +179,15 @@ namespace Reecon
                 value += (encodedByte & 127) * multiplier;
                 multiplier *= 128;
                 if (multiplier > 128 * 128 * 128)
+                {
                     throw new Exception("Malformed Remaining Length");
+                }
             } while ((encodedByte & 128) != 0);
 
             return value;
         }
 
+        // TODO: Refactor
         public static string ParseMqttStream(byte[] stream)
         {
             string toReturn = "";

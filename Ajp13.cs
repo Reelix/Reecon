@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+﻿using Reecon.Color;
 
 namespace Reecon
 {
@@ -10,7 +10,7 @@ namespace Reecon
             // https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-1938
             if (CheckGhostcat(target))
             {
-                return ("AFJP13", "-- Vulnerable to CVE-2020-1938!".Recolor(Color.Orange));
+                return ("AFJP13", "-- Vulnerable to CVE-2020-1938!".Recolor(Recolor.Orange));
             }
             else
             {

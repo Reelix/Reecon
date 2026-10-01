@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using Reecon.Color;
 
 namespace Reecon
 {
@@ -24,7 +24,7 @@ namespace Reecon
 
             // Support the weird chars people use on Social Media
             Console.OutputEncoding = System.Text.Encoding.UTF8;
-            Console.WriteLine("Warning: The OSINT Module is still in early development and will probably break / give incorrect information".Recolor(Color.Red));
+            Console.WriteLine("Warning: The OSINT Module is still in early development and will probably break / give incorrect information".Recolor(Recolor.Red));
             string username = args[1];
             Console.WriteLine($"Searching for {username}...");
 
@@ -54,7 +54,7 @@ namespace Reecon
             var gitHubInfo = Osint_GitHub.GetInfo(username);
             if (gitHubInfo.Exists)
             {
-                Console.WriteLine("- GitHub: " + "Found".Recolor(Color.Green));
+                Console.WriteLine("- GitHub: " + "Found".Recolor(Recolor.Green));
                 Console.WriteLine(gitHubInfo.Info);
             }
             else
@@ -69,7 +69,7 @@ namespace Reecon
             Web.HttpInfo httpInfo = Web.GetHttpInfo(profileUrl);
             if (httpInfo.StatusCode != HttpStatusCode.NotFound && httpInfo.StatusCode == HttpStatusCode.OK)
             {
-                Console.WriteLine("- HackerOne: " + "Found".Recolor(Color.Green));
+                Console.WriteLine("- HackerOne: " + "Found".Recolor(Recolor.Green));
 
                 // GraphQL Request
                 string jsonContent = $$"""
@@ -116,7 +116,7 @@ namespace Reecon
             Web.HttpInfo httpInfo = Web.GetHttpInfo(profileUrl, AllowAutoRedirect: true);
             if (httpInfo.StatusCode != HttpStatusCode.NotFound && httpInfo.PageText != null)
             {
-                Console.WriteLine("- HuggingFace: " + "Found".Recolor(Color.Green));
+                Console.WriteLine("- HuggingFace: " + "Found".Recolor(Recolor.Green));
                 string pageText = httpInfo.PageText;
                 // Pull out the User Profile blob
                 string userProfileJsonRaw = pageText.Remove(0, pageText.IndexOf("data-target=\"UserProfile\"", StringComparison.Ordinal) + 38);
@@ -161,7 +161,7 @@ namespace Reecon
                 // It's hacky - But it works :p
                 if (httpInfo.ResponseHeaders.FirstOrDefault(x => x.Key == "document-policy").Value.Count() == 2)
                 {
-                    Console.WriteLine("- Instagram: " + "Found".Recolor(Color.Green));
+                    Console.WriteLine("- Instagram: " + "Found".Recolor(Recolor.Green));
                     Console.WriteLine($"-- Profile Link: {profileUrl}");
                 }
                 else
@@ -176,7 +176,7 @@ namespace Reecon
             Web.HttpInfo httpInfo = Web.GetHttpInfo($"https://link.me/{username}");
             if (httpInfo.StatusCode != HttpStatusCode.NotFound)
             {
-                Console.WriteLine("- Link Me: " + "Found".Recolor(Color.Green));
+                Console.WriteLine("- Link Me: " + "Found".Recolor(Recolor.Green));
                 Console.WriteLine($"-- Link: https://link.me/{username}");
             }
             else
@@ -204,7 +204,7 @@ namespace Reecon
             RedditInfo redditInfo = Osint_Reddit.GetInfo(username);
             if (redditInfo.Exists)
             {
-                Console.WriteLine("- Reddit: " + "Found".Recolor(Color.Green));
+                Console.WriteLine("- Reddit: " + "Found".Recolor(Recolor.Green));
                 Console.WriteLine($"-- Profile Link: https://www.reddit.com/user/{username}");
                 // Get Comments
                 if (redditInfo.CommentList.Count == 0)
@@ -214,7 +214,7 @@ namespace Reecon
                 // User has comments - List them
                 else
                 {
-                    Console.WriteLine("-- " + $"Listing {redditInfo.CommentList.Count} comments".Recolor(Color.Green));
+                    Console.WriteLine("-- " + $"Listing {redditInfo.CommentList.Count} comments".Recolor(Recolor.Green));
                     foreach (OSINT_Reddit_Comment comment in redditInfo.CommentList)
                     {
                         Console.WriteLine($"-- Comment Link: https://www.reddit.com{comment.Permalink} from {comment.Created_UTC} UTC");
@@ -235,7 +235,7 @@ namespace Reecon
                 }
                 else
                 {
-                    Console.WriteLine("-- " + $"Listing {redditInfo.SubmissionList.Count} submissions".Recolor(Color.Green));
+                    Console.WriteLine("-- " + $"Listing {redditInfo.SubmissionList.Count} submissions".Recolor(Recolor.Green));
                     foreach (OSINT_Reddit_Submission submission in redditInfo.SubmissionList)
                     {
                         Console.WriteLine($"-- Submission: {submission.Title} at {submission.URL} from {submission.Created_UTC} UTC");
@@ -264,7 +264,7 @@ namespace Reecon
             }
             else
             {
-                Console.WriteLine("- Steam: " + "Found".Recolor(Color.Green));
+                Console.WriteLine("- Steam: " + "Found".Recolor(Recolor.Green));
                 Console.WriteLine(result);
             }
         }
@@ -280,7 +280,7 @@ namespace Reecon
 
                 if (pageExtra.StartsWith('@'))
                 {
-                    Console.WriteLine("- Telegram (User): " + "Found".Recolor(Color.Green));
+                    Console.WriteLine("- Telegram (User): " + "Found".Recolor(Recolor.Green));
                     // Username
                     string name = httpInfo.PageText.Remove(0, httpInfo.PageText.IndexOf("tgme_page_title", StringComparison.Ordinal) + 15);
                     // Span inside
@@ -290,11 +290,11 @@ namespace Reecon
                 }
                 else if (pageExtra.EndsWith("subscribers"))
                 {
-                    Console.WriteLine("- Telegram (Channel): " + "Found".Recolor(Color.Green));
+                    Console.WriteLine("- Telegram (Channel): " + "Found".Recolor(Recolor.Green));
                 }
                 else if (pageExtra.Contains(" members ") && pageExtra.Contains(" online"))
                 {
-                    Console.WriteLine("- Telegram (Group): " + "Found".Recolor(Color.Green));
+                    Console.WriteLine("- Telegram (Group): " + "Found".Recolor(Recolor.Green));
                 }
 
                 Console.WriteLine($"-- Link: https://t.me/{username}");
@@ -311,7 +311,7 @@ namespace Reecon
             Web.HttpInfo httpInfo = Web.GetHttpInfo(profileUrl);
             if (httpInfo.StatusCode != HttpStatusCode.NotFound && httpInfo.StatusCode == HttpStatusCode.OK) // Threads redirects if the profile doesn't exist
             {
-                Console.WriteLine("- Threads: " + "Found".Recolor(Color.Green));
+                Console.WriteLine("- Threads: " + "Found".Recolor(Recolor.Green));
                 Console.WriteLine($"-- Profile Link: {profileUrl}");
             }
             else
@@ -336,7 +336,7 @@ namespace Reecon
             }
             else if (httpInfo.StatusCode == HttpStatusCode.OK && httpInfo.PageTitle != null && httpInfo.PageText != null)
             {
-                Console.WriteLine("- Twitter: " + "Found".Recolor(Color.Green));
+                Console.WriteLine("- Twitter: " + "Found".Recolor(Recolor.Green));
                 Console.WriteLine("-- Link: https://x.com/" + username);
 
                 // Profile name
@@ -385,7 +385,7 @@ namespace Reecon
             }
             else
             {
-                Console.WriteLine("-- Twitter: " + "Error".Recolor(Color.Red) + " - Bug Reelix");
+                Console.WriteLine("-- Twitter: " + "Error".Recolor(Recolor.Red) + " - Bug Reelix");
             }
         }
 
@@ -397,7 +397,7 @@ namespace Reecon
             if (httpInfo.StatusCode == HttpStatusCode.OK && httpInfo.PageTitle != null)
             {
                 string youtubeUsername = httpInfo.PageTitle.Replace(" - YouTube", "");
-                Console.WriteLine("- YouTube: " + "Found".Recolor(Color.Green));
+                Console.WriteLine("- YouTube: " + "Found".Recolor(Recolor.Green));
                 Console.WriteLine($"-- Link: https://www.youtube.com/{username}");
                 Console.WriteLine($"-- Name: {youtubeUsername}");
 
@@ -429,7 +429,7 @@ namespace Reecon
                         Web.HttpInfo userInfo = Web.GetHttpInfo(location);
                         if (userInfo.StatusCode == HttpStatusCode.OK && userInfo.PageTitle != null)
                         {
-                            Console.WriteLine("- YouTube: " + "Found".Recolor(Color.Green));
+                            Console.WriteLine("- YouTube: " + "Found".Recolor(Recolor.Green));
                             Console.WriteLine("-- User Profile: " + location);
                             Console.WriteLine("-- Name: " + userInfo.PageTitle.Replace(" - YouTube", ""));
                         }
@@ -453,7 +453,7 @@ namespace Reecon
             httpInfo = Web.GetHttpInfo("https://www.youtube.com/@" + username);
             if (httpInfo.StatusCode == HttpStatusCode.OK && httpInfo.PageTitle != null)
             {
-                Console.WriteLine("- YouTube - User: " + "Found".Recolor(Color.Green));
+                Console.WriteLine("- YouTube - User: " + "Found".Recolor(Recolor.Green));
                 Console.WriteLine($"-- Link: https://www.youtube.com/@{username}");
             }
         }

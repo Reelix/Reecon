@@ -1,8 +1,8 @@
 ﻿using System;
-using System.Drawing;
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
+using Reecon.Color;
 
 namespace Reecon
 {
@@ -34,7 +34,7 @@ namespace Reecon
                         throw new InvalidDataException("Received invalid data");
                     }
                     string[] packetData = packet.Split('\u0000');
-                    returnText = "- " + "Minecraft Server Detected".Recolor(Color.Green) + Environment.NewLine;
+                    returnText = "- " + "Minecraft Server Detected".Recolor(Recolor.Green) + Environment.NewLine;
                     returnText += "-- Protocol Version: " + packetData[1] + Environment.NewLine;
                     returnText += "-- Server Version: " + packetData[2] + Environment.NewLine;
                     returnText += "-- Message Of The Day: " + packetData[3] + Environment.NewLine;
@@ -44,7 +44,7 @@ namespace Reecon
                 }
                 catch (TimeoutException)
                 {
-                    returnText += "- Error: " + "Timeout".Recolor(Color.Red) + Environment.NewLine;
+                    returnText += "- Error: " + "Timeout".Recolor(Recolor.Red) + Environment.NewLine;
                 }
                 catch (Exception ex)
                 {

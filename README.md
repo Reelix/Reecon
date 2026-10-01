@@ -2,7 +2,7 @@
 
 Reelix's Recon - A small program for network recon.  
 This program is still in early stages of development and should probably not be used by anyone.
-* Version: 0.42
+* Version: 0.43
 * Build Status: <img src="https://img.shields.io/github/actions/workflow/status/Reelix/Reecon/dotnet-publish.yml" valign="middle" />
 * Requirements: [NMap 7.95+](https://nmap.org/download.html)
   * LDAP Enumeration on Ubuntu 22.04: Download + dpkg -i [this](https://packages.ubuntu.com/focal-updates/amd64/libldap-2.4-2/download)
@@ -63,11 +63,10 @@ This program is not permitted to be used in the state of California.
 - Raw nslookup in DNS.cs (Better cross-platform / How does it work on a lower level?)
 - Raw RPC info (rpcinfo on for port 111, find service / version on ports) - https://svn.nmap.org/nmap/scripts/rpcinfo.nse - Oh gawd
 - Fix broken OSINT Twitter OSINT
-- MSSQL handshake for version retrieval
 - Retrieve RDP Info - Specifically Domain / Auth Types (CredSSP Support - rdp-sec-check)
-- Implement basic MQTT handlers (Enough to get enough info to solve https://tryhackme.com/room/bugged)
 - Custom multithreaded SYN Scan port scanner to remove Nmap reliance (Won't happen any time soon)
 - Split Web into more files for cleaner code
 - Make the README.md file a bit more legible
 - Fix Pwn.cs to be slightly usable
 - Continue working on the SMB2 Protocol Implementation to get basic user auth / shares (Multiple failed attempts)
+- Implement a custom FTP Handler to get rid of the DLLdo

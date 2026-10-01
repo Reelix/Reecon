@@ -307,6 +307,7 @@ namespace Reecon
             }
         }
 
+        // You probably don't want to call this directly - Rather use ScanPorts
         private static void ScanPort(int port)
         {
             string toDo = PortInfo.ScanPort(_target, port);

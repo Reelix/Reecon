@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Drawing;
+using Reecon.Color;
 using Novell.Directory.Ldap;
 using System.Linq;
 using System.Net;
@@ -101,7 +101,7 @@ namespace Reecon
                 string deletedInfo = GetDeletedObjects(ip, intPort, username, password);
                 if (!string.IsNullOrEmpty(deletedInfo))
                 {
-                    Console.WriteLine("- " + "Deleted Items Detected".Recolor(Color.Green));
+                    Console.WriteLine("- " + "Deleted Items Detected".Recolor(Recolor.Green));
                     Console.WriteLine(deletedInfo);
                 }
             }
@@ -435,12 +435,12 @@ namespace Reecon
 
                 if (sAMAccountName != "N/A")
                 {
-                    output.AppendLine($"-- sAMAccountName: {sAMAccountName.Recolor(Color.Orange)}");
+                    output.AppendLine($"-- sAMAccountName: {sAMAccountName.Recolor(Recolor.Orange)}");
                 }
 
                 output.AppendLine($"-- DN: {dName}");
                 output.AppendLine($"-- isDeleted: {isDeleted}");
-                output.AppendLine($"-- Last Known Parent: {lastKnownParent.Recolor(Color.Orange)}");
+                output.AppendLine($"-- Last Known Parent: {lastKnownParent.Recolor(Recolor.Orange)}");
 
                 if (objectClasses.Length > 0)
                 {
@@ -509,7 +509,7 @@ namespace Reecon
                     if (!isDefaultDesc)
                     {
                         // And highlight anything useful
-                        output.AppendLine("-- " + ("Description: " + description).Recolor(Color.Orange));
+                        output.AppendLine("-- " + ("Description: " + description).Recolor(Recolor.Orange));
                     }
                     else
                     {
@@ -519,7 +519,7 @@ namespace Reecon
 
                 if (memberOf != null && memberOf.Contains("CN=REMOTE DESKTOP USERS", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    output.AppendLine("-- " + "Member of Remote Desktop Users Group (Can RDP)".Recolor(Color.Orange));
+                    output.AppendLine("-- " + "Member of Remote Desktop Users Group (Can RDP)".Recolor(Recolor.Orange));
                 }
 
                 if (!string.IsNullOrEmpty(lastLogonTimestamp) && lastLogonTimestamp != "0")
@@ -531,7 +531,7 @@ namespace Reecon
                         // Previously last 90, but getting some from a little further back is useful as well
                         bool recent = (DateTime.Now - lastLogonTime).TotalDays <= 180;
                         string displayTime = lastLogonTime.ToString("yyyy-MM-dd HH:mm:ss");
-                        output.AppendLine("-- Last Logon: " + (recent ? displayTime.Recolor(Color.Orange) : displayTime));
+                        output.AppendLine("-- Last Logon: " + (recent ? displayTime.Recolor(Recolor.Orange) : displayTime));
                     }
                     catch
                     {

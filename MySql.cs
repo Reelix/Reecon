@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Net.Sockets;
 using System.Text;
+using Reecon.Color;
 
 namespace Reecon
 {
@@ -101,7 +101,7 @@ namespace Reecon
                             }
                             else
                             {
-                                toReturn += "- " + $"Discovered Creds: {credential.Username} / {credential.Password}".Recolor(Color.Orange) + Environment.NewLine;
+                                toReturn += "- " + $"Discovered Creds: {credential.Username} / {credential.Password}".Recolor(Recolor.Orange) + Environment.NewLine;
                                 // Console.WriteLine("Authentication successful!");
                                 // Send SELECT VERSION() query and display result
                                 MySql_Protocol.SendQuery(stream, "SELECT User, authentication_string from mysql.user;");

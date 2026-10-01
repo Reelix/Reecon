@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Drawing;
+using Reecon.Color;
 
 namespace Reecon
 {
@@ -47,7 +47,7 @@ namespace Reecon
 
             if (operatingSystem == General.OperatingSystem.Linux)
             {
-                Console.WriteLine("OS Detected as: " + "Linux".Recolor(Color.Green));
+                Console.WriteLine("OS Detected as: " + "Linux".Recolor(Recolor.Green));
                 Console.WriteLine("Running additional checks - Please wait...");
                 List<string> linux_WebChecks = new()
                 {
@@ -529,7 +529,7 @@ namespace Reecon
             {
                 if (pageText.Contains("<a href=\"http://www.php.net/\">") && pageText.Contains("Configuration File (php.ini) Path"))
                 {
-                    Console.WriteLine("----> " + "PHP Filter Code Execution Possible!!!!!!!".Recolor(Color.Green));
+                    Console.WriteLine("----> " + "PHP Filter Code Execution Possible!!!!!!!".Recolor(Recolor.Green));
                     Console.WriteLine("-----> https://github.com/synacktiv/php_filter_chain_generator");
                 }
             }

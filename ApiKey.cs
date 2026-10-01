@@ -1,8 +1,8 @@
 using System;
-using System.Drawing;
 using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Reecon.Color;
 
 namespace Reecon;
 
@@ -36,11 +36,11 @@ public static class ApiKey
             var apiTestResult = Web.DownloadString("https://api.github.com/user", CustomHeader: authHeader);
             if (apiTestResult.StatusCode == HttpStatusCode.OK)
             {
-                Console.WriteLine($"- The API key is {"valid".Recolor(Color.Green)}.");
+                Console.WriteLine($"- The API key is {"valid".Recolor(Recolor.Green)}.");
             }
             else if (apiTestResult.StatusCode == HttpStatusCode.Unauthorized)
             {
-                Console.WriteLine($"- The API key is {"invalid".Recolor(Color.Red)} (Bad credentials)");
+                Console.WriteLine($"- The API key is {"invalid".Recolor(Recolor.Red)} (Bad credentials)");
             }
             else
             {
@@ -112,7 +112,7 @@ public static class ApiKey
                 }
                 else
                 {
-                    Console.WriteLine($"- Google Maps - Distance Matrix - The API key is {"valid".Recolor(Color.Green)}.");
+                    Console.WriteLine($"- Google Maps - Distance Matrix - The API key is {"valid".Recolor(Recolor.Green)}.");
                 }
             }
 
@@ -132,7 +132,7 @@ public static class ApiKey
                 }
                 else
                 {
-                    Console.WriteLine($"- Google Maps - Find Place from Text - The API key is {"valid".Recolor(Color.Green)}.");
+                    Console.WriteLine($"- Google Maps - Find Place from Text - The API key is {"valid".Recolor(Recolor.Green)}.");
                 }
             }
 
@@ -151,7 +151,7 @@ public static class ApiKey
                 }
                 else
                 {
-                    Console.WriteLine($"- Google Maps - Autocomplete - The API key is {"valid".Recolor(Color.Green)}.");
+                    Console.WriteLine($"- Google Maps - Autocomplete - The API key is {"valid".Recolor(Recolor.Green)}.");
                 }
             }
 
@@ -167,11 +167,11 @@ public static class ApiKey
             var apiTestResult = Web.DownloadString($"https://api.shodan.io/api-info?key={apiKey}");
             if (apiTestResult.StatusCode == HttpStatusCode.OK)
             {
-                Console.WriteLine($"- The API key is {"valid".Recolor(Color.Green)}.");
+                Console.WriteLine($"- The API key is {"valid".Recolor(Recolor.Green)}.");
             }
             else if (apiTestResult.StatusCode == HttpStatusCode.Unauthorized)
             {
-                Console.WriteLine($"- The API key is {"invalid".Recolor(Color.Red)} - Unauthorized");
+                Console.WriteLine($"- The API key is {"invalid".Recolor(Recolor.Red)} - Unauthorized");
             }
         }
         
@@ -188,7 +188,7 @@ public static class ApiKey
             var httpInfo = Web.GetHttpInfo(telegramBotToken);
             if (httpInfo.StatusCode == HttpStatusCode.OK && httpInfo.PageText != null)
             {
-                Console.WriteLine($"- Telegram Bot Token - The Bot Token is {"valid".Recolor(Color.Green)}.");
+                Console.WriteLine($"- Telegram Bot Token - The Bot Token is {"valid".Recolor(Recolor.Green)}.");
                 JsonDocument jsonData = JsonDocument.Parse(httpInfo.PageText);
                 JsonElement result = jsonData.RootElement.GetProperty("result");
                 if (result.TryGetProperty("username", out JsonElement jsonUsername))
@@ -241,11 +241,11 @@ public static class ApiKey
             var apiTestResult = Web.DownloadString($"https://www.virustotal.com/api/v3/domains/google.com", CustomHeader: authHeader);
             if (apiTestResult.StatusCode == HttpStatusCode.OK)
             {
-                Console.WriteLine($"- The API key is {"valid".Recolor(Color.Green)}.");
+                Console.WriteLine($"- The API key is {"valid".Recolor(Recolor.Green)}.");
             }
             else if (apiTestResult.StatusCode == HttpStatusCode.Unauthorized)
             {
-                Console.WriteLine($"- The API key is {"invalid".Recolor(Color.Red)} - Unauthorized");
+                Console.WriteLine($"- The API key is {"invalid".Recolor(Recolor.Red)} - Unauthorized");
             }
         }
                 

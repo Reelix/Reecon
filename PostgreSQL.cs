@@ -1,4 +1,4 @@
-﻿using Npgsql; // For PostgreSQL Stuff
+// using Npgsql; - For some reason this adds like 8MB - Need to figure this out later
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -9,6 +9,7 @@ namespace Reecon
     {
         public static (string PortName, string PortData) GetInfo(string target, int port)
         {
+            /*
             string toReturn = "";
             // Thanks Metasploit!
             List<string> userList = new() { "postgres", "scott", "admin" };
@@ -104,7 +105,8 @@ namespace Reecon
                 toReturn = "- Unable to find credentials";
             }
             toReturn = toReturn.Trim(Environment.NewLine.ToCharArray());
-            return ("PostgreSQL", toReturn);
+            */
+            return ("PostgreSQL", "- Bug Reelix to re-add PostgreSQL");
         }
     }
 }

@@ -1,7 +1,7 @@
 using System;
-using System.Drawing;
 using System.Net;
 using System.Text.Json;
+using Reecon.Color;
 
 namespace Reecon;
 
@@ -40,7 +40,7 @@ public static class Lookup
             string city = jsonRoot.GetProperty("city").GetString() ?? "";
             string isp = jsonRoot.GetProperty("isp").GetString() ?? "";
             string org = jsonRoot.GetProperty("org").GetString() ?? "";
-            Console.WriteLine($"Lookup result for: {ip.Recolor(Color.Green)}");
+            Console.WriteLine($"Lookup result for: {ip.Recolor(Recolor.Green)}");
             Console.WriteLine($"Country: {country} ({countryCode})");
             Console.WriteLine($"Region: {region} ({regionCode})");
             Console.WriteLine($"City: {city}");

@@ -1,12 +1,12 @@
-﻿using FluentFTP;
+using FluentFTP;
 using FluentFTP.Client.BaseClient;
 using FluentFTP.Exceptions;
 // Note: FtpWebRequest isn't used due to https://github.com/dotnet/platform-compat/blob/master/docs/DE0003.md
 using System;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net;
+using Reecon.Color;
 
 namespace Reecon
 {
@@ -91,7 +91,7 @@ namespace Reecon
                 if (ftpClient.IsConnected)
                 {
                     string portInfo = port == 21 ? "" : $":{port}";
-                    ftpLoginResult += "- " + $"Anonymous login allowed -> ftp ftp://anonymous:@{target}{portInfo}".Recolor(Color.Orange) + Environment.NewLine;
+                    ftpLoginResult += "- " + $"Anonymous login allowed -> ftp ftp://anonymous:@{target}{portInfo}".Recolor(Recolor.Orange) + Environment.NewLine;
                     // Console.WriteLine("FtpLogin2 - Connected");
                     // You can connect without being auth'd, but you can still read stuff even if so
                     ftpLoginResult += "-- OS: " + ftpClient.ServerOS + Environment.NewLine;
@@ -202,7 +202,7 @@ namespace Reecon
                 {
                     if (bannerMessage.Contains("ProFTPD 1.3.5") || bannerMessage.Contains("ProFTPD 1.3.6"))
                     {
-                        toReturn += "-- " + "Vulnerable ProFTPD Version Detected (Potential RCE) - CVE-2015-3306".Recolor(Color.Orange) + Environment.NewLine;
+                        toReturn += "-- " + "Vulnerable ProFTPD Version Detected (Potential RCE) - CVE-2015-3306".Recolor(Recolor.Orange) + Environment.NewLine;
                     }
                     else
                     {
