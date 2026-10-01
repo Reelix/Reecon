@@ -115,7 +115,7 @@ namespace Reecon
                                     JsonElement cpeMatches = node.GetProperty("cpeMatch");
                                     foreach (JsonElement cpeMatch in cpeMatches.EnumerateArray())
                                     {
-                                        string criteria = cpeMatch.GetProperty("criteria").GetString();
+                                        string criteria = cpeMatch.GetProperty("criteria").GetString() ?? "Unknown - Bug Reelix";
                                         criteria = criteria.Replace("cpe:2.3:a:", "");
                                         criteria = criteria.Replace(":*", "");
 
