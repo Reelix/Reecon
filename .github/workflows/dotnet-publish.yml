@@ -3,34 +3,92 @@ name: dotnet publish
 on:
   push:
     branches:
-      - master  # Triggers only on pushes to the 'master' branch - Not on PR's (But still on PR accepts) 
+      - master
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
     strategy:
       matrix:
-        dotnet-version: ['10.0.103' ]
+        include:
+          - rid: win-x64
+            os: windows-latest
+            artifact_name: reecon.exe
+            out_path: bin/win-x64/reecon.exe
+          - rid: linux-x64
+            os: ubuntu-latest
+            artifact_name: reecon-linux-x64
+            out_path: bin/linux-x64/reecon
+          - rid: linux-arm64
+            os: ubuntu-24.04-arm
+            artifact_name: reecon-linux-arm64
+            out_path: bin/linux-arm64/reecon
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
-      - name: Setup .NET Core SDK ${{ matrix.dotnet-version }}
+
+      - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: ${{ matrix.dotnet-version }}
-      - name: Install dependencies
-        run: dotnet restore
-      - name: Publish
-        run:  |
-              dotnet publish -r win-x64 --self-contained true --property:PublishDir=bin/win-x64/,assemblyname=reecon,PublishSingleFile=true,EnableCompressionInSingleFile=true,PublishTrimmed=true --configuration=Release
-              dotnet publish -r linux-x64 --self-contained true --property:PublishDir=bin/linux-x64/,assemblyname=reecon,PublishSingleFile=true,EnableCompressionInSingleFile=true,PublishTrimmed=true --configuration=Release
-              dotnet publish -r linux-arm64 --self-contained true --property:PublishDir=bin/linux-arm64/,assemblyname=reecon,PublishSingleFile=true,EnableCompressionInSingleFile=true,PublishTrimmed=true --configuration=Release
-              dotnet publish -r linux-musl-x64 --self-contained true --property:PublishDir=bin/linux-musl-x64/,assemblyname=reecon,PublishSingleFile=true,EnableCompressionInSingleFile=true,PublishTrimmed=true --configuration=Release
-              mv bin/win-x64/reecon.exe bin/reecon.exe
-              mv bin/linux-x64/reecon bin/reecon-linux-x64
-              mv bin/linux-arm64/reecon bin/reecon-linux-arm64
-              mv bin/linux-musl-x64/reecon bin/reecon-linux-musl-x64
+          dotnet-version: '10.0.103'
+
+      - name: Publish Native AOT
+        shell: bash
+        run: |
+          dotnet publish -r ${{ matrix.rid }} \
+            --self-contained true \
+            --configuration Release \
+            -p:PublishAot=true \
+            -p:PublishDir=bin/${{ matrix.rid }}/ \
+            -p:AssemblyName=reecon
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.out_path }}
+          if-no-files-found: error
+
+  # Musl builds need an Alpine environment to link against musl libc
+  build-musl:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/dotnet/sdk:10.0-alpine
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools for Native AOT on Alpine
+        run: apk add --no-cache clang build-base zlib-dev
+
+      - name: Publish Native AOT (musl)
+        run: |
+          dotnet publish -r linux-musl-x64 \
+            --self-contained true \
+            --configuration Release \
+            -p:PublishAot=true \
+            -p:PublishDir=bin/linux-musl-x64/ \
+            -p:AssemblyName=reecon
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: reecon-linux-musl-x64
+          path: bin/linux-musl-x64/reecon
+          if-no-files-found: error
+
+  release:
+    needs: [build, build-musl]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-bin/
+          merge-multiple: true
+
       - name: Automatic Releases
         uses: marvinpinto/action-automatic-releases@latest
         with:
@@ -39,7 +97,7 @@ jobs:
           prerelease: true
           title: "Latest Development Build"
           files: |
-                bin/reecon.exe
-                bin/reecon-linux-x64
-                bin/reecon-linux-arm64
-                bin/reecon-linux-musl-x64
+            release-bin/reecon.exe
+            release-bin/reecon-linux-x64
+            release-bin/reecon-linux-arm64
+            release-bin/reecon-linux-musl-x64
