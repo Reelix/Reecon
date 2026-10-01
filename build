@@ -1,17 +1,21 @@
 #!/bin/sh
 # This is a POSIX compliant script so it works with both bash AND sh on more distributions
 
+# Fix silent fails
+set -e
+
 arch=$(uname -m)
 case "$arch" in
     x86_64*)
         echo "Found x64 Architecture - Publishing for that..."
-        dotnet publish -r linux-x64 --self-contained true --property:PublishDir=bin/linux-x64/,assemblyname=reecon,PublishSingleFile=True,EnableCompressionInSingleFile=true,PublishTrimmed=true --configuration=Release
+        dotnet publish -r linux-x64 --self-contained true --property:PublishDir=bin/linux-x64/,assemblyname=reecon --configuration=Release
         ;;
-    aarch64)
+    aarch64* | arm64*)
         echo "Found ARM64 Architecture - Publishing for that..."
-        dotnet publish -r linux-arm64 --self-contained true --property:PublishDir=bin/linux-arm64/,assemblyname=reecon,PublishSingleFile=True,EnableCompressionInSingleFile=true,PublishTrimmed=true --configuration=Release
+        dotnet publish -r linux-arm64 --self-contained true --property:PublishDir=bin/linux-arm64/,assemblyname=reecon --configuration=Release
         ;;
     *)
-        echo "Unknown CPU Architecture - Bug Reelix!"
+        echo "Unknown CPU Architecture ($arch) - Bug Reelix!" >&2
+        exit 1
         ;;
 esac
