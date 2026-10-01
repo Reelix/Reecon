@@ -12,16 +12,16 @@ jobs:
         include:
           - rid: win-x64
             os: windows-latest
-            artifact_name: reecon.exe
-            out_path: bin/win-x64/reecon.exe
+            src_binary: bin/win-x64/reecon.exe
+            final_name: reecon.exe
           - rid: linux-x64
             os: ubuntu-latest
-            artifact_name: reecon-linux-x64
-            out_path: bin/linux-x64/reecon
+            src_binary: bin/linux-x64/reecon
+            final_name: reecon-linux-x64
           - rid: linux-arm64
             os: ubuntu-24.04-arm
-            artifact_name: reecon-linux-arm64
-            out_path: bin/linux-arm64/reecon
+            src_binary: bin/linux-arm64/reecon
+            final_name: reecon-linux-arm64
 
     runs-on: ${{ matrix.os }}
 
@@ -43,11 +43,15 @@ jobs:
             -p:PublishDir=bin/${{ matrix.rid }}/ \
             -p:AssemblyName=reecon
 
+          # Stage and rename the binary so the artifact contains the correct filename
+          mkdir -p dist
+          mv ${{ matrix.src_binary }} dist/${{ matrix.final_name }}
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
-          path: ${{ matrix.out_path }}
+          name: ${{ matrix.final_name }}
+          path: dist/${{ matrix.final_name }}
           if-no-files-found: error
 
   # Musl builds need an Alpine environment to link against musl libc
@@ -70,11 +74,14 @@ jobs:
             -p:PublishDir=bin/linux-musl-x64/ \
             -p:AssemblyName=reecon
 
+          mkdir -p dist
+          mv bin/linux-musl-x64/reecon dist/reecon-linux-musl-x64
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: reecon-linux-musl-x64
-          path: bin/linux-musl-x64/reecon
+          path: dist/reecon-linux-musl-x64
           if-no-files-found: error
 
   release:
